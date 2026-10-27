@@ -3,6 +3,8 @@ package com.microdrone.mod.entity;
 import com.microdrone.mod.MicroDroneMod;
 import com.microdrone.mod.item.ModItems;
 import com.microdrone.mod.network.DronePilotStatePayload;
+import net.minecraft.core.Rotations;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -23,6 +25,8 @@ import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.ResolvableProfile;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
@@ -150,7 +154,33 @@ public class DroneEntity extends Entity {
         dummy.setCustomNameVisible(true);
         dummy.setNoGravity(true);
         dummy.setInvulnerable(true);
-        dummy.setItemSlot(EquipmentSlot.MAINHAND, player.getMainHandItem().copy());
+        dummy.setShowArms(true);      // 腕を表示（コントローラーを持たせる）
+        dummy.setNoBasePlate(true);    // 台座を非表示（自然な足元に）
+
+        // コントローラーを操作している自然なポーズ（両腕を前方に構えてコントローラーを見る）
+        dummy.setRightArmPose(new Rotations(-25.0f, -15.0f, 0.0f));
+        dummy.setLeftArmPose(new Rotations(-25.0f, 15.0f, 0.0f));
+        dummy.setHeadPose(new Rotations(12.0f, 0.0f, 0.0f)); // やや下（手元のコントローラー）を向く
+
+        // プレイヤーの防具をすべてコピー装着
+        dummy.setItemSlot(EquipmentSlot.FEET, player.getItemBySlot(EquipmentSlot.FEET).copy());
+        dummy.setItemSlot(EquipmentSlot.LEGS, player.getItemBySlot(EquipmentSlot.LEGS).copy());
+        dummy.setItemSlot(EquipmentSlot.CHEST, player.getItemBySlot(EquipmentSlot.CHEST).copy());
+
+        // 頭部: ヘルメットを被っていればそれを装着し、無ければプレイヤーのスキン頭部を生成して装着
+        ItemStack headItem = player.getItemBySlot(EquipmentSlot.HEAD);
+        if (!headItem.isEmpty()) {
+            dummy.setItemSlot(EquipmentSlot.HEAD, headItem.copy());
+        } else {
+            ItemStack customHead = new ItemStack(Items.PLAYER_HEAD);
+            customHead.set(DataComponents.PROFILE, new ResolvableProfile(player.getGameProfile()));
+            dummy.setItemSlot(EquipmentSlot.HEAD, customHead);
+        }
+
+        // 手持ちアイテム（メインハンド: ドローンコントローラー、オフハンド）
+        dummy.setItemSlot(EquipmentSlot.MAINHAND, player.getItemBySlot(EquipmentSlot.MAINHAND).copy());
+        dummy.setItemSlot(EquipmentSlot.OFFHAND, player.getItemBySlot(EquipmentSlot.OFFHAND).copy());
+
         serverLevel.addFreshEntity(dummy);
         this.dummyEntityUUID = dummy.getUUID();
         MicroDroneMod.LOGGER.info("[SERVER] [PLAYER_DUMMY_SPAWN] Spawned body dummy {} at [{}, {}, {}]",
