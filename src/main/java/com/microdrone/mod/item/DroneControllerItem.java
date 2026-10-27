@@ -24,17 +24,16 @@ public class DroneControllerItem extends Item {
         ItemStack itemStack = player.getItemInHand(hand);
 
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
+            // 自身が操縦中のドローンがあれば即座に操縦終了（距離制限に関係なく確実に停止）
+            DroneEntity activeDrone = DroneEntity.getByPilot(player.getUUID());
+            if (activeDrone != null) {
+                activeDrone.stopPiloting(serverPlayer);
+                return InteractionResultHolder.success(itemStack);
+            }
+
             // 周囲32ブロック以内のドローンを検索
             AABB searchBox = player.getBoundingBox().inflate(32.0);
             List<DroneEntity> drones = level.getEntitiesOfClass(DroneEntity.class, searchBox);
-
-            // 自身が操縦中のドローンがあれば操縦終了
-            for (DroneEntity drone : drones) {
-                if (drone.isPilotedBy(player)) {
-                    drone.stopPiloting(serverPlayer);
-                    return InteractionResultHolder.success(itemStack);
-                }
-            }
 
             // 操縦していない場合、最も近い空いているドローンの操縦を開始
             DroneEntity nearestAvailable = null;

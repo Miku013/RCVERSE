@@ -3,7 +3,7 @@
   "item.microdrone.drone_item": "マイクロドローン（配置用）",
   "item.microdrone.drone_controller": "ドローンコントローラー",
   "entity.microdrone.drone": "マイクロドローン",
-  "message.microdrone.pilot_start": "§a[ドローン] 操縦を開始しました。（W/S: 前後, A/D: 左右, Space/Shift: 上下, マウス: 旋回, 右クリック: 終了）",
+  "message.microdrone.pilot_start": "§a[ドローン] 操縦を開始しました。（W/S: 前後, A/D: 左右, Space/Shift: 上下, マウス: 旋回, コントローラーを持って右クリック: 終了）",
   "message.microdrone.pilot_stop": "§e[ドローン] 操縦を終了しました。",
   "message.microdrone.already_piloted": "§c[ドローン] このドローンは既に他のプレイヤーが操縦しています！",
   "message.microdrone.no_drone_nearby": "§c[ドローン] 近くに利用可能なドローンが見つかりません。",

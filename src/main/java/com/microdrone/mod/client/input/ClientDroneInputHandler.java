@@ -3,6 +3,7 @@ package com.microdrone.mod.client.input;
 import com.microdrone.mod.MicroDroneMod;
 import com.microdrone.mod.client.camera.DroneCameraController;
 import com.microdrone.mod.entity.DroneEntity;
+import com.microdrone.mod.item.DroneControllerItem;
 import com.microdrone.mod.network.DroneControlPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
@@ -141,9 +142,8 @@ public class ClientDroneInputHandler {
             return;
         }
 
-        // パターンA: クライアント側ローカルプレイヤーの水平チャンク座標をドローンに同期
-        // （足元地下にオフセット配置することで、ブロックのクリック時に自プレイヤーの当たり判定に衝突して誤攻撃キックされるのを完全防止）
-        player.setPos(drone.getX(), drone.getY() - 100.0, drone.getZ());
+        // パターンA: クライアント側ローカルプレイヤーの座標をドローンに同期
+        player.setPos(drone.getX(), drone.getY(), drone.getZ());
 
         // プレイヤーのマウス最新角度を取得してドローン制御とサーバー同期を行う
         float currentYaw = player.getYRot();
@@ -194,7 +194,9 @@ public class ClientDroneInputHandler {
     /**
      * 【右クリックでの安全な操縦終了 ＆ ブロック/エンティティ干渉の完全防止】
      * ドローン操縦中に入力キーをインターセプト：
-     * - 右クリック（使用キー）: ドアやブロック、プレイヤーに触れず、安全にドローン操縦を即座に終了！
+     * - 右クリック（使用キー）:
+     *   - 手にドローンコントローラーを持っている場合のみ、安全に操縦を終了！
+     *   - それ以外のアイテム所持時は誤終了を防止し、かつブロック設置や飲食などの誤動作を100%遮断。
      * - 左クリック（攻撃キー）: ワールド破壊や誤攻撃を完全ブロック。
      */
     @SubscribeEvent
@@ -202,9 +204,19 @@ public class ClientDroneInputHandler {
         if (!isPiloting) return;
 
         if (event.isUseItem()) {
+            // ワールドのブロック設置やアイテム使用は常に完全無効化
             event.setCanceled(true);
             event.setSwingHand(false);
-            stopPiloting();
+
+            // 手にドローンコントローラーを持っている時のみ操縦を終了
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.player != null) {
+                boolean holdingController = mc.player.getMainHandItem().getItem() instanceof DroneControllerItem
+                        || mc.player.getOffhandItem().getItem() instanceof DroneControllerItem;
+                if (holdingController) {
+                    stopPiloting();
+                }
+            }
             return;
         }
 

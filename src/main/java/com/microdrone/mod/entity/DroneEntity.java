@@ -416,21 +416,29 @@ public class DroneEntity extends Entity {
         this.setDeltaMovement(fixedVx, fixedVy, fixedVz);
         checkAndResolveSuffocation();
 
-        // Phase 5: 機体の移動に完全に追従するチャンク更新（チャンク境界を跨いだ瞬間即時、または10ticksごと）
-        if (!this.level().isClientSide && this.pilotUUID != null) {
-            ChunkPos currentChunk = new ChunkPos(this.blockPosition());
-            boolean chunkChanged = (this.lastChunkPos == null || !this.lastChunkPos.equals(currentChunk));
-            if (chunkChanged || (this.hoverTicks % 10 == 0)) {
-                if (chunkChanged) {
-                    MicroDroneMod.LOGGER.debug("[SERVER] [CHUNK_BORDER_CROSS] DroneUUID: {}, DronePos: [{}, {}, {}], PrevChunk: {}, NewChunk: [{}, {}]",
-                            this.getUUID(),
-                            String.format("%.2f", this.getX()), String.format("%.2f", this.getY()), String.format("%.2f", this.getZ()),
-                            this.lastChunkPos != null ? "[" + this.lastChunkPos.x + ", " + this.lastChunkPos.z + "]" : "INIT",
-                            currentChunk.x, currentChunk.z);
-                }
-                this.lastChunkPos = currentChunk;
-                ServerPlayer pilot = this.getServer().getPlayerList().getPlayer(this.pilotUUID);
-                if (pilot != null) {
+        // サーバー側処理: 操縦中プレイヤーの実体をドローン座標へ追従移動 & チャンク更新
+        if (!this.level().isClientSide && this.pilotUUID != null && this.getServer() != null) {
+            ServerPlayer pilot = this.getServer().getPlayerList().getPlayer(this.pilotUUID);
+            if (pilot != null && pilot.isAlive()) {
+                // 1. 【パターンAの核心】サーバー側プレイヤーの実体座標をドローンに同期！
+                // これにより、バニラのChunkMap（エンティティ追跡）でドローンが常にプレイヤーの直近（0m）と認識され、
+                // 遠距離飛行時（128m+）でもENTITY_LEAVE_LEVELによるドローン消失や強制切断が100%防止される。
+                // 操縦終了時は初期位置へteleportToで完全復元される。
+                pilot.absMoveTo(this.getX(), this.getY(), this.getZ(), this.getYRot(), this.getXRot());
+                pilot.serverLevel().getChunkSource().move(pilot);
+
+                // 2. 機体の移動に完全に追従するチャンク更新（チャンク境界を跨いだ瞬間即時、または10ticksごと）
+                ChunkPos currentChunk = new ChunkPos(this.blockPosition());
+                boolean chunkChanged = (this.lastChunkPos == null || !this.lastChunkPos.equals(currentChunk));
+                if (chunkChanged || (this.hoverTicks % 10 == 0)) {
+                    if (chunkChanged) {
+                        MicroDroneMod.LOGGER.debug("[SERVER] [CHUNK_BORDER_CROSS] DroneUUID: {}, DronePos: [{}, {}, {}], PrevChunk: {}, NewChunk: [{}, {}]",
+                                this.getUUID(),
+                                String.format("%.2f", this.getX()), String.format("%.2f", this.getY()), String.format("%.2f", this.getZ()),
+                                this.lastChunkPos != null ? "[" + this.lastChunkPos.x + ", " + this.lastChunkPos.z + "]" : "INIT",
+                                currentChunk.x, currentChunk.z);
+                    }
+                    this.lastChunkPos = currentChunk;
                     com.microdrone.mod.chunk.DroneChunkManager.updateDroneChunks(pilot, this);
                 }
             }
