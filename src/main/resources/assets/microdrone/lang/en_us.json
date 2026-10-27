@@ -1,0 +1,10 @@
+{
+  "itemGroup.microdrone": "Micro Drone",
+  "item.microdrone.drone_item": "Micro Drone (Deployer)",
+  "item.microdrone.drone_controller": "Drone Controller",
+  "entity.microdrone.drone": "Micro Drone",
+  "message.microdrone.pilot_start": "§a[Drone] Piloting started. (W/S: Pitch/Forward, A/D: Strafe, Space/Shift: Elevate, Mouse: Yaw, Right Click: Exit)",
+  "message.microdrone.pilot_stop": "§e[Drone] Piloting stopped.",
+  "message.microdrone.already_piloted": "§c[Drone] This drone is already being piloted by another player!",
+  "message.microdrone.no_drone_nearby": "§c[Drone] No available drone found nearby."
+}
