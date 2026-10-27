@@ -47,6 +47,7 @@ public class ClientDroneInputHandler {
             activeDroneId = droneId;
             if (mc.player != null) {
                 lastPlayerYaw = mc.player.getYRot();
+                mc.player.setInvisible(true); // 操縦中のプレイヤーモデル不可視化
             }
 
             // クライアント側ドローンにローカル制御フラグを設定（カクつき防止・予測物理用）
@@ -59,7 +60,12 @@ public class ClientDroneInputHandler {
 
             DroneCameraController.startViewing(droneId);
         } else {
+            if (mc.player != null) {
+                mc.player.setInvisible(false); // 操縦終了時に透明化解除
+            }
+
             if (mc.level != null && activeDroneId != -1) {
+
                 Entity entity = mc.level.getEntity(activeDroneId);
                 if (entity instanceof DroneEntity drone) {
                     drone.setLocallyControlled(false);
@@ -133,6 +139,10 @@ public class ClientDroneInputHandler {
 
         // ドローン正常検知時はカウンタリセット
         missingTicks = 0;
+
+        // パターンA: クライアント側ローカルプレイヤーの座標をドローンに同期
+        // （これによりバニラのサーバー・クライアント間の12チャンク同期矛盾・パケット逆流による表示消滅を完全防止）
+        player.setPos(drone.getX(), drone.getY(), drone.getZ());
 
         // マウス操作による旋回変化量 (Yaw) と 見下ろし角 (Pitch) を算出
         float currentYaw = player.getYRot();

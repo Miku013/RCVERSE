@@ -6,6 +6,8 @@ import com.microdrone.mod.network.DronePilotStatePayload;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -15,7 +17,9 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.MoverType;
+import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -40,8 +44,19 @@ public class DroneEntity extends Entity {
 
     private UUID pilotUUID = null;
 
+    // パターンA: 操縦開始時のプレイヤー初期位置（終了時テレポート復元用）
+    private ResourceKey<Level> startDimension = null;
+    private double startX = 0;
+    private double startY = 0;
+    private double startZ = 0;
+    private float startYaw = 0;
+    private float startPitch = 0;
+    private ChunkPos startChunkPos = null;
+    private UUID dummyEntityUUID = null;
+
     // クライアント側で自プレイヤーが操縦中かどうかのフラグ（カクつき防止・クライアント予測用）
     private boolean locallyControlled = false;
+
 
     // 入力値 (-1.0 ~ 1.0)
     private float inputForward = 0.0f;
@@ -112,8 +127,39 @@ public class DroneEntity extends Entity {
 
         this.pilotUUID = player.getUUID();
 
-        // サーバー側のカメラエンティティをドローンに設定
+        // パターンA: 操縦開始時の初期位置を記憶
+        ServerLevel serverLevel = player.serverLevel();
+        this.startDimension = serverLevel.dimension();
+        this.startX = player.getX();
+        this.startY = player.getY();
+        this.startZ = player.getZ();
+        this.startYaw = player.getYRot();
+        this.startPitch = player.getXRot();
+        this.startChunkPos = new ChunkPos(player.blockPosition());
+
+        // 1. 初期位置チャンクの強制ロード保護（プレイヤーの身体周辺がアンロードされるのを防止）
+        serverLevel.setChunkForced(this.startChunkPos.x, this.startChunkPos.z, true);
+        MicroDroneMod.LOGGER.info("[SERVER] [PLAYER_BODY_PROTECT] Protected player start chunk: [{}, {}]",
+                this.startChunkPos.x, this.startChunkPos.z);
+
+        // 2. 身代わりダミー人形（ArmorStand）の配置
+        ArmorStand dummy = new ArmorStand(serverLevel, this.startX, this.startY, this.startZ);
+        dummy.setYRot(this.startYaw);
+        dummy.setXRot(this.startPitch);
+        dummy.setCustomName(Component.literal("§e[操縦中] §r" + player.getName().getString()));
+        dummy.setCustomNameVisible(true);
+        dummy.setNoGravity(true);
+        dummy.setInvulnerable(true);
+        dummy.setItemSlot(EquipmentSlot.MAINHAND, player.getMainHandItem().copy());
+        serverLevel.addFreshEntity(dummy);
+        this.dummyEntityUUID = dummy.getUUID();
+        MicroDroneMod.LOGGER.info("[SERVER] [PLAYER_DUMMY_SPAWN] Spawned body dummy {} at [{}, {}, {}]",
+                this.dummyEntityUUID,
+                String.format("%.2f", this.startX), String.format("%.2f", this.startY), String.format("%.2f", this.startZ));
+
+        // 3. サーバー側のカメラエンティティをドローンに設定（バニラのチャンク配信ストリーミングを活用）
         player.setCamera(this);
+        player.setInvisible(true); // 操縦中のプレイヤー本体を透明化（初期位置のダミー人形のみを表示）
 
         MicroDroneMod.LOGGER.info("[SERVER] [PILOT_START] Pilot: {} ({}), PlayerPos: [{}, {}, {}], DronePos: [{}, {}, {}], DroneChunk: [{}, {}]",
                 player.getName().getString(), player.getUUID(),
@@ -139,12 +185,45 @@ public class DroneEntity extends Entity {
                     String.format("%.2f", this.getX()), String.format("%.2f", this.getY()), String.format("%.2f", this.getZ()),
                     this.chunkPosition().x, this.chunkPosition().z);
 
-            // Phase 5: 操縦終了時に追加チャンクを安全に解放
+            ServerLevel serverLevel = player.serverLevel();
+
+            // 1. 身代わりダミーの消去
+            if (this.dummyEntityUUID != null) {
+                Entity dummy = serverLevel.getEntity(this.dummyEntityUUID);
+                if (dummy != null) {
+                    dummy.discard();
+                    MicroDroneMod.LOGGER.info("[SERVER] [PLAYER_DUMMY_REMOVE] Removed dummy: {}", this.dummyEntityUUID);
+                }
+                this.dummyEntityUUID = null;
+            }
+
+            // 2. 初期位置チャンクの保護解除
+            if (this.startChunkPos != null) {
+                serverLevel.setChunkForced(this.startChunkPos.x, this.startChunkPos.z, false);
+                MicroDroneMod.LOGGER.info("[SERVER] [PLAYER_BODY_UNPROTECT] Unprotected player start chunk: [{}, {}]",
+                        this.startChunkPos.x, this.startChunkPos.z);
+                this.startChunkPos = null;
+            }
+
+            // 3. ドローン周辺チャンクの解放
             this.lastChunkPos = null;
             com.microdrone.mod.chunk.DroneChunkManager.releaseDroneChunks(player, this);
 
-            // サーバー側のカメラをプレイヤー自身に復元
+            // 4. サーバー側のカメラをプレイヤー自身に復元
             player.setCamera(player);
+            player.setInvisible(false); // 操縦終了時に透明化を解除
+
+            // 5. 【パターンAの核心】プレイヤーの実体を記録した初期位置へテレポート復元！
+            if (this.startDimension != null && player.getServer() != null) {
+                ServerLevel targetLevel = player.getServer().getLevel(this.startDimension);
+                if (targetLevel != null) {
+                    player.teleportTo(targetLevel, this.startX, this.startY, this.startZ, this.startYaw, this.startPitch);
+                    MicroDroneMod.LOGGER.info("[SERVER] [PLAYER_RESTORE] Teleported player {} back to start pos: [{}, {}, {}]",
+                            player.getName().getString(),
+                            String.format("%.2f", this.startX), String.format("%.2f", this.startY), String.format("%.2f", this.startZ));
+                }
+                this.startDimension = null;
+            }
 
             this.pilotUUID = null;
             this.inputForward = 0.0f;
@@ -314,13 +393,12 @@ public class DroneEntity extends Entity {
         if (!this.level().isClientSide && this.pilotUUID != null) {
             ServerPlayer pilot = this.getServer().getPlayerList().getPlayer(this.pilotUUID);
             if (pilot != null) {
-                com.microdrone.mod.chunk.DroneChunkManager.releaseDroneChunks(pilot, this);
-                pilot.setCamera(pilot);
-                PacketDistributor.sendToPlayer(pilot, new DronePilotStatePayload(this.getId(), false));
+                this.stopPiloting(pilot);
             }
         }
         super.remove(reason);
     }
+
 
     private void checkAndResolveSuffocation() {
         AABB box = this.getBoundingBox();
