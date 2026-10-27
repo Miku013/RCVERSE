@@ -144,16 +144,17 @@ public class ClientDroneInputHandler {
         // （これによりバニラのサーバー・クライアント間の12チャンク同期矛盾・パケット逆流による表示消滅を完全防止）
         player.setPos(drone.getX(), drone.getY(), drone.getZ());
 
-        // マウス操作による旋回変化量 (Yaw) と 見下ろし角 (Pitch) を算出
+        // マウス操作による視線向き（Yaw / Pitch）をドローンの機首とカメラにダイレクト同期
         float currentYaw = player.getYRot();
-        float yawChange = currentYaw - lastPlayerYaw;
-        lastPlayerYaw = currentYaw;
         float currentPitch = player.getXRot();
 
         // クライアント側のドローンエンティティにも即座に入力を適用！
         // これによりクライアントのtickでローカル物理シミュレーションが即座に実行され、
         // サーバーからの遅延同期パケットによるカクつき（ジッター）が完全に解消される。
-        drone.applyControlInput(capturedForward, capturedStrafe, capturedVertical, yawChange, currentPitch);
+        drone.setYRot(currentYaw);
+        drone.setYHeadRot(currentYaw);
+        drone.setXRot(currentPitch);
+        drone.applyControlInput(capturedForward, capturedStrafe, capturedVertical, currentYaw, currentPitch);
 
         // サーバーへ制御パケットを送信
         PacketDistributor.sendToServer(new DroneControlPayload(
@@ -161,7 +162,7 @@ public class ClientDroneInputHandler {
                 capturedForward,
                 capturedStrafe,
                 capturedVertical,
-                yawChange,
+                currentYaw,
                 currentPitch,
                 false
         ));

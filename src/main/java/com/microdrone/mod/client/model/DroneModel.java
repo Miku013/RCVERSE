@@ -37,11 +37,18 @@ public class DroneModel extends EntityModel<DroneEntity> {
                         .addBox(-2.0F, -2.0F, -2.0F, 4.0F, 2.0F, 4.0F),
                 PartPose.offset(0.0F, 24.0F, 0.0F));
 
-        // アームとローター（仮の4隅突起）
+        // 機首カメラ（Z = -3.0F、ボディ前面の中央に配置し、機首方向を一目で明確にする）
+        body.addOrReplaceChild("camera",
+                CubeListBuilder.create()
+                        .texOffs(0, 8)
+                        .addBox(-1.0F, -1.5F, -3.0F, 2.0F, 1.0F, 1.0F),
+                PartPose.ZERO);
+
+        // 前方アーム（Z = -4.0F、緑色LED texOffs(16, 4) で前方視認性を確保）
         // 前左
         body.addOrReplaceChild("arm_fl",
                 CubeListBuilder.create()
-                        .texOffs(16, 0)
+                        .texOffs(16, 4)
                         .addBox(2.0F, -1.5F, -4.0F, 2.0F, 1.0F, 2.0F),
                 PartPose.ZERO);
         // 前右
@@ -50,16 +57,18 @@ public class DroneModel extends EntityModel<DroneEntity> {
                         .texOffs(16, 4)
                         .addBox(-4.0F, -1.5F, -4.0F, 2.0F, 1.0F, 2.0F),
                 PartPose.ZERO);
+
+        // 後方アーム（Z = 2.0F、赤色テールランプLED texOffs(16, 0) で後方視認性を確保）
         // 後左
         body.addOrReplaceChild("arm_bl",
                 CubeListBuilder.create()
-                        .texOffs(16, 8)
-                        .addBox(2.0F, -1.5F, 2.0F, 2.0F, 1.0F, 2.0F),
+                        .texOffs(16, 0)
+                .addBox(2.0F, -1.5F, 2.0F, 2.0F, 1.0F, 2.0F),
                 PartPose.ZERO);
         // 後右
         body.addOrReplaceChild("arm_br",
                 CubeListBuilder.create()
-                        .texOffs(16, 12)
+                        .texOffs(16, 0)
                         .addBox(-4.0F, -1.5F, 2.0F, 2.0F, 1.0F, 2.0F),
                 PartPose.ZERO);
 
@@ -68,9 +77,10 @@ public class DroneModel extends EntityModel<DroneEntity> {
 
     @Override
     public void setupAnim(DroneEntity entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch) {
-        // Phase 1：静止モデル。姿勢調整
-        this.body.yRot = netHeadYaw * ((float)Math.PI / 180F);
-        this.body.xRot = headPitch * ((float)Math.PI / 180F);
+        // 二重回転バグを防止するため、モデルパーツ単位での回転は行わず、
+        // PoseStack（DroneRenderer）側で姿勢（Yaw、移動による傾きピッチ/ロール）を一括管理
+        this.body.yRot = 0.0F;
+        this.body.xRot = 0.0F;
     }
 
     @Override

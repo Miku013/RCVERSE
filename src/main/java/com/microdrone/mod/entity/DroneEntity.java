@@ -85,8 +85,8 @@ public class DroneEntity extends Entity {
     private float inputForward = 0.0f;
     private float inputStrafe = 0.0f;
     private float inputVertical = 0.0f;
-    private float inputYaw = 0.0f;
-    private float inputPitch = 0.0f;
+    private float targetYaw = 0.0f;
+    private float targetPitch = 0.0f;
 
     // ホバリング時の微小な浮遊アニメーション用
     private int hoverTicks = 0;
@@ -282,8 +282,8 @@ public class DroneEntity extends Entity {
             this.inputForward = 0.0f;
             this.inputStrafe = 0.0f;
             this.inputVertical = 0.0f;
-            this.inputYaw = 0.0f;
-            this.inputPitch = 0.0f;
+            this.targetYaw = 0.0f;
+            this.targetPitch = 0.0f;
             PacketDistributor.sendToPlayer(player, new DronePilotStatePayload(this.getId(), false));
             player.sendSystemMessage(Component.translatable("message.microdrone.pilot_stop"));
         }
@@ -302,8 +302,8 @@ public class DroneEntity extends Entity {
         this.inputForward = Math.max(-1.0f, Math.min(1.0f, forward));
         this.inputStrafe = Math.max(-1.0f, Math.min(1.0f, strafe));
         this.inputVertical = Math.max(-1.0f, Math.min(1.0f, vertical));
-        this.inputYaw = yaw * YAW_SENSITIVITY;
-        this.inputPitch = pitch;
+        this.targetYaw = yaw;
+        this.targetPitch = pitch;
     }
 
     @Override
@@ -341,14 +341,10 @@ public class DroneEntity extends Entity {
      * 操縦中の飛行物理計算（サーバー＆クライアントローカル共通）
      */
     private void tickFlightPhysics() {
-        // 1. 旋回 (Yaw) と ピッチ (Pitch)
-        if (Math.abs(this.inputYaw) > 0.001f) {
-            float newYaw = this.getYRot() + this.inputYaw;
-            this.setYRot(newYaw);
-            this.setYHeadRot(newYaw);
-        }
-        float clampedPitch = Mth.clamp(this.inputPitch, -60.0F, 60.0F);
-        this.setXRot(clampedPitch);
+        // 1. 旋回 (Yaw) と カメラピッチ (Pitch) の適用
+        this.setYRot(this.targetYaw);
+        this.setYHeadRot(this.targetYaw);
+        this.setXRot(Mth.clamp(this.targetPitch, -85.0F, 85.0F));
 
         Vec3 currentVel = this.getDeltaMovement();
 

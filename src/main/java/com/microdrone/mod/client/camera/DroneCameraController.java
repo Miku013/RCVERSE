@@ -10,6 +10,8 @@ import net.minecraft.world.entity.Entity;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.RenderHandEvent;
+import net.neoforged.neoforge.client.event.RenderPlayerEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
 
@@ -159,6 +161,30 @@ public class DroneCameraController {
                     event.getEntity().getId(), activeDroneId);
             stopViewing();
             ClientDroneInputHandler.stopPiloting();
+        }
+    }
+
+    /**
+     * ドローン視点・操縦中の一人称手持ちアイテム（ツール・武器・コントローラー）の非表示化
+     * これによりツールベルト選択変更時のカクつき・チラつき表示を完全に防止
+     */
+    @SubscribeEvent
+    public void onRenderHand(RenderHandEvent event) {
+        if (isViewing || ClientDroneInputHandler.isPiloting()) {
+            event.setCanceled(true);
+        }
+    }
+
+    /**
+     * ドローン視点・操縦中の自プレイヤーモデル（頭上・画面端に垂れ下がる体や足）の非表示化
+     */
+    @SubscribeEvent
+    public void onRenderPlayer(RenderPlayerEvent.Pre event) {
+        if (isViewing || ClientDroneInputHandler.isPiloting()) {
+            Minecraft mc = Minecraft.getInstance();
+            if (event.getEntity() == mc.player) {
+                event.setCanceled(true);
+            }
         }
     }
 }

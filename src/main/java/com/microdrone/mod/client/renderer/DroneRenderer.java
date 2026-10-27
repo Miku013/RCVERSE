@@ -48,8 +48,8 @@ public class DroneRenderer extends EntityRenderer<DroneEntity> {
         tiltPitch = Mth.clamp(tiltPitch, -25.0F, 25.0F);
         tiltRoll = Mth.clamp(tiltRoll, -25.0F, 25.0F);
 
-        // 機体のピッチとロールの適用（前進時は前傾、後退時は後傾）
-        poseStack.mulPose(Axis.XP.rotationDegrees(-pitch - tiltPitch));
+        // 機体のピッチとロールの適用（前進時は前傾、後退時は後傾。視線Pitchによる固定傾きを排除）
+        poseStack.mulPose(Axis.XP.rotationDegrees(-tiltPitch));
         poseStack.mulPose(Axis.ZP.rotationDegrees(-tiltRoll));
 
         poseStack.scale(-1.0F, -1.0F, 1.0F);
