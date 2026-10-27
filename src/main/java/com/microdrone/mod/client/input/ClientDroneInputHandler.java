@@ -9,8 +9,12 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.Entity;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.client.event.MovementInputUpdateEvent;
+import net.neoforged.neoforge.client.event.ViewportEvent;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 public class ClientDroneInputHandler {
@@ -138,20 +142,16 @@ public class ClientDroneInputHandler {
         }
 
         // パターンA: クライアント側ローカルプレイヤーの水平チャンク座標をドローンに同期
-        // （足元地下にオフセット配置することで、ドアやブロックのクリック時に自プレイヤーの当たり判定に衝突して誤攻撃キックされるのを完全防止）
+        // （足元地下にオフセット配置することで、ブロックのクリック時に自プレイヤーの当たり判定に衝突して誤攻撃キックされるのを完全防止）
         player.setPos(drone.getX(), drone.getY() - 100.0, drone.getZ());
 
-        // カメラエンティティ（drone）はバニラの MouseHandler により毎フレーム滑らかに回転しているため、
-        // その最新角度を取得してサーバー送信・プレイヤー同期を行う（20Hzでの上書きによるカクつきを完全防止）
-        float currentYaw = drone.getYRot();
-        float currentPitch = drone.getXRot();
-
-        player.setYRot(currentYaw);
-        player.setXRot(currentPitch);
+        // プレイヤーのマウス最新角度を取得してドローン制御とサーバー同期を行う
+        float currentYaw = player.getYRot();
+        float currentPitch = player.getXRot();
 
         drone.applyControlInput(capturedForward, capturedStrafe, capturedVertical, currentYaw, currentPitch);
 
-        // サーバーへ制御パケットを送信
+        // サーバーへ最新の姿勢と移動入力を送信
         PacketDistributor.sendToServer(new DroneControlPayload(
                 activeDroneId,
                 capturedForward,
@@ -164,23 +164,99 @@ public class ClientDroneInputHandler {
     }
 
     /**
-     * 操縦中、自プレイヤーや操縦中ドローンへの攻撃・インタラクトをクライアント側で完全遮断
-     * （バニラサーバーによる「無効なエンティティを攻撃しようとしました」切断キックを未然に防止）
+     * 【144Hz+ 超滑らか視線追従】
+     * 描画フレームごとにカメラ角度を計算するイベント。
+     * マウス操作によってリアルタイムに変化するプレイヤーの視線を即座にカメラ角度にダイレクト適用！
+     * これにより 20Hz Tick の遅延や補間の引っ掛かりがゼロになり、完璧にヌルヌルの視線移動を実現。
      */
     @SubscribeEvent
-    public void onAttackEntity(net.neoforged.neoforge.event.entity.player.AttackEntityEvent event) {
-        if (!isPiloting) return;
+    public void onComputeCameraAngles(ViewportEvent.ComputeCameraAngles event) {
+        if (!isPiloting || activeDroneId == -1) return;
+
         Minecraft mc = Minecraft.getInstance();
-        if (event.getTarget() == mc.player || (event.getTarget() instanceof DroneEntity drone && drone.getId() == activeDroneId)) {
+        if (mc.player != null && mc.level != null) {
+            Entity entity = mc.level.getEntity(activeDroneId);
+            if (entity instanceof DroneEntity drone) {
+                float yaw = mc.player.getYRot();
+                float pitch = mc.player.getXRot();
+
+                event.setYaw(yaw);
+                event.setPitch(pitch);
+
+                // ドローン自身の姿勢もフレーム単位で同期（外見の向きの完全一致）
+                drone.setYRot(yaw);
+                drone.setYHeadRot(yaw);
+                drone.setXRot(pitch);
+            }
+        }
+    }
+
+    /**
+     * 【右クリックでの安全な操縦終了 ＆ ブロック/エンティティ干渉の完全防止】
+     * ドローン操縦中に入力キーをインターセプト：
+     * - 右クリック（使用キー）: ドアやブロック、プレイヤーに触れず、安全にドローン操縦を即座に終了！
+     * - 左クリック（攻撃キー）: ワールド破壊や誤攻撃を完全ブロック。
+     */
+    @SubscribeEvent
+    public void onInteractionKey(InputEvent.InteractionKeyMappingTriggered event) {
+        if (!isPiloting) return;
+
+        if (event.isUseItem()) {
+            event.setCanceled(true);
+            event.setSwingHand(false);
+            stopPiloting();
+            return;
+        }
+
+        if (event.isAttack()) {
+            event.setCanceled(true);
+            event.setSwingHand(false);
+        }
+    }
+
+    /**
+     * 操縦中、すべてのブロックに対する右クリック（ドア開閉、チェスト、ブロック設置等）を完全無効化
+     */
+    @SubscribeEvent
+    public void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
+        if (isPiloting) {
+            event.setCanceled(true);
+        }
+    }
+
+    /**
+     * 操縦中、ブロックの左クリック破壊を完全無効化
+     */
+    @SubscribeEvent
+    public void onLeftClickBlock(PlayerInteractEvent.LeftClickBlock event) {
+        if (isPiloting) {
+            event.setCanceled(true);
+        }
+    }
+
+    /**
+     * 操縦中、身代わりダミー人形や他エンティティへの右クリック・インタラクトを完全無効化
+     */
+    @SubscribeEvent
+    public void onEntityInteract(PlayerInteractEvent.EntityInteract event) {
+        if (isPiloting) {
             event.setCanceled(true);
         }
     }
 
     @SubscribeEvent
-    public void onEntityInteract(net.neoforged.neoforge.event.entity.player.PlayerInteractEvent.EntityInteract event) {
-        if (!isPiloting) return;
-        Minecraft mc = Minecraft.getInstance();
-        if (event.getTarget() == mc.player || (event.getTarget() instanceof DroneEntity drone && drone.getId() == activeDroneId)) {
+    public void onEntityInteractSpecific(PlayerInteractEvent.EntityInteractSpecific event) {
+        if (isPiloting) {
+            event.setCanceled(true);
+        }
+    }
+
+    /**
+     * 操縦中、自プレイヤーや操縦中ドローン、ダミー等への攻撃パケット送信を完全遮断
+     */
+    @SubscribeEvent
+    public void onAttackEntity(AttackEntityEvent event) {
+        if (isPiloting) {
             event.setCanceled(true);
         }
     }
