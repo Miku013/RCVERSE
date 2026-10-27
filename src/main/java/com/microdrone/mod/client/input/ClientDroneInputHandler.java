@@ -137,23 +137,18 @@ public class ClientDroneInputHandler {
             return;
         }
 
-        // ドローン正常検知時はカウンタリセット
-        missingTicks = 0;
+        // パターンA: クライアント側ローカルプレイヤーの水平チャンク座標をドローンに同期
+        // （足元地下にオフセット配置することで、ドアやブロックのクリック時に自プレイヤーの当たり判定に衝突して誤攻撃キックされるのを完全防止）
+        player.setPos(drone.getX(), drone.getY() - 100.0, drone.getZ());
 
-        // パターンA: クライアント側ローカルプレイヤーの座標をドローンに同期
-        // （これによりバニラのサーバー・クライアント間の12チャンク同期矛盾・パケット逆流による表示消滅を完全防止）
-        player.setPos(drone.getX(), drone.getY(), drone.getZ());
+        // カメラエンティティ（drone）はバニラの MouseHandler により毎フレーム滑らかに回転しているため、
+        // その最新角度を取得してサーバー送信・プレイヤー同期を行う（20Hzでの上書きによるカクつきを完全防止）
+        float currentYaw = drone.getYRot();
+        float currentPitch = drone.getXRot();
 
-        // マウス操作による視線向き（Yaw / Pitch）をドローンの機首とカメラにダイレクト同期
-        float currentYaw = player.getYRot();
-        float currentPitch = player.getXRot();
+        player.setYRot(currentYaw);
+        player.setXRot(currentPitch);
 
-        // クライアント側のドローンエンティティにも即座に入力を適用！
-        // これによりクライアントのtickでローカル物理シミュレーションが即座に実行され、
-        // サーバーからの遅延同期パケットによるカクつき（ジッター）が完全に解消される。
-        drone.setYRot(currentYaw);
-        drone.setYHeadRot(currentYaw);
-        drone.setXRot(currentPitch);
         drone.applyControlInput(capturedForward, capturedStrafe, capturedVertical, currentYaw, currentPitch);
 
         // サーバーへ制御パケットを送信
@@ -166,5 +161,27 @@ public class ClientDroneInputHandler {
                 currentPitch,
                 false
         ));
+    }
+
+    /**
+     * 操縦中、自プレイヤーや操縦中ドローンへの攻撃・インタラクトをクライアント側で完全遮断
+     * （バニラサーバーによる「無効なエンティティを攻撃しようとしました」切断キックを未然に防止）
+     */
+    @SubscribeEvent
+    public void onAttackEntity(net.neoforged.neoforge.event.entity.player.AttackEntityEvent event) {
+        if (!isPiloting) return;
+        Minecraft mc = Minecraft.getInstance();
+        if (event.getTarget() == mc.player || (event.getTarget() instanceof DroneEntity drone && drone.getId() == activeDroneId)) {
+            event.setCanceled(true);
+        }
+    }
+
+    @SubscribeEvent
+    public void onEntityInteract(net.neoforged.neoforge.event.entity.player.PlayerInteractEvent.EntityInteract event) {
+        if (!isPiloting) return;
+        Minecraft mc = Minecraft.getInstance();
+        if (event.getTarget() == mc.player || (event.getTarget() instanceof DroneEntity drone && drone.getId() == activeDroneId)) {
+            event.setCanceled(true);
+        }
     }
 }

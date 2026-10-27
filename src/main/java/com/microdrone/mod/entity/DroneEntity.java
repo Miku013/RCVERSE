@@ -342,9 +342,12 @@ public class DroneEntity extends Entity {
      */
     private void tickFlightPhysics() {
         // 1. 旋回 (Yaw) と カメラピッチ (Pitch) の適用
-        this.setYRot(this.targetYaw);
-        this.setYHeadRot(this.targetYaw);
-        this.setXRot(Mth.clamp(this.targetPitch, -85.0F, 85.0F));
+        // サーバー側でのみパケット角度を適用（クライアント側はバニラのMouseHandlerによる超滑らかなフレーム補間を完全維持）
+        if (!this.level().isClientSide) {
+            this.setYRot(this.targetYaw);
+            this.setYHeadRot(this.targetYaw);
+            this.setXRot(Mth.clamp(this.targetPitch, -85.0F, 85.0F));
+        }
 
         Vec3 currentVel = this.getDeltaMovement();
 
