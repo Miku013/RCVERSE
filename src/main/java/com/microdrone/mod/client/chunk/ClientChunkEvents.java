@@ -35,7 +35,7 @@ public class ClientChunkEvents {
                     ? String.format("%s at [%.1f, %.1f, %.1f]", camera.getType().getDescriptionId(), camera.getX(), camera.getY(), camera.getZ())
                     : "unknown";
 
-            MicroDroneMod.LOGGER.info("[CLIENT] [CHUNK_LOAD] Chunk: [{}, {}], Camera: {}",
+            MicroDroneMod.LOGGER.debug("[CLIENT] [CHUNK_LOAD] Chunk: [{}, {}], Camera: {}",
                     pos.x, pos.z, cameraInfo);
         }
     }
@@ -56,7 +56,7 @@ public class ClientChunkEvents {
                     ? String.format("%s at [%.1f, %.1f, %.1f]", camera.getType().getDescriptionId(), camera.getX(), camera.getY(), camera.getZ())
                     : "unknown";
 
-            MicroDroneMod.LOGGER.info("[CLIENT] [CHUNK_UNLOAD] Chunk: [{}, {}], Camera: {}",
+            MicroDroneMod.LOGGER.debug("[CLIENT] [CHUNK_UNLOAD] Chunk: [{}, {}], Camera: {}",
                     pos.x, pos.z, cameraInfo);
         }
     }

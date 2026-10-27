@@ -52,7 +52,7 @@ public class DroneChunkManager {
         // 3. チャンクキャッシュ中心の変更（変化時のみログ）
         ChunkPos prevCenter = LAST_CENTER_POS.put(droneUUID, centerPos);
         if (prevCenter == null || !prevCenter.equals(centerPos)) {
-            MicroDroneMod.LOGGER.info("[SERVER] [CHUNK_CACHE_CENTER] DroneUUID: {}, PrevCenter: {}, NewCenter: [{}, {}]",
+            MicroDroneMod.LOGGER.debug("[SERVER] [CHUNK_CACHE_CENTER] DroneUUID: {}, PrevCenter: {}, NewCenter: [{}, {}]",
                     droneUUID, prevCenter != null ? "[" + prevCenter.x + ", " + prevCenter.z + "]" : "INIT", centerPos.x, centerPos.z);
         }
 
@@ -66,7 +66,7 @@ public class DroneChunkManager {
             if (!previousChunks.contains(pos)) {
                 // サーバー側で強制ロード（チケット発行）
                 serverLevel.setChunkForced(pos.x, pos.z, true);
-                MicroDroneMod.LOGGER.info("[SERVER] [FORCE_CHUNK_ADD] Chunk: [{}, {}], Reason: TARGET_ENTERED, DroneUUID: {}",
+                MicroDroneMod.LOGGER.debug("[SERVER] [FORCE_CHUNK_ADD] Chunk: [{}, {}], Reason: TARGET_ENTERED, DroneUUID: {}",
                         pos.x, pos.z, droneUUID);
 
                 // チャンクを即時取得できる場合は即時配信
@@ -98,13 +98,13 @@ public class DroneChunkManager {
 
                 // サーバー側強制ロード解除
                 serverLevel.setChunkForced(oldPos.x, oldPos.z, false);
-                MicroDroneMod.LOGGER.info("[SERVER] [FORCE_CHUNK_REMOVE] Chunk: [{}, {}], Reason: OUT_OF_RADIUS, DroneUUID: {}",
+                MicroDroneMod.LOGGER.debug("[SERVER] [FORCE_CHUNK_REMOVE] Chunk: [{}, {}], Reason: OUT_OF_RADIUS, DroneUUID: {}",
                         oldPos.x, oldPos.z, droneUUID);
 
                 // プレイヤー本来の視界範囲外であればクライアントへアンロードを送信
                 if (!isWithinPlayerNaturalView(pilot, oldPos)) {
                     pilot.connection.send(new ClientboundForgetLevelChunkPacket(oldPos));
-                    MicroDroneMod.LOGGER.info("[SERVER] [PACKET_SEND] Type: ClientboundForgetLevelChunkPacket, Chunk: [{}, {}], TargetPlayer: {}, Reason: OUT_OF_VIEW_RADIUS",
+                    MicroDroneMod.LOGGER.debug("[SERVER] [PACKET_SEND] Type: ClientboundForgetLevelChunkPacket, Chunk: [{}, {}], TargetPlayer: {}, Reason: OUT_OF_VIEW_RADIUS",
                             oldPos.x, oldPos.z, pilot.getName().getString());
                 }
             }
@@ -131,7 +131,7 @@ public class DroneChunkManager {
                 // プレイヤーの視界外ならクライアント側もアンロード
                 if (pilot != null && !isWithinPlayerNaturalView(pilot, pos)) {
                     pilot.connection.send(new ClientboundForgetLevelChunkPacket(pos));
-                    MicroDroneMod.LOGGER.info("[SERVER] [PACKET_SEND] Type: ClientboundForgetLevelChunkPacket, Chunk: [{}, {}], TargetPlayer: {}, Reason: PILOT_STOP_UNLOAD",
+                    MicroDroneMod.LOGGER.debug("[SERVER] [PACKET_SEND] Type: ClientboundForgetLevelChunkPacket, Chunk: [{}, {}], TargetPlayer: {}, Reason: PILOT_STOP_UNLOAD",
                             pos.x, pos.z, pilot.getName().getString());
                 }
             }
@@ -163,7 +163,7 @@ public class DroneChunkManager {
     }
 
     private static void sendChunkToPlayer(ServerPlayer player, ServerLevel level, LevelChunk chunk) {
-        MicroDroneMod.LOGGER.info("[SERVER] [PACKET_SEND] Type: ClientboundLevelChunkWithLightPacket, Chunk: [{}, {}], TargetPlayer: {}, Reason: DRONE_CHUNK_STREAMING",
+        MicroDroneMod.LOGGER.debug("[SERVER] [PACKET_SEND] Type: ClientboundLevelChunkWithLightPacket, Chunk: [{}, {}], TargetPlayer: {}, Reason: DRONE_CHUNK_STREAMING",
                 chunk.getPos().x, chunk.getPos().z, player.getName().getString());
         player.connection.send(new ClientboundLevelChunkWithLightPacket(
                 chunk,

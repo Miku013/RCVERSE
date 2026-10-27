@@ -370,7 +370,7 @@ public class DroneEntity extends Entity {
             boolean chunkChanged = (this.lastChunkPos == null || !this.lastChunkPos.equals(currentChunk));
             if (chunkChanged || (this.hoverTicks % 10 == 0)) {
                 if (chunkChanged) {
-                    MicroDroneMod.LOGGER.info("[SERVER] [CHUNK_BORDER_CROSS] DroneUUID: {}, DronePos: [{}, {}, {}], PrevChunk: {}, NewChunk: [{}, {}]",
+                    MicroDroneMod.LOGGER.debug("[SERVER] [CHUNK_BORDER_CROSS] DroneUUID: {}, DronePos: [{}, {}, {}], PrevChunk: {}, NewChunk: [{}, {}]",
                             this.getUUID(),
                             String.format("%.2f", this.getX()), String.format("%.2f", this.getY()), String.format("%.2f", this.getZ()),
                             this.lastChunkPos != null ? "[" + this.lastChunkPos.x + ", " + this.lastChunkPos.z + "]" : "INIT",
