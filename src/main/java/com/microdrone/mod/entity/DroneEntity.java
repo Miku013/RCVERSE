@@ -33,9 +33,28 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.network.PacketDistributor;
 
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class DroneEntity extends Entity {
+
+    // フェイルセーフ用: 操縦中プレイヤーUUID -> ドローン
+    private static final Map<UUID, DroneEntity> ACTIVE_PILOTED_DRONES = new ConcurrentHashMap<>();
+    // フェイルセーフ用: 身代わりダミー人形UUID -> ドローン
+    private static final Map<UUID, DroneEntity> DUMMY_TO_DRONE = new ConcurrentHashMap<>();
+
+    public static DroneEntity getByPilot(UUID pilotUUID) {
+        return pilotUUID != null ? ACTIVE_PILOTED_DRONES.get(pilotUUID) : null;
+    }
+
+    public static DroneEntity getByDummy(UUID dummyUUID) {
+        return dummyUUID != null ? DUMMY_TO_DRONE.get(dummyUUID) : null;
+    }
+
+    public UUID getPilotUUID() {
+        return this.pilotUUID;
+    }
 
     // === 飛行制御パラメータ (Phase 3) ===
     public static final double MAX_HORIZONTAL_SPEED = 0.35;    // 最大水平速度 (約 7 m/s)
@@ -153,7 +172,7 @@ public class DroneEntity extends Entity {
         dummy.setCustomName(Component.literal("§e[操縦中] §r" + player.getName().getString()));
         dummy.setCustomNameVisible(true);
         dummy.setNoGravity(true);
-        dummy.setInvulnerable(true);
+        dummy.setInvulnerable(false); // 被弾フェイルセーフを検知可能にする（ダメージイベント側で破壊防止キャンセル）
         dummy.setShowArms(true);      // 腕を表示（コントローラーを持たせる）
         dummy.setNoBasePlate(true);    // 台座を非表示（自然な足元に）
 
@@ -183,6 +202,8 @@ public class DroneEntity extends Entity {
 
         serverLevel.addFreshEntity(dummy);
         this.dummyEntityUUID = dummy.getUUID();
+        ACTIVE_PILOTED_DRONES.put(player.getUUID(), this);
+        DUMMY_TO_DRONE.put(dummy.getUUID(), this);
         MicroDroneMod.LOGGER.info("[SERVER] [PLAYER_DUMMY_SPAWN] Spawned body dummy {} at [{}, {}, {}]",
                 this.dummyEntityUUID,
                 String.format("%.2f", this.startX), String.format("%.2f", this.startY), String.format("%.2f", this.startZ));
@@ -219,6 +240,7 @@ public class DroneEntity extends Entity {
 
             // 1. 身代わりダミーの消去
             if (this.dummyEntityUUID != null) {
+                DUMMY_TO_DRONE.remove(this.dummyEntityUUID);
                 Entity dummy = serverLevel.getEntity(this.dummyEntityUUID);
                 if (dummy != null) {
                     dummy.discard();
@@ -255,6 +277,7 @@ public class DroneEntity extends Entity {
                 this.startDimension = null;
             }
 
+            ACTIVE_PILOTED_DRONES.remove(player.getUUID());
             this.pilotUUID = null;
             this.inputForward = 0.0f;
             this.inputStrafe = 0.0f;
@@ -419,6 +442,13 @@ public class DroneEntity extends Entity {
     public void remove(RemovalReason reason) {
         MicroDroneMod.LOGGER.info("[SERVER] [ENTITY_REMOVE] DroneUUID: {}, Reason: {}, WasPiloted: {}, PilotUUID: {}",
                 this.getUUID(), reason, this.isPiloted(), this.pilotUUID);
+
+        if (this.pilotUUID != null) {
+            ACTIVE_PILOTED_DRONES.remove(this.pilotUUID);
+        }
+        if (this.dummyEntityUUID != null) {
+            DUMMY_TO_DRONE.remove(this.dummyEntityUUID);
+        }
 
         if (!this.level().isClientSide && this.pilotUUID != null) {
             ServerPlayer pilot = this.getServer().getPlayerList().getPlayer(this.pilotUUID);
