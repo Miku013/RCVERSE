@@ -33,6 +33,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.network.PacketDistributor;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -76,6 +77,7 @@ public class DroneEntity extends Entity {
     private float startPitch = 0;
     private ChunkPos startChunkPos = null;
     private UUID dummyEntityUUID = null;
+    private ArmorStand dummyEntityRef = null;
 
     // クライアント側で自プレイヤーが操縦中かどうかのフラグ（カクつき防止・クライアント予測用）
     private boolean locallyControlled = false;
@@ -202,6 +204,7 @@ public class DroneEntity extends Entity {
 
         serverLevel.addFreshEntity(dummy);
         this.dummyEntityUUID = dummy.getUUID();
+        this.dummyEntityRef = dummy;
         ACTIVE_PILOTED_DRONES.put(player.getUUID(), this);
         DUMMY_TO_DRONE.put(dummy.getUUID(), this);
         MicroDroneMod.LOGGER.info("[SERVER] [PLAYER_DUMMY_SPAWN] Spawned body dummy {} at [{}, {}, {}]",
@@ -238,34 +241,43 @@ public class DroneEntity extends Entity {
 
             ServerLevel serverLevel = player.serverLevel();
 
-            // 1. 身代わりダミーの消去
-            if (this.dummyEntityUUID != null) {
-                DUMMY_TO_DRONE.remove(this.dummyEntityUUID);
-                Entity dummy = serverLevel.getEntity(this.dummyEntityUUID);
+            UUID targetDummyUUID = this.dummyEntityUUID;
+            ArmorStand targetDummyRef = this.dummyEntityRef;
+            this.dummyEntityRef = null;
+            this.dummyEntityUUID = null;
+
+            if (targetDummyUUID != null) {
+                DUMMY_TO_DRONE.remove(targetDummyUUID);
+            }
+
+            // 1. テレポート前: 直接参照およびエンティティ検索による身代わりダミーの消去試行
+            if (targetDummyRef != null) {
+                targetDummyRef.discard();
+                MicroDroneMod.LOGGER.info("[SERVER] [PLAYER_DUMMY_REMOVE] Discarded dummy via direct reference: {}", targetDummyUUID);
+            }
+            if (targetDummyUUID != null) {
+                Entity dummy = serverLevel.getEntity(targetDummyUUID);
                 if (dummy != null) {
                     dummy.discard();
-                    MicroDroneMod.LOGGER.info("[SERVER] [PLAYER_DUMMY_REMOVE] Removed dummy: {}", this.dummyEntityUUID);
+                    MicroDroneMod.LOGGER.info("[SERVER] [PLAYER_DUMMY_REMOVE] Discarded dummy via level entity search: {}", targetDummyUUID);
                 }
-                this.dummyEntityUUID = null;
             }
 
-            // 2. 初期位置チャンクの保護解除
-            if (this.startChunkPos != null) {
-                serverLevel.setChunkForced(this.startChunkPos.x, this.startChunkPos.z, false);
-                MicroDroneMod.LOGGER.info("[SERVER] [PLAYER_BODY_UNPROTECT] Unprotected player start chunk: [{}, {}]",
-                        this.startChunkPos.x, this.startChunkPos.z);
-                this.startChunkPos = null;
-            }
-
-            // 3. ドローン周辺チャンクの解放
+            // 2. ドローン周辺チャンクの解放
             this.lastChunkPos = null;
             com.microdrone.mod.chunk.DroneChunkManager.releaseDroneChunks(player, this);
 
-            // 4. サーバー側のカメラをプレイヤー自身に復元
+            // 3. サーバー側のカメラをプレイヤー自身に復元
             player.setCamera(player);
             player.setInvisible(false); // 操縦終了時に透明化を解除
 
-            // 5. 【パターンAの核心】プレイヤーの実体を記録した初期位置へテレポート復元！
+            // 4. 【パターンAの核心】プレイヤーの実体を記録した初期位置へテレポート復元！
+            double restoreX = this.startX;
+            double restoreY = this.startY;
+            double restoreZ = this.startZ;
+            ChunkPos restoreChunkPos = this.startChunkPos;
+            this.startChunkPos = null;
+
             if (this.startDimension != null && player.getServer() != null) {
                 ServerLevel targetLevel = player.getServer().getLevel(this.startDimension);
                 if (targetLevel != null) {
@@ -273,8 +285,37 @@ public class DroneEntity extends Entity {
                     MicroDroneMod.LOGGER.info("[SERVER] [PLAYER_RESTORE] Teleported player {} back to start pos: [{}, {}, {}]",
                             player.getName().getString(),
                             String.format("%.2f", this.startX), String.format("%.2f", this.startY), String.format("%.2f", this.startZ));
+
+                    // 5. 【テレポート後ダミー確実消去（遠距離飛行からの復帰対策）】
+                    // 遠距離から復元した場合、プレイヤーがテレポートしたことで初期位置チャンクのエンティティが確実にアクティブ化される。
+                    // そのため、テレポート直後に再度UUID検索および足元範囲のダミー消去を実行！
+                    if (targetDummyUUID != null) {
+                        Entity dummyAfter = targetLevel.getEntity(targetDummyUUID);
+                        if (dummyAfter != null) {
+                            dummyAfter.discard();
+                            MicroDroneMod.LOGGER.info("[SERVER] [PLAYER_DUMMY_REMOVE_POST_TP] Discarded dummy by UUID after teleport: {}", targetDummyUUID);
+                        }
+                    }
+
+                    // 足元周囲の身代わりダミー人形（ArmorStand）の安全なクリーンアップフェイルセーフ
+                    AABB clearBox = new AABB(restoreX - 1.5, restoreY - 1.0, restoreZ - 1.5,
+                                             restoreX + 1.5, restoreY + 2.5, restoreZ + 1.5);
+                    List<ArmorStand> nearbyStands = targetLevel.getEntitiesOfClass(ArmorStand.class, clearBox,
+                            stand -> (targetDummyUUID != null && targetDummyUUID.equals(stand.getUUID()))
+                                  || (stand.getCustomName() != null && stand.getCustomName().getString().contains("[操縦中]")));
+                    for (ArmorStand stand : nearbyStands) {
+                        stand.discard();
+                        MicroDroneMod.LOGGER.info("[SERVER] [PLAYER_DUMMY_CLEANUP] Discarded remaining dummy stand: {}", stand.getUUID());
+                    }
                 }
                 this.startDimension = null;
+            }
+
+            // 6. 初期位置チャンクの保護解除（テレポートとダミー消去が完全に完了した後に解除）
+            if (restoreChunkPos != null) {
+                serverLevel.setChunkForced(restoreChunkPos.x, restoreChunkPos.z, false);
+                MicroDroneMod.LOGGER.info("[SERVER] [PLAYER_BODY_UNPROTECT] Unprotected player start chunk: [{}, {}]",
+                        restoreChunkPos.x, restoreChunkPos.z);
             }
 
             ACTIVE_PILOTED_DRONES.remove(player.getUUID());
