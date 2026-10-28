@@ -41,21 +41,6 @@ public class DroneBatteryItem extends Item implements GeoItem {
         return this.cache;
     }
 
-    @Override
-    public void initializeClient(Consumer<IClientItemExtensions> consumer) {
-        consumer.accept(new IClientItemExtensions() {
-            private DroneBatteryItemRenderer renderer;
-
-            @Override
-            public BlockEntityWithoutLevelRenderer getCustomRenderer() {
-                if (this.renderer == null) {
-                    this.renderer = new DroneBatteryItemRenderer();
-                }
-                return this.renderer;
-            }
-        });
-    }
-
     public int getMaxFlightBlocks() {
         return this.maxFlightBlocks;
     }

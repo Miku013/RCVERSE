@@ -32,19 +32,22 @@ public class DroneChargerBlockEntityRenderer extends GeoBlockRenderer<DroneCharg
         if (!battery.isEmpty() && animatable.getLevel() != null) {
             poseStack.pushPose();
 
-            // 中心（X: 0.5, Z: 0.5）かつ充電スロット位置（Y: 0.55m, Zオフセット: 0.05m）へ移動
-            poseStack.translate(0.5D, 0.55D, 0.5D);
+            // ブロック水平中心（X: 0.5, Z: 0.5）へ移動
+            poseStack.translate(0.5D, 0.0D, 0.5D);
 
             // ブロックの設置向き（FACING）に合わせて回転
             Direction facing = animatable.getBlockState().getValue(DroneChargerBlock.FACING);
             float rotationAngle = -facing.toYRot();
             poseStack.mulPose(Axis.YP.rotationDegrees(rotationAngle));
 
+            // 充電スタンドのスロット位置（手前の傾斜ポケット）へ移動
+            poseStack.translate(0.0D, 0.38D, -0.05D);
+
             // 充電スタンドのスロット角度に合わせて45度傾斜
             poseStack.mulPose(Axis.XP.rotationDegrees(45.0F));
 
             // バッテリーのサイズ感に合わせてスケール調整
-            poseStack.scale(0.5F, 0.5F, 0.5F);
+            poseStack.scale(0.55F, 0.55F, 0.55F);
 
             // ItemDisplayContext.FIXED を指定して原点ズレを防ぎ、スロットにジャストフィット
             this.itemRenderer.renderStatic(
@@ -62,4 +65,3 @@ public class DroneChargerBlockEntityRenderer extends GeoBlockRenderer<DroneCharg
         }
     }
 }
-

@@ -53,3 +53,4 @@ public class DroneBatteryLayer extends GeoRenderLayer<DroneEntity> {
         }
     }
 }
+

@@ -28,3 +28,4 @@ public class DroneControllerModel extends GeoModel<DroneControllerItem> {
         return ANIMATION_RESOURCE;
     }
 }
+

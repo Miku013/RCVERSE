@@ -28,3 +28,4 @@ public class DroneBatteryModel extends GeoModel<DroneBatteryItem> {
         return ANIMATION_RESOURCE;
     }
 }
+

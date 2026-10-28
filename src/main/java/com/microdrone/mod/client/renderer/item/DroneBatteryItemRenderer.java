@@ -9,3 +9,4 @@ public class DroneBatteryItemRenderer extends GeoItemRenderer<DroneBatteryItem> 
         super(new DroneBatteryModel());
     }
 }
+

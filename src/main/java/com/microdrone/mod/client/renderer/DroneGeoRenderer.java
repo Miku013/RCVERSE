@@ -51,3 +51,4 @@ public class DroneGeoRenderer extends GeoEntityRenderer<DroneEntity> {
         poseStack.popPose();
     }
 }
+
