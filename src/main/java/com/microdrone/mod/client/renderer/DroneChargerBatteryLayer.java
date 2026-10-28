@@ -3,6 +3,7 @@ package com.microdrone.mod.client.renderer;
 import com.microdrone.mod.block.entity.DroneChargerBlockEntity;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.math.Axis;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
@@ -32,16 +33,14 @@ public class DroneChargerBatteryLayer extends GeoRenderLayer<DroneChargerBlockEn
             if (!battery.isEmpty() && animatable.getLevel() != null) {
                 poseStack.pushPose();
 
-                // 1. ボーンのピボット位置へ正確に移動 (prepMatrixForBone の translateAwayFromPivotPoint を相殺)
-                RenderUtil.translateToPivotPoint(poseStack, bone);
+                // 1. ボーンのピボット座標および回転マトリクスを適用
+                RenderUtil.translateAndRotateMatrixForBone(poseStack, bone);
 
-                // 2. バッテリーモデルのケース幾何中心 [1.0, 1.5, 0.0] をピボットへ完全合致
-                poseStack.translate(-1.0D / 16.0D, -1.5D / 16.0D, 0.0D);
+                // 2. 端子をスロット底面の充電端子（奥下）へ向けるため180度反転
+                // （インジケーター面は上を向いたまま、端子のみが下向きに刺さる）
+                poseStack.mulPose(Axis.YP.rotationDegrees(180.0F));
 
-                // 3. GeoItemRenderer内部で自動適用される translate(0.5, 0.51, 0.5) を相殺
-                poseStack.translate(-0.5D, -0.51D, -0.5D);
-
-                // 4. バッテリーを描画 (ブロックの設置方角・傾斜・ピボットはGeckoLibが完全自動同期)
+                // 3. ItemDisplayContext.FIXED を指定してスロットにジャストフィット描画
                 this.itemRenderer.renderStatic(
                         battery,
                         ItemDisplayContext.FIXED,
@@ -58,4 +57,3 @@ public class DroneChargerBatteryLayer extends GeoRenderLayer<DroneChargerBlockEn
         }
     }
 }
-

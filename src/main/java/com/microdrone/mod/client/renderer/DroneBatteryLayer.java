@@ -33,8 +33,8 @@ public class DroneBatteryLayer extends GeoRenderLayer<DroneEntity> {
                 // ボーンのピボット座標および回転マトリクスを適用
                 RenderUtil.translateAndRotateMatrixForBone(poseStack, bone);
 
-                // GeoItemRenderer内部で自動適用される translate(0.5, 0.51, 0.5) を相殺
-                poseStack.translate(-0.5D, -0.51D, -0.5D);
+                // バッテリーのサイズをドローンスロットに合わせてスケーリング
+                poseStack.scale(0.55F, 0.55F, 0.55F);
 
                 // ItemDisplayContext.FIXED を指定することで、ボーン中心にジャストフィットして描画
                 this.itemRenderer.renderStatic(
