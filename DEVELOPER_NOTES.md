@@ -88,15 +88,18 @@ Minecraft 1.21.1（NeoForge）向けの超小型FPVマイクロドローン MOD�
   - **バッテリーの取り出し**: 素手または非バッテリーで右クリックして回収。
   - **安全ドロップ**: ブロック破壊時にセット中のバッテリーを安全にドロップ（消失防止）。
   - **急速充電ロジック**: 毎tick 15ブロック分（1秒あたり 300m）急速充電。充電中は低音動作音と電気スパークパーティクルが発生し、満充電完了時にチャイムSEとハッピーパーティクルでお知らせ。
-  - **3Dスロット差し込み描画**: 充電器にセットされたバッテリーアイテムが45度傾斜でスロットにカチャッと差し込まれてリアルタイム描画。
+  - **3Dスロット差し込み描画 (`DroneChargerBatteryLayer`)**:
+    - `battery_slot` ボーン（Position: `[0.6, 9.0, -1.2]`, Rotation: `[0, -45, 90]`）を定義し、GeckoLib 準拠の `GeoRenderLayer` を導入。
+    - 手動マトリクス計算を完全撤廃し、GeckoLib のボーン階層・向き（FACING）・回転（Z→Y→X）自動追従により、Blockbenchで配置した通りの位置・45度傾斜でスロットにカチャッと刺さる描画を実現。
 - [x] **ドローン本体のGeckoLib化 (`DroneEntity`, `DroneGeoModel`, `DroneGeoRenderer`)**:
   - ユーザー作成モデル (`drone.geo.json`) を完全適用。
   - **プロペラ高速回転**: 飛行中・操縦中、`propeller_fl`, `propeller_fr`, `propeller_rl`, `propeller_rr` が毎フレーム滑らかに高速スピン（着地・停止時は自然に静止）。
   - **バッテリー装着レイヤー (`DroneBatteryLayer`)**: ドローンのお腹/背中の `battery_slot` ボーンに、装着されているバッテリーアイテムを `ItemDisplayContext.FIXED` でリアルタイム3D描画。
   - **自然な姿勢制御**: 移動速度・左右ストライフに応じた前傾/後傾・バンク傾きロール（`Mth.clamp`）を完全継承。
 - [x] **コントローラー＆バッテリーのGeckoLib 3Dアイテム化 (`GeoItem`)**:
-  - `DroneControllerItem` (`drone_controller.geo.json` / `drone_controller.png`): アンテナ付きのリアルな3Dプロポ。
-  - `DroneBatteryItem` (`drone_battery.geo.json` / `drone_battery.png`): 端子付きの3Dバッテリーパック。
+  - `DroneControllerItem` (`drone_controller.geo.json` / `drone_controller.png`): アンテナ・スティック・モニター画面付きのリアルな3Dプロポ。
+  - `DroneBatteryItem` (`drone_battery.geo.json` / `drone_battery.png`): 端子・インジケーター付きの3Dバッテリーパック。
+  - `models/item/*.json` の親を `minecraft:builtin/entity` に設定し、`RegisterClientExtensionsEvent` で `GeoItemRenderer` を登録してインベントリ・手持ちともに完全3D化。
 - [x] **サバイバル向けクラフトレシピの全追加**:
   - `drone_charger`: 銅インゴット、レッドストーン、避雷針、鉄インゴット
   - `drone_item`: 鉄塊、エンダーパール、鉄インゴット、レッドストーンブロック、銅インゴット
@@ -170,9 +173,14 @@ Minecraft 1.21.1（NeoForge）向けの超小型FPVマイクロドローン MOD�
 ```
 
 ### 3-4. GeckoLib ボーンへのアイテム装着描画（超重要ルール）
-充電ステーションやドローンの `battery_slot` ボーンにバッテリーアイテムを描画する際は、**必ず `ItemDisplayContext.FIXED` を使用してください**。
-- `FIXED` は Blockbenchのボーン座標系（Y=UP）と一致し、アイテムの中心 (8, 8, 8) がボーンにジャストフィットします。
-- `NONE` や `GROUND` を使うと原点座標が大きくズレ、上下の回転方向が狂います。
+充電ステーションやドローンの `battery_slot` ボーンにバッテリーアイテムを描画する際は、**必ず `ItemDisplayContext.FIXED` を使用し、`GeoRenderLayer`（`renderForBone`）経由で描画してください**。
+1. **なぜ `GeoRenderLayer` を使うべきか？**:
+   - `GeoBlockRenderer` や `GeoEntityRenderer` は、ボーン階層・ブロック設置向き（FACING）・回転（Z→Y→X）を自動計算して PoseStack に適用します。手動で `poseStack.translate` や `Axis.YP` を計算すると、向き（NORTH/SOUTH）の反転やオイラー角の乗算順序の差異により、簡単に画面外や地中へ飛んでしまいます。
+2. **`renderForBone` 内の座標補正ルール**:
+   - `RenderUtil.translateToPivotPoint(poseStack, bone)`: GeckoLib内部で適用された `-pivot` を打ち消し、ボーンのピボット位置（かつ回転姿勢）にジャストフィットさせます。
+   - `poseStack.translate(-modelCenterX, -modelCenterY, -modelCenterZ)`: アイテムモデル自身のケース幾何中心（バッテリーなら `[-1.0/16, -1.5/16, 0]`）をピボットに一致させます。
+   - `poseStack.translate(-0.5D, -0.51D, -0.5D)`: `GeoItemRenderer.preRender` が自動適用する `(0.5, 0.51, 0.5)` を相殺します。
+3. `FIXED` は Blockbenchのボーン座標系（Y=UP）と一致し、アイテムの中心がボーンにジャストフィットします。`NONE` や `GROUND` を使うと原点座標が大きくズレ、上下の回転方向が狂います。
 
 ### 3-5. アニメーションキーの命名規則
 GeckoLib 4 では、`.animation.json` 側の文字列キー（例: `idle`, `flying`, `charging`）と Java コード側の `RawAnimation.begin().thenLoop("flying")` を**完全一致**させる必要があります。余計なプレフィックスを付けないこと。
