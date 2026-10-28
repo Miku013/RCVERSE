@@ -23,6 +23,15 @@ public class ClientDroneInputHandler {
     private static boolean isPiloting = false;
     private static int activeDroneId = -1;
 
+    // 操縦開始時の初期位置 (電波距離・HUD表示用)
+    private static double startX = 0;
+    private static double startY = 0;
+    private static double startZ = 0;
+
+    public static double getStartX() { return startX; }
+    public static double getStartY() { return startY; }
+    public static double getStartZ() { return startZ; }
+
     private static float lastPlayerYaw = 0.0f;
     private static float capturedForward = 0.0f;
     private static float capturedStrafe = 0.0f;
@@ -41,6 +50,13 @@ public class ClientDroneInputHandler {
     }
 
     public static void setPiloting(int droneId, boolean state) {
+        setPiloting(droneId, state, 0, 0, 0);
+    }
+
+    public static void setPiloting(int droneId, boolean state, double sx, double sy, double sz) {
+        startX = sx;
+        startY = sy;
+        startZ = sz;
         Minecraft mc = Minecraft.getInstance();
         missingTicks = 0;
         MicroDroneMod.LOGGER.info("[CLIENT] [PILOT_STATE_SET] DroneId: {}, State: {}, PlayerPos: {}",

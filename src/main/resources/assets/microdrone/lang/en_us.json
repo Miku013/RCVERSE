@@ -7,5 +7,6 @@
   "message.microdrone.pilot_stop": "§e[Drone] Piloting stopped.",
   "message.microdrone.already_piloted": "§c[Drone] This drone is already being piloted by another player!",
   "message.microdrone.no_drone_nearby": "§c[Drone] No available drone found nearby.",
-  "message.microdrone.pilot_aborted_damage": "§c[Warning] Your body took damage! Drone piloting emergency aborted."
+  "message.microdrone.pilot_aborted_damage": "§c[Warning] Your body took damage! Drone piloting emergency aborted.",
+  "message.microdrone.signal_lost_failsafe": "§c[Warning] Radio signal lost! Emergency return failsafe activated."
 }

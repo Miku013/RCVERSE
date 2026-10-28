@@ -66,6 +66,12 @@ public class DroneEntity extends Entity {
     public static final double VERTICAL_DRAG = 0.82;            // 垂直慣性摩擦 (ホバリング維持)
     public static final float YAW_SENSITIVITY = 1.0f;           // 旋回感度
 
+    // === 電波距離制限パラメータ (Phase 4 / Step 4) ===
+    public static final double MAX_SIGNAL_RANGE = 250.0;       // 最大電波距離 (m)
+    public static final double WARN_SIGNAL_RANGE = 175.0;      // 減衰・警告開始距離 (70%)
+    public static final double CRITICAL_SIGNAL_RANGE = 225.0;  // 限界・危険開始距離 (90%)
+    private int outOfRangeTicks = 0;                          // 電波圏外継続tickカウント
+
     private UUID pilotUUID = null;
 
     // パターンA: 操縦開始時のプレイヤー初期位置（終了時テレポート復元用）
@@ -112,6 +118,10 @@ public class DroneEntity extends Entity {
     public boolean isPilotedBy(Player player) {
         return player != null && this.pilotUUID != null && this.pilotUUID.equals(player.getUUID());
     }
+
+    public double getStartX() { return this.startX; }
+    public double getStartY() { return this.startY; }
+    public double getStartZ() { return this.startZ; }
 
     public void setLocallyControlled(boolean locallyControlled) {
         this.locallyControlled = locallyControlled;
@@ -221,7 +231,7 @@ public class DroneEntity extends Entity {
                 String.format("%.2f", this.getX()), String.format("%.2f", this.getY()), String.format("%.2f", this.getZ()),
                 this.chunkPosition().x, this.chunkPosition().z);
 
-        PacketDistributor.sendToPlayer(player, new DronePilotStatePayload(this.getId(), true));
+        PacketDistributor.sendToPlayer(player, new DronePilotStatePayload(this.getId(), true, this.startX, this.startY, this.startZ));
         player.sendSystemMessage(Component.translatable("message.microdrone.pilot_start"));
 
         // Phase 5: 操縦開始時にドローン周辺チャンクをロード・配信
@@ -325,7 +335,7 @@ public class DroneEntity extends Entity {
             this.inputVertical = 0.0f;
             this.targetYaw = 0.0f;
             this.targetPitch = 0.0f;
-            PacketDistributor.sendToPlayer(player, new DronePilotStatePayload(this.getId(), false));
+            PacketDistributor.sendToPlayer(player, new DronePilotStatePayload(this.getId(), false, 0, 0, 0));
             player.sendSystemMessage(Component.translatable("message.microdrone.pilot_stop"));
         }
     }
@@ -481,6 +491,31 @@ public class DroneEntity extends Entity {
                     }
                     this.lastChunkPos = currentChunk;
                     com.microdrone.mod.chunk.DroneChunkManager.updateDroneChunks(pilot, this);
+                }
+
+                // 3. 電波距離制限（フライトレンジ）と通信途絶フェイルセーフ (Step 4)
+                double dx = this.getX() - this.startX;
+                double dy = this.getY() - this.startY;
+                double dz = this.getZ() - this.startZ;
+                double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+                if (distance > MAX_SIGNAL_RANGE) {
+                    this.outOfRangeTicks++;
+                    // 入力操作を打ち消し、自動ホバリング＆緩やかな降下（安全着陸姿勢）
+                    this.inputForward = 0.0f;
+                    this.inputStrafe = 0.0f;
+                    this.inputVertical = -0.05f;
+
+                    // 60 ticks (約3秒間) 電波圏外が継続、または地面に着地した場合、自動で安全操縦終了
+                    if (this.outOfRangeTicks >= 60 || (this.outOfRangeTicks > 10 && this.onGround())) {
+                        MicroDroneMod.LOGGER.warn("[SERVER] [SIGNAL_LOST_FAILSAFE] Drone {} exceeded max range ({}m > {}m). Initiating emergency stop.",
+                                this.getUUID(), String.format("%.2f", distance), MAX_SIGNAL_RANGE);
+                        pilot.sendSystemMessage(Component.translatable("message.microdrone.signal_lost_failsafe"));
+                        this.stopPiloting(pilot);
+                        return;
+                    }
+                } else {
+                    this.outOfRangeTicks = 0;
                 }
             }
         }

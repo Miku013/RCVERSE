@@ -9,10 +9,9 @@ public class ClientPayloadHandler {
 
     public static void handlePilotState(DronePilotStatePayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
-            MicroDroneMod.LOGGER.info("[CLIENT] [PACKET_RECEIVE] Payload: DronePilotStatePayload, DroneId: {}, IsPiloting: {}",
-                    payload.droneId(), payload.isPiloting());
-            ClientDroneInputHandler.setPiloting(payload.droneId(), payload.isPiloting());
+            MicroDroneMod.LOGGER.info("[CLIENT] [PACKET_RECEIVE] Payload: DronePilotStatePayload, DroneId: {}, IsPiloting: {}, StartPos: [{}, {}, {}]",
+                    payload.droneId(), payload.isPiloting(), payload.startX(), payload.startY(), payload.startZ());
+            ClientDroneInputHandler.setPiloting(payload.droneId(), payload.isPiloting(), payload.startX(), payload.startY(), payload.startZ());
         });
     }
 }
-

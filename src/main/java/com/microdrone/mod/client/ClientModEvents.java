@@ -1,6 +1,7 @@
 package com.microdrone.mod.client;
 
 import com.microdrone.mod.client.camera.DroneCameraController;
+import com.microdrone.mod.client.gui.DroneHudOverlay;
 import com.microdrone.mod.client.input.ClientDroneInputHandler;
 import com.microdrone.mod.client.model.DroneModel;
 import com.microdrone.mod.client.renderer.DroneRenderer;
@@ -14,12 +15,12 @@ public class ClientModEvents {
         modEventBus.addListener(ClientModEvents::registerRenderers);
         modEventBus.addListener(ClientModEvents::registerLayerDefinitions);
 
-        // クライアント側入力、カメラコントローラー、チャンクイベントリスナーの登録
+        // クライアント側入力、カメラコントローラー、チャンクイベント、HUDオーバーレイの登録
         ClientDroneInputHandler.register();
         DroneCameraController.register();
         com.microdrone.mod.client.chunk.ClientChunkEvents.register();
+        DroneHudOverlay.register();
     }
-
 
     private static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(ModEntities.DRONE.get(), DroneRenderer::new);

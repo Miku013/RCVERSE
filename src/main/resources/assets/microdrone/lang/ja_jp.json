@@ -7,5 +7,6 @@
   "message.microdrone.pilot_stop": "§e[ドローン] 操縦を終了しました。",
   "message.microdrone.already_piloted": "§c[ドローン] このドローンは既に他のプレイヤーが操縦しています！",
   "message.microdrone.no_drone_nearby": "§c[ドローン] 近くに利用可能なドローンが見つかりません。",
-  "message.microdrone.pilot_aborted_damage": "§c[警告] 操縦者の身体がダメージを受けたため、操縦を緊急終了しました！"
+  "message.microdrone.pilot_aborted_damage": "§c[警告] 操縦者の身体がダメージを受けたため、操縦を緊急終了しました！",
+  "message.microdrone.signal_lost_failsafe": "§c[警告] 電波が途絶したため、緊急自動帰還フェイルセーフが作動しました！"
 }
