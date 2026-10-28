@@ -2,11 +2,22 @@
   "itemGroup.microdrone": "Micro Drone",
   "item.microdrone.drone_item": "Micro Drone (Deployer)",
   "item.microdrone.drone_controller": "Drone Controller",
+  "item.microdrone.battery_tier_1": "Drone Battery (3000m)",
+  "item.microdrone.battery_tier_2": "Drone Battery (4000m)",
+  "item.microdrone.battery_tier_3": "Drone Battery (5000m)",
+  "item.microdrone.battery_tier_4": "Drone Battery (6000m)",
+  "tooltip.microdrone.battery_desc": "Hold and Right-Click drone to attach / Sneak Right-Click to detach",
   "entity.microdrone.drone": "Micro Drone",
   "message.microdrone.pilot_start": "§a[Drone] Piloting started. (W/S: Pitch/Forward, A/D: Strafe, Space/Shift: Elevate, Mouse: Yaw, Right Click with Controller: Exit)",
   "message.microdrone.pilot_stop": "§e[Drone] Piloting stopped.",
   "message.microdrone.already_piloted": "§c[Drone] This drone is already being piloted by another player!",
   "message.microdrone.no_drone_nearby": "§c[Drone] No available drone found nearby.",
   "message.microdrone.pilot_aborted_damage": "§c[Warning] Your body took damage! Drone piloting emergency aborted.",
-  "message.microdrone.signal_lost_failsafe": "§c[Warning] Radio signal lost! Emergency return failsafe activated."
+  "message.microdrone.signal_lost_failsafe": "§c[Warning] Radio signal lost! Emergency return failsafe activated.",
+  "message.microdrone.battery_installed": "§a[Drone] Battery attached. (Remaining: %d / %d blocks)",
+  "message.microdrone.battery_removed": "§e[Drone] Battery detached.",
+  "message.microdrone.battery_already_installed": "§e[Drone] A battery is already attached.",
+  "message.microdrone.no_battery": "§c[Drone] No battery installed! Hold a battery and right-click to install.",
+  "message.microdrone.battery_depleted": "§c[Drone] Battery is depleted!",
+  "message.microdrone.battery_empty_failsafe": "§c[Warning] Battery depleted! Emergency auto-landing activated."
 }

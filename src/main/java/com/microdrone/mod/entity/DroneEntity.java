@@ -7,7 +7,10 @@ import net.minecraft.core.Rotations;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import com.microdrone.mod.item.DroneBatteryItem;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -67,6 +70,19 @@ public class DroneEntity extends Entity {
     public static final float YAW_SENSITIVITY = 1.0f;           // 旋回感度
 
     // === 電波距離制限パラメータ (Phase 4 / Step 4) ===
+    // === バッテリー同期用 EntityData (Step 5) ===
+    private static final EntityDataAccessor<Boolean> DATA_HAS_BATTERY =
+            SynchedEntityData.defineId(DroneEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Integer> DATA_BATTERY_REMAINING =
+            SynchedEntityData.defineId(DroneEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> DATA_BATTERY_MAX =
+            SynchedEntityData.defineId(DroneEntity.class, EntityDataSerializers.INT);
+
+    // 装着中のバッテリー
+    private ItemStack installedBattery = ItemStack.EMPTY;
+    // 前後移動距離積算用
+    private double accumulatedDistance = 0.0;
+
     public static final double MAX_SIGNAL_RANGE = 250.0;       // 最大電波距離 (m)
     public static final double WARN_SIGNAL_RANGE = 175.0;      // 減衰・警告開始距離 (70%)
     public static final double CRITICAL_SIGNAL_RANGE = 225.0;  // 限界・危険開始距離 (90%)
@@ -109,6 +125,42 @@ public class DroneEntity extends Entity {
 
     @Override
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        builder.define(DATA_HAS_BATTERY, false);
+        builder.define(DATA_BATTERY_REMAINING, 0);
+        builder.define(DATA_BATTERY_MAX, 0);
+    }
+
+    public boolean hasBattery() {
+        return this.entityData.get(DATA_HAS_BATTERY);
+    }
+
+    public int getBatteryRemaining() {
+        return this.entityData.get(DATA_BATTERY_REMAINING);
+    }
+
+    public int getBatteryMax() {
+        return this.entityData.get(DATA_BATTERY_MAX);
+    }
+
+    public float getBatteryPercentage() {
+        int max = getBatteryMax();
+        return max > 0 ? (float) getBatteryRemaining() / (float) max : 0.0f;
+    }
+
+    public ItemStack getInstalledBattery() {
+        return this.installedBattery;
+    }
+
+    public void updateBatterySyncData() {
+        if (!this.installedBattery.isEmpty() && this.installedBattery.getItem() instanceof DroneBatteryItem batteryItem) {
+            this.entityData.set(DATA_HAS_BATTERY, true);
+            this.entityData.set(DATA_BATTERY_REMAINING, batteryItem.getRemainingBlocks(this.installedBattery));
+            this.entityData.set(DATA_BATTERY_MAX, batteryItem.getMaxFlightBlocks());
+        } else {
+            this.entityData.set(DATA_HAS_BATTERY, false);
+            this.entityData.set(DATA_BATTERY_REMAINING, 0);
+            this.entityData.set(DATA_BATTERY_MAX, 0);
+        }
     }
 
     public boolean isPiloted() {
@@ -157,6 +209,16 @@ public class DroneEntity extends Entity {
     public boolean startPiloting(ServerPlayer player) {
         if (this.pilotUUID != null && !this.pilotUUID.equals(player.getUUID())) {
             player.sendSystemMessage(Component.translatable("message.microdrone.already_piloted"));
+            return false;
+        }
+
+        // バッテリー装着・残量チェック (Step 5)
+        if (this.installedBattery.isEmpty()) {
+            player.sendSystemMessage(Component.translatable("message.microdrone.no_battery"));
+            return false;
+        }
+        if (this.getBatteryRemaining() <= 0) {
+            player.sendSystemMessage(Component.translatable("message.microdrone.battery_depleted"));
             return false;
         }
 
@@ -517,6 +579,36 @@ public class DroneEntity extends Entity {
                 } else {
                     this.outOfRangeTicks = 0;
                 }
+
+                // 4. 前後移動距離に応じたバッテリー消費 & オートランディング (Step 5)
+                double moveDx = this.getX() - this.xOld;
+                double moveDz = this.getZ() - this.zOld;
+                double moveDist = Math.sqrt(moveDx * moveDx + moveDz * moveDz);
+                this.accumulatedDistance += moveDist;
+
+                if (this.accumulatedDistance >= 1.0) {
+                    int blocksToConsume = (int) this.accumulatedDistance;
+                    this.accumulatedDistance -= blocksToConsume;
+
+                    if (!this.installedBattery.isEmpty() && this.installedBattery.getItem() instanceof DroneBatteryItem batteryItem) {
+                        batteryItem.consumeFlightDistance(this.installedBattery, blocksToConsume);
+                        updateBatterySyncData();
+                    }
+                }
+
+                // バッテリー切れフェイルセーフ: 入力を打ち消し、緩やかに自動降下
+                if (this.installedBattery.isEmpty() || this.getBatteryRemaining() <= 0) {
+                    this.inputForward = 0.0f;
+                    this.inputStrafe = 0.0f;
+                    this.inputVertical = -0.04f; // 緩やかな自動降下着陸
+
+                    if (this.onGround()) {
+                        MicroDroneMod.LOGGER.warn("[SERVER] [BATTERY_EMPTY_FAILSAFE] Drone {} ran out of battery. Emergency landing complete.", this.getUUID());
+                        pilot.sendSystemMessage(Component.translatable("message.microdrone.battery_empty_failsafe"));
+                        this.stopPiloting(pilot);
+                        return;
+                    }
+                }
             }
         }
     }
@@ -573,6 +665,22 @@ public class DroneEntity extends Entity {
         if (!this.level().isClientSide) {
             ItemStack heldItem = player.getItemInHand(hand);
 
+            // 1. バッテリーアイテム所持時: バッテリー装着
+            if (heldItem.getItem() instanceof DroneBatteryItem batteryItem) {
+                if (!this.installedBattery.isEmpty()) {
+                    player.sendSystemMessage(Component.translatable("message.microdrone.battery_already_installed"));
+                    return InteractionResult.FAIL;
+                }
+                this.installedBattery = heldItem.split(1);
+                updateBatterySyncData();
+                this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                        SoundEvents.ARMOR_EQUIP_IRON.value(), SoundSource.PLAYERS, 1.0F, 1.2F);
+                player.sendSystemMessage(Component.translatable("message.microdrone.battery_installed",
+                        batteryItem.getRemainingBlocks(this.installedBattery), batteryItem.getMaxFlightBlocks()));
+                return InteractionResult.SUCCESS;
+            }
+
+            // 2. コントローラー所持時: 操縦開始 / 終了
             if (heldItem.getItem() instanceof com.microdrone.mod.item.DroneControllerItem) {
                 if (player instanceof ServerPlayer serverPlayer) {
                     if (this.isPilotedBy(player)) {
@@ -588,9 +696,23 @@ public class DroneEntity extends Entity {
                 return InteractionResult.FAIL;
             }
 
+            // 3. スニーク右クリック時: バッテリー取り外し（未装着ならドローン本体回収）
             if (player.isShiftKeyDown()) {
-                this.dropItemAndDiscard();
-                return InteractionResult.SUCCESS;
+                if (!this.installedBattery.isEmpty()) {
+                    // バッテリー取り外し
+                    if (!player.getInventory().add(this.installedBattery)) {
+                        this.spawnAtLocation(this.installedBattery);
+                    }
+                    this.installedBattery = ItemStack.EMPTY;
+                    updateBatterySyncData();
+                    this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                            SoundEvents.ARMOR_EQUIP_GENERIC.value(), SoundSource.PLAYERS, 0.8F, 1.0F);
+                    player.sendSystemMessage(Component.translatable("message.microdrone.battery_removed"));
+                    return InteractionResult.SUCCESS;
+                } else {
+                    this.dropItemAndDiscard();
+                    return InteractionResult.SUCCESS;
+                }
             }
         }
         return InteractionResult.sidedSuccess(this.level().isClientSide);
@@ -621,6 +743,14 @@ public class DroneEntity extends Entity {
             ItemEntity item = new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(),
                     new ItemStack(ModItems.DRONE_SPAWN_ITEM.get()));
             this.level().addFreshEntity(item);
+
+            // バッテリーが装着されていれば一緒にドロップ (消失防止)
+            if (!this.installedBattery.isEmpty()) {
+                ItemEntity batItem = new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(), this.installedBattery);
+                this.level().addFreshEntity(batItem);
+                this.installedBattery = ItemStack.EMPTY;
+            }
+
             this.discard();
         }
     }
@@ -630,6 +760,11 @@ public class DroneEntity extends Entity {
         if (compound.hasUUID("PilotUUID")) {
             this.pilotUUID = compound.getUUID("PilotUUID");
         }
+        if (compound.contains("InstalledBattery", 10)) {
+            this.installedBattery = ItemStack.parse(this.registryAccess(), compound.getCompound("InstalledBattery")).orElse(ItemStack.EMPTY);
+            updateBatterySyncData();
+        }
+        this.accumulatedDistance = compound.getDouble("BatteryAccumulatedDist");
     }
 
     @Override
@@ -637,5 +772,9 @@ public class DroneEntity extends Entity {
         if (this.pilotUUID != null) {
             compound.putUUID("PilotUUID", this.pilotUUID);
         }
+        if (!this.installedBattery.isEmpty()) {
+            compound.put("InstalledBattery", this.installedBattery.save(this.registryAccess()));
+        }
+        compound.putDouble("BatteryAccumulatedDist", this.accumulatedDistance);
     }
 }

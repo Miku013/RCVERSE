@@ -14,7 +14,7 @@ import net.neoforged.neoforge.client.event.RenderGuiEvent;
 import net.neoforged.neoforge.common.NeoForge;
 
 /**
- * FPVマイクロドローン専用のフライト計器・HUDオーバーレイ (Phase 4 / Step 4)
+ * FPVマイクロドローン専用のフライト計器・HUDオーバーレイ (Phase 4 / Step 5)
  */
 public class DroneHudOverlay {
 
@@ -48,16 +48,16 @@ public class DroneHudOverlay {
         // 2. 機首方位（HDG / コンパス） - 画面上部中央
         renderCompass(graphics, font, cx, 12, drone.getYRot());
 
-        // 3. 画面下部計器の基準Y座標 (画面下端から約44px上)
-        int bottomInstrumentsY = height - 44;
+        // 3. 画面下部計器の基準Y座標 (4行表示のため下端から約54px上)
+        int bottomInstrumentsY = height - 54;
 
-        // 4. 飛行計器（画面下部左側: 速度、高度、昇降）
+        // 4. 飛行計器（画面下部左側: 速度、高度、昇降、バッテリー）
         renderFlightInstruments(graphics, font, 14, bottomInstrumentsY, drone);
 
-        // 5. 電波強度・離脱距離（画面下部右側: 距離、電波、アンテナバー）
+        // 5. 電波強度・離脱距離（画面下部右側: 距離、電波、アンテナバー、限界）
         renderSignalStatus(graphics, font, width - 104, bottomInstrumentsY, drone);
 
-        // 6. 範囲警告メッセージ（画面中央下）
+        // 6. 範囲 & バッテリー警告メッセージ（画面中央下）
         renderAlerts(graphics, font, cx, cy + 30, drone);
 
         // 7. 操作ガイド（画面下部中央）
@@ -104,8 +104,6 @@ public class DroneHudOverlay {
         float yaw = rawYaw % 360.0f;
         if (yaw < 0) yaw += 360.0f;
 
-        // Minecraft座標系のYawから方位文字を取得（日本語）
-        // 0=南, 90=西, 180=北, 270=東
         String dir;
         if (yaw >= 337.5 || yaw < 22.5) dir = "南";
         else if (yaw < 67.5) dir = "南西";
@@ -125,7 +123,7 @@ public class DroneHudOverlay {
     }
 
     /**
-     * 速度・高度・昇降速度インジケーターの描画（画面下部左側・日本語）
+     * 速度・高度・昇降速度・バッテリーインジケーターの描画（画面下部左側・日本語）
      */
     private void renderFlightInstruments(GuiGraphics graphics, Font font, int x, int y, DroneEntity drone) {
         Vec3 vel = drone.getDeltaMovement();
@@ -133,8 +131,8 @@ public class DroneHudOverlay {
         double vSpeed = vel.y * 20.0;                                     // m/s
         double alt = drone.getY();
 
-        // 背景ボックス (半透明黒)
-        graphics.fill(x - 4, y - 4, x + 90, y + 36, 0x40000000);
+        // 背景ボックス (半透明黒, 4行分)
+        graphics.fill(x - 4, y - 4, x + 96, y + 47, 0x40000000);
 
         String spdText = String.format("速度  %.1f m/s", hSpeed);
         String altText = String.format("高度  %.1f m", alt);
@@ -143,9 +141,32 @@ public class DroneHudOverlay {
         graphics.drawString(font, spdText, x, y, 0xFFE0E0E0, true);
         graphics.drawString(font, altText, x, y + 11, 0xFFE0E0E0, true);
 
-        // 昇降速度は上昇: 緑、下降: オレンジ、水平: グレー
+        // 昇降速度
         int vsColor = vSpeed > 0.3 ? 0xFF55FF55 : (vSpeed < -0.3 ? 0xFFFF9944 : 0xFFAAAAAA);
         graphics.drawString(font, vsText, x, y + 22, vsColor, true);
+
+        // バッテリー残量表示 (Step 5)
+        if (drone.hasBattery()) {
+            int remaining = drone.getBatteryRemaining();
+            float pct = drone.getBatteryPercentage();
+            int percent = (int) (pct * 100);
+
+            int batColor;
+            if (percent <= 10) {
+                batColor = (drone.tickCount % 10 < 5) ? 0xFFFF2222 : 0x50FF2222; // 赤点滅
+            } else if (percent <= 20) {
+                batColor = 0xFFFF9944; // オレンジ
+            } else if (percent <= 50) {
+                batColor = 0xFFFFFF55; // 黄
+            } else {
+                batColor = 0xFF55FF55; // 緑
+            }
+
+            String batText = String.format("電池  %d%% (%dm)", percent, remaining);
+            graphics.drawString(font, batText, x, y + 33, batColor, true);
+        } else {
+            graphics.drawString(font, "電池  未装着", x, y + 33, 0xFFAAAAAA, true);
+        }
     }
 
     /**
@@ -164,20 +185,24 @@ public class DroneHudOverlay {
         double ratio = Math.max(0.0, 1.0 - (dist / maxRange));
         int rssi = (int) (ratio * 100);
 
-        // 背景ボックス (半透明黒)
-        graphics.fill(x - 4, y - 4, x + 94, y + 36, 0x40000000);
+        // 背景ボックス (半透明黒, 4行分)
+        graphics.fill(x - 4, y - 4, x + 94, y + 47, 0x40000000);
 
         // 電波色判定
         int sigColor;
+        String statusText;
         if (dist > maxRange) {
-            // 電波ロスト: 赤点滅
             sigColor = (drone.tickCount % 10 < 5) ? 0xFFFF2222 : 0x50FF2222;
+            statusText = "通信  切断";
         } else if (dist > critRange) {
-            sigColor = 0xFFFF4444; // 赤
+            sigColor = 0xFFFF4444;
+            statusText = "通信  限界";
         } else if (dist > warnRange) {
-            sigColor = 0xFFFFFF44; // 黄
+            sigColor = 0xFFFFFF44;
+            statusText = "通信  減衰";
         } else {
-            sigColor = 0xFF55FF55; // 緑
+            sigColor = 0xFF55FF55;
+            statusText = "通信  良好";
         }
 
         String distText = String.format("距離  %.0f m", dist);
@@ -199,13 +224,13 @@ public class DroneHudOverlay {
             graphics.fill(bx, by, bx + 2, barBaseY, bCol);
         }
 
-        // 限界距離の目安表示
         String maxText = String.format("限界  %.0f m", maxRange);
         graphics.drawString(font, maxText, x, y + 22, 0xFF888888, true);
+        graphics.drawString(font, statusText, x, y + 33, sigColor, true);
     }
 
     /**
-     * 電波警告メッセージ（圏外・危険接近時のみ・日本語）
+     * 電波＆バッテリー警告メッセージ（画面中央下・日本語）
      */
     private void renderAlerts(GuiGraphics graphics, Font font, int cx, int y, DroneEntity drone) {
         double sx = ClientDroneInputHandler.getStartX();
@@ -213,8 +238,8 @@ public class DroneHudOverlay {
         double sz = ClientDroneInputHandler.getStartZ();
         double dist = Math.sqrt(drone.distanceToSqr(sx, sy, sz));
 
+        // 1. 電波関連の警告
         if (dist > DroneEntity.MAX_SIGNAL_RANGE) {
-            // 電波ロスト
             if (drone.tickCount % 8 < 5) {
                 Component alert = Component.literal("§c§l[ 電波切断: 緊急自動帰還フェイルセーフ作動中 ]");
                 int aw = font.width(alert);
@@ -222,17 +247,41 @@ public class DroneHudOverlay {
                 graphics.drawString(font, alert, cx - aw / 2, y, 0xFFFF2222, true);
             }
         } else if (dist > DroneEntity.CRITICAL_SIGNAL_RANGE) {
-            // 限界接近
             Component alert = Component.literal("§c§l[ 危険: 最大飛行限界に接近中 ]");
             int aw = font.width(alert);
             graphics.fill(cx - aw / 2 - 4, y - 2, cx + aw / 2 + 4, y + font.lineHeight + 2, 0x60000000);
             graphics.drawString(font, alert, cx - aw / 2, y, 0xFFFF4444, true);
         } else if (dist > DroneEntity.WARN_SIGNAL_RANGE) {
-            // 減衰警告
             Component alert = Component.literal("§e[ 警告: 電波が弱くなっています ]");
             int aw = font.width(alert);
             graphics.fill(cx - aw / 2 - 4, y - 2, cx + aw / 2 + 4, y + font.lineHeight + 2, 0x50000000);
             graphics.drawString(font, alert, cx - aw / 2, y, 0xFFFFFF55, true);
+        }
+
+        // 2. バッテリー関連の警告 (Step 5)
+        if (drone.hasBattery()) {
+            int remaining = drone.getBatteryRemaining();
+            float pct = drone.getBatteryPercentage();
+            int alertY = y + 14;
+
+            if (remaining <= 0) {
+                Component alert = Component.literal("§c§l[ バッテリー切れ: 緊急自動着陸中 ]");
+                int aw = font.width(alert);
+                graphics.fill(cx - aw / 2 - 4, alertY - 2, cx + aw / 2 + 4, alertY + font.lineHeight + 2, 0x80000000);
+                graphics.drawString(font, alert, cx - aw / 2, alertY, 0xFFFF2222, true);
+            } else if (pct <= 0.10f) {
+                if (drone.tickCount % 10 < 6) {
+                    Component alert = Component.literal("§c§l[ 警告: バッテリー残量わずか (" + remaining + "m) ]");
+                    int aw = font.width(alert);
+                    graphics.fill(cx - aw / 2 - 4, alertY - 2, cx + aw / 2 + 4, alertY + font.lineHeight + 2, 0x80000000);
+                    graphics.drawString(font, alert, cx - aw / 2, alertY, 0xFFFF2222, true);
+                }
+            } else if (pct <= 0.20f) {
+                Component alert = Component.literal("§e[ 注意: バッテリー残量低下 (" + remaining + "m) ]");
+                int aw = font.width(alert);
+                graphics.fill(cx - aw / 2 - 4, alertY - 2, cx + aw / 2 + 4, alertY + font.lineHeight + 2, 0x60000000);
+                graphics.drawString(font, alert, cx - aw / 2, alertY, 0xFFFFFF55, true);
+            }
         }
     }
 

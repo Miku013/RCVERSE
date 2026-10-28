@@ -2,11 +2,22 @@
   "itemGroup.microdrone": "マイクロドローン",
   "item.microdrone.drone_item": "マイクロドローン（配置用）",
   "item.microdrone.drone_controller": "ドローンコントローラー",
+  "item.microdrone.battery_tier_1": "ドローンバッテリー (3000m)",
+  "item.microdrone.battery_tier_2": "ドローンバッテリー (4000m)",
+  "item.microdrone.battery_tier_3": "ドローンバッテリー (5000m)",
+  "item.microdrone.battery_tier_4": "ドローンバッテリー (6000m)",
+  "tooltip.microdrone.battery_desc": "手に持ってドローンを右クリックで装着 / スニーク右クリックで脱着",
   "entity.microdrone.drone": "マイクロドローン",
   "message.microdrone.pilot_start": "§a[ドローン] 操縦を開始しました。（W/S: 前後, A/D: 左右, Space/Shift: 上下, マウス: 旋回, コントローラーを持って右クリック: 終了）",
   "message.microdrone.pilot_stop": "§e[ドローン] 操縦を終了しました。",
   "message.microdrone.already_piloted": "§c[ドローン] このドローンは既に他のプレイヤーが操縦しています！",
   "message.microdrone.no_drone_nearby": "§c[ドローン] 近くに利用可能なドローンが見つかりません。",
   "message.microdrone.pilot_aborted_damage": "§c[警告] 操縦者の身体がダメージを受けたため、操縦を緊急終了しました！",
-  "message.microdrone.signal_lost_failsafe": "§c[警告] 電波が途絶したため、緊急自動帰還フェイルセーフが作動しました！"
+  "message.microdrone.signal_lost_failsafe": "§c[警告] 電波が途絶したため、緊急自動帰還フェイルセーフが作動しました！",
+  "message.microdrone.battery_installed": "§a[ドローン] バッテリーを装着しました。（残量: %d / %d ブロック）",
+  "message.microdrone.battery_removed": "§e[ドローン] バッテリーを取り外しました。",
+  "message.microdrone.battery_already_installed": "§e[ドローン] 既にバッテリーが装着されています。",
+  "message.microdrone.no_battery": "§c[ドローン] バッテリーが装着されていません！バッテリーを持って右クリックで装着してください。",
+  "message.microdrone.battery_depleted": "§c[ドローン] バッテリーが切れています！",
+  "message.microdrone.battery_empty_failsafe": "§c[警告] バッテリーが切れました！緊急自動着陸しました。"
 }
