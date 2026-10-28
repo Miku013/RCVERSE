@@ -7,6 +7,7 @@ import com.microdrone.mod.client.gui.DroneHudOverlay;
 import com.microdrone.mod.client.input.ClientDroneInputHandler;
 import com.microdrone.mod.client.model.DroneModel;
 import com.microdrone.mod.client.renderer.DroneChargerBlockEntityRenderer;
+import com.microdrone.mod.client.renderer.DroneGeoRenderer;
 import com.microdrone.mod.client.renderer.DroneRenderer;
 import com.microdrone.mod.entity.ModEntities;
 import net.neoforged.bus.api.IEventBus;
@@ -27,7 +28,7 @@ public class ClientModEvents {
     }
 
     private static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
-        event.registerEntityRenderer(ModEntities.DRONE.get(), DroneRenderer::new);
+        event.registerEntityRenderer(ModEntities.DRONE.get(), DroneGeoRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.DRONE_CHARGER_BE.get(), DroneChargerBlockEntityRenderer::new);
     }
 

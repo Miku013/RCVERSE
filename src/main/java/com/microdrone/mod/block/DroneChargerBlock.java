@@ -38,8 +38,8 @@ public class DroneChargerBlock extends HorizontalDirectionalBlock implements Ent
     public static final MapCodec<DroneChargerBlock> CODEC = simpleCodec(DroneChargerBlock::new);
     public static final BooleanProperty CHARGING = BooleanProperty.create("charging");
 
-    // 充電ステーションの形状: 高さ 4ドット（0.25ブロック）の充電パッド
-    private static final VoxelShape SHAPE = Block.box(1.0D, 0.0D, 1.0D, 15.0D, 4.0D, 15.0D);
+    // 充電ステーションの形状: 高さ 10ドット（0.625ブロック）の充電スタンド
+    private static final VoxelShape SHAPE = Block.box(2.0D, 0.0D, 1.0D, 14.0D, 10.0D, 15.0D);
 
     public DroneChargerBlock(Properties properties) {
         super(properties);

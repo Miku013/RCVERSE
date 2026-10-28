@@ -34,6 +34,12 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import software.bernie.geckolib.animatable.GeoEntity;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.AnimatableManager;
+import software.bernie.geckolib.animation.AnimationController;
+import software.bernie.geckolib.animation.RawAnimation;
+import software.bernie.geckolib.util.GeckoLibUtil;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.List;
@@ -41,7 +47,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class DroneEntity extends Entity {
+public class DroneEntity extends Entity implements GeoEntity {
+    private final AnimatableInstanceCache geoCache = GeckoLibUtil.createInstanceCache(this);
 
     // フェイルセーフ用: 操縦中プレイヤーUUID -> ドローン
     private static final Map<UUID, DroneEntity> ACTIVE_PILOTED_DRONES = new ConcurrentHashMap<>();
@@ -77,6 +84,8 @@ public class DroneEntity extends Entity {
             SynchedEntityData.defineId(DroneEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> DATA_BATTERY_MAX =
             SynchedEntityData.defineId(DroneEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<ItemStack> DATA_INSTALLED_BATTERY =
+            SynchedEntityData.defineId(DroneEntity.class, EntityDataSerializers.ITEM_STACK);
 
     // 装着中のバッテリー
     private ItemStack installedBattery = ItemStack.EMPTY;
@@ -128,6 +137,7 @@ public class DroneEntity extends Entity {
         builder.define(DATA_HAS_BATTERY, false);
         builder.define(DATA_BATTERY_REMAINING, 0);
         builder.define(DATA_BATTERY_MAX, 0);
+        builder.define(DATA_INSTALLED_BATTERY, ItemStack.EMPTY);
     }
 
     public boolean hasBattery() {
@@ -148,7 +158,7 @@ public class DroneEntity extends Entity {
     }
 
     public ItemStack getInstalledBattery() {
-        return this.installedBattery;
+        return this.entityData.get(DATA_INSTALLED_BATTERY);
     }
 
     public void updateBatterySyncData() {
@@ -156,11 +166,29 @@ public class DroneEntity extends Entity {
             this.entityData.set(DATA_HAS_BATTERY, true);
             this.entityData.set(DATA_BATTERY_REMAINING, batteryItem.getRemainingBlocks(this.installedBattery));
             this.entityData.set(DATA_BATTERY_MAX, batteryItem.getMaxFlightBlocks());
+            this.entityData.set(DATA_INSTALLED_BATTERY, this.installedBattery.copy());
         } else {
             this.entityData.set(DATA_HAS_BATTERY, false);
             this.entityData.set(DATA_BATTERY_REMAINING, 0);
             this.entityData.set(DATA_BATTERY_MAX, 0);
+            this.entityData.set(DATA_INSTALLED_BATTERY, ItemStack.EMPTY);
         }
+    }
+
+    // === GeckoLib 4 アニメーションコントローラー ===
+    @Override
+    public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
+        controllers.add(new AnimationController<>(this, "drone_flight_controller", 2, state -> {
+            if (this.isPiloted() || !this.onGround()) {
+                return state.setAndContinue(RawAnimation.begin().thenLoop("flying"));
+            }
+            return state.setAndContinue(RawAnimation.begin().thenLoop("idle"));
+        }));
+    }
+
+    @Override
+    public AnimatableInstanceCache getAnimatableInstanceCache() {
+        return this.geoCache;
     }
 
     public boolean isPiloted() {

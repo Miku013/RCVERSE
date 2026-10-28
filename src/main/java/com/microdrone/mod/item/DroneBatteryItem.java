@@ -1,24 +1,59 @@
 package com.microdrone.mod.item;
 
+import com.microdrone.mod.client.renderer.item.DroneBatteryItemRenderer;
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
+import net.neoforged.neoforge.client.extensions.common.IClientItemExtensions;
+import software.bernie.geckolib.animatable.GeoItem;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.AnimatableManager;
+import software.bernie.geckolib.animation.AnimationController;
+import software.bernie.geckolib.animation.PlayState;
+import software.bernie.geckolib.util.GeckoLibUtil;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * マイクロドローン専用バッテリーアイテム (Step 5)
  * 耐久値（Damage）を利用して、消費・残航続可能距離（ブロック数）を直感的に管理。
  */
-public class DroneBatteryItem extends Item {
-
+public class DroneBatteryItem extends Item implements GeoItem {
+    private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
     private final int maxFlightBlocks;
 
     public DroneBatteryItem(Properties properties, int maxFlightBlocks) {
         super(properties.durability(maxFlightBlocks));
         this.maxFlightBlocks = maxFlightBlocks;
+    }
+
+    @Override
+    public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
+        controllers.add(new AnimationController<>(this, "controller", 0, state -> PlayState.STOP));
+    }
+
+    @Override
+    public AnimatableInstanceCache getAnimatableInstanceCache() {
+        return this.cache;
+    }
+
+    @Override
+    public void initializeClient(Consumer<IClientItemExtensions> consumer) {
+        consumer.accept(new IClientItemExtensions() {
+            private DroneBatteryItemRenderer renderer;
+
+            @Override
+            public BlockEntityWithoutLevelRenderer getCustomRenderer() {
+                if (this.renderer == null) {
+                    this.renderer = new DroneBatteryItemRenderer();
+                }
+                return this.renderer;
+            }
+        });
     }
 
     public int getMaxFlightBlocks() {

@@ -10,3 +10,4 @@
     "facing=west,charging=true":   { "model": "microdrone:block/drone_charger", "y": 270 }
   }
 }
+

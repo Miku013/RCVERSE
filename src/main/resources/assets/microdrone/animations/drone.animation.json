@@ -1,0 +1,44 @@
+{
+	"format_version": "1.8.0",
+	"animations": {
+		"idle": {
+			"loop": true,
+			"animation_length": 1.0,
+			"bones": {}
+		},
+		"flying": {
+			"loop": true,
+			"animation_length": 0.2,
+			"bones": {
+				"propeller_fr": {
+					"rotation": {
+						"0.0": [0, 0, 0],
+						"0.1": [0, 180, 0],
+						"0.2": [0, 360, 0]
+					}
+				},
+				"propeller_fl": {
+					"rotation": {
+						"0.0": [0, 0, 0],
+						"0.1": [0, -180, 0],
+						"0.2": [0, -360, 0]
+					}
+				},
+				"propeller_rr": {
+					"rotation": {
+						"0.0": [0, 0, 0],
+						"0.1": [0, -180, 0],
+						"0.2": [0, -360, 0]
+					}
+				},
+				"propeller_rl": {
+					"rotation": {
+						"0.0": [0, 0, 0],
+						"0.1": [0, 180, 0],
+						"0.2": [0, 360, 0]
+					}
+				}
+			}
+		}
+	}
+}

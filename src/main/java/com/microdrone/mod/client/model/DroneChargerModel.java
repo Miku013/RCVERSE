@@ -9,7 +9,7 @@ public class DroneChargerModel extends GeoModel<DroneChargerBlockEntity> {
     private static final ResourceLocation MODEL_RESOURCE =
             ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, "geo/drone_charger.geo.json");
     private static final ResourceLocation TEXTURE_RESOURCE =
-            ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, "textures/block/drone_charger.png");
+            ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, "textures/entity/drone_charger.png");
     private static final ResourceLocation ANIMATION_RESOURCE =
             ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, "animations/drone_charger.animation.json");
 
@@ -28,3 +28,4 @@ public class DroneChargerModel extends GeoModel<DroneChargerBlockEntity> {
         return ANIMATION_RESOURCE;
     }
 }
+

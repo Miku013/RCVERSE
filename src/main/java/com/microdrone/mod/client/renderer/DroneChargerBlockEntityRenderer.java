@@ -27,26 +27,26 @@ public class DroneChargerBlockEntityRenderer extends GeoBlockRenderer<DroneCharg
         // 1. 充電ステーション本体の GeckoLib 3Dモデルを描画
         super.render(animatable, partialTick, poseStack, bufferSource, packedLight, packedOverlay);
 
-        // 2. セットされているバッテリーアイテムがある場合、充電台の上に水平に寝かせて描画
+        // 2. セットされているバッテリーアイテムがある場合、充電器のスロットに差し込んで描画
         ItemStack battery = animatable.getStoredBattery();
         if (!battery.isEmpty() && animatable.getLevel() != null) {
             poseStack.pushPose();
 
-            // 中心（X: 0.5, Z: 0.5）かつ充電パッド上面（Y: 0.28）へ移動
-            poseStack.translate(0.5D, 0.28D, 0.5D);
+            // 中心（X: 0.5, Z: 0.5）かつ充電スロット位置（Y: 0.55m, Zオフセット: 0.05m）へ移動
+            poseStack.translate(0.5D, 0.55D, 0.5D);
 
             // ブロックの設置向き（FACING）に合わせて回転
             Direction facing = animatable.getBlockState().getValue(DroneChargerBlock.FACING);
             float rotationAngle = -facing.toYRot();
             poseStack.mulPose(Axis.YP.rotationDegrees(rotationAngle));
 
-            // 水平に寝かせる（X軸に90度回転）
-            poseStack.mulPose(Axis.XP.rotationDegrees(90.0F));
+            // 充電スタンドのスロット角度に合わせて45度傾斜
+            poseStack.mulPose(Axis.XP.rotationDegrees(45.0F));
 
             // バッテリーのサイズ感に合わせてスケール調整
-            poseStack.scale(0.55F, 0.55F, 0.55F);
+            poseStack.scale(0.5F, 0.5F, 0.5F);
 
-            // ItemDisplayContext.FIXED を指定して原点ズレを防ぎ、ボーン/ブロックにジャストフィット
+            // ItemDisplayContext.FIXED を指定して原点ズレを防ぎ、スロットにジャストフィット
             this.itemRenderer.renderStatic(
                     battery,
                     ItemDisplayContext.FIXED,
@@ -62,3 +62,4 @@ public class DroneChargerBlockEntityRenderer extends GeoBlockRenderer<DroneCharg
         }
     }
 }
+
