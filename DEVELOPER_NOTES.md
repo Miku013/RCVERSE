@@ -78,16 +78,25 @@ Minecraft 1.21.1（NeoForge）向けの超小型FPVマイクロドローン MOD�
   - 飛行中に0ブロックになった場合、操作入力を無効化して緩やかに自動降下着陸（着地時に安全操縦終了）。
 - [x] **ワールド保存対応**: NBT（`InstalledBattery`, `BatteryAccumulatedDist`）によりチャンクアンロードやワールド再ログイン後もバッテリー状態を完全維持。
 
-### 専用急速充電ステーション ＆ GeckoLib 4 導入（今回完了）
+### 専用急速充電ステーション ＆ GeckoLib 4 実装完了（今回完了）
 - [x] **GeckoLib 4.7.7（NeoForge 1.21.1）依存関係有効化**:
   - `build.gradle` に `software.bernie.geckolib:geckolib-neoforge-1.21.1:4.7.7` を導入しコンパイル成功。
 - [x] **専用充電ステーションブロック（`DroneChargerBlock` & `DroneChargerBlockEntity`）**:
   - 方向性（`FACING`）および充電状態（`CHARGING`）を持つ充電台。
+  - **3Dモデル (`drone_charger.geo.json`)**: ユーザー作成の斜めスロット・スタンド形状を完全適用。
   - **バッテリーのセット**: バッテリーを持って右クリックでスロットにカチッと装着（既存バッテリーがあれば取り出して交換）。
   - **バッテリーの取り出し**: 素手または非バッテリーで右クリックして回収。
   - **安全ドロップ**: ブロック破壊時にセット中のバッテリーを安全にドロップ（消失防止）。
   - **急速充電ロジック**: 毎tick 15ブロック分（1秒あたり 300m）急速充電。充電中は低音動作音と電気スパークパーティクルが発生し、満充電完了時にチャイムSEとハッピーパーティクルでお知らせ。
-  - **3Dバッテリー描画**: 充電器にセットされたバッテリーアイテムを上面に水平に寝かせて `ItemDisplayContext.FIXED` でリアルタイム描画。
+  - **3Dスロット差し込み描画**: 充電器にセットされたバッテリーアイテムが45度傾斜でスロットにカチャッと差し込まれてリアルタイム描画。
+- [x] **ドローン本体のGeckoLib化 (`DroneEntity`, `DroneGeoModel`, `DroneGeoRenderer`)**:
+  - ユーザー作成モデル (`drone.geo.json`) を完全適用。
+  - **プロペラ高速回転**: 飛行中・操縦中、`propeller_fl`, `propeller_fr`, `propeller_rl`, `propeller_rr` が毎フレーム滑らかに高速スピン（着地・停止時は自然に静止）。
+  - **バッテリー装着レイヤー (`DroneBatteryLayer`)**: ドローンのお腹/背中の `battery_slot` ボーンに、装着されているバッテリーアイテムを `ItemDisplayContext.FIXED` でリアルタイム3D描画。
+  - **自然な姿勢制御**: 移動速度・左右ストライフに応じた前傾/後傾・バンク傾きロール（`Mth.clamp`）を完全継承。
+- [x] **コントローラー＆バッテリーのGeckoLib 3Dアイテム化 (`GeoItem`)**:
+  - `DroneControllerItem` (`drone_controller.geo.json` / `drone_controller.png`): アンテナ付きのリアルな3Dプロポ。
+  - `DroneBatteryItem` (`drone_battery.geo.json` / `drone_battery.png`): 端子付きの3Dバッテリーパック。
 - [x] **サバイバル向けクラフトレシピの全追加**:
   - `drone_charger`: 銅インゴット、レッドストーン、避雷針、鉄インゴット
   - `drone_item`: 鉄塊、エンダーパール、鉄インゴット、レッドストーンブロック、銅インゴット
