@@ -76,11 +76,14 @@ public class ClientDroneInputHandler {
                 Entity entity = mc.level.getEntity(droneId);
                 if (entity instanceof DroneEntity drone) {
                     drone.setLocallyControlled(true);
+                    com.microdrone.mod.client.audio.DroneSoundManager.startPilotingSound(drone);
                 }
             }
 
             DroneCameraController.startViewing(droneId);
         } else {
+            com.microdrone.mod.client.audio.DroneSoundManager.stopPilotingSound();
+
             if (mc.player != null) {
                 mc.player.setInvisible(false); // 操縦終了時に透明化解除
             }
