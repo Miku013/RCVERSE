@@ -58,3 +58,4 @@ public class DroneChargerBatteryLayer extends GeoRenderLayer<DroneChargerBlockEn
         }
     }
 }
+
