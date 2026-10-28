@@ -176,10 +176,11 @@ Minecraft 1.21.1（NeoForge）向けの超小型FPVマイクロドローン MOD�
 充電ステーションやドローンの `battery_slot` ボーンにバッテリーアイテムを描画する際は、**必ず `ItemDisplayContext.FIXED` を使用し、`GeoRenderLayer`（`renderForBone`）経由で描画してください**。
 1. **なぜ `GeoRenderLayer` を使うべきか？**:
    - `GeoBlockRenderer` や `GeoEntityRenderer` は、ボーン階層・ブロック設置向き（FACING）・回転（Z→Y→X）を自動計算して PoseStack に適用します。手動で `poseStack.translate` や `Axis.YP` を計算すると、向き（NORTH/SOUTH）の反転やオイラー角の乗算順序の差異により、簡単に画面外や地中へ飛んでしまいます。
-2. **`renderForBone` 内の座標補正ルール**:
-   - `RenderUtil.translateToPivotPoint(poseStack, bone)`: GeckoLib内部で適用された `-pivot` を打ち消し、ボーンのピボット位置（かつ回転姿勢）にジャストフィットさせます。
-   - `poseStack.translate(-modelCenterX, -modelCenterY, -modelCenterZ)`: アイテムモデル自身のケース幾何中心（バッテリーなら `[-1.0/16, -1.5/16, 0]`）をピボットに一致させます。
-   - `poseStack.translate(-0.5D, -0.51D, -0.5D)`: `GeoItemRenderer.preRender` が自動適用する `(0.5, 0.51, 0.5)` を相殺します。
+2. **`renderForBone` 内の正確な描画ルール**:
+   - `RenderUtil.translateAndRotateMatrixForBone(poseStack, bone)`: GeckoLib標準のピボット移動および回転を適用します。
+   - **注意**: `translate(-0.5, -0.51, -0.5)` などの手動相殺は**絶対に行わないこと**（大幅に手前下へ吹き飛ぶ原因になります）。
+   - **端子の向き補正**: 充電器スロットに刺す際、端子をスロット奥底（充電コネクタ）に向けるため、`poseStack.mulPose(Axis.YP.rotationDegrees(180.0F))` を適用します（インジケーター面は上を向いたまま、端子のみが下向きに反転）。
+   - **ドローン本体**: `poseStack.scale(0.55F, 0.55F, 0.55F)` でお腹のスロットにジャストフィットします。
 3. `FIXED` は Blockbenchのボーン座標系（Y=UP）と一致し、アイテムの中心がボーンにジャストフィットします。`NONE` や `GROUND` を使うと原点座標が大きくズレ、上下の回転方向が狂います。
 
 ### 3-5. アニメーションキーの命名規則
