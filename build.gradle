@@ -84,8 +84,8 @@ configurations {
 }
 
 dependencies {
-    // GeckoLib for NeoForge 1.21.1 (必要に応じて有効化)
-    // implementation "software.bernie.geckolib:geckolib-neoforge-1.21.1:4.7.7"
+    // GeckoLib for NeoForge 1.21.1
+    implementation "software.bernie.geckolib:geckolib-neoforge-1.21.1:4.7.7"
 }
 
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {

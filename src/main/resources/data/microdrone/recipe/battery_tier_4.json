@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " D ",
+    "NBN",
+    " D "
+  ],
+  "key": {
+    "D": { "item": "minecraft:diamond" },
+    "B": { "item": "microdrone:battery_tier_3" },
+    "N": { "item": "minecraft:netherite_scrap" }
+  },
+  "result": {
+    "id": "microdrone:battery_tier_4",
+    "count": 1
+  }
+}

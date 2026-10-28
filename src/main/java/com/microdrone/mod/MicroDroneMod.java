@@ -1,5 +1,7 @@
 package com.microdrone.mod;
 
+import com.microdrone.mod.block.ModBlocks;
+import com.microdrone.mod.block.entity.ModBlockEntities;
 import com.microdrone.mod.client.ClientModEvents;
 import com.microdrone.mod.entity.ModEntities;
 import com.microdrone.mod.item.ModCreativeTabs;
@@ -19,6 +21,8 @@ public class MicroDroneMod {
     public MicroDroneMod(IEventBus modEventBus) {
         LOGGER.info("Initializing Micro Drone MOD...");
 
+        ModBlocks.register(modEventBus);
+        ModBlockEntities.register(modEventBus);
         ModEntities.register(modEventBus);
         ModItems.register(modEventBus);
         ModCreativeTabs.register(modEventBus);

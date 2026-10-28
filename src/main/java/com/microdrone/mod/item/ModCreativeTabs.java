@@ -20,6 +20,7 @@ public class ModCreativeTabs {
                     .displayItems((parameters, output) -> {
                         output.accept(ModItems.DRONE_SPAWN_ITEM.get());
                         output.accept(ModItems.DRONE_CONTROLLER.get());
+                        output.accept(ModItems.DRONE_CHARGER_ITEM.get());
                         output.accept(ModItems.BATTERY_TIER_1.get());
                         output.accept(ModItems.BATTERY_TIER_2.get());
                         output.accept(ModItems.BATTERY_TIER_3.get());

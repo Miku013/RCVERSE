@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " I ",
+    "IBI",
+    " R "
+  ],
+  "key": {
+    "I": { "item": "minecraft:iron_ingot" },
+    "B": { "item": "microdrone:battery_tier_1" },
+    "R": { "item": "minecraft:redstone" }
+  },
+  "result": {
+    "id": "microdrone:battery_tier_2",
+    "count": 1
+  }
+}

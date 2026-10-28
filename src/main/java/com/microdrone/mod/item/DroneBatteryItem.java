@@ -50,3 +50,4 @@ public class DroneBatteryItem extends Item {
         tooltipComponents.add(Component.translatable("tooltip.microdrone.battery_desc").withStyle(ChatFormatting.DARK_GRAY));
     }
 }
+

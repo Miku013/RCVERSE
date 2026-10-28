@@ -2,11 +2,13 @@
   "itemGroup.microdrone": "Micro Drone",
   "item.microdrone.drone_item": "Micro Drone (Deployer)",
   "item.microdrone.drone_controller": "Drone Controller",
+  "block.microdrone.drone_charger": "RC Fast Charging Station",
+  "item.microdrone.drone_charger": "RC Fast Charging Station",
   "item.microdrone.battery_tier_1": "Drone Battery (3000m)",
   "item.microdrone.battery_tier_2": "Drone Battery (4000m)",
   "item.microdrone.battery_tier_3": "Drone Battery (5000m)",
   "item.microdrone.battery_tier_4": "Drone Battery (6000m)",
-  "tooltip.microdrone.battery_desc": "Hold and Right-Click drone to attach / Sneak Right-Click to detach",
+  "tooltip.microdrone.battery_desc": "Hold and Right-Click drone to attach / Sneak Right-Click to detach (Fast recharge on Charging Station)",
   "entity.microdrone.drone": "Micro Drone",
   "message.microdrone.pilot_start": "§a[Drone] Piloting started. (W/S: Pitch/Forward, A/D: Strafe, Space/Shift: Elevate, Mouse: Yaw, Right Click with Controller: Exit)",
   "message.microdrone.pilot_stop": "§e[Drone] Piloting stopped.",
@@ -19,5 +21,8 @@
   "message.microdrone.battery_already_installed": "§e[Drone] A battery is already attached.",
   "message.microdrone.no_battery": "§c[Drone] No battery installed! Hold a battery and right-click to install.",
   "message.microdrone.battery_depleted": "§c[Drone] Battery is depleted!",
-  "message.microdrone.battery_empty_failsafe": "§c[Warning] Battery depleted! Emergency auto-landing activated."
+  "message.microdrone.battery_empty_failsafe": "§c[Warning] Battery depleted! Emergency auto-landing activated.",
+  "message.microdrone.charger.inserted": "[Charging Station] Inserted %s. (Remaining: %d%% [%dm / %dm])",
+  "message.microdrone.charger.removed": "[Charging Station] Removed %s. (Remaining: %d%% [%dm / %dm])",
+  "message.microdrone.charger.empty": "[Charging Station] Slot is empty. Right-click with a battery to insert."
 }

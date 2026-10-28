@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " G ",
+    "GBG",
+    " R "
+  ],
+  "key": {
+    "G": { "item": "minecraft:gold_ingot" },
+    "B": { "item": "microdrone:battery_tier_2" },
+    "R": { "item": "minecraft:redstone_block" }
+  },
+  "result": {
+    "id": "microdrone:battery_tier_3",
+    "count": 1
+  }
+}

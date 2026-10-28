@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "NEN",
+    "IRI",
+    "NCN"
+  ],
+  "key": {
+    "N": { "item": "minecraft:iron_nugget" },
+    "E": { "item": "minecraft:ender_pearl" },
+    "I": { "item": "minecraft:iron_ingot" },
+    "R": { "item": "minecraft:redstone_block" },
+    "C": { "item": "minecraft:copper_ingot" }
+  },
+  "result": {
+    "id": "microdrone:drone_item",
+    "count": 1
+  }
+}

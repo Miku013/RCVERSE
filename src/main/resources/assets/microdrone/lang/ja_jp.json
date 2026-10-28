@@ -2,11 +2,13 @@
   "itemGroup.microdrone": "マイクロドローン",
   "item.microdrone.drone_item": "マイクロドローン（配置用）",
   "item.microdrone.drone_controller": "ドローンコントローラー",
+  "block.microdrone.drone_charger": "ラジコン急速充電ステーション",
+  "item.microdrone.drone_charger": "ラジコン急速充電ステーション",
   "item.microdrone.battery_tier_1": "ドローンバッテリー (3000m)",
   "item.microdrone.battery_tier_2": "ドローンバッテリー (4000m)",
   "item.microdrone.battery_tier_3": "ドローンバッテリー (5000m)",
   "item.microdrone.battery_tier_4": "ドローンバッテリー (6000m)",
-  "tooltip.microdrone.battery_desc": "手に持ってドローンを右クリックで装着 / スニーク右クリックで脱着",
+  "tooltip.microdrone.battery_desc": "手に持ってドローンを右クリックで装着 / スニーク右クリックで脱着（充電台で急速充電可能）",
   "entity.microdrone.drone": "マイクロドローン",
   "message.microdrone.pilot_start": "§a[ドローン] 操縦を開始しました。（W/S: 前後, A/D: 左右, Space/Shift: 上下, マウス: 旋回, コントローラーを持って右クリック: 終了）",
   "message.microdrone.pilot_stop": "§e[ドローン] 操縦を終了しました。",
@@ -19,5 +21,8 @@
   "message.microdrone.battery_already_installed": "§e[ドローン] 既にバッテリーが装着されています。",
   "message.microdrone.no_battery": "§c[ドローン] バッテリーが装着されていません！バッテリーを持って右クリックで装着してください。",
   "message.microdrone.battery_depleted": "§c[ドローン] バッテリーが切れています！",
-  "message.microdrone.battery_empty_failsafe": "§c[警告] バッテリーが切れました！緊急自動着陸しました。"
+  "message.microdrone.battery_empty_failsafe": "§c[警告] バッテリーが切れました！緊急自動着陸しました。",
+  "message.microdrone.charger.inserted": "[充電ステーション] %s をセットしました。（残量: %d%% [%dm / %dm]）",
+  "message.microdrone.charger.removed": "[充電ステーション] %s を取り出しました。（残量: %d%% [%dm / %dm]）",
+  "message.microdrone.charger.empty": "[充電ステーション] スロットは空です。バッテリーを持って右クリックでセットしてください。"
 }

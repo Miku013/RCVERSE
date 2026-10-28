@@ -1,7 +1,9 @@
 package com.microdrone.mod.item;
 
 import com.microdrone.mod.MicroDroneMod;
+import com.microdrone.mod.block.ModBlocks;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
@@ -16,6 +18,10 @@ public class ModItems {
 
     public static final DeferredHolder<Item, DroneControllerItem> DRONE_CONTROLLER =
             ITEMS.register("drone_controller", () -> new DroneControllerItem(new Item.Properties().stacksTo(1)));
+
+    // 充電ステーション (BlockItem)
+    public static final DeferredHolder<Item, BlockItem> DRONE_CHARGER_ITEM =
+            ITEMS.register("drone_charger", () -> new BlockItem(ModBlocks.DRONE_CHARGER.get(), new Item.Properties()));
 
     // === 4段階の航続距離バッテリーアイテム (Step 5) ===
     // Tier 1: 3,000 ブロック

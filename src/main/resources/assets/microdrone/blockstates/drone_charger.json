@@ -1,0 +1,12 @@
+{
+  "variants": {
+    "facing=north,charging=false": { "model": "microdrone:block/drone_charger" },
+    "facing=east,charging=false":  { "model": "microdrone:block/drone_charger", "y": 90 },
+    "facing=south,charging=false": { "model": "microdrone:block/drone_charger", "y": 180 },
+    "facing=west,charging=false":  { "model": "microdrone:block/drone_charger", "y": 270 },
+    "facing=north,charging=true":  { "model": "microdrone:block/drone_charger" },
+    "facing=east,charging=true":   { "model": "microdrone:block/drone_charger", "y": 90 },
+    "facing=south,charging=true":  { "model": "microdrone:block/drone_charger", "y": 180 },
+    "facing=west,charging=true":   { "model": "microdrone:block/drone_charger", "y": 270 }
+  }
+}
