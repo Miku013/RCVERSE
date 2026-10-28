@@ -45,27 +45,30 @@ public class DroneHudOverlay {
         // 1. フライトクロスヘア（中央照準レティクル）
         renderCrosshair(graphics, cx, cy);
 
-        // 2. 機首方位（HDG / コンパス）
-        renderCompass(graphics, font, cx, 14, drone.getYRot());
+        // 2. 機首方位（HDG / コンパス） - 画面上部中央
+        renderCompass(graphics, font, cx, 12, drone.getYRot());
 
-        // 3. 飛行計器（左側: 速度 SPD, 高度 ALT, 昇降速度 V/S）
-        renderFlightInstruments(graphics, font, 16, cy - 20, drone);
+        // 3. 画面下部計器の基準Y座標 (画面下端から約44px上)
+        int bottomInstrumentsY = height - 44;
 
-        // 4. 電波強度・離脱距離（右側: 距離 DIST, 電波 RSSI, アンテナバー）
-        renderSignalStatus(graphics, font, width - 96, cy - 20, drone);
+        // 4. 飛行計器（画面下部左側: 速度、高度、昇降）
+        renderFlightInstruments(graphics, font, 14, bottomInstrumentsY, drone);
 
-        // 5. 範囲警告メッセージ（中央下）
-        renderAlerts(graphics, font, cx, cy + 28, drone);
+        // 5. 電波強度・離脱距離（画面下部右側: 距離、電波、アンテナバー）
+        renderSignalStatus(graphics, font, width - 104, bottomInstrumentsY, drone);
 
-        // 6. 操作ガイド（右下）
-        renderControlsGuide(graphics, font, width - 10, height - 14);
+        // 6. 範囲警告メッセージ（画面中央下）
+        renderAlerts(graphics, font, cx, cy + 30, drone);
+
+        // 7. 操作ガイド（画面下部中央）
+        renderControlsGuide(graphics, font, cx, height - 14);
     }
 
     /**
-     * 中央クロスヘアの描画
+     * 中央クロスヘアの描画（控えめな半透明シアン）
      */
     private void renderCrosshair(GuiGraphics graphics, int cx, int cy) {
-        int color = 0x90A0E0FF; // 半透明のサイアンブルー
+        int color = 0x8055FFFF; // 半透明のサイアンブルー
 
         // 水平ガイドバー (隙間 8px, 長さ 10px)
         graphics.fill(cx - 15, cy, cx - 5, cy + 1, color);
@@ -79,7 +82,7 @@ public class DroneHudOverlay {
         graphics.fill(cx, cy, cx + 1, cy + 1, 0xD0FFFFFF);
 
         // 四隅のFPVフレームブラケット
-        int bColor = 0x40FFFFFF;
+        int bColor = 0x35FFFFFF;
         // 左上
         graphics.fill(cx - 26, cy - 18, cx - 21, cy - 17, bColor);
         graphics.fill(cx - 26, cy - 18, cx - 25, cy - 13, bColor);
@@ -95,25 +98,25 @@ public class DroneHudOverlay {
     }
 
     /**
-     * 上部コンパス方位の描画
+     * 上部コンパス方位の描画（日本語）
      */
     private void renderCompass(GuiGraphics graphics, Font font, int cx, int topY, float rawYaw) {
         float yaw = rawYaw % 360.0f;
         if (yaw < 0) yaw += 360.0f;
 
-        // Minecraft座標系のYawから方位文字を取得
-        // 0=S, 90=W, 180=N, 270=E
+        // Minecraft座標系のYawから方位文字を取得（日本語）
+        // 0=南, 90=西, 180=北, 270=東
         String dir;
-        if (yaw >= 337.5 || yaw < 22.5) dir = "S";
-        else if (yaw < 67.5) dir = "SW";
-        else if (yaw < 112.5) dir = "W";
-        else if (yaw < 157.5) dir = "NW";
-        else if (yaw < 202.5) dir = "N";
-        else if (yaw < 247.5) dir = "NE";
-        else if (yaw < 292.5) dir = "E";
-        else dir = "SE";
+        if (yaw >= 337.5 || yaw < 22.5) dir = "南";
+        else if (yaw < 67.5) dir = "南西";
+        else if (yaw < 112.5) dir = "西";
+        else if (yaw < 157.5) dir = "北西";
+        else if (yaw < 202.5) dir = "北";
+        else if (yaw < 247.5) dir = "北東";
+        else if (yaw < 292.5) dir = "東";
+        else dir = "南東";
 
-        String text = String.format("[ %s %03d° ]", dir, (int) yaw);
+        String text = String.format("[ 方位: %s %03d° ]", dir, (int) yaw);
         int tw = font.width(text);
 
         // 背景半透明チップ
@@ -122,7 +125,7 @@ public class DroneHudOverlay {
     }
 
     /**
-     * 速度・高度・昇降速度インジケーターの描画
+     * 速度・高度・昇降速度インジケーターの描画（画面下部左側・日本語）
      */
     private void renderFlightInstruments(GuiGraphics graphics, Font font, int x, int y, DroneEntity drone) {
         Vec3 vel = drone.getDeltaMovement();
@@ -130,23 +133,23 @@ public class DroneHudOverlay {
         double vSpeed = vel.y * 20.0;                                     // m/s
         double alt = drone.getY();
 
-        // 背景ボックス
-        graphics.fill(x - 4, y - 4, x + 76, y + 36, 0x40000000);
+        // 背景ボックス (半透明黒)
+        graphics.fill(x - 4, y - 4, x + 90, y + 36, 0x40000000);
 
-        String spdText = String.format("SPD  %.1f", hSpeed);
-        String altText = String.format("ALT  %.1f", alt);
-        String vsText = String.format("V/S  %+.1f", vSpeed);
+        String spdText = String.format("速度  %.1f m/s", hSpeed);
+        String altText = String.format("高度  %.1f m", alt);
+        String vsText = String.format("昇降  %+.1f m/s", vSpeed);
 
         graphics.drawString(font, spdText, x, y, 0xFFE0E0E0, true);
         graphics.drawString(font, altText, x, y + 11, 0xFFE0E0E0, true);
 
-        // 昇降速度は上昇: 緑、下降: オレンジ
+        // 昇降速度は上昇: 緑、下降: オレンジ、水平: グレー
         int vsColor = vSpeed > 0.3 ? 0xFF55FF55 : (vSpeed < -0.3 ? 0xFFFF9944 : 0xFFAAAAAA);
         graphics.drawString(font, vsText, x, y + 22, vsColor, true);
     }
 
     /**
-     * 電波強度と離脱距離の描画
+     * 電波強度と離脱距離の描画（画面下部右側・日本語）
      */
     private void renderSignalStatus(GuiGraphics graphics, Font font, int x, int y, DroneEntity drone) {
         double sx = ClientDroneInputHandler.getStartX();
@@ -161,8 +164,8 @@ public class DroneHudOverlay {
         double ratio = Math.max(0.0, 1.0 - (dist / maxRange));
         int rssi = (int) (ratio * 100);
 
-        // 背景ボックス
-        graphics.fill(x - 4, y - 4, x + 84, y + 36, 0x40000000);
+        // 背景ボックス (半透明黒)
+        graphics.fill(x - 4, y - 4, x + 94, y + 36, 0x40000000);
 
         // 電波色判定
         int sigColor;
@@ -177,14 +180,14 @@ public class DroneHudOverlay {
             sigColor = 0xFF55FF55; // 緑
         }
 
-        String distText = String.format("DIST %.0fm", dist);
-        String rssiText = String.format("RSSI %d%%", rssi);
+        String distText = String.format("距離  %.0f m", dist);
+        String rssiText = String.format("電波  %d%%", rssi);
 
         graphics.drawString(font, distText, x, y, 0xFFE0E0E0, true);
         graphics.drawString(font, rssiText, x, y + 11, sigColor, true);
 
         // アンテナピクト（4本のバー）
-        int barBaseX = x + 56;
+        int barBaseX = x + 64;
         int barBaseY = y + 20;
         int activeBars = (rssi > 75) ? 4 : (rssi > 50) ? 3 : (rssi > 25) ? 2 : (rssi > 0) ? 1 : 0;
 
@@ -195,10 +198,14 @@ public class DroneHudOverlay {
             int bCol = (i < activeBars) ? sigColor : 0x40666666;
             graphics.fill(bx, by, bx + 2, barBaseY, bCol);
         }
+
+        // 限界距離の目安表示
+        String maxText = String.format("限界  %.0f m", maxRange);
+        graphics.drawString(font, maxText, x, y + 22, 0xFF888888, true);
     }
 
     /**
-     * 電波警告メッセージ（圏外・危険接近時のみ）
+     * 電波警告メッセージ（圏外・危険接近時のみ・日本語）
      */
     private void renderAlerts(GuiGraphics graphics, Font font, int cx, int y, DroneEntity drone) {
         double sx = ClientDroneInputHandler.getStartX();
@@ -209,20 +216,20 @@ public class DroneHudOverlay {
         if (dist > DroneEntity.MAX_SIGNAL_RANGE) {
             // 電波ロスト
             if (drone.tickCount % 8 < 5) {
-                Component alert = Component.literal("§c§l[ SIGNAL LOST - FAILSAFE ACTIVATING ]");
+                Component alert = Component.literal("§c§l[ 電波切断: 緊急自動帰還フェイルセーフ作動中 ]");
                 int aw = font.width(alert);
                 graphics.fill(cx - aw / 2 - 4, y - 2, cx + aw / 2 + 4, y + font.lineHeight + 2, 0x80000000);
                 graphics.drawString(font, alert, cx - aw / 2, y, 0xFFFF2222, true);
             }
         } else if (dist > DroneEntity.CRITICAL_SIGNAL_RANGE) {
             // 限界接近
-            Component alert = Component.literal("§c§l[ CAUTION: MAX FLIGHT RANGE LIMIT ]");
+            Component alert = Component.literal("§c§l[ 危険: 最大飛行限界に接近中 ]");
             int aw = font.width(alert);
             graphics.fill(cx - aw / 2 - 4, y - 2, cx + aw / 2 + 4, y + font.lineHeight + 2, 0x60000000);
             graphics.drawString(font, alert, cx - aw / 2, y, 0xFFFF4444, true);
         } else if (dist > DroneEntity.WARN_SIGNAL_RANGE) {
             // 減衰警告
-            Component alert = Component.literal("§e[ WARNING: SIGNAL WEAK ]");
+            Component alert = Component.literal("§e[ 警告: 電波が弱くなっています ]");
             int aw = font.width(alert);
             graphics.fill(cx - aw / 2 - 4, y - 2, cx + aw / 2 + 4, y + font.lineHeight + 2, 0x50000000);
             graphics.drawString(font, alert, cx - aw / 2, y, 0xFFFFFF55, true);
@@ -230,11 +237,11 @@ public class DroneHudOverlay {
     }
 
     /**
-     * 右下の操作ガイド
+     * 操作ガイド（画面下部中央・日本語）
      */
-    private void renderControlsGuide(GuiGraphics graphics, Font font, int rightX, int bottomY) {
-        String guide = "§7[Right-Click: Exit]";
+    private void renderControlsGuide(GuiGraphics graphics, Font font, int cx, int bottomY) {
+        String guide = "§7[右クリック: 操縦終了]";
         int gw = font.width(guide);
-        graphics.drawString(font, guide, rightX - gw, bottomY, 0x80FFFFFF, true);
+        graphics.drawString(font, guide, cx - gw / 2, bottomY, 0x90FFFFFF, true);
     }
 }
