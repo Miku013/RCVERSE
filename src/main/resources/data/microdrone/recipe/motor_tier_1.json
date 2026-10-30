@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " I ",
+    "CRC",
+    " N "
+  ],
+  "key": {
+    "I": { "item": "minecraft:iron_ingot" },
+    "C": { "item": "minecraft:copper_ingot" },
+    "R": { "item": "minecraft:redstone" },
+    "N": { "item": "minecraft:iron_nugget" }
+  },
+  "result": {
+    "id": "microdrone:motor_tier_1",
+    "count": 1
+  }
+}

@@ -42,8 +42,9 @@ public class DroneRenderer extends EntityRenderer<DroneEntity> {
         double localForward = -Math.sin(rad) * vel.x + Math.cos(rad) * vel.z;
         double localStrafe = Math.cos(rad) * vel.x + Math.sin(rad) * vel.z;
 
-        float tiltPitch = (float) (localForward / DroneEntity.MAX_HORIZONTAL_SPEED) * 20.0F;
-        float tiltRoll = (float) (localStrafe / DroneEntity.MAX_HORIZONTAL_SPEED) * 20.0F;
+        double maxSpeed = entity.getCurrentMaxSpeed();
+        float tiltPitch = (float) (localForward / maxSpeed) * 20.0F;
+        float tiltRoll = (float) (localStrafe / maxSpeed) * 20.0F;
 
         tiltPitch = Mth.clamp(tiltPitch, -25.0F, 25.0F);
         tiltRoll = Mth.clamp(tiltRoll, -25.0F, 25.0F);

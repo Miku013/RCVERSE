@@ -14,7 +14,7 @@ import net.neoforged.neoforge.client.event.RenderGuiEvent;
 import net.neoforged.neoforge.common.NeoForge;
 
 /**
- * FPVマイクロドローン専用のフライト計器・HUDオーバーレイ (Phase 4 / Step 5)
+ * FPVマイクロドローン専用のフライト計器・HUDオーバーレイ
  */
 public class DroneHudOverlay {
 
@@ -48,10 +48,10 @@ public class DroneHudOverlay {
         // 2. 機首方位（HDG / コンパス） - 画面上部中央
         renderCompass(graphics, font, cx, 12, drone.getYRot());
 
-        // 3. 画面下部計器の基準Y座標 (4行表示のため下端から約54px上)
-        int bottomInstrumentsY = height - 54;
+        // 3. 画面下部計器の基準Y座標 (5行表示のため下端から約65px上)
+        int bottomInstrumentsY = height - 65;
 
-        // 4. 飛行計器（画面下部左側: 速度、高度、昇降、バッテリー）
+        // 4. 飛行計器（画面下部左側: 速度、高度、昇降、バッテリー、モーター）
         renderFlightInstruments(graphics, font, 14, bottomInstrumentsY, drone);
 
         // 5. 電波強度・離脱距離（画面下部右側: 距離、電波、アンテナバー、限界）
@@ -98,32 +98,39 @@ public class DroneHudOverlay {
     }
 
     /**
-     * 上部コンパス方位の描画（日本語）
+     * 機首方位（HDG / コンパス）の描画（画面上部中央・日本語方位）
      */
-    private void renderCompass(GuiGraphics graphics, Font font, int cx, int topY, float rawYaw) {
-        float yaw = rawYaw % 360.0f;
-        if (yaw < 0) yaw += 360.0f;
+    private void renderCompass(GuiGraphics graphics, Font font, int cx, int topY, float yaw) {
+        float normalizedYaw = ((yaw % 360) + 360) % 360;
 
-        String dir;
-        if (yaw >= 337.5 || yaw < 22.5) dir = "南";
-        else if (yaw < 67.5) dir = "南西";
-        else if (yaw < 112.5) dir = "西";
-        else if (yaw < 157.5) dir = "北西";
-        else if (yaw < 202.5) dir = "北";
-        else if (yaw < 247.5) dir = "北東";
-        else if (yaw < 292.5) dir = "東";
-        else dir = "南東";
+        String cardinal;
+        if (normalizedYaw >= 337.5 || normalizedYaw < 22.5) {
+            cardinal = "南";
+        } else if (normalizedYaw < 67.5) {
+            cardinal = "南西";
+        } else if (normalizedYaw < 112.5) {
+            cardinal = "西";
+        } else if (normalizedYaw < 157.5) {
+            cardinal = "北西";
+        } else if (normalizedYaw < 202.5) {
+            cardinal = "北";
+        } else if (normalizedYaw < 247.5) {
+            cardinal = "北東";
+        } else if (normalizedYaw < 292.5) {
+            cardinal = "東";
+        } else {
+            cardinal = "南東";
+        }
 
-        String text = String.format("[ 方位: %s %03d° ]", dir, (int) yaw);
+        String text = String.format("HDG: %03d° %s", (int) normalizedYaw, cardinal);
         int tw = font.width(text);
 
-        // 背景半透明チップ
         graphics.fill(cx - tw / 2 - 4, topY - 2, cx + tw / 2 + 4, topY + font.lineHeight + 2, 0x50000000);
         graphics.drawString(font, text, cx - tw / 2, topY, 0xFF55FFFF, true);
     }
 
     /**
-     * 速度・高度・昇降速度・バッテリーインジケーターの描画（画面下部左側・日本語）
+     * 速度・高度・昇降速度・バッテリー・モーターインジケーターの描画（画面下部左側・日本語）
      */
     private void renderFlightInstruments(GuiGraphics graphics, Font font, int x, int y, DroneEntity drone) {
         Vec3 vel = drone.getDeltaMovement();
@@ -131,8 +138,8 @@ public class DroneHudOverlay {
         double vSpeed = vel.y * 20.0;                                     // m/s
         double alt = drone.getY();
 
-        // 背景ボックス (半透明黒, 4行分)
-        graphics.fill(x - 4, y - 4, x + 96, y + 47, 0x40000000);
+        // 背景ボックス (半透明黒, 5行分)
+        graphics.fill(x - 4, y - 4, x + 96, y + 58, 0x40000000);
 
         String spdText = String.format("速度  %.1f m/s", hSpeed);
         String altText = String.format("高度  %.1f m", alt);
@@ -145,7 +152,7 @@ public class DroneHudOverlay {
         int vsColor = vSpeed > 0.3 ? 0xFF55FF55 : (vSpeed < -0.3 ? 0xFFFF9944 : 0xFFAAAAAA);
         graphics.drawString(font, vsText, x, y + 22, vsColor, true);
 
-        // バッテリー残量表示 (Step 5)
+        // バッテリー残量表示
         if (drone.hasBattery()) {
             int remaining = drone.getBatteryRemaining();
             float pct = drone.getBatteryPercentage();
@@ -167,6 +174,17 @@ public class DroneHudOverlay {
         } else {
             graphics.drawString(font, "電池  未装着", x, y + 33, 0xFFAAAAAA, true);
         }
+
+        // モーターTier表示
+        int motorTier = drone.getMotorTier();
+        int motorColor = drone.getMotorColor() | 0xFF000000;
+        String motorName = switch (motorTier) {
+            case 2 -> "T2 (Sport)";
+            case 3 -> "T3 (High)";
+            case 4 -> "T4 (Race)";
+            default -> "T1 (Std)";
+        };
+        graphics.drawString(font, "動力  " + motorName, x, y + 44, motorColor, true);
     }
 
     /**
@@ -258,7 +276,7 @@ public class DroneHudOverlay {
             graphics.drawString(font, alert, cx - aw / 2, y, 0xFFFFFF55, true);
         }
 
-        // 2. バッテリー関連の警告 (Step 5)
+        // 2. バッテリー関連の警告
         if (drone.hasBattery()) {
             int remaining = drone.getBatteryRemaining();
             float pct = drone.getBatteryPercentage();

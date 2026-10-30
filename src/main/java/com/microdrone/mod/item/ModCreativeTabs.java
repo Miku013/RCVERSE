@@ -26,6 +26,10 @@ public class ModCreativeTabs {
                         output.accept(ModItems.BATTERY_TIER_2.get());
                         output.accept(ModItems.BATTERY_TIER_3.get());
                         output.accept(ModItems.BATTERY_TIER_4.get());
+                        output.accept(ModItems.MOTOR_TIER_1.get());
+                        output.accept(ModItems.MOTOR_TIER_2.get());
+                        output.accept(ModItems.MOTOR_TIER_3.get());
+                        output.accept(ModItems.MOTOR_TIER_4.get());
                     })
                     .build());
 

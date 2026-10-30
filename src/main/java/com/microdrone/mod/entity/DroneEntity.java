@@ -1,6 +1,8 @@
 package com.microdrone.mod.entity;
 
 import com.microdrone.mod.MicroDroneMod;
+import com.microdrone.mod.item.DroneBatteryItem;
+import com.microdrone.mod.item.DroneMotorItem;
 import com.microdrone.mod.item.ModItems;
 import com.microdrone.mod.network.DronePilotStatePayload;
 import net.minecraft.core.Rotations;
@@ -10,7 +12,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
-import com.microdrone.mod.item.DroneBatteryItem;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -67,17 +68,16 @@ public class DroneEntity extends Entity implements GeoEntity {
         return this.pilotUUID;
     }
 
-    // === 飛行制御パラメータ (Phase 3) ===
-    public static final double MAX_HORIZONTAL_SPEED = 0.35;    // 最大水平速度 (約 7 m/s)
-    public static final double ACCELERATION = 0.04;             // 水平加速度
-    public static final double HORIZONTAL_DRAG = 0.90;          // 水平慣性摩擦
-    public static final double MAX_VERTICAL_SPEED = 0.25;      // 最大昇降速度 (約 5 m/s)
-    public static final double VERTICAL_ACCELERATION = 0.035;   // 昇降加速度
-    public static final double VERTICAL_DRAG = 0.82;            // 垂直慣性摩擦 (ホバリング維持)
-    public static final float YAW_SENSITIVITY = 1.0f;           // 旋回感度
+    // === デフォルト飛行制御パラメータ (Tier 1 相当) ===
+    public static final double DEFAULT_MAX_HORIZONTAL_SPEED = 0.35;    // 最大水平速度 (約 7 m/s)
+    public static final double DEFAULT_ACCELERATION = 0.04;             // 水平加速度
+    public static final double HORIZONTAL_DRAG = 0.90;                  // 水平慣性摩擦
+    public static final double DEFAULT_MAX_VERTICAL_SPEED = 0.25;      // 最大昇降速度 (約 5 m/s)
+    public static final double DEFAULT_VERTICAL_ACCELERATION = 0.035;   // 昇降加速度
+    public static final double VERTICAL_DRAG = 0.82;                    // 垂直慣性摩擦 (ホバリング維持)
+    public static final float YAW_SENSITIVITY = 1.0f;                   // 旋回感度
 
-    // === 電波距離制限パラメータ (Phase 4 / Step 4) ===
-    // === バッテリー同期用 EntityData (Step 5) ===
+    // === バッテリー同期用 EntityData ===
     private static final EntityDataAccessor<Boolean> DATA_HAS_BATTERY =
             SynchedEntityData.defineId(DroneEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Integer> DATA_BATTERY_REMAINING =
@@ -87,11 +87,20 @@ public class DroneEntity extends Entity implements GeoEntity {
     private static final EntityDataAccessor<ItemStack> DATA_INSTALLED_BATTERY =
             SynchedEntityData.defineId(DroneEntity.class, EntityDataSerializers.ITEM_STACK);
 
+    // === モーター同期用 EntityData ===
+    private static final EntityDataAccessor<Integer> DATA_MOTOR_TIER =
+            SynchedEntityData.defineId(DroneEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<ItemStack> DATA_INSTALLED_MOTOR =
+            SynchedEntityData.defineId(DroneEntity.class, EntityDataSerializers.ITEM_STACK);
+
     // 装着中のバッテリー
     private ItemStack installedBattery = ItemStack.EMPTY;
+    // 装着中のモーター (空の場合はデフォルトTier 1)
+    private ItemStack installedMotor = ItemStack.EMPTY;
     // 前後移動距離積算用
     private double accumulatedDistance = 0.0;
 
+    // === 電波距離制限パラメータ ===
     public static final double MAX_SIGNAL_RANGE = 250.0;       // 最大電波距離 (m)
     public static final double WARN_SIGNAL_RANGE = 175.0;      // 減衰・警告開始距離 (70%)
     public static final double CRITICAL_SIGNAL_RANGE = 225.0;  // 限界・危険開始距離 (90%)
@@ -113,7 +122,6 @@ public class DroneEntity extends Entity implements GeoEntity {
     // クライアント側で自プレイヤーが操縦中かどうかのフラグ（カクつき防止・クライアント予測用）
     private boolean locallyControlled = false;
 
-
     // 入力値 (-1.0 ~ 1.0)
     private float inputForward = 0.0f;
     private float inputStrafe = 0.0f;
@@ -124,7 +132,7 @@ public class DroneEntity extends Entity implements GeoEntity {
     // ホバリング時の微小な浮遊アニメーション用
     private int hoverTicks = 0;
 
-    // Phase 5: 機体のチャンク移動追従用
+    // 機体のチャンク移動追従用
     private ChunkPos lastChunkPos = null;
 
     public DroneEntity(EntityType<?> entityType, Level level) {
@@ -138,8 +146,11 @@ public class DroneEntity extends Entity implements GeoEntity {
         builder.define(DATA_BATTERY_REMAINING, 0);
         builder.define(DATA_BATTERY_MAX, 0);
         builder.define(DATA_INSTALLED_BATTERY, ItemStack.EMPTY);
+        builder.define(DATA_MOTOR_TIER, 1);
+        builder.define(DATA_INSTALLED_MOTOR, ItemStack.EMPTY);
     }
 
+    // === バッテリー関連 ===
     public boolean hasBattery() {
         return this.entityData.get(DATA_HAS_BATTERY);
     }
@@ -173,6 +184,58 @@ public class DroneEntity extends Entity implements GeoEntity {
             this.entityData.set(DATA_BATTERY_MAX, 0);
             this.entityData.set(DATA_INSTALLED_BATTERY, ItemStack.EMPTY);
         }
+    }
+
+    // === モーター関連 ===
+    public int getMotorTier() {
+        return this.entityData.get(DATA_MOTOR_TIER);
+    }
+
+    public ItemStack getInstalledMotor() {
+        return this.entityData.get(DATA_INSTALLED_MOTOR);
+    }
+
+    public void updateMotorSyncData() {
+        if (!this.installedMotor.isEmpty() && this.installedMotor.getItem() instanceof DroneMotorItem motorItem) {
+            this.entityData.set(DATA_MOTOR_TIER, motorItem.getTier());
+            this.entityData.set(DATA_INSTALLED_MOTOR, this.installedMotor.copy());
+        } else {
+            this.entityData.set(DATA_MOTOR_TIER, 1);
+            this.entityData.set(DATA_INSTALLED_MOTOR, ItemStack.EMPTY);
+        }
+    }
+
+    public double getCurrentMaxSpeed() {
+        if (!this.installedMotor.isEmpty() && this.installedMotor.getItem() instanceof DroneMotorItem motorItem) {
+            return motorItem.getMaxHorizontalSpeed();
+        }
+        return DEFAULT_MAX_HORIZONTAL_SPEED;
+    }
+
+    public double getCurrentAcceleration() {
+        if (!this.installedMotor.isEmpty() && this.installedMotor.getItem() instanceof DroneMotorItem motorItem) {
+            return motorItem.getAcceleration();
+        }
+        return DEFAULT_ACCELERATION;
+    }
+
+    public double getCurrentMaxVerticalSpeed() {
+        if (!this.installedMotor.isEmpty() && this.installedMotor.getItem() instanceof DroneMotorItem motorItem) {
+            return motorItem.getMaxVerticalSpeed();
+        }
+        return DEFAULT_MAX_VERTICAL_SPEED;
+    }
+
+    public double getCurrentVerticalAcceleration() {
+        double accel = getCurrentAcceleration();
+        return accel * (DEFAULT_VERTICAL_ACCELERATION / DEFAULT_ACCELERATION);
+    }
+
+    public int getMotorColor() {
+        if (!this.installedMotor.isEmpty() && this.installedMotor.getItem() instanceof DroneMotorItem motorItem) {
+            return motorItem.getMotorColor();
+        }
+        return 0xFF333333; // デフォルト (Tier 1: ガンメタル)
     }
 
     // === GeckoLib 4 アニメーションコントローラー ===
@@ -219,7 +282,6 @@ public class DroneEntity extends Entity implements GeoEntity {
     @Override
     public void lerpTo(double x, double y, double z, float yRot, float xRot, int steps) {
         if (this.locallyControlled) {
-            // サーバー位置との距離をチェック
             double dx = x - this.getX();
             double dy = y - this.getY();
             double dz = z - this.getZ();
@@ -228,7 +290,6 @@ public class DroneEntity extends Entity implements GeoEntity {
             if (distSq > 9.0) { // 3ブロック以上の大きなズレのみ補正
                 super.lerpTo(x, y, z, yRot, xRot, steps);
             }
-            // 微小なズレの場合はクライアント側の予測物理を維持し、カクつきを完全防止
             return;
         }
         super.lerpTo(x, y, z, yRot, xRot, steps);
@@ -240,7 +301,7 @@ public class DroneEntity extends Entity implements GeoEntity {
             return false;
         }
 
-        // バッテリー装着・残量チェック (Step 5)
+        // バッテリー装着・残量チェック
         if (this.installedBattery.isEmpty()) {
             player.sendSystemMessage(Component.translatable("message.microdrone.no_battery"));
             return false;
@@ -252,7 +313,7 @@ public class DroneEntity extends Entity implements GeoEntity {
 
         this.pilotUUID = player.getUUID();
 
-        // パターンA: 操縦開始時の初期位置を記憶
+        // 操縦開始時の初期位置を記憶
         ServerLevel serverLevel = player.serverLevel();
         this.startDimension = serverLevel.dimension();
         this.startX = player.getX();
@@ -262,7 +323,7 @@ public class DroneEntity extends Entity implements GeoEntity {
         this.startPitch = player.getXRot();
         this.startChunkPos = new ChunkPos(player.blockPosition());
 
-        // 1. 初期位置チャンクの強制ロード保護（プレイヤーの身体周辺がアンロードされるのを防止）
+        // 1. 初期位置チャンクの強制ロード保護
         serverLevel.setChunkForced(this.startChunkPos.x, this.startChunkPos.z, true);
         MicroDroneMod.LOGGER.info("[SERVER] [PLAYER_BODY_PROTECT] Protected player start chunk: [{}, {}]",
                 this.startChunkPos.x, this.startChunkPos.z);
@@ -274,21 +335,18 @@ public class DroneEntity extends Entity implements GeoEntity {
         dummy.setCustomName(Component.literal("§e[操縦中] §r" + player.getName().getString()));
         dummy.setCustomNameVisible(true);
         dummy.setNoGravity(true);
-        dummy.setInvulnerable(false); // 被弾フェイルセーフを検知可能にする（ダメージイベント側で破壊防止キャンセル）
-        dummy.setShowArms(true);      // 腕を表示（コントローラーを持たせる）
-        dummy.setNoBasePlate(true);    // 台座を非表示（自然な足元に）
+        dummy.setInvulnerable(false);
+        dummy.setShowArms(true);
+        dummy.setNoBasePlate(true);
 
-        // コントローラーを操作している自然なポーズ（両腕を前方に構えてコントローラーを見る）
         dummy.setRightArmPose(new Rotations(-25.0f, -15.0f, 0.0f));
         dummy.setLeftArmPose(new Rotations(-25.0f, 15.0f, 0.0f));
-        dummy.setHeadPose(new Rotations(12.0f, 0.0f, 0.0f)); // やや下（手元のコントローラー）を向く
+        dummy.setHeadPose(new Rotations(12.0f, 0.0f, 0.0f));
 
-        // プレイヤーの防具をすべてコピー装着
         dummy.setItemSlot(EquipmentSlot.FEET, player.getItemBySlot(EquipmentSlot.FEET).copy());
         dummy.setItemSlot(EquipmentSlot.LEGS, player.getItemBySlot(EquipmentSlot.LEGS).copy());
         dummy.setItemSlot(EquipmentSlot.CHEST, player.getItemBySlot(EquipmentSlot.CHEST).copy());
 
-        // 頭部: ヘルメットを被っていればそれを装着し、無ければプレイヤーのスキン頭部を生成して装着
         ItemStack headItem = player.getItemBySlot(EquipmentSlot.HEAD);
         if (!headItem.isEmpty()) {
             dummy.setItemSlot(EquipmentSlot.HEAD, headItem.copy());
@@ -298,7 +356,6 @@ public class DroneEntity extends Entity implements GeoEntity {
             dummy.setItemSlot(EquipmentSlot.HEAD, customHead);
         }
 
-        // 手持ちアイテム（メインハンド: ドローンコントローラー、オフハンド）
         dummy.setItemSlot(EquipmentSlot.MAINHAND, player.getItemBySlot(EquipmentSlot.MAINHAND).copy());
         dummy.setItemSlot(EquipmentSlot.OFFHAND, player.getItemBySlot(EquipmentSlot.OFFHAND).copy());
 
@@ -311,9 +368,9 @@ public class DroneEntity extends Entity implements GeoEntity {
                 this.dummyEntityUUID,
                 String.format("%.2f", this.startX), String.format("%.2f", this.startY), String.format("%.2f", this.startZ));
 
-        // 3. サーバー側のカメラエンティティをドローンに設定（バニラのチャンク配信ストリーミングを活用）
+        // 3. サーバー側のカメラエンティティをドローンに設定
         player.setCamera(this);
-        player.setInvisible(true); // 操縦中のプレイヤー本体を透明化（初期位置のダミー人形のみを表示）
+        player.setInvisible(true);
 
         MicroDroneMod.LOGGER.info("[SERVER] [PILOT_START] Pilot: {} ({}), PlayerPos: [{}, {}, {}], DronePos: [{}, {}, {}], DroneChunk: [{}, {}]",
                 player.getName().getString(), player.getUUID(),
@@ -324,7 +381,7 @@ public class DroneEntity extends Entity implements GeoEntity {
         PacketDistributor.sendToPlayer(player, new DronePilotStatePayload(this.getId(), true, this.startX, this.startY, this.startZ));
         player.sendSystemMessage(Component.translatable("message.microdrone.pilot_start"));
 
-        // Phase 5: 操縦開始時にドローン周辺チャンクをロード・配信
+        // 操縦開始時にドローン周辺チャンクをロード・配信
         this.lastChunkPos = new ChunkPos(this.blockPosition());
         com.microdrone.mod.chunk.DroneChunkManager.updateDroneChunks(player, this);
 
@@ -369,9 +426,9 @@ public class DroneEntity extends Entity implements GeoEntity {
 
             // 3. サーバー側のカメラをプレイヤー自身に復元
             player.setCamera(player);
-            player.setInvisible(false); // 操縦終了時に透明化を解除
+            player.setInvisible(false);
 
-            // 4. 【パターンAの核心】プレイヤーの実体を記録した初期位置へテレポート復元！
+            // 4. プレイヤーの実体を記録した初期位置へテレポート復元
             double restoreX = this.startX;
             double restoreY = this.startY;
             double restoreZ = this.startZ;
@@ -386,9 +443,7 @@ public class DroneEntity extends Entity implements GeoEntity {
                             player.getName().getString(),
                             String.format("%.2f", this.startX), String.format("%.2f", this.startY), String.format("%.2f", this.startZ));
 
-                    // 5. 【テレポート後ダミー確実消去（遠距離飛行からの復帰対策）】
-                    // 遠距離から復元した場合、プレイヤーがテレポートしたことで初期位置チャンクのエンティティが確実にアクティブ化される。
-                    // そのため、テレポート直後に再度UUID検索および足元範囲のダミー消去を実行！
+                    // 5. テレポート後ダミー確実消去フェイルセーフ
                     if (targetDummyUUID != null) {
                         Entity dummyAfter = targetLevel.getEntity(targetDummyUUID);
                         if (dummyAfter != null) {
@@ -397,7 +452,6 @@ public class DroneEntity extends Entity implements GeoEntity {
                         }
                     }
 
-                    // 足元周囲の身代わりダミー人形（ArmorStand）の安全なクリーンアップフェイルセーフ
                     AABB clearBox = new AABB(restoreX - 1.5, restoreY - 1.0, restoreZ - 1.5,
                                              restoreX + 1.5, restoreY + 2.5, restoreZ + 1.5);
                     List<ArmorStand> nearbyStands = targetLevel.getEntitiesOfClass(ArmorStand.class, clearBox,
@@ -411,7 +465,7 @@ public class DroneEntity extends Entity implements GeoEntity {
                 this.startDimension = null;
             }
 
-            // 6. 初期位置チャンクの保護解除（テレポートとダミー消去が完全に完了した後に解除）
+            // 6. 初期位置チャンクの保護解除
             if (restoreChunkPos != null) {
                 serverLevel.setChunkForced(restoreChunkPos.x, restoreChunkPos.z, false);
                 MicroDroneMod.LOGGER.info("[SERVER] [PLAYER_BODY_UNPROTECT] Unprotected player start chunk: [{}, {}]",
@@ -432,7 +486,6 @@ public class DroneEntity extends Entity implements GeoEntity {
 
     @Override
     public boolean broadcastToPlayer(ServerPlayer player) {
-        // 操縦中のプレイヤーに対しては、距離に関係なく常にエンティティ同期を維持
         if (this.isPilotedBy(player)) {
             return true;
         }
@@ -468,8 +521,6 @@ public class DroneEntity extends Entity implements GeoEntity {
             }
         } else {
             // === クライアント側 ===
-            // 自プレイヤーが操縦中の場合はクライアント側でも毎tick物理計算を実行！
-            // これによりカメラの partialTick 補間が完全に滑らかになり、画面のカクつきが解消される。
             if (this.locallyControlled) {
                 tickFlightPhysics();
             } else if (!this.isNoGravity() && !this.onGround()) {
@@ -482,8 +533,6 @@ public class DroneEntity extends Entity implements GeoEntity {
      * 操縦中の飛行物理計算（サーバー＆クライアントローカル共通）
      */
     private void tickFlightPhysics() {
-        // 1. 旋回 (Yaw) と カメラピッチ (Pitch) の適用
-        // サーバー側でのみパケット角度を適用（クライアント側はバニラのMouseHandlerによる超滑らかなフレーム補間を完全維持）
         if (!this.level().isClientSide) {
             this.setYRot(this.targetYaw);
             this.setYHeadRot(this.targetYaw);
@@ -492,23 +541,29 @@ public class DroneEntity extends Entity implements GeoEntity {
 
         Vec3 currentVel = this.getDeltaMovement();
 
+        // モーター性能値の取得
+        double maxHSpd = getCurrentMaxSpeed();
+        double accel = getCurrentAcceleration();
+        double maxVSpd = getCurrentMaxVerticalSpeed();
+        double vAccel = getCurrentVerticalAcceleration();
+
         // 2. 機首方向に応じた目標加速度ベクトルの算出
         float rad = (float) Math.toRadians(this.getYRot());
         double sin = Math.sin(rad);
         double cos = Math.cos(rad);
 
-        double forwardAccelX = -sin * this.inputForward * ACCELERATION;
-        double forwardAccelZ = cos * this.inputForward * ACCELERATION;
+        double forwardAccelX = -sin * this.inputForward * accel;
+        double forwardAccelZ = cos * this.inputForward * accel;
 
-        double strafeAccelX = cos * this.inputStrafe * ACCELERATION;
-        double strafeAccelZ = sin * this.inputStrafe * ACCELERATION;
+        double strafeAccelX = cos * this.inputStrafe * accel;
+        double strafeAccelZ = sin * this.inputStrafe * accel;
 
         double vx = (currentVel.x + forwardAccelX + strafeAccelX) * HORIZONTAL_DRAG;
         double vz = (currentVel.z + forwardAccelZ + strafeAccelZ) * HORIZONTAL_DRAG;
 
         double horizontalSpeed = Math.sqrt(vx * vx + vz * vz);
-        if (horizontalSpeed > MAX_HORIZONTAL_SPEED) {
-            double scale = MAX_HORIZONTAL_SPEED / horizontalSpeed;
+        if (horizontalSpeed > maxHSpd) {
+            double scale = maxHSpd / horizontalSpeed;
             vx *= scale;
             vz *= scale;
         }
@@ -516,8 +571,8 @@ public class DroneEntity extends Entity implements GeoEntity {
         // 3. 垂直昇降とホバリング高度維持
         double vy = currentVel.y;
         if (Math.abs(this.inputVertical) > 0.05f) {
-            vy += this.inputVertical * VERTICAL_ACCELERATION;
-            vy = Math.max(-MAX_VERTICAL_SPEED, Math.min(MAX_VERTICAL_SPEED, vy));
+            vy += this.inputVertical * vAccel;
+            vy = Math.max(-maxVSpd, Math.min(maxVSpd, vy));
         } else {
             vy *= VERTICAL_DRAG;
             if (Math.abs(vy) < 0.005) {
@@ -561,29 +616,17 @@ public class DroneEntity extends Entity implements GeoEntity {
         if (!this.level().isClientSide && this.pilotUUID != null && this.getServer() != null) {
             ServerPlayer pilot = this.getServer().getPlayerList().getPlayer(this.pilotUUID);
             if (pilot != null && pilot.isAlive()) {
-                // 1. 【パターンAの核心】サーバー側プレイヤーの実体座標をドローンに同期！
-                // これにより、バニラのChunkMap（エンティティ追跡）でドローンが常にプレイヤーの直近（0m）と認識され、
-                // 遠距離飛行時（128m+）でもENTITY_LEAVE_LEVELによるドローン消失や強制切断が100%防止される。
-                // 操縦終了時は初期位置へteleportToで完全復元される。
                 pilot.absMoveTo(this.getX(), this.getY(), this.getZ(), this.getYRot(), this.getXRot());
                 pilot.serverLevel().getChunkSource().move(pilot);
 
-                // 2. 機体の移動に完全に追従するチャンク更新（チャンク境界を跨いだ瞬間即時、または10ticksごと）
                 ChunkPos currentChunk = new ChunkPos(this.blockPosition());
                 boolean chunkChanged = (this.lastChunkPos == null || !this.lastChunkPos.equals(currentChunk));
                 if (chunkChanged || (this.hoverTicks % 10 == 0)) {
-                    if (chunkChanged) {
-                        MicroDroneMod.LOGGER.debug("[SERVER] [CHUNK_BORDER_CROSS] DroneUUID: {}, DronePos: [{}, {}, {}], PrevChunk: {}, NewChunk: [{}, {}]",
-                                this.getUUID(),
-                                String.format("%.2f", this.getX()), String.format("%.2f", this.getY()), String.format("%.2f", this.getZ()),
-                                this.lastChunkPos != null ? "[" + this.lastChunkPos.x + ", " + this.lastChunkPos.z + "]" : "INIT",
-                                currentChunk.x, currentChunk.z);
-                    }
                     this.lastChunkPos = currentChunk;
                     com.microdrone.mod.chunk.DroneChunkManager.updateDroneChunks(pilot, this);
                 }
 
-                // 3. 電波距離制限（フライトレンジ）と通信途絶フェイルセーフ (Step 4)
+                // 3. 電波距離制限と通信途絶フェイルセーフ
                 double dx = this.getX() - this.startX;
                 double dy = this.getY() - this.startY;
                 double dz = this.getZ() - this.startZ;
@@ -591,12 +634,10 @@ public class DroneEntity extends Entity implements GeoEntity {
 
                 if (distance > MAX_SIGNAL_RANGE) {
                     this.outOfRangeTicks++;
-                    // 入力操作を打ち消し、自動ホバリング＆緩やかな降下（安全着陸姿勢）
                     this.inputForward = 0.0f;
                     this.inputStrafe = 0.0f;
                     this.inputVertical = -0.05f;
 
-                    // 60 ticks (約3秒間) 電波圏外が継続、または地面に着地した場合、自動で安全操縦終了
                     if (this.outOfRangeTicks >= 60 || (this.outOfRangeTicks > 10 && this.onGround())) {
                         MicroDroneMod.LOGGER.warn("[SERVER] [SIGNAL_LOST_FAILSAFE] Drone {} exceeded max range ({}m > {}m). Initiating emergency stop.",
                                 this.getUUID(), String.format("%.2f", distance), MAX_SIGNAL_RANGE);
@@ -608,7 +649,7 @@ public class DroneEntity extends Entity implements GeoEntity {
                     this.outOfRangeTicks = 0;
                 }
 
-                // 4. 前後移動距離に応じたバッテリー消費 & オートランディング (Step 5)
+                // 4. 移動距離に応じたバッテリー消費
                 double moveDx = this.getX() - this.xOld;
                 double moveDz = this.getZ() - this.zOld;
                 double moveDist = Math.sqrt(moveDx * moveDx + moveDz * moveDz);
@@ -624,11 +665,11 @@ public class DroneEntity extends Entity implements GeoEntity {
                     }
                 }
 
-                // バッテリー切れフェイルセーフ: 入力を打ち消し、緩やかに自動降下
+                // バッテリー切れフェイルセーフ
                 if (this.installedBattery.isEmpty() || this.getBatteryRemaining() <= 0) {
                     this.inputForward = 0.0f;
                     this.inputStrafe = 0.0f;
-                    this.inputVertical = -0.04f; // 緩やかな自動降下着陸
+                    this.inputVertical = -0.04f;
 
                     if (this.onGround()) {
                         MicroDroneMod.LOGGER.warn("[SERVER] [BATTERY_EMPTY_FAILSAFE] Drone {} ran out of battery. Emergency landing complete.", this.getUUID());
@@ -661,7 +702,6 @@ public class DroneEntity extends Entity implements GeoEntity {
         }
         super.remove(reason);
     }
-
 
     private void checkAndResolveSuffocation() {
         AABB box = this.getBoundingBox();
@@ -708,7 +748,26 @@ public class DroneEntity extends Entity implements GeoEntity {
                 return InteractionResult.SUCCESS;
             }
 
-            // 2. コントローラー所持時: 操縦開始 / 終了
+            // 2. モーターアイテム所持時: モーター換装 (装着・交換)
+            if (heldItem.getItem() instanceof DroneMotorItem motorItem) {
+                ItemStack oldMotor = this.installedMotor.copy();
+                this.installedMotor = heldItem.split(1);
+                updateMotorSyncData();
+
+                if (!oldMotor.isEmpty()) {
+                    if (!player.getInventory().add(oldMotor)) {
+                        this.spawnAtLocation(oldMotor);
+                    }
+                }
+
+                this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                        SoundEvents.ANVIL_USE, SoundSource.PLAYERS, 0.6F, 1.4F);
+                player.sendSystemMessage(Component.translatable("message.microdrone.motor_installed",
+                        motorItem.getTier(), motorItem.getTierName(), String.format("%.1f", motorItem.getDisplaySpeedMps())));
+                return InteractionResult.SUCCESS;
+            }
+
+            // 3. コントローラー所持時: 操縦開始 / 終了
             if (heldItem.getItem() instanceof com.microdrone.mod.item.DroneControllerItem) {
                 if (player instanceof ServerPlayer serverPlayer) {
                     if (this.isPilotedBy(player)) {
@@ -724,10 +783,9 @@ public class DroneEntity extends Entity implements GeoEntity {
                 return InteractionResult.FAIL;
             }
 
-            // 3. スニーク右クリック時: バッテリー取り外し（未装着ならドローン本体回収）
+            // 4. スニーク右クリック時: バッテリー取り外し（未装着ならドローン本体回収）
             if (player.isShiftKeyDown()) {
                 if (!this.installedBattery.isEmpty()) {
-                    // バッテリー取り外し
                     if (!player.getInventory().add(this.installedBattery)) {
                         this.spawnAtLocation(this.installedBattery);
                     }
@@ -772,11 +830,18 @@ public class DroneEntity extends Entity implements GeoEntity {
                     new ItemStack(ModItems.DRONE_SPAWN_ITEM.get()));
             this.level().addFreshEntity(item);
 
-            // バッテリーが装着されていれば一緒にドロップ (消失防止)
+            // バッテリーが装着されていれば一緒にドロップ
             if (!this.installedBattery.isEmpty()) {
                 ItemEntity batItem = new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(), this.installedBattery);
                 this.level().addFreshEntity(batItem);
                 this.installedBattery = ItemStack.EMPTY;
+            }
+
+            // モーターが装着されていれば一緒にドロップ
+            if (!this.installedMotor.isEmpty()) {
+                ItemEntity motorItem = new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(), this.installedMotor);
+                this.level().addFreshEntity(motorItem);
+                this.installedMotor = ItemStack.EMPTY;
             }
 
             this.discard();
@@ -792,6 +857,10 @@ public class DroneEntity extends Entity implements GeoEntity {
             this.installedBattery = ItemStack.parse(this.registryAccess(), compound.getCompound("InstalledBattery")).orElse(ItemStack.EMPTY);
             updateBatterySyncData();
         }
+        if (compound.contains("InstalledMotor", 10)) {
+            this.installedMotor = ItemStack.parse(this.registryAccess(), compound.getCompound("InstalledMotor")).orElse(ItemStack.EMPTY);
+            updateMotorSyncData();
+        }
         this.accumulatedDistance = compound.getDouble("BatteryAccumulatedDist");
     }
 
@@ -802,6 +871,9 @@ public class DroneEntity extends Entity implements GeoEntity {
         }
         if (!this.installedBattery.isEmpty()) {
             compound.put("InstalledBattery", this.installedBattery.save(this.registryAccess()));
+        }
+        if (!this.installedMotor.isEmpty()) {
+            compound.put("InstalledMotor", this.installedMotor.save(this.registryAccess()));
         }
         compound.putDouble("BatteryAccumulatedDist", this.accumulatedDistance);
     }

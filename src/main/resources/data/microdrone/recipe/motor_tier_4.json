@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " D ",
+    "RMR",
+    " D "
+  ],
+  "key": {
+    "D": { "item": "minecraft:diamond" },
+    "R": { "item": "minecraft:redstone_block" },
+    "M": { "item": "microdrone:motor_tier_3" }
+  },
+  "result": {
+    "id": "microdrone:motor_tier_4",
+    "count": 1
+  }
+}

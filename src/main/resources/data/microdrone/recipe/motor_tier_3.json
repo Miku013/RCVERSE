@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " G ",
+    "RMR",
+    " G "
+  ],
+  "key": {
+    "G": { "item": "minecraft:gold_ingot" },
+    "R": { "item": "minecraft:redstone" },
+    "M": { "item": "microdrone:motor_tier_2" }
+  },
+  "result": {
+    "id": "microdrone:motor_tier_3",
+    "count": 1
+  }
+}
