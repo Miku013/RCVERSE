@@ -8,6 +8,7 @@ import com.microdrone.mod.entity.RcControllable;
 import com.microdrone.mod.item.DroneControllerItem;
 import com.microdrone.mod.network.DroneControlPayload;
 import net.minecraft.client.Minecraft;
+import net.minecraft.util.Mth;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.Entity;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -229,11 +230,53 @@ public class ClientDroneInputHandler {
                 drone.setYHeadRot(yaw);
                 drone.setXRot(pitch);
             } else if (entity instanceof RcCarEntity car) {
-                // RCカー操縦時: 車体の向きにカメラをスムーズに追従
-                float carYaw = car.getYRot();
-                mc.player.setYRot(carYaw);
+                // RCカー操縦時: 144Hz以上のフレーム線形補間（PartialTick LERP）で旋回時のカクつきを完全撲滅！
+                float partialTick = (float) event.getPartialTick();
+                float carYaw = Mth.rotLerp(partialTick, car.yRotO, car.getYRot());
+
+                // 車体のフレーム補間位置
+                double carX = Mth.lerp(partialTick, car.xOld, car.getX());
+                double carY = Mth.lerp(partialTick, car.yOld, car.getY());
+                double carZ = Mth.lerp(partialTick, car.zOld, car.getZ());
+
+                // 車体の後方・斜め上空の見下ろしカメラ（cameraボーン相当: 1/5サイズ縮小オフセット）
+                // 距離約1.6m、高さ約0.9m
+                double dist = 1.6;
+                double height = 0.9;
+                float yawRad = carYaw * Mth.DEG_TO_RAD;
+
+                // 車体の正面方向は [-sin(yaw), cos(yaw)]、後方は [+sin(yaw), -cos(yaw)]
+                double targetCamX = carX + Mth.sin(yawRad) * dist;
+                double targetCamY = carY + height;
+                double targetCamZ = carZ - Mth.cos(yawRad) * dist;
+
+                // 壁抜け防止（車体中心からカメラ位置へのレイキャスト）
+                net.minecraft.world.phys.Vec3 carCenter = new net.minecraft.world.phys.Vec3(carX, carY + 0.2, carZ);
+                net.minecraft.world.phys.Vec3 camPos = new net.minecraft.world.phys.Vec3(targetCamX, targetCamY, targetCamZ);
+                net.minecraft.world.phys.BlockHitResult hit = mc.level.clip(new net.minecraft.world.level.ClipContext(
+                        carCenter, camPos,
+                        net.minecraft.world.level.ClipContext.Block.VISUAL,
+                        net.minecraft.world.level.ClipContext.Fluid.NONE,
+                        car
+                ));
+                if (hit.getType() != net.minecraft.world.phys.HitResult.Type.MISS) {
+                    net.minecraft.world.phys.Vec3 hitPos = hit.getLocation();
+                    targetCamX = Mth.lerp(0.85, hitPos.x, carCenter.x);
+                    targetCamY = Mth.lerp(0.85, hitPos.y, carCenter.y);
+                    targetCamZ = Mth.lerp(0.85, hitPos.z, carCenter.z);
+                }
+
+                // カメラ位置を反映（見下ろし型チェイスカメラ）
+                setCameraPositionSafe(event.getCamera(), targetCamX, targetCamY, targetCamZ);
+
+                // カメラ角度: 進行方向を向き、前方の車体を見下ろす角度 (基準22度、マウスで微調整可能)
+                float mousePitch = mc.player.getXRot();
+                float pitch = Mth.clamp(22.0f + mousePitch * 0.25f, 10.0f, 60.0f);
+
                 event.setYaw(carYaw);
-                event.setPitch(mc.player.getXRot());
+                event.setPitch(pitch);
+
+                mc.player.setYRot(carYaw);
             }
         }
     }
@@ -317,6 +360,32 @@ public class ClientDroneInputHandler {
     public void onAttackEntity(AttackEntityEvent event) {
         if (isPiloting) {
             event.setCanceled(true);
+        }
+    }
+
+    private static java.lang.reflect.Method cameraSetPositionMethod = null;
+    private static boolean cameraMethodResolved = false;
+
+    private static void setCameraPositionSafe(net.minecraft.client.Camera camera, double x, double y, double z) {
+        if (!cameraMethodResolved) {
+            try {
+                for (java.lang.reflect.Method m : net.minecraft.client.Camera.class.getDeclaredMethods()) {
+                    if (m.getName().equals("setPosition") && m.getParameterCount() == 3) {
+                        cameraSetPositionMethod = m;
+                        cameraSetPositionMethod.setAccessible(true);
+                        break;
+                    }
+                }
+            } catch (Exception e) {
+                MicroDroneMod.LOGGER.error("Failed to reflect Camera.setPosition", e);
+            }
+            cameraMethodResolved = true;
+        }
+
+        if (cameraSetPositionMethod != null) {
+            try {
+                cameraSetPositionMethod.invoke(camera, x, y, z);
+            } catch (Exception ignored) {}
         }
     }
 }

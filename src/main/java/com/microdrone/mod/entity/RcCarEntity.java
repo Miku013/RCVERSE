@@ -100,7 +100,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
 
     @Override
     public float maxUpStep() {
-        return 1.0f;
+        return 0.6f; // 小型RCカー向け段差走破性 (ハーフブロックや草ブロックの段差を乗り越え可能)
     }
 
     /**

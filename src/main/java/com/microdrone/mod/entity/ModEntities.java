@@ -22,8 +22,8 @@ public class ModEntities {
 
     public static final DeferredHolder<EntityType<?>, EntityType<RcCarEntity>> RC_CAR =
             ENTITIES.register("rc_car", () -> EntityType.Builder.<RcCarEntity>of(RcCarEntity::new, MobCategory.MISC)
-                    .sized(2.4f, 1.5f)
-                    .eyeHeight(1.2f)
+                    .sized(0.5f, 0.35f)
+                    .eyeHeight(0.3f)
                     .clientTrackingRange(32)
                     .updateInterval(1)
                     .build("rc_car"));

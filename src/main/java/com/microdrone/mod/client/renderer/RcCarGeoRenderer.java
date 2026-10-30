@@ -13,12 +13,15 @@ public class RcCarGeoRenderer extends GeoEntityRenderer<RcCarEntity> {
 
     public RcCarGeoRenderer(EntityRendererProvider.Context context) {
         super(context, new RcCarGeoModel());
-        this.shadowRadius = 0.8F; // 車の影の半径
+        this.shadowRadius = 0.25F; // 1/5 RCカーの影の半径
     }
 
     @Override
     public void render(RcCarEntity entity, float entityYaw, float partialTick, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
         poseStack.pushPose();
+
+        // 1/5 スケールに縮小（手のひら・卓上マイクロRCカーサイズ）
+        poseStack.scale(0.2F, 0.2F, 0.2F);
 
         float yaw = Mth.rotLerp(partialTick, entity.yRotO, entity.getYRot());
         // 車体の進行方向の回転（正面合わせ）
