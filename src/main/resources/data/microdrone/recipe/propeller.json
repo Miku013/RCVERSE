@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " R ",
+    "SNS",
+    "   "
+  ],
+  "key": {
+    "R": { "item": "minecraft:red_dye" },
+    "S": { "item": "minecraft:stick" },
+    "N": { "item": "minecraft:iron_nugget" }
+  },
+  "result": {
+    "id": "microdrone:propeller",
+    "count": 4
+  }
+}

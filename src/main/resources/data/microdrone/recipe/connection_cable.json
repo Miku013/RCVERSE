@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "S",
+    "C",
+    "S"
+  ],
+  "key": {
+    "S": { "item": "minecraft:string" },
+    "C": { "item": "minecraft:copper_ingot" }
+  },
+  "result": {
+    "id": "microdrone:connection_cable",
+    "count": 4
+  }
+}

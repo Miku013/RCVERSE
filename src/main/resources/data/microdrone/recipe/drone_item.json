@@ -2,20 +2,20 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "pattern": [
-    "NEN",
-    "IRI",
-    "NCN"
+    "PMP",
+    "SFS",
+    "CEC"
   ],
   "key": {
-    "N": { "item": "minecraft:iron_nugget" },
-    "E": { "item": "minecraft:ender_pearl" },
-    "I": { "item": "minecraft:iron_ingot" },
-    "R": { "item": "minecraft:redstone_block" },
-    "C": { "item": "minecraft:copper_ingot" }
+    "P": { "item": "microdrone:propeller" },
+    "M": { "item": "microdrone:motor_tier_1" },
+    "S": { "item": "microdrone:drone_screws" },
+    "F": { "item": "microdrone:drone_frame" },
+    "C": { "item": "microdrone:connection_cable" },
+    "E": { "item": "microdrone:esc_board" }
   },
   "result": {
     "id": "microdrone:drone_item",
     "count": 1
   }
 }
-

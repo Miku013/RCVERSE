@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "GRG",
+    "CQC",
+    " R "
+  ],
+  "key": {
+    "G": { "item": "minecraft:gold_nugget" },
+    "R": { "item": "minecraft:redstone" },
+    "C": { "item": "minecraft:copper_ingot" },
+    "Q": { "item": "minecraft:quartz" }
+  },
+  "result": {
+    "id": "microdrone:esc_board",
+    "count": 1
+  }
+}

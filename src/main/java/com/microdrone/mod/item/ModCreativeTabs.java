@@ -30,6 +30,12 @@ public class ModCreativeTabs {
                         output.accept(ModItems.MOTOR_TIER_2.get());
                         output.accept(ModItems.MOTOR_TIER_3.get());
                         output.accept(ModItems.MOTOR_TIER_4.get());
+                        // 中間素材パーツ
+                        output.accept(ModItems.DRONE_FRAME.get());
+                        output.accept(ModItems.PROPELLER.get());
+                        output.accept(ModItems.ESC_BOARD.get());
+                        output.accept(ModItems.DRONE_SCREWS.get());
+                        output.accept(ModItems.CONNECTION_CABLE.get());
                     })
                     .build());
 

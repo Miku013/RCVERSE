@@ -28,42 +28,60 @@ public class ModItems {
             ITEMS.register("test_pivot", () -> new BlockItem(ModBlocks.TEST_PIVOT.get(), new Item.Properties()));
 
     // === 4段階の航続距離バッテリーアイテム (Step 5) ===
-    // Tier 1: 3,000 ブロック
     public static final DeferredHolder<Item, DroneBatteryItem> BATTERY_TIER_1 =
             ITEMS.register("battery_tier_1", () -> new DroneBatteryItem(new Item.Properties().stacksTo(1), 3000));
 
-    // Tier 2: 4,000 ブロック
     public static final DeferredHolder<Item, DroneBatteryItem> BATTERY_TIER_2 =
             ITEMS.register("battery_tier_2", () -> new DroneBatteryItem(new Item.Properties().stacksTo(1), 4000));
 
-    // Tier 3: 5,000 ブロック
     public static final DeferredHolder<Item, DroneBatteryItem> BATTERY_TIER_3 =
             ITEMS.register("battery_tier_3", () -> new DroneBatteryItem(new Item.Properties().stacksTo(1), 5000));
 
-    // Tier 4: 6,000 ブロック
     public static final DeferredHolder<Item, DroneBatteryItem> BATTERY_TIER_4 =
             ITEMS.register("battery_tier_4", () -> new DroneBatteryItem(new Item.Properties().stacksTo(1), 6000));
 
     // === 4段階のブラシレスモーターアイテム ===
-    // Tier 1: スタンダードモーター (7 m/s, ガンメタル)
     public static final DeferredHolder<Item, DroneMotorItem> MOTOR_TIER_1 =
             ITEMS.register("motor_tier_1", () -> new DroneMotorItem(
                     new Item.Properties().stacksTo(1), 1, 0.35, 0.04, 0.25, 0xFF333333, "Standard"));
 
-    // Tier 2: スポーツモーター (10 m/s, メタリックブルー)
     public static final DeferredHolder<Item, DroneMotorItem> MOTOR_TIER_2 =
             ITEMS.register("motor_tier_2", () -> new DroneMotorItem(
                     new Item.Properties().stacksTo(1), 2, 0.50, 0.065, 0.35, 0xFF1E88E5, "Sport"));
 
-    // Tier 3: ハイスピードモーター (14 m/s, アルマイトゴールド)
     public static final DeferredHolder<Item, DroneMotorItem> MOTOR_TIER_3 =
             ITEMS.register("motor_tier_3", () -> new DroneMotorItem(
                     new Item.Properties().stacksTo(1), 3, 0.70, 0.09, 0.45, 0xFFFFB300, "High-Speed"));
 
-    // Tier 4: レーシングモーター (19 m/s, レーシングレッド)
     public static final DeferredHolder<Item, DroneMotorItem> MOTOR_TIER_4 =
             ITEMS.register("motor_tier_4", () -> new DroneMotorItem(
                     new Item.Properties().stacksTo(1), 4, 0.95, 0.12, 0.60, 0xFFE53935, "Racing"));
+
+    // === ドローン製作用・中間素材パーツ ===
+    // 1. プロペラ (Propeller)
+    public static final DeferredHolder<Item, DroneComponentItem> PROPELLER =
+            ITEMS.register("propeller", () -> new DroneComponentItem(
+                    new Item.Properties().stacksTo(64), "tooltip.microdrone.propeller_desc"));
+
+    // 2. ドローンフレーム (Drone Frame)
+    public static final DeferredHolder<Item, DroneComponentItem> DRONE_FRAME =
+            ITEMS.register("drone_frame", () -> new DroneComponentItem(
+                    new Item.Properties().stacksTo(16), "tooltip.microdrone.drone_frame_desc"));
+
+    // 3. 4in1 ESC基板 (Electronic Speed Controller Board)
+    public static final DeferredHolder<Item, DroneComponentItem> ESC_BOARD =
+            ITEMS.register("esc_board", () -> new DroneComponentItem(
+                    new Item.Properties().stacksTo(16), "tooltip.microdrone.esc_board_desc"));
+
+    // 4. 精密ねじセット (Drone Screws)
+    public static final DeferredHolder<Item, DroneComponentItem> DRONE_SCREWS =
+            ITEMS.register("drone_screws", () -> new DroneComponentItem(
+                    new Item.Properties().stacksTo(64), "tooltip.microdrone.drone_screws_desc"));
+
+    // 5. 接続ケーブル (Connection Cable / Wiring)
+    public static final DeferredHolder<Item, DroneComponentItem> CONNECTION_CABLE =
+            ITEMS.register("connection_cable", () -> new DroneComponentItem(
+                    new Item.Properties().stacksTo(64), "tooltip.microdrone.connection_cable_desc"));
 
     public static void register(IEventBus eventBus) {
         ITEMS.register(eventBus);
