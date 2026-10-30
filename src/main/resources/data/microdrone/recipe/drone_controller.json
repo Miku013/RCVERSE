@@ -1,21 +1,21 @@
-{
+﻿{
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "pattern": [
-    "A  ",
-    "IRI",
-    "LGL"
+    "A C A",
+    "S L S",
+    "P B P"
   ],
   "key": {
-    "A": { "item": "minecraft:lightning_rod" },
-    "I": { "item": "minecraft:iron_ingot" },
-    "R": { "item": "minecraft:redstone" },
-    "L": { "item": "minecraft:lever" },
-    "G": { "item": "minecraft:glass_pane" }
+    "A": { "item": "microdrone:radio_antenna" },
+    "C": { "item": "microdrone:controller_case" },
+    "S": { "item": "microdrone:gimbal_stick" },
+    "L": { "item": "microdrone:lcd_screen" },
+    "P": { "item": "microdrone:tiny_spring" },
+    "B": { "item": "microdrone:controller_board" }
   },
   "result": {
     "id": "microdrone:drone_controller",
     "count": 1
   }
 }
-

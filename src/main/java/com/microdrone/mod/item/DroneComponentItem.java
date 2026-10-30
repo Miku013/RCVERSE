@@ -25,3 +25,4 @@ public class DroneComponentItem extends Item {
         super.appendHoverText(stack, context, tooltipComponents, tooltipFlag);
     }
 }
+

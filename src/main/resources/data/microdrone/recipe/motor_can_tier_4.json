@@ -1,0 +1,18 @@
+﻿{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " N ",
+    " C ",
+    " G "
+  ],
+  "key": {
+    "N": { "item": "minecraft:netherite_scrap" },
+    "C": { "item": "microdrone:motor_can_tier_3" },
+    "G": { "item": "minecraft:gold_ingot" }
+  },
+  "result": {
+    "id": "microdrone:motor_can_tier_4",
+    "count": 1
+  }
+}

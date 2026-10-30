@@ -1,0 +1,20 @@
+﻿{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "R G R",
+    "E Q E",
+    "R C R"
+  ],
+  "key": {
+    "R": { "item": "minecraft:redstone" },
+    "G": { "item": "minecraft:gold_ingot" },
+    "E": { "item": "microdrone:esc_board" },
+    "Q": { "item": "minecraft:quartz" },
+    "C": { "item": "microdrone:connection_cable" }
+  },
+  "result": {
+    "id": "microdrone:controller_board",
+    "count": 1
+  }
+}

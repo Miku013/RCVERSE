@@ -1,0 +1,16 @@
+﻿{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "RIB"
+  ],
+  "key": {
+    "R": { "item": "minecraft:redstone" },
+    "I": { "item": "minecraft:iron_ingot" },
+    "B": { "item": "minecraft:lapis_lazuli" }
+  },
+  "result": {
+    "id": "microdrone:neodymium_magnet",
+    "count": 4
+  }
+}

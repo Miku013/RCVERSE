@@ -1,0 +1,18 @@
+﻿{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " A ",
+    " C ",
+    " E "
+  ],
+  "key": {
+    "A": { "item": "minecraft:amethyst_shard" },
+    "C": { "item": "microdrone:motor_can_tier_2" },
+    "E": { "item": "minecraft:emerald" }
+  },
+  "result": {
+    "id": "microdrone:motor_can_tier_3",
+    "count": 1
+  }
+}

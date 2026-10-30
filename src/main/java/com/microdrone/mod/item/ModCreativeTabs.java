@@ -18,24 +18,48 @@ public class ModCreativeTabs {
                     .title(Component.translatable("itemGroup.microdrone"))
                     .icon(() -> new ItemStack(ModItems.DRONE_CONTROLLER.get()))
                     .displayItems((parameters, output) -> {
+                        // 完成品
                         output.accept(ModItems.DRONE_SPAWN_ITEM.get());
                         output.accept(ModItems.DRONE_CONTROLLER.get());
                         output.accept(ModItems.DRONE_CHARGER_ITEM.get());
                         output.accept(ModItems.TEST_PIVOT_ITEM.get());
+
+                        // バッテリー
                         output.accept(ModItems.BATTERY_TIER_1.get());
                         output.accept(ModItems.BATTERY_TIER_2.get());
                         output.accept(ModItems.BATTERY_TIER_3.get());
                         output.accept(ModItems.BATTERY_TIER_4.get());
+
+                        // モーター
                         output.accept(ModItems.MOTOR_TIER_1.get());
                         output.accept(ModItems.MOTOR_TIER_2.get());
                         output.accept(ModItems.MOTOR_TIER_3.get());
                         output.accept(ModItems.MOTOR_TIER_4.get());
-                        // 中間素材パーツ
+
+                        // ドローン本体素材
                         output.accept(ModItems.DRONE_FRAME.get());
                         output.accept(ModItems.PROPELLER.get());
                         output.accept(ModItems.ESC_BOARD.get());
                         output.accept(ModItems.DRONE_SCREWS.get());
                         output.accept(ModItems.CONNECTION_CABLE.get());
+
+                        // プロポ素材
+                        output.accept(ModItems.RADIO_ANTENNA.get());
+                        output.accept(ModItems.CONTROLLER_CASE.get());
+                        output.accept(ModItems.GIMBAL_STICK.get());
+                        output.accept(ModItems.CONTROLLER_BOARD.get());
+                        output.accept(ModItems.TINY_SPRING.get());
+                        output.accept(ModItems.LCD_SCREEN.get());
+
+                        // モーター素材
+                        output.accept(ModItems.MOTOR_CAN_TIER_1.get());
+                        output.accept(ModItems.MOTOR_CAN_TIER_2.get());
+                        output.accept(ModItems.MOTOR_CAN_TIER_3.get());
+                        output.accept(ModItems.MOTOR_CAN_TIER_4.get());
+                        output.accept(ModItems.MAGNET_WIRE.get());
+                        output.accept(ModItems.MOTOR_SHAFT.get());
+                        output.accept(ModItems.NEODYMIUM_MAGNET.get());
+                        output.accept(ModItems.MOTOR_STATOR_TERMINAL.get());
                     })
                     .build());
 

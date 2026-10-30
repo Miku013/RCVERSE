@@ -1,0 +1,18 @@
+﻿{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " R ",
+    " S ",
+    " P "
+  ],
+  "key": {
+    "R": { "item": "minecraft:redstone" },
+    "S": { "item": "minecraft:stick" },
+    "P": { "item": "microdrone:tiny_spring" }
+  },
+  "result": {
+    "id": "microdrone:gimbal_stick",
+    "count": 2
+  }
+}

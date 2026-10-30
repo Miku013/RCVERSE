@@ -1,19 +1,21 @@
-{
+﻿{
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "pattern": [
-    " D ",
-    "RMR",
-    " D "
+    " S ",
+    "MCM",
+    "WTK"
   ],
   "key": {
-    "D": { "item": "minecraft:diamond" },
-    "R": { "item": "minecraft:redstone_block" },
-    "M": { "item": "microdrone:motor_tier_3" }
+    "S": { "item": "microdrone:motor_shaft" },
+    "M": { "item": "microdrone:neodymium_magnet" },
+    "C": { "item": "microdrone:motor_can_tier_4" },
+    "W": { "item": "microdrone:magnet_wire" },
+    "T": { "item": "microdrone:motor_stator_terminal" },
+    "K": { "item": "microdrone:connection_cable" }
   },
   "result": {
     "id": "microdrone:motor_tier_4",
     "count": 1
   }
 }
-

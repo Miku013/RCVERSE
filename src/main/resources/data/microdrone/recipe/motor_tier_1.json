@@ -1,20 +1,21 @@
-{
+﻿{
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "pattern": [
-    " I ",
-    "CRC",
-    " N "
+    " S ",
+    "MCM",
+    "WTK"
   ],
   "key": {
-    "I": { "item": "minecraft:iron_ingot" },
-    "C": { "item": "minecraft:copper_ingot" },
-    "R": { "item": "minecraft:redstone" },
-    "N": { "item": "minecraft:iron_nugget" }
+    "S": { "item": "microdrone:motor_shaft" },
+    "M": { "item": "microdrone:neodymium_magnet" },
+    "C": { "item": "microdrone:motor_can_tier_1" },
+    "W": { "item": "microdrone:magnet_wire" },
+    "T": { "item": "microdrone:motor_stator_terminal" },
+    "K": { "item": "microdrone:connection_cable" }
   },
   "result": {
     "id": "microdrone:motor_tier_1",
     "count": 1
   }
 }
-

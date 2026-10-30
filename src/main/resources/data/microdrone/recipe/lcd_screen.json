@@ -1,0 +1,19 @@
+﻿{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "GGG",
+    "RLR",
+    "NNN"
+  ],
+  "key": {
+    "G": { "item": "minecraft:glass_pane" },
+    "R": { "item": "minecraft:redstone" },
+    "L": { "item": "minecraft:glowstone_dust" },
+    "N": { "item": "minecraft:iron_nugget" }
+  },
+  "result": {
+    "id": "microdrone:lcd_screen",
+    "count": 1
+  }
+}

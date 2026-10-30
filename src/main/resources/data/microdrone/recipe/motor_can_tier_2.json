@@ -1,0 +1,18 @@
+﻿{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " D ",
+    " C ",
+    " L "
+  ],
+  "key": {
+    "D": { "item": "minecraft:diamond" },
+    "C": { "item": "microdrone:motor_can_tier_1" },
+    "L": { "item": "minecraft:lapis_lazuli" }
+  },
+  "result": {
+    "id": "microdrone:motor_can_tier_2",
+    "count": 1
+  }
+}
