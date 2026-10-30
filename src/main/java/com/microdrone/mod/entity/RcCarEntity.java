@@ -85,9 +85,12 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     private boolean locallyControlled = false;
 
     // ドリフト走行パラメータ
-    public boolean inputHandbrake = false; // スペースキー: ハンドブレーキ / ドリフト入力
-    private Vec3 carVelocity = Vec3.ZERO;  // 慣性移動ベクトル
-    private float gripFactor = 1.0f;       // Tire grip factor (0.15: drift slide - 1.0: full grip)
+    // Mario Kart Drift System
+    public boolean inputHandbrake = false; // Space key: Drift button
+    private Vec3 carVelocity = Vec3.ZERO;  // Inertial movement vector
+    private int driftDirection = 0;        // 0: normal, -1: drift left, +1: drift right
+    private int driftTicks = 0;            // Drift duration ticks
+    private int turboBoostTicks = 0;       // Mini-turbo boost remaining ticks
 
     public RcCarEntity(EntityType<?> entityType, Level level) {
         super(entityType, level);
@@ -303,19 +306,24 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         this.steerAngle = Mth.lerp(0.40f, this.steerAngle, targetSteer);
 
         // 前進 / 後退 / ESCブレーキ処理 (実機ホビーラジコンESC仕様: 前進中のS入力は急ブレーキ、停止後にバック)
+        // Forward / Reverse / Brake processing with Mario Kart drift speed maintenance
         if (this.inputForward > 0.05f) {
             if (this.currentSpeed < -0.01f) {
                 this.currentSpeed += (float) (accel * 2.5f);
                 if (this.currentSpeed > 0.0f) this.currentSpeed = 0.0f;
             } else {
-                this.currentSpeed += (float) (accel * this.inputForward);
+                float forwardAccel = (float) (accel * this.inputForward);
+                if (this.driftDirection != 0) {
+                    forwardAccel *= 1.30f; // Maintain high speed during drift (long slide)
+                }
+                this.currentSpeed += forwardAccel;
             }
         } else if (this.inputForward < -0.05f) {
             if (this.currentSpeed > 0.01f) {
-                this.currentSpeed -= (float) (accel * 2.5f); // 前進中のSは強力なブレーキ減速
+                this.currentSpeed -= (float) (accel * 2.5f);
                 if (this.currentSpeed < 0.0f) this.currentSpeed = 0.0f;
             } else {
-                this.currentSpeed += (float) (accel * this.inputForward * 0.65f); // 停止後は後退
+                this.currentSpeed += (float) (accel * this.inputForward * 0.65f);
             }
         } else {
             this.currentSpeed *= friction;
@@ -324,57 +332,112 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             }
         }
 
-        this.currentSpeed = (float) Mth.clamp(this.currentSpeed, -maxSpeed * 0.45, maxSpeed);
+        double currentMax = (this.turboBoostTicks > 0) ? (maxSpeed * 1.30) : maxSpeed;
+        this.currentSpeed = (float) Mth.clamp(this.currentSpeed, -maxSpeed * 0.45, currentMax);
 
-        // === Continuous Tire Grip Model ===
-        boolean handbrake = this.inputHandbrake && Math.abs(this.currentSpeed) > 0.02f;
+        // === Mario Kart Drift State Machine ===
+        boolean wantsDrift = this.inputHandbrake && (this.currentSpeed > 0.04f || this.driftDirection != 0);
 
-        float targetGrip;
-        float gripLerpRate;
-        if (handbrake) {
-            targetGrip = 0.15f;
-            gripLerpRate = 0.35f; // Quick slide entry
+        if (wantsDrift) {
+            // Start drift lock
+            if (this.driftDirection == 0) {
+                if (this.inputSteer < -0.05f) {
+                    this.driftDirection = -1; // Drift Left
+                    this.driftTicks = 0;
+                    if (this.onGround()) {
+                        this.setDeltaMovement(this.getDeltaMovement().add(0, 0.08, 0)); // Little hop!
+                    }
+                } else if (this.inputSteer > 0.05f) {
+                    this.driftDirection = 1;  // Drift Right
+                    this.driftTicks = 0;
+                    if (this.onGround()) {
+                        this.setDeltaMovement(this.getDeltaMovement().add(0, 0.08, 0)); // Little hop!
+                    }
+                }
+            }
+
+            if (this.driftDirection != 0) {
+                this.driftTicks++;
+            }
         } else {
-            double velAngle = Math.atan2(this.carVelocity.z, this.carVelocity.x);
-            float yawRadCheck = this.getYRot() * Mth.DEG_TO_RAD;
-            double driveXCheck = -Mth.sin(yawRadCheck);
-            double driveZCheck = Mth.cos(yawRadCheck);
-            double facingAngle = Math.atan2(driveZCheck, driveXCheck);
-            double angleDiff = Math.abs(Mth.wrapDegrees((facingAngle - velAngle) * (180.0 / Math.PI)));
-
-            if (angleDiff > 14.0 && this.inputForward > 0.05f && this.gripFactor < 0.55f) {
-                targetGrip = 0.30f;
-                gripLerpRate = 0.15f;
-            } else {
-                targetGrip = 1.0f;
-                gripLerpRate = 0.28f; // Smooth seamless grip recovery
+            // Released space key or stopped -> Mini-Turbo release!
+            if (this.driftDirection != 0) {
+                if (this.driftTicks >= 14 && this.currentSpeed > 0.04f) {
+                    // Mini-Turbo boost!
+                    this.turboBoostTicks = 10; // Boost dash
+                    this.currentSpeed = (float) Math.min(this.currentSpeed * 1.35f, maxSpeed * 1.30f);
+                    this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                            SoundEvents.FIREWORK_ROCKET_LAUNCH, SoundSource.PLAYERS, 0.5F, 1.8F);
+                    if (this.level().isClientSide) {
+                        spawnMiniTurboBurst();
+                    }
+                }
+                this.driftDirection = 0;
+                this.driftTicks = 0;
             }
         }
-        this.gripFactor = Mth.lerp(gripLerpRate, this.gripFactor, targetGrip);
 
-        // Car yaw turning with oversteer
-        if (Math.abs(this.currentSpeed) > 0.002f) {
-            float gripTurnBonus = 1.0f + (1.0f - this.gripFactor) * 0.8f;
-            float baseTurn = (this.currentSpeed > 0 ? 13.5f : -13.5f) * gripTurnBonus;
-            float turnSpeed = (this.steerAngle / 35.0f) * baseTurn;
-            this.setYRot(this.getYRot() - turnSpeed);
+        if (this.turboBoostTicks > 0) {
+            this.turboBoostTicks--;
         }
 
-        // Continuous velocity convergence (zero discontinuity)
+        // === Steering / Yaw Turn ===
+        if (this.driftDirection != 0 && Math.abs(this.currentSpeed) > 0.002f) {
+            // Mario Kart in-steer / counter-steer line adjustment
+            float steerMult = 1.0f;
+            if (this.driftDirection == -1) {
+                if (this.inputSteer < -0.05f) {
+                    steerMult = 1.0f + (-this.inputSteer * 0.50f); // In-steer (tighter curve)
+                } else if (this.inputSteer > 0.05f) {
+                    steerMult = 1.0f - (this.inputSteer * 0.55f);  // Out-steer (wider curve)
+                }
+            } else if (this.driftDirection == 1) {
+                if (this.inputSteer > 0.05f) {
+                    steerMult = 1.0f + (this.inputSteer * 0.50f);  // In-steer (tighter curve)
+                } else if (this.inputSteer < -0.05f) {
+                    steerMult = 1.0f - (-this.inputSteer * 0.55f); // Out-steer (wider curve)
+                }
+            }
+            float driftTurnSpeed = 10.5f * steerMult * (-this.driftDirection);
+            this.setYRot(this.getYRot() + driftTurnSpeed);
+        } else {
+            // Normal driving turn
+            if (Math.abs(this.currentSpeed) > 0.002f) {
+                float baseTurn = (this.currentSpeed > 0 ? 13.5f : -13.5f);
+                float turnSpeed = (this.steerAngle / 35.0f) * baseTurn;
+                this.setYRot(this.getYRot() - turnSpeed);
+            }
+        }
+
+        // === Inertial drift movement vector synthesis ===
         float yawRad = this.getYRot() * Mth.DEG_TO_RAD;
         double driveX = -Mth.sin(yawRad) * this.currentSpeed;
         double driveZ = Mth.cos(yawRad) * this.currentSpeed;
 
-        double blendRate = 0.16 + (this.gripFactor * 0.72);
+        if (this.driftDirection != 0) {
+            // Lateral centrifugal slide outward while facing inward
+            double normalX = Mth.cos(yawRad) * this.currentSpeed * this.driftDirection;
+            double normalZ = Mth.sin(yawRad) * this.currentSpeed * this.driftDirection;
 
-        if (Math.abs(this.currentSpeed) < 0.001f) {
-            this.carVelocity = new Vec3(0, 0, 0);
-        } else {
+            double targetVelX = driveX * 0.85 + normalX * 0.35;
+            double targetVelZ = driveZ * 0.85 + normalZ * 0.35;
+
             this.carVelocity = new Vec3(
-                    Mth.lerp(blendRate, this.carVelocity.x, driveX),
+                    Mth.lerp(0.20, this.carVelocity.x, targetVelX),
                     0,
-                    Mth.lerp(blendRate, this.carVelocity.z, driveZ)
+                    Mth.lerp(0.20, this.carVelocity.z, targetVelZ)
             );
+        } else {
+            // Smooth zero-discontinuity convergence to facing vector
+            if (Math.abs(this.currentSpeed) < 0.001f) {
+                this.carVelocity = Vec3.ZERO;
+            } else {
+                this.carVelocity = new Vec3(
+                        Mth.lerp(0.55, this.carVelocity.x, driveX),
+                        0,
+                        Mth.lerp(0.55, this.carVelocity.z, driveZ)
+                );
+            }
         }
 
         double motionX = this.carVelocity.x;
@@ -394,8 +457,14 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
 
         // ドリフト白煙エフェクト (クライアント側)
         // Drift smoke effect (when tires lose grip)
-        if (this.level().isClientSide && this.gripFactor < 0.65f && this.onGround() && Math.abs(this.currentSpeed) > 0.025f) {
-            spawnDriftSmoke();
+        // Drift particles & Mini-Turbo effects
+        if (this.level().isClientSide && this.onGround() && Math.abs(this.currentSpeed) > 0.025f) {
+            if (this.driftDirection != 0) {
+                spawnDriftParticles(this.driftTicks >= 14);
+            }
+            if (this.turboBoostTicks > 0) {
+                spawnTurboBoostTrail();
+            }
         }
 
         // バッテリー消費 (サーバー側でのみ実行)
@@ -623,21 +692,54 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         compound.putDouble("BatteryAccumulatedDist", this.accumulatedDistance);
     }
 
-    private void spawnDriftSmoke() {
+    private void spawnDriftParticles(boolean turboReady) {
         float yawRad = this.getYRot() * Mth.DEG_TO_RAD;
         double backX = Mth.sin(yawRad) * 0.15;
         double backZ = -Mth.cos(yawRad) * 0.15;
         double rightX = Mth.cos(yawRad) * 0.14;
         double rightZ = Mth.sin(yawRad) * 0.14;
-
         double y = this.getY() + 0.03;
 
+        // White tire smoke
         this.level().addParticle(ParticleTypes.CAMPFIRE_COSY_SMOKE,
                 this.getX() + backX - rightX, y, this.getZ() + backZ - rightZ,
                 (Math.random() - 0.5) * 0.01, 0.015, (Math.random() - 0.5) * 0.01);
-
         this.level().addParticle(ParticleTypes.CAMPFIRE_COSY_SMOKE,
                 this.getX() + backX + rightX, y, this.getZ() + backZ + rightZ,
                 (Math.random() - 0.5) * 0.01, 0.015, (Math.random() - 0.5) * 0.01);
+
+        // Mario Kart blue spark sparks when Mini-Turbo is charged!
+        if (turboReady) {
+            this.level().addParticle(ParticleTypes.SOUL_FIRE_FLAME,
+                    this.getX() + backX - rightX, y + 0.02, this.getZ() + backZ - rightZ,
+                    (Math.random() - 0.5) * 0.03, 0.02, (Math.random() - 0.5) * 0.03);
+            this.level().addParticle(ParticleTypes.SOUL_FIRE_FLAME,
+                    this.getX() + backX + rightX, y + 0.02, this.getZ() + backZ + rightZ,
+                    (Math.random() - 0.5) * 0.03, 0.02, (Math.random() - 0.5) * 0.03);
+        }
+    }
+
+    private void spawnMiniTurboBurst() {
+        float yawRad = this.getYRot() * Mth.DEG_TO_RAD;
+        double backX = Mth.sin(yawRad) * 0.20;
+        double backZ = -Mth.cos(yawRad) * 0.20;
+        double y = this.getY() + 0.05;
+        for (int i = 0; i < 8; i++) {
+            double rx = (Math.random() - 0.5) * 0.1;
+            double rz = (Math.random() - 0.5) * 0.1;
+            this.level().addParticle(ParticleTypes.FLAME,
+                    this.getX() + backX + rx, y, this.getZ() + backZ + rz,
+                    backX * 0.5, 0.03, backZ * 0.5);
+        }
+    }
+
+    private void spawnTurboBoostTrail() {
+        float yawRad = this.getYRot() * Mth.DEG_TO_RAD;
+        double backX = Mth.sin(yawRad) * 0.16;
+        double backZ = -Mth.cos(yawRad) * 0.16;
+        double y = this.getY() + 0.04;
+        this.level().addParticle(ParticleTypes.FLAME,
+                this.getX() + backX, y, this.getZ() + backZ,
+                0, 0.01, 0);
     }
 }
