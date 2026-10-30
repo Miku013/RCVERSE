@@ -89,8 +89,8 @@ Minecraft 1.21.1（NeoForge）向けの超小型FPVマイクロドローン MOD�
   - **安全ドロップ**: ブロック破壊時にセット中のバッテリーを安全にドロップ（消失防止）。
   - **急速充電ロジック**: 毎tick 15ブロック分（1秒あたり 300m）急速充電。充電中は低音動作音と電気スパークパーティクルが発生し、満充電完了時にチャイムSEとハッピーパーティクルでお知らせ。
   - **3Dスロット差し込み描画 (`DroneChargerBatteryLayer`)**:
-    - `battery_slot` ボーン（Position: `[0.6, 9.0, -1.2]`, Rotation: `[0, 0, 90]`）を定義し、GeckoLib 準拠の `GeoRenderLayer` を導入。
-    - 手動マトリクス計算を完全撤廃し、GeckoLib のボーン階層・向き（FACING）・回転（Z→Y→X）自動追従により、Blockbenchで配置した通りの位置・45度傾斜でスロットにカチャッと刺さる描画を実現。
+    - `battery_slot` ボーン（Position: `[0, 7.3, 0.4]`, Rotation: `[0, -90, 90]`）を定義し、GeckoLib 準拠の `GeoRenderLayer` を導入。
+    - レンダラー側で不要な独自回転を行わず、GeckoLib のボーン階層・向き（FACING）・回転（Z→Y→X）自動追従により、Blockbenchで指定した通りの位置・角度（X: 0, Y: -90, Z: 90）でスロットにカチャッと刺さる描画を実現。
 - [x] **ドローン本体のGeckoLib化 (`DroneEntity`, `DroneGeoModel`, `DroneGeoRenderer`)**:
   - ユーザー作成モデル (`drone.geo.json`) を完全適用。
   - **プロペラ高速回転**: 飛行中・操縦中、`propeller_fl`, `propeller_fr`, `propeller_rl`, `propeller_rr` が毎フレーム滑らかに高速スピン（着地・停止時は自然に静止）。
