@@ -87,7 +87,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     // ドリフト走行パラメータ
     public boolean inputHandbrake = false; // スペースキー: ハンドブレーキ / ドリフト入力
     private Vec3 carVelocity = Vec3.ZERO;  // 慣性移動ベクトル
-    private boolean isDrifting = false;
+    private float gripFactor = 1.0f;       // Tire grip factor (0.15: drift slide - 1.0: full grip)
 
     public RcCarEntity(EntityType<?> entityType, Level level) {
         super(entityType, level);
@@ -326,60 +326,55 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
 
         this.currentSpeed = (float) Mth.clamp(this.currentSpeed, -maxSpeed * 0.45, maxSpeed);
 
-        // 車体ヨー旋回 (ハンドブレーキ時は急激にリアが流れてスピン・旋回力1.8倍に強化！)
-        boolean handbrake = this.inputHandbrake;
-        if (Math.abs(this.currentSpeed) > 0.002f) {
-            float baseTurn = (this.currentSpeed > 0 ? 13.5f : -13.5f);
-            if (handbrake) {
-                baseTurn *= 1.8f; // サイドブレーキを引いた瞬間のクイックなリア滑り出し
+        // === Continuous Tire Grip Model ===
+        boolean handbrake = this.inputHandbrake && Math.abs(this.currentSpeed) > 0.02f;
+
+        float targetGrip;
+        float gripLerpRate;
+        if (handbrake) {
+            targetGrip = 0.15f;
+            gripLerpRate = 0.35f; // Quick slide entry
+        } else {
+            double velAngle = Math.atan2(this.carVelocity.z, this.carVelocity.x);
+            float yawRadCheck = this.getYRot() * Mth.DEG_TO_RAD;
+            double driveXCheck = -Mth.sin(yawRadCheck);
+            double driveZCheck = Mth.cos(yawRadCheck);
+            double facingAngle = Math.atan2(driveZCheck, driveXCheck);
+            double angleDiff = Math.abs(Mth.wrapDegrees((facingAngle - velAngle) * (180.0 / Math.PI)));
+
+            if (angleDiff > 14.0 && this.inputForward > 0.05f && this.gripFactor < 0.55f) {
+                targetGrip = 0.30f;
+                gripLerpRate = 0.15f;
+            } else {
+                targetGrip = 1.0f;
+                gripLerpRate = 0.28f; // Smooth seamless grip recovery
             }
+        }
+        this.gripFactor = Mth.lerp(gripLerpRate, this.gripFactor, targetGrip);
+
+        // Car yaw turning with oversteer
+        if (Math.abs(this.currentSpeed) > 0.002f) {
+            float gripTurnBonus = 1.0f + (1.0f - this.gripFactor) * 0.8f;
+            float baseTurn = (this.currentSpeed > 0 ? 13.5f : -13.5f) * gripTurnBonus;
             float turnSpeed = (this.steerAngle / 35.0f) * baseTurn;
             this.setYRot(this.getYRot() - turnSpeed);
         }
 
-        // === 慣性ドリフトベクトル演算 ===
-        // 現在の車体正面向きへの推進ベクトル
+        // Continuous velocity convergence (zero discontinuity)
         float yawRad = this.getYRot() * Mth.DEG_TO_RAD;
         double driveX = -Mth.sin(yawRad) * this.currentSpeed;
         double driveZ = Mth.cos(yawRad) * this.currentSpeed;
 
-        if (handbrake && Math.abs(this.currentSpeed) > 0.025f) {
-            // ハンドブレーキ中: リアタイヤのグリップが外れ、直前の慣性ベクトルを維持して横滑り！
-            this.isDrifting = true;
-            this.carVelocity = new Vec3(
-                    Mth.lerp(0.18, this.carVelocity.x, driveX),
-                    0,
-                    Mth.lerp(0.18, this.carVelocity.z, driveZ)
-            );
-        } else if (this.isDrifting) {
-            // ドリフト状態の維持・カウンターステア制御
-            double velAngle = Math.atan2(this.carVelocity.z, this.carVelocity.x);
-            double facingAngle = Math.atan2(driveZ, driveX);
-            double angleDiff = Math.abs(Mth.wrapDegrees((facingAngle - velAngle) * (180.0 / Math.PI)));
+        double blendRate = 0.16 + (this.gripFactor * 0.72);
 
-            // カウンターステアを切ってドリフトアングルを維持している間
-            if (angleDiff > 12.0 && Math.abs(this.currentSpeed) > 0.02f) {
-                // アクセル(W)を踏んでいる時はドリフトを長くキープ、アクセルOFFならグリップ回復
-                double gripRate = (this.inputForward > 0.05f) ? 0.12 : 0.28;
-                this.carVelocity = new Vec3(
-                        Mth.lerp(gripRate, this.carVelocity.x, driveX),
-                        0,
-                        Mth.lerp(gripRate, this.carVelocity.z, driveZ)
-                );
-            } else {
-                // グリップ回復（通常走行へ復帰）
-                this.carVelocity = new Vec3(
-                        Mth.lerp(0.38, this.carVelocity.x, driveX),
-                        0,
-                        Mth.lerp(0.38, this.carVelocity.z, driveZ)
-                );
-                if (angleDiff < 5.0) {
-                    this.isDrifting = false;
-                }
-            }
+        if (Math.abs(this.currentSpeed) < 0.001f) {
+            this.carVelocity = new Vec3(0, 0, 0);
         } else {
-            // 通常グリップ走行
-            this.carVelocity = new Vec3(driveX, 0, driveZ);
+            this.carVelocity = new Vec3(
+                    Mth.lerp(blendRate, this.carVelocity.x, driveX),
+                    0,
+                    Mth.lerp(blendRate, this.carVelocity.z, driveZ)
+            );
         }
 
         double motionX = this.carVelocity.x;
@@ -398,7 +393,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         this.wheelRotation += (this.currentSpeed * 144.0f);
 
         // ドリフト白煙エフェクト (クライアント側)
-        if (this.level().isClientSide && this.isDrifting && this.onGround() && Math.abs(this.currentSpeed) > 0.025f) {
+        // Drift smoke effect (when tires lose grip)
+        if (this.level().isClientSide && this.gripFactor < 0.65f && this.onGround() && Math.abs(this.currentSpeed) > 0.025f) {
             spawnDriftSmoke();
         }
 
