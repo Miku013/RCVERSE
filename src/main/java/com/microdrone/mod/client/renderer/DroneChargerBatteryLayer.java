@@ -30,12 +30,17 @@ public class DroneChargerBatteryLayer extends GeoRenderLayer<DroneChargerBlockEn
         if ("battery_slot".equals(bone.getName())) {
             ItemStack battery = animatable.getStoredBattery();
             if (!battery.isEmpty() && animatable.getLevel() != null) {
+                // 1. GeckoLib本体が prepMatrixForBone で適用した回転とオフセットを pop してリセット
+                //    （これにより二重回転バグを根本から完全に解消し、親ボーンの基準空間に戻す）
+                poseStack.popPose();
+
+                // 2. バッテリー描画用のクリーンなマトリクスをプッシュ
                 poseStack.pushPose();
 
-                // 1. ボーンのピボット座標および回転マトリクス（drone_charger.geo.json の battery_slot で指定された [0, -90, 90]）を忠実に適用
+                // 3. battery_slot ボーンのピボット座標と回転を【正確に1回だけ】適用！
                 RenderUtil.translateAndRotateMatrixForBone(poseStack, bone);
 
-                // 2. ItemDisplayContext.FIXED を指定してスロットにジャストフィット描画
+                // 4. ItemDisplayContext.FIXED を指定してスロットにジャストフィット描画
                 this.itemRenderer.renderStatic(
                         battery,
                         ItemDisplayContext.FIXED,
@@ -47,7 +52,11 @@ public class DroneChargerBatteryLayer extends GeoRenderLayer<DroneChargerBlockEn
                         (int) animatable.getBlockPos().asLong()
                 );
 
+                // 5. バッテリー描画用マトリクスをポップ
                 poseStack.popPose();
+
+                // 6. 呼び出し元（GeckoLib renderRecursively）の popPose と整合性を保つため再プッシュ
+                poseStack.pushPose();
             }
         }
     }

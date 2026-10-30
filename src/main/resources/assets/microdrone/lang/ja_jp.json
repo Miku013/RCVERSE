@@ -4,6 +4,8 @@
   "item.microdrone.drone_controller": "ドローンコントローラー",
   "block.microdrone.drone_charger": "ラジコン急速充電ステーション",
   "item.microdrone.drone_charger": "ラジコン急速充電ステーション",
+  "block.microdrone.test_pivot": "ピボット確認用テストブロック",
+  "item.microdrone.test_pivot": "ピボット確認用テストブロック",
   "item.microdrone.battery_tier_1": "ドローンバッテリー (3000m)",
   "item.microdrone.battery_tier_2": "ドローンバッテリー (4000m)",
   "item.microdrone.battery_tier_3": "ドローンバッテリー (5000m)",

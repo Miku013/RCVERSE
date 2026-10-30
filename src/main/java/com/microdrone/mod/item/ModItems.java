@@ -23,6 +23,10 @@ public class ModItems {
     public static final DeferredHolder<Item, BlockItem> DRONE_CHARGER_ITEM =
             ITEMS.register("drone_charger", () -> new BlockItem(ModBlocks.DRONE_CHARGER.get(), new Item.Properties()));
 
+    // 確認用ピボットテストブロック (BlockItem)
+    public static final DeferredHolder<Item, BlockItem> TEST_PIVOT_ITEM =
+            ITEMS.register("test_pivot", () -> new BlockItem(ModBlocks.TEST_PIVOT.get(), new Item.Properties()));
+
     // === 4段階の航続距離バッテリーアイテム (Step 5) ===
     // Tier 1: 3,000 ブロック
     public static final DeferredHolder<Item, DroneBatteryItem> BATTERY_TIER_1 =

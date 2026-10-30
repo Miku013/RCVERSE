@@ -18,6 +18,13 @@ public class ModBlocks {
                     .strength(2.0f, 3.0f)
                     .noOcclusion()));
 
+    // 確認用ピボットテストブロック
+    public static final DeferredBlock<TestPivotBlock> TEST_PIVOT = BLOCKS.register("test_pivot",
+            () -> new TestPivotBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_RED)
+                    .strength(1.5f)
+                    .noOcclusion()));
+
     public static void register(IEventBus eventBus) {
         BLOCKS.register(eventBus);
     }

@@ -16,6 +16,10 @@ public class ModBlockEntities {
             BLOCK_ENTITIES.register("drone_charger",
                     () -> BlockEntityType.Builder.of(DroneChargerBlockEntity::new, ModBlocks.DRONE_CHARGER.get()).build(null));
 
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TestPivotBlockEntity>> TEST_PIVOT_BE =
+            BLOCK_ENTITIES.register("test_pivot",
+                    () -> BlockEntityType.Builder.of(TestPivotBlockEntity::new, ModBlocks.TEST_PIVOT.get()).build(null));
+
     public static void register(IEventBus eventBus) {
         BLOCK_ENTITIES.register(eventBus);
     }

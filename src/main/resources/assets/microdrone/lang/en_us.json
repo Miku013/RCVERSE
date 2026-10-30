@@ -4,6 +4,8 @@
   "item.microdrone.drone_controller": "Drone Controller",
   "block.microdrone.drone_charger": "RC Fast Charging Station",
   "item.microdrone.drone_charger": "RC Fast Charging Station",
+  "block.microdrone.test_pivot": "Pivot Test Block",
+  "item.microdrone.test_pivot": "Pivot Test Block",
   "item.microdrone.battery_tier_1": "Drone Battery (3000m)",
   "item.microdrone.battery_tier_2": "Drone Battery (4000m)",
   "item.microdrone.battery_tier_3": "Drone Battery (5000m)",

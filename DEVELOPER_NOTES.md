@@ -1,6 +1,6 @@
 # Micro Drone MOD - 開発引き継ぎノート (DEVELOPER_NOTES.md)
 
-最終更新日: 2026-10-28
+最終更新日: 2026-10-30
 対象環境: Minecraft 1.21.1 / NeoForge 21.1.244 / GeckoLib 4.7.7
 対象ディレクトリ: `micro_drone_mod`
 
@@ -172,16 +172,62 @@ Minecraft 1.21.1（NeoForge）向けの超小型FPVマイクロドローン MOD�
   └<📂battery_slot> (バッテリーアイテム描画用ピボット。pivot: [0, 4, 0])
 ```
 
-### 3-4. GeckoLib ボーンへのアイテム装着描画（超重要ルール）
-充電ステーションやドローンの `battery_slot` ボーンにバッテリーアイテムを描画する際は、**必ず `ItemDisplayContext.FIXED` を使用し、`GeoRenderLayer`（`renderForBone`）経由で描画してください**。
-1. **なぜ `GeoRenderLayer` を使うべきか？**:
-   - `GeoBlockRenderer` や `GeoEntityRenderer` は、ボーン階層・ブロック設置向き（FACING）・回転（Z→Y→X）を自動計算して PoseStack に適用します。手動で `poseStack.translate` や `Axis.YP` を計算すると、向き（NORTH/SOUTH）の反転やオイラー角の乗算順序の差異により、簡単に画面外や地中へ飛んでしまいます。
-2. **`renderForBone` 内の正確な描画ルール**:
-   - `RenderUtil.translateAndRotateMatrixForBone(poseStack, bone)`: GeckoLib標準のピボット移動および回転を適用します。
-   - **注意**: `translate(-0.5, -0.51, -0.5)` などの手動相殺は**絶対に行わないこと**（大幅に手前下へ吹き飛ぶ原因になります）。
-   - **端子の向き補正**: 充電器スロットに刺す際、端子をスロット奥底（充電コネクタ）に向けるため、`poseStack.mulPose(Axis.YP.rotationDegrees(180.0F))` を適用します（インジケーター面は上を向いたまま、端子のみが下向きに反転）。
-   - **ドローン本体**: `poseStack.scale(0.55F, 0.55F, 0.55F)` でお腹のスロットにジャストフィットします。
-3. `FIXED` は Blockbenchのボーン座標系（Y=UP）と一致し、アイテムの中心がボーンにジャストフィットします。`NONE` や `GROUND` を使うと原点座標が大きくズレ、上下の回転方向が狂います。
+### 3-4. GeckoLib ボーンへのアイテム装着描画（超重要ルール・二重回転バグ解消手法）
+充電ステーションやドローンの `battery_slot` ボーンにバッテリーアイテムを描画する際は、**必ず以下の「マトリクスポップ＆1回適用方式」を使用し、`ItemDisplayContext.FIXED` で描画してください**。
+
+#### ① GeckoLib本体の二重回転バグとその完全解消コード
+GeckoLib本体の `GeoBlockRenderer` / `GeoEntityRenderer` は、レイヤーを呼び出す直前にすでに `RenderUtil.prepMatrixForBone(poseStack, bone)` でボーンの回転を適用しています。
+そのため、レイヤー内でそのまま `RenderUtil.translateAndRotateMatrixForBone` を呼ぶと、**回転が二重（2回）掛かり、角度が2倍になったり激しいねじれが発生します**。
+
+これを完全に解消するため、以下のパターンを確立・適用しました：
+```java
+// 1. GeckoLib本体が prepMatrixForBone で適用した回転とオフセットを pop してリセット
+//    （これにより二重回転バグを根本から完全に解消し、親ボーンの基準空間に戻す）
+poseStack.popPose();
+
+// 2. バッテリー描画用のクリーンなマトリクスをプッシュ
+poseStack.pushPose();
+
+// 3. battery_slot ボーンのピボット座標と回転を【正確に1回だけ】適用！
+RenderUtil.translateAndRotateMatrixForBone(poseStack, bone);
+
+// 4. ItemDisplayContext.FIXED を指定してスロットにジャストフィット描画
+this.itemRenderer.renderStatic(
+        battery,
+        ItemDisplayContext.FIXED,
+        packedLight,
+        packedOverlay,
+        poseStack,
+        bufferSource,
+        animatable.getLevel(),
+        (int) animatable.getBlockPos().asLong()
+);
+
+// 5. バッテリー描画用マトリクスをポップ
+poseStack.popPose();
+
+// 6. 呼び出し元（GeckoLib renderRecursively）の popPose と整合性を保つため再プッシュ
+poseStack.pushPose();
+```
+
+#### ② GeckoLibの回転規約とBlockbench変換仕様
+GeckoLibのモデルローダー（`BakedModelFactory.java`）は、`.geo.json` から回転角を読み込む際に内部で以下の変換を行っています：
+- **X軸:** `Math.toRadians(-rotation.x)` （**マイナス符号が付く！**）
+- **Y軸:** `Math.toRadians(-rotation.y)` （**マイナス符号が付く！**）
+- **Z軸:** `Math.toRadians(rotation.z)` （**符号はそのまま！**）
+- **乗算順序:** `Z → Y → X` の順序で回転行列が合成されます。
+
+そのため、Blockbench上で見た通りの回転をマイクラ内で再現するには、`.geo.json` の `rotation` に **XとYにあらかじめマイナスを掛け、Zはそのまま** で出力する必要があります。
+
+#### ③ 専用Blockbenchプラグイン (`minecraft_coords_mode.js` v1.0.5)
+- 保存場所: `micro_drone_mod/plugins/minecraft_coords_mode.js` および `Downloads/minecraft MOD開発/minecraft_coords_mode.js`
+- 機能: Blockbenchの右側サイドバーに常駐し、選択中ボーンの正確な `pivot` と、GeckoLib向けにX/Y反転済みの `rotation` をリアルタイム表示。
+- 「GeckoLib ボーンJSONをコピー」（`Ctrl + Shift + C`）を押すだけで、そのまま `.geo.json` に貼り付け可能なJSONスニペットを生成。
+
+#### ④ 高速開発ビルド環境
+- **`Ctrl + Shift + B`**: VSCode（Antigravity IDE）の標準ビルドタスク。約0.5秒でアセット更新・再コンパイルが完了。
+- **`quick_build.bat`**: プロジェクト直下のダブルクリック実行用バッチファイル。
+- **ファイル自動監視モード**: `./gradlew processResources classes --continuous` により、`.geo.json` 保存時に自動で0.3秒ビルド。
 
 ### 3-5. アニメーションキーの命名規則
 GeckoLib 4 では、`.animation.json` 側の文字列キー（例: `idle`, `flying`, `charging`）と Java コード側の `RawAnimation.begin().thenLoop("flying")` を**完全一致**させる必要があります。余計なプレフィックスを付けないこと。

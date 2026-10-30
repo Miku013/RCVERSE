@@ -28,15 +28,17 @@ public class DroneBatteryLayer extends GeoRenderLayer<DroneEntity> {
         if ("battery_slot".equals(bone.getName())) {
             ItemStack battery = animatable.getInstalledBattery();
             if (!battery.isEmpty()) {
+                // 1. GeckoLib本体が prepMatrixForBone で適用した回転とオフセットを pop してリセット
+                poseStack.popPose();
                 poseStack.pushPose();
 
-                // ボーンのピボット座標および回転マトリクスを適用
+                // 2. battery_slot ボーンのピボット座標と回転マトリクスを【正確に1回だけ】適用
                 RenderUtil.translateAndRotateMatrixForBone(poseStack, bone);
 
-                // バッテリーのサイズをドローンスロットに合わせてスケーリング
+                // 3. バッテリーのサイズをドローンスロットに合わせてスケーリング
                 poseStack.scale(0.55F, 0.55F, 0.55F);
 
-                // ItemDisplayContext.FIXED を指定することで、ボーン中心にジャストフィットして描画
+                // 4. ItemDisplayContext.FIXED を指定して描画
                 this.itemRenderer.renderStatic(
                         battery,
                         ItemDisplayContext.FIXED,
@@ -48,7 +50,9 @@ public class DroneBatteryLayer extends GeoRenderLayer<DroneEntity> {
                         animatable.getId()
                 );
 
+                // 5. 自分のポーズをポップし、呼び出し元のために再プッシュ
                 poseStack.popPose();
+                poseStack.pushPose();
             }
         }
     }

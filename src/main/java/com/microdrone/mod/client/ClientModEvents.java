@@ -9,6 +9,7 @@ import com.microdrone.mod.client.model.DroneModel;
 import com.microdrone.mod.client.renderer.DroneChargerBlockEntityRenderer;
 import com.microdrone.mod.client.renderer.DroneGeoRenderer;
 import com.microdrone.mod.client.renderer.DroneRenderer;
+import com.microdrone.mod.client.renderer.TestPivotBlockEntityRenderer;
 import com.microdrone.mod.client.renderer.item.DroneBatteryItemRenderer;
 import com.microdrone.mod.client.renderer.item.DroneControllerItemRenderer;
 import com.microdrone.mod.entity.ModEntities;
@@ -37,6 +38,7 @@ public class ClientModEvents {
     private static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(ModEntities.DRONE.get(), DroneGeoRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.DRONE_CHARGER_BE.get(), DroneChargerBlockEntityRenderer::new);
+        event.registerBlockEntityRenderer(ModBlockEntities.TEST_PIVOT_BE.get(), TestPivotBlockEntityRenderer::new);
     }
 
     private static void registerLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {

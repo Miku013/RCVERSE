@@ -1,0 +1,9 @@
+{
+  "variants": {
+    "facing=north": { "model": "microdrone:block/test_pivot" },
+    "facing=east":  { "model": "microdrone:block/test_pivot", "y": 90 },
+    "facing=south": { "model": "microdrone:block/test_pivot", "y": 180 },
+    "facing=west":  { "model": "microdrone:block/test_pivot", "y": 270 }
+  }
+}
+
