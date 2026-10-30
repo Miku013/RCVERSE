@@ -316,16 +316,16 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
 
     private void tickCarPhysics() {
         DroneMotorItem motor = getActiveMotorItem();
-        // モーターTierに応じた最高速 (blocks/tick)
-        // Tier 1 (0.35) -> 0.77 blocks/tick (約 15.4 m/s = 55 km/h)
-        // Tier 4 (0.95) -> 2.09 blocks/tick (約 41.8 m/s = 150 km/h)
-        double maxSpeed = motor.getMaxHorizontalSpeed() * 2.2;
-        double accel = 0.08 + (motor.getTier() * 0.02); // 0.10 ~ 0.16 の機敏で力強い加速
-        double friction = 0.93; // 慣性滑走
+        // 車用に速度を 1/4 に調整 (blocks/tick)
+        // Tier 1 (0.35) -> 0.19 blocks/tick (約 3.8 m/s = 14 km/h)
+        // Tier 4 (0.95) -> 0.52 blocks/tick (約 10.4 m/s = 38 km/h)
+        double maxSpeed = motor.getMaxHorizontalSpeed() * 0.55;
+        double accel = 0.025 + (motor.getTier() * 0.008); // 速度に合わせた滑らかで扱いやすい加速
+        double friction = 0.90; // 地面摩擦減速
 
         // ステアリング操舵 (最大35度)
         float targetSteer = this.inputSteer * 35.0f;
-        this.steerAngle = Mth.lerp(0.35f, this.steerAngle, targetSteer);
+        this.steerAngle = Mth.lerp(0.40f, this.steerAngle, targetSteer);
 
         // 前進 / 後退アクセル
         if (this.inputForward > 0.05f) {
@@ -334,16 +334,16 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             this.currentSpeed += (float) (accel * this.inputForward * 0.65f); // バックはややマイルド
         } else {
             this.currentSpeed *= friction;
-            if (Math.abs(this.currentSpeed) < 0.002f) {
+            if (Math.abs(this.currentSpeed) < 0.001f) {
                 this.currentSpeed = 0.0f;
             }
         }
 
-        this.currentSpeed = (float) Mth.clamp(this.currentSpeed, -maxSpeed * 0.4, maxSpeed);
+        this.currentSpeed = (float) Mth.clamp(this.currentSpeed, -maxSpeed * 0.45, maxSpeed);
 
-        // 車体ヨー旋回 (速度がある時のみステアリングに応じて旋回)
-        if (Math.abs(this.currentSpeed) > 0.008f) {
-            float turnSpeed = (this.steerAngle / 35.0f) * (this.currentSpeed > 0 ? 4.5f : -4.5f);
+        // 車体ヨー旋回 (旋回半径を 1/3 に縮小 ＝ 角速度を 3倍の 13.5f に強化して超小回り可能に)
+        if (Math.abs(this.currentSpeed) > 0.002f) {
+            float turnSpeed = (this.steerAngle / 35.0f) * (this.currentSpeed > 0 ? 13.5f : -13.5f);
             this.setYRot(this.getYRot() - turnSpeed);
         }
 
