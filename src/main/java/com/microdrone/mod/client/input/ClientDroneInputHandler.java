@@ -40,6 +40,41 @@ public class ClientDroneInputHandler {
     private static float capturedStrafe = 0.0f;
     private static float capturedVertical = 0.0f;
 
+    public enum RcCameraMode {
+        GROUND_RC,   // 地上プロポ視点 (本物のラジコン感覚: 立ち位置から車を見下ろし視線追従)
+        CHASE_CAR    // 車載チェイス視点 (車体斜め後方上空の見下ろしカメラ)
+    }
+
+    private static RcCameraMode carCameraMode = RcCameraMode.GROUND_RC;
+
+    public static RcCameraMode getCarCameraMode() {
+        return carCameraMode;
+    }
+
+    public static boolean isRcCarPiloting() {
+        if (!isPiloting || activeDroneId == -1) return false;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) return false;
+        return mc.level.getEntity(activeDroneId) instanceof RcCarEntity;
+    }
+
+    public static void toggleCarCameraMode() {
+        Minecraft mc = Minecraft.getInstance();
+        if (carCameraMode == RcCameraMode.GROUND_RC) {
+            carCameraMode = RcCameraMode.CHASE_CAR;
+            if (mc.player != null) {
+                mc.player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.microdrone.cam_chase"), true);
+                mc.player.setInvisible(true);
+            }
+        } else {
+            carCameraMode = RcCameraMode.GROUND_RC;
+            if (mc.player != null) {
+                mc.player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.microdrone.cam_ground"), true);
+                mc.player.setInvisible(false);
+            }
+        }
+    }
+
     public static void register() {
         NeoForge.EVENT_BUS.register(new ClientDroneInputHandler());
     }
@@ -69,9 +104,12 @@ public class ClientDroneInputHandler {
         if (state) {
             isPiloting = true;
             activeDroneId = droneId;
+            carCameraMode = RcCameraMode.GROUND_RC; // RCカーは「地上プロポ視点」で操縦開始！
             if (mc.player != null) {
                 lastPlayerYaw = mc.player.getYRot();
-                mc.player.setInvisible(true); // 操縦中のプレイヤーモデル不可視化
+                // RCカーの場合は地上プロポ視点のため不可視化しない（手元にプロポが見える）
+                Entity targetEnt = mc.level != null ? mc.level.getEntity(droneId) : null;
+                mc.player.setInvisible(!(targetEnt instanceof RcCarEntity));
             }
 
             // クライアント側ビークルにローカル制御フラグを設定（カクつき防止・予測物理用）
@@ -230,7 +268,6 @@ public class ClientDroneInputHandler {
                 drone.setYHeadRot(yaw);
                 drone.setXRot(pitch);
             } else if (entity instanceof RcCarEntity car) {
-                // RCカー操縦時: 144Hz以上のフレーム線形補間（PartialTick LERP）で旋回時のカクつきを完全撲滅！
                 float partialTick = (float) event.getPartialTick();
                 float carYaw = Mth.rotLerp(partialTick, car.yRotO, car.getYRot());
 
@@ -239,44 +276,62 @@ public class ClientDroneInputHandler {
                 double carY = Mth.lerp(partialTick, car.yOld, car.getY());
                 double carZ = Mth.lerp(partialTick, car.zOld, car.getZ());
 
-                // 車体の後方・斜め上空の見下ろしカメラ（cameraボーン相当: 1/5サイズ縮小オフセット）
-                // 距離約1.6m、高さ約0.9m
-                double dist = 1.6;
-                double height = 0.9;
-                float yawRad = carYaw * Mth.DEG_TO_RAD;
+                if (carCameraMode == RcCameraMode.GROUND_RC) {
+                    // === 【モード1: 地上プロポ視点（本物のラジコン感覚）】 ===
+                    // 立ち位置から車を見下ろして操縦。手元にプロポが見え、目線が走るRCカーを自動追従！
+                    double eyeY = startY + mc.player.getEyeHeight();
+                    setCameraPositionSafe(event.getCamera(), startX, eyeY, startZ);
 
-                // 車体の正面方向は [-sin(yaw), cos(yaw)]、後方は [+sin(yaw), -cos(yaw)]
-                double targetCamX = carX + Mth.sin(yawRad) * dist;
-                double targetCamY = carY + height;
-                double targetCamZ = carZ - Mth.cos(yawRad) * dist;
+                    // プレイヤーからRCカーへの相対ベクトル
+                    double dx = carX - startX;
+                    double dy = (carY + 0.15) - eyeY;
+                    double dz = carZ - startZ;
+                    double distXZ = Math.sqrt(dx * dx + dz * dz);
 
-                // 壁抜け防止（車体中心からカメラ位置へのレイキャスト）
-                net.minecraft.world.phys.Vec3 carCenter = new net.minecraft.world.phys.Vec3(carX, carY + 0.2, carZ);
-                net.minecraft.world.phys.Vec3 camPos = new net.minecraft.world.phys.Vec3(targetCamX, targetCamY, targetCamZ);
-                net.minecraft.world.phys.BlockHitResult hit = mc.level.clip(new net.minecraft.world.level.ClipContext(
-                        carCenter, camPos,
-                        net.minecraft.world.level.ClipContext.Block.VISUAL,
-                        net.minecraft.world.level.ClipContext.Fluid.NONE,
-                        car
-                ));
-                if (hit.getType() != net.minecraft.world.phys.HitResult.Type.MISS) {
-                    net.minecraft.world.phys.Vec3 hitPos = hit.getLocation();
-                    targetCamX = Mth.lerp(0.85, hitPos.x, carCenter.x);
-                    targetCamY = Mth.lerp(0.85, hitPos.y, carCenter.y);
-                    targetCamZ = Mth.lerp(0.85, hitPos.z, carCenter.z);
+                    // 走るRCカーを自然に追尾するターゲット角度 (Look-At)
+                    float targetYaw = (float) (Mth.atan2(dz, dx) * (180.0 / Math.PI)) - 90.0f;
+                    float targetPitch = (float) (-(Mth.atan2(dy, distXZ) * (180.0 / Math.PI)));
+
+                    event.setYaw(targetYaw);
+                    event.setPitch(targetPitch);
+
+                    mc.player.setYRot(targetYaw);
+                    mc.player.setXRot(targetPitch);
+                } else {
+                    // === 【モード2: 車載チェイス視点（見下ろし追従カメラ）】 ===
+                    double dist = 1.6;
+                    double height = 0.9;
+                    float yawRad = carYaw * Mth.DEG_TO_RAD;
+
+                    double targetCamX = carX + Mth.sin(yawRad) * dist;
+                    double targetCamY = carY + height;
+                    double targetCamZ = carZ - Mth.cos(yawRad) * dist;
+
+                    // 壁抜け防止
+                    net.minecraft.world.phys.Vec3 carCenter = new net.minecraft.world.phys.Vec3(carX, carY + 0.2, carZ);
+                    net.minecraft.world.phys.Vec3 camPos = new net.minecraft.world.phys.Vec3(targetCamX, targetCamY, targetCamZ);
+                    net.minecraft.world.phys.BlockHitResult hit = mc.level.clip(new net.minecraft.world.level.ClipContext(
+                            carCenter, camPos,
+                            net.minecraft.world.level.ClipContext.Block.VISUAL,
+                            net.minecraft.world.level.ClipContext.Fluid.NONE,
+                            car
+                    ));
+                    if (hit.getType() != net.minecraft.world.phys.HitResult.Type.MISS) {
+                        net.minecraft.world.phys.Vec3 hitPos = hit.getLocation();
+                        targetCamX = Mth.lerp(0.85, hitPos.x, carCenter.x);
+                        targetCamY = Mth.lerp(0.85, hitPos.y, carCenter.y);
+                        targetCamZ = Mth.lerp(0.85, hitPos.z, carCenter.z);
+                    }
+
+                    setCameraPositionSafe(event.getCamera(), targetCamX, targetCamY, targetCamZ);
+
+                    float mousePitch = mc.player.getXRot();
+                    float pitch = Mth.clamp(22.0f + mousePitch * 0.25f, 10.0f, 60.0f);
+
+                    event.setYaw(carYaw);
+                    event.setPitch(pitch);
+                    mc.player.setYRot(carYaw);
                 }
-
-                // カメラ位置を反映（見下ろし型チェイスカメラ）
-                setCameraPositionSafe(event.getCamera(), targetCamX, targetCamY, targetCamZ);
-
-                // カメラ角度: 進行方向を向き、前方の車体を見下ろす角度 (基準22度、マウスで微調整可能)
-                float mousePitch = mc.player.getXRot();
-                float pitch = Mth.clamp(22.0f + mousePitch * 0.25f, 10.0f, 60.0f);
-
-                event.setYaw(carYaw);
-                event.setPitch(pitch);
-
-                mc.player.setYRot(carYaw);
             }
         }
     }
@@ -386,6 +441,22 @@ public class ClientDroneInputHandler {
             try {
                 cameraSetPositionMethod.invoke(camera, x, y, z);
             } catch (Exception ignored) {}
+        }
+    }
+
+    /**
+     * 【F5キー（視点切替キー）でのカメラモード切替】
+     * 地上プロポ視点（本物RC） と 車載チェイス視点 をワンタッチで切替！
+     */
+    @SubscribeEvent
+    public void onKeyInput(net.neoforged.neoforge.client.event.InputEvent.Key event) {
+        if (!isPiloting || activeDroneId == -1) return;
+
+        Minecraft mc = Minecraft.getInstance();
+        if (isRcCarPiloting()) {
+            if (mc.options.keyTogglePerspective.matches(event.getKey(), event.getScanCode()) && event.getAction() == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
+                toggleCarCameraMode();
+            }
         }
     }
 }

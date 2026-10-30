@@ -327,11 +327,21 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         float targetSteer = this.inputSteer * 35.0f;
         this.steerAngle = Mth.lerp(0.40f, this.steerAngle, targetSteer);
 
-        // 前進 / 後退アクセル
+        // 前進 / 後退 / ESCブレーキ処理 (実機ホビーラジコンESC仕様: 前進中のS入力は急ブレーキ、停止後にバック)
         if (this.inputForward > 0.05f) {
-            this.currentSpeed += (float) (accel * this.inputForward);
+            if (this.currentSpeed < -0.01f) {
+                this.currentSpeed += (float) (accel * 2.5f);
+                if (this.currentSpeed > 0.0f) this.currentSpeed = 0.0f;
+            } else {
+                this.currentSpeed += (float) (accel * this.inputForward);
+            }
         } else if (this.inputForward < -0.05f) {
-            this.currentSpeed += (float) (accel * this.inputForward * 0.65f); // バックはややマイルド
+            if (this.currentSpeed > 0.01f) {
+                this.currentSpeed -= (float) (accel * 2.5f); // 前進中のSは強力なブレーキ減速
+                if (this.currentSpeed < 0.0f) this.currentSpeed = 0.0f;
+            } else {
+                this.currentSpeed += (float) (accel * this.inputForward * 0.65f); // 停止後は後退
+            }
         } else {
             this.currentSpeed *= friction;
             if (Math.abs(this.currentSpeed) < 0.001f) {

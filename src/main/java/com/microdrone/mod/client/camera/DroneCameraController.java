@@ -174,18 +174,26 @@ public class DroneCameraController {
     @SubscribeEvent
     public void onRenderHand(RenderHandEvent event) {
         if (isViewing || ClientDroneInputHandler.isPiloting()) {
+            // RCカーの地上プロポ視点(GROUND_RC)のときは、手元にプロポ（送信機）を表示！
+            if (ClientDroneInputHandler.isRcCarPiloting() && ClientDroneInputHandler.getCarCameraMode() == ClientDroneInputHandler.RcCameraMode.GROUND_RC) {
+                return;
+            }
             event.setCanceled(true);
         }
     }
 
     /**
-     * ドローン視点・操縦中の自プレイヤーモデル（頭上・画面端に垂れ下がる体や足）の非表示化
+     * ドローン視点・操縦中の自プレイヤーモデルの非表示化
      */
     @SubscribeEvent
     public void onRenderPlayer(RenderPlayerEvent.Pre event) {
         if (isViewing || ClientDroneInputHandler.isPiloting()) {
             Minecraft mc = Minecraft.getInstance();
             if (event.getEntity() == mc.player) {
+                // RCカーの地上プロポ視点では自然な一人称視線を保つ
+                if (ClientDroneInputHandler.isRcCarPiloting() && ClientDroneInputHandler.getCarCameraMode() == ClientDroneInputHandler.RcCameraMode.GROUND_RC) {
+                    return;
+                }
                 event.setCanceled(true);
             }
         }

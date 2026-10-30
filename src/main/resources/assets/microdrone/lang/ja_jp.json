@@ -74,5 +74,7 @@
   "message.microdrone.motor_installed": "§a[ドローン] モーターを換装しました！(Tier %d: %s, 最高速度: %s m/s)",
   "message.microdrone.charger.inserted": "[充電ステーション] %s をセットしました。（残量: %d%% [%dm / %dm]）",
   "message.microdrone.charger.removed": "[充電ステーション] %s を取り出しました。（残量: %d%% [%dm / %dm]）",
-  "message.microdrone.charger.empty": "[充電ステーション] スロットは空です。バッテリーを持って右クリックでセットしてください。"
+  "message.microdrone.charger.empty": "[充電ステーション] スロットは空です。バッテリーを持って右クリックでセットしてください。",
+  "message.microdrone.cam_ground": "§b[RCカー] 視点: 地上プロポ視点 (本物RC追従) [F5キーで切替]",
+  "message.microdrone.cam_chase": "§6[RCカー] 視点: 車載チェイス視点 (後方追従) [F5キーで切替]"
 }
