@@ -886,4 +886,12 @@ public class DroneEntity extends Entity implements GeoEntity {
         }
         compound.putDouble("BatteryAccumulatedDist", this.accumulatedDistance);
     }
+
+    @Override
+    public boolean shouldRenderAtSqrDistance(double distance) {
+        // バニラ標準では小型サイズ(0.5m)に比例して約32mで描画が打ち切られるところを、
+        // ラジコン遠隔操縦・目視飛行・他プレイヤーからの視認のため最大電波距離(250m)超まで描画判定を大幅拡張
+        double range = Math.max(256.0, this.getBoundingBox().getSize() * 64.0) * getViewScale();
+        return distance < range * range;
+    }
 }
