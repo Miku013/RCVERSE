@@ -56,3 +56,4 @@ public class RcCarGeoModel extends GeoModel<RcCarEntity> {
         if (wheelRR != null) wheelRR.setRotX(wheelRad);
     }
 }
+

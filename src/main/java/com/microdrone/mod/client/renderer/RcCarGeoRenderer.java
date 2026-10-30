@@ -29,3 +29,4 @@ public class RcCarGeoRenderer extends GeoEntityRenderer<RcCarEntity> {
         poseStack.popPose();
     }
 }
+
