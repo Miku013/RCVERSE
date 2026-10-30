@@ -95,7 +95,7 @@ public class DroneEntity extends Entity implements GeoEntity {
 
     // 装着中のバッテリー
     private ItemStack installedBattery = ItemStack.EMPTY;
-    // 装着中のモーター (空の場合はデフォルトTier 1)
+    // 装着中のモーター (サーバー側保持用)
     private ItemStack installedMotor = ItemStack.EMPTY;
     // 前後移動距離積算用
     private double accumulatedDistance = 0.0;
@@ -205,25 +205,33 @@ public class DroneEntity extends Entity implements GeoEntity {
         }
     }
 
-    public double getCurrentMaxSpeed() {
-        if (!this.installedMotor.isEmpty() && this.installedMotor.getItem() instanceof DroneMotorItem motorItem) {
-            return motorItem.getMaxHorizontalSpeed();
+    /**
+     * クライアント側・サーバー側共通で現在有効なモーター定義を安全・確実に取得する
+     */
+    public DroneMotorItem getActiveMotorItem() {
+        ItemStack motorStack = getInstalledMotor();
+        if (!motorStack.isEmpty() && motorStack.getItem() instanceof DroneMotorItem motorItem) {
+            return motorItem;
         }
-        return DEFAULT_MAX_HORIZONTAL_SPEED;
+        int tier = getMotorTier();
+        return switch (tier) {
+            case 2 -> ModItems.MOTOR_TIER_2.get();
+            case 3 -> ModItems.MOTOR_TIER_3.get();
+            case 4 -> ModItems.MOTOR_TIER_4.get();
+            default -> ModItems.MOTOR_TIER_1.get();
+        };
+    }
+
+    public double getCurrentMaxSpeed() {
+        return getActiveMotorItem().getMaxHorizontalSpeed();
     }
 
     public double getCurrentAcceleration() {
-        if (!this.installedMotor.isEmpty() && this.installedMotor.getItem() instanceof DroneMotorItem motorItem) {
-            return motorItem.getAcceleration();
-        }
-        return DEFAULT_ACCELERATION;
+        return getActiveMotorItem().getAcceleration();
     }
 
     public double getCurrentMaxVerticalSpeed() {
-        if (!this.installedMotor.isEmpty() && this.installedMotor.getItem() instanceof DroneMotorItem motorItem) {
-            return motorItem.getMaxVerticalSpeed();
-        }
-        return DEFAULT_MAX_VERTICAL_SPEED;
+        return getActiveMotorItem().getMaxVerticalSpeed();
     }
 
     public double getCurrentVerticalAcceleration() {
@@ -232,10 +240,7 @@ public class DroneEntity extends Entity implements GeoEntity {
     }
 
     public int getMotorColor() {
-        if (!this.installedMotor.isEmpty() && this.installedMotor.getItem() instanceof DroneMotorItem motorItem) {
-            return motorItem.getMotorColor();
-        }
-        return 0xFF333333; // デフォルト (Tier 1: ガンメタル)
+        return getActiveMotorItem().getMotorColor();
     }
 
     // === GeckoLib 4 アニメーションコントローラー ===
@@ -287,7 +292,11 @@ public class DroneEntity extends Entity implements GeoEntity {
             double dz = z - this.getZ();
             double distSq = dx * dx + dy * dy + dz * dz;
 
-            if (distSq > 9.0) { // 3ブロック以上の大きなズレのみ補正
+            // 高速移動（Tier 4: 19m/s = 約1ブロック/tick）時の通信遅延を考慮した動的閾値
+            double maxSpeedPerTick = getCurrentMaxSpeed();
+            double dynamicThreshold = Math.max(9.0, Math.pow(maxSpeedPerTick * 12.0, 2));
+
+            if (distSq > dynamicThreshold) {
                 super.lerpTo(x, y, z, yRot, xRot, steps);
             }
             return;
