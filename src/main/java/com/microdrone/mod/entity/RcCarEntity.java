@@ -61,6 +61,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             SynchedEntityData.defineId(RcCarEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> DATA_STEER_ANGLE =
             SynchedEntityData.defineId(RcCarEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_ROLL_ANGLE =
+            SynchedEntityData.defineId(RcCarEntity.class, EntityDataSerializers.FLOAT);
 
     // 操縦者UUID
     private UUID pilotUUID = null;
@@ -91,6 +93,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     private int driftDirection = 0;        // 0: normal, -1: drift left, +1: drift right
     private int driftTicks = 0;            // Drift duration ticks
     private int turboBoostTicks = 0;       // Mini-turbo boost remaining ticks
+    private float rollAngle = 0.0f;        // Body roll tilt angle (degrees)
+    public float prevRollAngle = 0.0f;     // Previous tick roll for smooth lerp
 
     public RcCarEntity(EntityType<?> entityType, Level level) {
         super(entityType, level);
@@ -141,6 +145,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         builder.define(DATA_INSTALLED_MOTOR, ItemStack.EMPTY);
         builder.define(DATA_WHEEL_ROTATION, 0.0f);
         builder.define(DATA_STEER_ANGLE, 0.0f);
+        builder.define(DATA_ROLL_ANGLE, 0.0f);
     }
 
     @Override
@@ -289,6 +294,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             // クライアント同期用角度
             this.entityData.set(DATA_WHEEL_ROTATION, this.wheelRotation);
             this.entityData.set(DATA_STEER_ANGLE, this.steerAngle);
+            this.entityData.set(DATA_ROLL_ANGLE, this.rollAngle);
         } else {
             // クライアント側処理
             if (this.locallyControlled) {
@@ -298,6 +304,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                 // 他プレイヤーが操縦中または放置中はサーバー同期値を使用
                 this.wheelRotation = this.entityData.get(DATA_WHEEL_ROTATION);
                 this.steerAngle = this.entityData.get(DATA_STEER_ANGLE);
+                this.rollAngle = this.entityData.get(DATA_ROLL_ANGLE);
             }
         }
     }
@@ -346,7 +353,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         this.currentSpeed = (float) Mth.clamp(this.currentSpeed, -maxSpeed * 0.45, currentMax);
 
         // === Mario Kart Drift State Machine ===
-        boolean wantsDrift = this.inputHandbrake && (this.currentSpeed > 0.04f || this.driftDirection != 0);
+        boolean wantsDrift = this.inputHandbrake && (this.currentSpeed > 0.03f || this.driftDirection != 0);
 
         if (wantsDrift) {
             // Start drift lock
@@ -355,13 +362,23 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                     this.driftDirection = -1; // Drift Left
                     this.driftTicks = 0;
                     if (this.onGround()) {
-                        this.setDeltaMovement(this.getDeltaMovement().add(0, 0.08, 0)); // Little hop!
+                        Vec3 cur = this.getDeltaMovement();
+                        this.setDeltaMovement(new Vec3(cur.x, 0.24, cur.z)); // Noticeable Hop jump!
+                        this.setOnGround(false);
+                        this.hasImpulse = true;
+                        this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                                SoundEvents.ARMOR_EQUIP_LEATHER.value(), SoundSource.PLAYERS, 0.6F, 1.8F);
                     }
                 } else if (this.inputSteer > 0.05f) {
                     this.driftDirection = 1;  // Drift Right
                     this.driftTicks = 0;
                     if (this.onGround()) {
-                        this.setDeltaMovement(this.getDeltaMovement().add(0, 0.08, 0)); // Little hop!
+                        Vec3 cur = this.getDeltaMovement();
+                        this.setDeltaMovement(new Vec3(cur.x, 0.24, cur.z)); // Noticeable Hop jump!
+                        this.setOnGround(false);
+                        this.hasImpulse = true;
+                        this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                                SoundEvents.ARMOR_EQUIP_LEATHER.value(), SoundSource.PLAYERS, 0.6F, 1.8F);
                     }
                 }
             }
@@ -391,27 +408,43 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             this.turboBoostTicks--;
         }
 
-        // === Steering / Yaw Turn ===
+        // === Body Roll Tilt Angle Calculation (Deeper tilt on counter-steer) ===
+        this.prevRollAngle = this.rollAngle;
+        float targetRoll = 0.0f;
+        if (this.driftDirection != 0) {
+            float baseRoll = 9.0f; // Standard drift roll
+            float counterAmount = 0.0f;
+            if (this.driftDirection == -1 && this.inputSteer > 0.05f) {
+                counterAmount = this.inputSteer; // 0.05 ~ 1.0
+            } else if (this.driftDirection == 1 && this.inputSteer < -0.05f) {
+                counterAmount = -this.inputSteer; // 0.05 ~ 1.0
+            }
+            // Deep aggressive tilt up to 16.5 degrees when counter-steering!
+            float totalRoll = baseRoll + (counterAmount * 7.5f);
+            targetRoll = -this.driftDirection * totalRoll;
+        }
+        this.rollAngle = Mth.lerp(0.35f, this.rollAngle, targetRoll);
+
+        // === Steering / Yaw Turn (Gentle wide drift curve) ===
         if (this.driftDirection != 0 && Math.abs(this.currentSpeed) > 0.002f) {
-            // Mario Kart in-steer / counter-steer line adjustment
             float steerMult = 1.0f;
             if (this.driftDirection == -1) {
                 if (this.inputSteer < -0.05f) {
-                    steerMult = 1.0f + (-this.inputSteer * 0.50f); // In-steer (tighter curve)
+                    steerMult = 1.0f + (-this.inputSteer * 0.55f); // In-steer tighter
                 } else if (this.inputSteer > 0.05f) {
-                    steerMult = 1.0f - (this.inputSteer * 0.55f);  // Out-steer (wider curve)
+                    steerMult = 1.0f - (this.inputSteer * 0.75f);  // Counter-steer: very gentle 0.25x
                 }
             } else if (this.driftDirection == 1) {
                 if (this.inputSteer > 0.05f) {
-                    steerMult = 1.0f + (this.inputSteer * 0.50f);  // In-steer (tighter curve)
+                    steerMult = 1.0f + (this.inputSteer * 0.55f);  // In-steer tighter
                 } else if (this.inputSteer < -0.05f) {
-                    steerMult = 1.0f - (-this.inputSteer * 0.55f); // Out-steer (wider curve)
+                    steerMult = 1.0f - (-this.inputSteer * 0.75f); // Counter-steer: very gentle 0.25x
                 }
             }
-            float driftTurnSpeed = 10.5f * steerMult * (-this.driftDirection);
+            // Base drift turn speed reduced to 4.5f for gentle long slides!
+            float driftTurnSpeed = 4.5f * steerMult * (-this.driftDirection);
             this.setYRot(this.getYRot() + driftTurnSpeed);
         } else {
-            // Normal driving turn
             if (Math.abs(this.currentSpeed) > 0.002f) {
                 float baseTurn = (this.currentSpeed > 0 ? 13.5f : -13.5f);
                 float turnSpeed = (this.steerAngle / 35.0f) * baseTurn;
@@ -425,20 +458,19 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         double driveZ = Mth.cos(yawRad) * this.currentSpeed;
 
         if (this.driftDirection != 0) {
-            // Lateral centrifugal slide outward while facing inward
             double normalX = Mth.cos(yawRad) * this.currentSpeed * this.driftDirection;
             double normalZ = Mth.sin(yawRad) * this.currentSpeed * this.driftDirection;
 
-            double targetVelX = driveX * 0.85 + normalX * 0.35;
-            double targetVelZ = driveZ * 0.85 + normalZ * 0.35;
+            // 0.90 forward + 0.28 slide for broad sweeping smooth curve
+            double targetVelX = driveX * 0.90 + normalX * 0.28;
+            double targetVelZ = driveZ * 0.90 + normalZ * 0.28;
 
             this.carVelocity = new Vec3(
-                    Mth.lerp(0.20, this.carVelocity.x, targetVelX),
+                    Mth.lerp(0.18, this.carVelocity.x, targetVelX),
                     0,
-                    Mth.lerp(0.20, this.carVelocity.z, targetVelZ)
+                    Mth.lerp(0.18, this.carVelocity.z, targetVelZ)
             );
         } else {
-            // Smooth zero-discontinuity convergence to facing vector
             if (Math.abs(this.currentSpeed) < 0.001f) {
                 this.carVelocity = Vec3.ZERO;
             } else {
@@ -452,7 +484,12 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
 
         double motionX = this.carVelocity.x;
         double motionZ = this.carVelocity.z;
-        double motionY = this.onGround() ? 0.0 : (this.getDeltaMovement().y - 0.08); // 重力
+        double motionY;
+        if (this.onGround() && this.getDeltaMovement().y <= 0.001) {
+            motionY = 0.0;
+        } else {
+            motionY = this.getDeltaMovement().y - 0.04; // Light gravity
+        }
 
         this.setDeltaMovement(new Vec3(motionX, motionY, motionZ));
         this.move(MoverType.SELF, this.getDeltaMovement());
@@ -744,5 +781,9 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         this.level().addParticle(ParticleTypes.FLAME,
                 this.getX() + backX, y, this.getZ() + backZ,
                 0, 0.01, 0);
+    }
+
+    public float getRollAngle() {
+        return this.rollAngle;
     }
 }
