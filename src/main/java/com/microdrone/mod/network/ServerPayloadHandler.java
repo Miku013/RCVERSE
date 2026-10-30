@@ -33,6 +33,7 @@ public class ServerPayloadHandler {
                         } else {
                             car.inputForward = payload.forward();
                             car.inputSteer = payload.strafe();
+                            car.inputHandbrake = (payload.vertical() > 0.5f); // スペースキーでハンドブレーキ
                         }
                     }
                 }

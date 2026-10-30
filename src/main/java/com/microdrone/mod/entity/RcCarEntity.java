@@ -84,6 +84,11 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     private float steerAngle = 0.0f;
     private boolean locallyControlled = false;
 
+    // ドリフト走行パラメータ
+    public boolean inputHandbrake = false; // スペースキー: ハンドブレーキ / ドリフト入力
+    private Vec3 carVelocity = Vec3.ZERO;  // 慣性移動ベクトル
+    private boolean isDrifting = false;
+
     public RcCarEntity(EntityType<?> entityType, Level level) {
         super(entityType, level);
         this.blocksBuilding = true;
@@ -321,16 +326,64 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
 
         this.currentSpeed = (float) Mth.clamp(this.currentSpeed, -maxSpeed * 0.45, maxSpeed);
 
-        // 車体ヨー旋回 (旋回半径を 1/3 に縮小 ＝ 角速度を 3倍の 13.5f に強化して超小回り可能に)
+        // 車体ヨー旋回 (ハンドブレーキ時は急激にリアが流れてスピン・旋回力1.8倍に強化！)
+        boolean handbrake = this.inputHandbrake;
         if (Math.abs(this.currentSpeed) > 0.002f) {
-            float turnSpeed = (this.steerAngle / 35.0f) * (this.currentSpeed > 0 ? 13.5f : -13.5f);
+            float baseTurn = (this.currentSpeed > 0 ? 13.5f : -13.5f);
+            if (handbrake) {
+                baseTurn *= 1.8f; // サイドブレーキを引いた瞬間のクイックなリア滑り出し
+            }
+            float turnSpeed = (this.steerAngle / 35.0f) * baseTurn;
             this.setYRot(this.getYRot() - turnSpeed);
         }
 
-        // 移動ベクトル計算
+        // === 慣性ドリフトベクトル演算 ===
+        // 現在の車体正面向きへの推進ベクトル
         float yawRad = this.getYRot() * Mth.DEG_TO_RAD;
-        double motionX = -Mth.sin(yawRad) * this.currentSpeed;
-        double motionZ = Mth.cos(yawRad) * this.currentSpeed;
+        double driveX = -Mth.sin(yawRad) * this.currentSpeed;
+        double driveZ = Mth.cos(yawRad) * this.currentSpeed;
+
+        if (handbrake && Math.abs(this.currentSpeed) > 0.025f) {
+            // ハンドブレーキ中: リアタイヤのグリップが外れ、直前の慣性ベクトルを維持して横滑り！
+            this.isDrifting = true;
+            this.carVelocity = new Vec3(
+                    Mth.lerp(0.18, this.carVelocity.x, driveX),
+                    0,
+                    Mth.lerp(0.18, this.carVelocity.z, driveZ)
+            );
+        } else if (this.isDrifting) {
+            // ドリフト状態の維持・カウンターステア制御
+            double velAngle = Math.atan2(this.carVelocity.z, this.carVelocity.x);
+            double facingAngle = Math.atan2(driveZ, driveX);
+            double angleDiff = Math.abs(Mth.wrapDegrees((facingAngle - velAngle) * (180.0 / Math.PI)));
+
+            // カウンターステアを切ってドリフトアングルを維持している間
+            if (angleDiff > 12.0 && Math.abs(this.currentSpeed) > 0.02f) {
+                // アクセル(W)を踏んでいる時はドリフトを長くキープ、アクセルOFFならグリップ回復
+                double gripRate = (this.inputForward > 0.05f) ? 0.12 : 0.28;
+                this.carVelocity = new Vec3(
+                        Mth.lerp(gripRate, this.carVelocity.x, driveX),
+                        0,
+                        Mth.lerp(gripRate, this.carVelocity.z, driveZ)
+                );
+            } else {
+                // グリップ回復（通常走行へ復帰）
+                this.carVelocity = new Vec3(
+                        Mth.lerp(0.38, this.carVelocity.x, driveX),
+                        0,
+                        Mth.lerp(0.38, this.carVelocity.z, driveZ)
+                );
+                if (angleDiff < 5.0) {
+                    this.isDrifting = false;
+                }
+            }
+        } else {
+            // 通常グリップ走行
+            this.carVelocity = new Vec3(driveX, 0, driveZ);
+        }
+
+        double motionX = this.carVelocity.x;
+        double motionZ = this.carVelocity.z;
         double motionY = this.onGround() ? 0.0 : (this.getDeltaMovement().y - 0.08); // 重力
 
         this.setDeltaMovement(new Vec3(motionX, motionY, motionZ));
@@ -341,9 +394,13 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             this.setDeltaMovement(this.getDeltaMovement().multiply(1.0, 0.0, 1.0));
         }
 
-        // タイヤ回転角の積算 (走行距離に応じて回転)
-        // タイヤ外周約2.5ブロック -> 360 / 2.5 ≈ 144度/ブロック
+        // タイヤ回転角の積算
         this.wheelRotation += (this.currentSpeed * 144.0f);
+
+        // ドリフト白煙エフェクト (クライアント側)
+        if (this.level().isClientSide && this.isDrifting && this.onGround() && Math.abs(this.currentSpeed) > 0.025f) {
+            spawnDriftSmoke();
+        }
 
         // バッテリー消費 (サーバー側でのみ実行)
         if (!this.level().isClientSide && !this.installedBattery.isEmpty()) {
@@ -568,5 +625,23 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             compound.put("InstalledMotor", this.installedMotor.save(this.registryAccess()));
         }
         compound.putDouble("BatteryAccumulatedDist", this.accumulatedDistance);
+    }
+
+    private void spawnDriftSmoke() {
+        float yawRad = this.getYRot() * Mth.DEG_TO_RAD;
+        double backX = Mth.sin(yawRad) * 0.15;
+        double backZ = -Mth.cos(yawRad) * 0.15;
+        double rightX = Mth.cos(yawRad) * 0.14;
+        double rightZ = Mth.sin(yawRad) * 0.14;
+
+        double y = this.getY() + 0.03;
+
+        this.level().addParticle(ParticleTypes.CAMPFIRE_COSY_SMOKE,
+                this.getX() + backX - rightX, y, this.getZ() + backZ - rightZ,
+                (Math.random() - 0.5) * 0.01, 0.015, (Math.random() - 0.5) * 0.01);
+
+        this.level().addParticle(ParticleTypes.CAMPFIRE_COSY_SMOKE,
+                this.getX() + backX + rightX, y, this.getZ() + backZ + rightZ,
+                (Math.random() - 0.5) * 0.01, 0.015, (Math.random() - 0.5) * 0.01);
     }
 }

@@ -237,13 +237,14 @@ public class ClientDroneInputHandler {
 
             car.inputForward = capturedForward;
             car.inputSteer = capturedStrafe;
+            car.inputHandbrake = (capturedVertical > 0.5f); // スペースキーでハンドブレーキ
 
-            // サーバーへ車の操作入力（W/S: 前後, A/D: ステアリング）を送信
+            // サーバーへ車の操作入力（W/S: 前後, A/D: ステアリング, Space: ハンドブレーキ）を送信
             PacketDistributor.sendToServer(new DroneControlPayload(
                     activeDroneId,
                     capturedForward,
                     capturedStrafe,
-                    0.0f,
+                    capturedVertical,
                     car.getYRot(),
                     car.getXRot(),
                     false
