@@ -48,7 +48,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class DroneEntity extends Entity implements GeoEntity {
+public class DroneEntity extends Entity implements GeoEntity, RcControllable {
     private final AnimatableInstanceCache geoCache = GeckoLibUtil.createInstanceCache(this);
 
     // フェイルセーフ用: 操縦中プレイヤーUUID -> ドローン
@@ -57,11 +57,13 @@ public class DroneEntity extends Entity implements GeoEntity {
     private static final Map<UUID, DroneEntity> DUMMY_TO_DRONE = new ConcurrentHashMap<>();
 
     public static DroneEntity getByPilot(UUID pilotUUID) {
-        return pilotUUID != null ? ACTIVE_PILOTED_DRONES.get(pilotUUID) : null;
+        RcControllable v = RcVehicleManager.getByPilot(pilotUUID);
+        return v instanceof DroneEntity drone ? drone : null;
     }
 
     public static DroneEntity getByDummy(UUID dummyUUID) {
-        return dummyUUID != null ? DUMMY_TO_DRONE.get(dummyUUID) : null;
+        RcControllable v = RcVehicleManager.getByDummy(dummyUUID);
+        return v instanceof DroneEntity drone ? drone : null;
     }
 
     public UUID getPilotUUID() {
@@ -263,6 +265,11 @@ public class DroneEntity extends Entity implements GeoEntity {
         return this.pilotUUID != null;
     }
 
+    @Override
+    public boolean isPilotedBy(ServerPlayer player) {
+        return this.isPiloted() && this.pilotUUID.equals(player.getUUID());
+    }
+
     public boolean isPilotedBy(Player player) {
         return player != null && this.pilotUUID != null && this.pilotUUID.equals(player.getUUID());
     }
@@ -372,7 +379,9 @@ public class DroneEntity extends Entity implements GeoEntity {
         this.dummyEntityUUID = dummy.getUUID();
         this.dummyEntityRef = dummy;
         ACTIVE_PILOTED_DRONES.put(player.getUUID(), this);
+        RcVehicleManager.registerPiloting(player.getUUID(), this);
         DUMMY_TO_DRONE.put(dummy.getUUID(), this);
+        RcVehicleManager.registerDummy(dummy.getUUID(), this);
         MicroDroneMod.LOGGER.info("[SERVER] [PLAYER_DUMMY_SPAWN] Spawned body dummy {} at [{}, {}, {}]",
                 this.dummyEntityUUID,
                 String.format("%.2f", this.startX), String.format("%.2f", this.startY), String.format("%.2f", this.startZ));
@@ -414,6 +423,7 @@ public class DroneEntity extends Entity implements GeoEntity {
 
             if (targetDummyUUID != null) {
                 DUMMY_TO_DRONE.remove(targetDummyUUID);
+                RcVehicleManager.unregisterDummy(targetDummyUUID);
             }
 
             // 1. テレポート前: 直接参照およびエンティティ検索による身代わりダミーの消去試行
@@ -482,6 +492,7 @@ public class DroneEntity extends Entity implements GeoEntity {
             }
 
             ACTIVE_PILOTED_DRONES.remove(player.getUUID());
+            RcVehicleManager.unregisterPiloting(player.getUUID());
             this.pilotUUID = null;
             this.inputForward = 0.0f;
             this.inputStrafe = 0.0f;
@@ -698,9 +709,11 @@ public class DroneEntity extends Entity implements GeoEntity {
 
         if (this.pilotUUID != null) {
             ACTIVE_PILOTED_DRONES.remove(this.pilotUUID);
+            RcVehicleManager.unregisterPiloting(this.pilotUUID);
         }
         if (this.dummyEntityUUID != null) {
             DUMMY_TO_DRONE.remove(this.dummyEntityUUID);
+            RcVehicleManager.unregisterDummy(this.dummyEntityUUID);
         }
 
         if (!this.level().isClientSide && this.pilotUUID != null) {

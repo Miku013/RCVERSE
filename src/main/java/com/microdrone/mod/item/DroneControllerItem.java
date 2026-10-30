@@ -2,6 +2,9 @@ package com.microdrone.mod.item;
 
 import com.microdrone.mod.client.renderer.item.DroneControllerItemRenderer;
 import com.microdrone.mod.entity.DroneEntity;
+import com.microdrone.mod.entity.RcControllable;
+import com.microdrone.mod.entity.RcVehicleManager;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -45,27 +48,27 @@ public class DroneControllerItem extends Item implements GeoItem {
         ItemStack itemStack = player.getItemInHand(hand);
 
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
-            // 自身が操縦中のドローンがあれば即座に操縦終了（距離制限に関係なく確実に停止）
-            DroneEntity activeDrone = DroneEntity.getByPilot(player.getUUID());
-            if (activeDrone != null) {
-                activeDrone.stopPiloting(serverPlayer);
+            // 1. 自身が操縦中のRC機体（ドローンや車など）があれば即座に操縦終了
+            RcControllable activeVehicle = RcVehicleManager.getByPilot(player.getUUID());
+            if (activeVehicle != null) {
+                activeVehicle.stopPiloting(serverPlayer);
                 return InteractionResultHolder.success(itemStack);
             }
 
-            // 周囲32ブロック以内のドローンを検索
+            // 2. 周囲32ブロック以内のRC機体を検索
             AABB searchBox = player.getBoundingBox().inflate(32.0);
-            List<DroneEntity> drones = level.getEntitiesOfClass(DroneEntity.class, searchBox);
+            List<Entity> candidates = level.getEntities(player, searchBox, e -> e instanceof RcControllable);
 
-            // 操縦していない場合、最も近い空いているドローンの操縦を開始
-            DroneEntity nearestAvailable = null;
+            // 操縦していない場合、最も近い空いているRC機体の操縦を開始
+            RcControllable nearestAvailable = null;
             double nearestDistSq = Double.MAX_VALUE;
 
-            for (DroneEntity drone : drones) {
-                if (!drone.isPiloted()) {
-                    double distSq = player.distanceToSqr(drone);
+            for (Entity entity : candidates) {
+                if (entity instanceof RcControllable vehicle && !vehicle.isPiloted()) {
+                    double distSq = player.distanceToSqr(entity);
                     if (distSq < nearestDistSq) {
                         nearestDistSq = distSq;
-                        nearestAvailable = drone;
+                        nearestAvailable = vehicle;
                     }
                 }
             }
@@ -74,7 +77,7 @@ public class DroneControllerItem extends Item implements GeoItem {
                 nearestAvailable.startPiloting(serverPlayer);
                 return InteractionResultHolder.success(itemStack);
             } else {
-                player.sendSystemMessage(Component.translatable("message.microdrone.no_drone_nearby"));
+                player.sendSystemMessage(Component.translatable("message.microdrone.no_vehicle_nearby"));
                 return InteractionResultHolder.fail(itemStack);
             }
         }
