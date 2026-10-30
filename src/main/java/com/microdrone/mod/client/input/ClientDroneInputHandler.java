@@ -66,11 +66,18 @@ public class ClientDroneInputHandler {
                 mc.player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.microdrone.cam_chase"), true);
                 mc.player.setInvisible(true);
             }
+            if (mc.level != null && activeDroneId != -1) {
+                Entity car = mc.level.getEntity(activeDroneId);
+                if (car != null) {
+                    mc.setCameraEntity(car);
+                }
+            }
         } else {
             carCameraMode = RcCameraMode.GROUND_RC;
             if (mc.player != null) {
                 mc.player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.microdrone.cam_ground"), true);
                 mc.player.setInvisible(false);
+                mc.setCameraEntity(mc.player);
             }
         }
     }
@@ -105,25 +112,24 @@ public class ClientDroneInputHandler {
             isPiloting = true;
             activeDroneId = droneId;
             carCameraMode = RcCameraMode.GROUND_RC; // RCカーは「地上プロポ視点」で操縦開始！
-            if (mc.player != null) {
-                lastPlayerYaw = mc.player.getYRot();
-                // RCカーの場合は地上プロポ視点のため不可視化しない（手元にプロポが見える）
-                Entity targetEnt = mc.level != null ? mc.level.getEntity(droneId) : null;
-                mc.player.setInvisible(!(targetEnt instanceof RcCarEntity));
-            }
 
-            // クライアント側ビークルにローカル制御フラグを設定（カクつき防止・予測物理用）
-            if (mc.level != null) {
-                Entity entity = mc.level.getEntity(droneId);
-                if (entity instanceof DroneEntity drone) {
-                    drone.setLocallyControlled(true);
-                    com.microdrone.mod.client.audio.DroneSoundManager.startPilotingSound(drone);
-                } else if (entity instanceof RcCarEntity car) {
-                    car.setLocallyControlled(true);
+            Entity targetEnt = mc.level != null ? mc.level.getEntity(droneId) : null;
+            if (targetEnt instanceof DroneEntity drone) {
+                if (mc.player != null) {
+                    lastPlayerYaw = mc.player.getYRot();
+                    mc.player.setInvisible(true);
                 }
+                drone.setLocallyControlled(true);
+                com.microdrone.mod.client.audio.DroneSoundManager.startPilotingSound(drone);
+                DroneCameraController.startViewing(droneId);
+            } else if (targetEnt instanceof RcCarEntity car) {
+                if (mc.player != null) {
+                    lastPlayerYaw = mc.player.getYRot();
+                    mc.player.setInvisible(false); // 地上プロポ視点: 手元にプロポが見える！
+                    mc.setCameraEntity(mc.player); // カメラはプレイヤー自身の頭！
+                }
+                car.setLocallyControlled(true);
             }
-
-            DroneCameraController.startViewing(droneId);
         } else {
             com.microdrone.mod.client.audio.DroneSoundManager.stopPilotingSound();
 
@@ -207,13 +213,12 @@ public class ClientDroneInputHandler {
 
         missingTicks = 0;
 
-        // クライアント側ローカルプレイヤーの座標を機体に同期
-        player.setPos(entity.getX(), entity.getY(), entity.getZ());
-
-        float currentYaw = player.getYRot();
-        float currentPitch = player.getXRot();
-
         if (entity instanceof DroneEntity drone) {
+            // ドローン操縦時はプレイヤーの座標をドローンに同期
+            player.setPos(drone.getX(), drone.getY(), drone.getZ());
+
+            float currentYaw = player.getYRot();
+            float currentPitch = player.getXRot();
             drone.applyControlInput(capturedForward, capturedStrafe, capturedVertical, currentYaw, currentPitch);
 
             // サーバーへ最新の姿勢と移動入力を送信
@@ -227,6 +232,9 @@ public class ClientDroneInputHandler {
                     false
             ));
         } else if (entity instanceof RcCarEntity car) {
+            // RCカー操縦時: プレイヤーは立ち位置(startX, startY, startZ)にとどまる！
+            player.setPos(startX, startY, startZ);
+
             car.inputForward = capturedForward;
             car.inputSteer = capturedStrafe;
 
@@ -278,14 +286,14 @@ public class ClientDroneInputHandler {
 
                 if (carCameraMode == RcCameraMode.GROUND_RC) {
                     // === 【モード1: 地上プロポ視点（本物のラジコン感覚）】 ===
-                    // 立ち位置から車を見下ろして操縦。手元にプロポが見え、目線が走るRCカーを自動追従！
-                    double eyeY = startY + mc.player.getEyeHeight();
-                    setCameraPositionSafe(event.getCamera(), startX, eyeY, startZ);
+                    // カメラはプレイヤー自身の頭！足元〜遠くを走る車を見下ろして首を振って追従
+                    double eyeX = mc.player.getX();
+                    double eyeY = mc.player.getEyeY();
+                    double eyeZ = mc.player.getZ();
 
-                    // プレイヤーからRCカーへの相対ベクトル
-                    double dx = carX - startX;
-                    double dy = (carY + 0.15) - eyeY;
-                    double dz = carZ - startZ;
+                    double dx = carX - eyeX;
+                    double dy = carY - eyeY;
+                    double dz = carZ - eyeZ;
                     double distXZ = Math.sqrt(dx * dx + dz * dz);
 
                     // 走るRCカーを自然に追尾するターゲット角度 (Look-At)

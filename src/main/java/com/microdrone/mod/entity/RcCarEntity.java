@@ -182,37 +182,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         this.startY = player.getY();
         this.startZ = player.getZ();
 
-        // 身代わりダミー人形
-        ArmorStand dummy = new ArmorStand(player.serverLevel(), this.startX, this.startY, this.startZ);
-        dummy.setYRot(player.getYRot());
-        dummy.setXRot(player.getXRot());
-        dummy.setInvulnerable(true);
-        dummy.setNoGravity(true);
-        dummy.setInvisible(false);
-        dummy.setShowArms(true);
-
-        ItemStack headStack = new ItemStack(Items.PLAYER_HEAD);
-        CompoundTag profileTag = new CompoundTag();
-        profileTag.putString("Name", player.getGameProfile().getName());
-        headStack.set(net.minecraft.core.component.DataComponents.PROFILE, new net.minecraft.world.item.component.ResolvableProfile(player.getGameProfile()));
-        dummy.setItemSlot(EquipmentSlot.HEAD, headStack);
-
-        for (EquipmentSlot slot : EquipmentSlot.values()) {
-            if (slot.getType() == EquipmentSlot.Type.HUMANOID_ARMOR && slot != EquipmentSlot.HEAD) {
-                dummy.setItemSlot(slot, player.getItemBySlot(slot).copy());
-            }
-        }
-        dummy.setItemSlot(EquipmentSlot.MAINHAND, player.getMainHandItem().copy());
-
-        player.serverLevel().addFreshEntity(dummy);
-        this.dummyEntityUUID = dummy.getUUID();
-        this.dummyEntityRef = dummy;
-
+        // 本物のラジコン感覚: プレイヤーは立ち位置にプロポを持って立ったまま！
         RcVehicleManager.registerPiloting(player.getUUID(), this);
-        RcVehicleManager.registerDummy(dummy.getUUID(), this);
-
-        player.setCamera(this);
-        player.setInvisible(true);
 
         PacketDistributor.sendToPlayer(player, new DronePilotStatePayload(this.getId(), true, this.startX, this.startY, this.startZ));
         player.sendSystemMessage(Component.translatable("message.microdrone.pilot_start"));
@@ -291,8 +262,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                     com.microdrone.mod.chunk.DroneChunkManager.updateDroneChunks(pilot, this);
                 }
 
-                // サーバー側プレイヤー追従（チャンク配信維持）
-                pilot.absMoveTo(this.getX(), this.getY(), this.getZ(), pilot.getYRot(), pilot.getXRot());
+// プレイヤーは立ち位置に静止
             }
 
             // サーバー側物理処理
