@@ -37,6 +37,7 @@ public class ClientModEvents {
 
     private static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(ModEntities.DRONE.get(), DroneGeoRenderer::new);
+        event.registerEntityRenderer(ModEntities.RC_CAR.get(), com.microdrone.mod.client.renderer.RcCarGeoRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.DRONE_CHARGER_BE.get(), DroneChargerBlockEntityRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.TEST_PIVOT_BE.get(), TestPivotBlockEntityRenderer::new);
     }

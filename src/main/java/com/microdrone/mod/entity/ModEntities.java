@@ -20,6 +20,14 @@ public class ModEntities {
                     .updateInterval(1)
                     .build("drone"));
 
+    public static final DeferredHolder<EntityType<?>, EntityType<RcCarEntity>> RC_CAR =
+            ENTITIES.register("rc_car", () -> EntityType.Builder.<RcCarEntity>of(RcCarEntity::new, MobCategory.MISC)
+                    .sized(2.4f, 1.5f)
+                    .eyeHeight(1.2f)
+                    .clientTrackingRange(32)
+                    .updateInterval(1)
+                    .build("rc_car"));
+
     public static void register(IEventBus eventBus) {
         ENTITIES.register(eventBus);
     }

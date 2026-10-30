@@ -1,6 +1,7 @@
 package com.microdrone.mod.network;
 
 import com.microdrone.mod.entity.DroneEntity;
+import com.microdrone.mod.entity.RcCarEntity;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
@@ -23,6 +24,15 @@ public class ServerPayloadHandler {
                                     payload.yaw(),
                                     payload.pitch()
                             );
+                        }
+                    }
+                } else if (entity instanceof RcCarEntity car) {
+                    if (car.isPilotedBy(player)) {
+                        if (payload.stop()) {
+                            car.stopPiloting(player);
+                        } else {
+                            car.inputForward = payload.forward();
+                            car.inputSteer = payload.strafe();
                         }
                     }
                 }

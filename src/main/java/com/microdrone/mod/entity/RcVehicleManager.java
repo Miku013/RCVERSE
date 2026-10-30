@@ -47,3 +47,4 @@ public class RcVehicleManager {
         return DUMMY_TO_VEHICLE.get(dummyUUID);
     }
 }
+

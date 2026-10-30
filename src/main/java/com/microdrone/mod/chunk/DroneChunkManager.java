@@ -33,7 +33,7 @@ public class DroneChunkManager {
     /**
      * ドローン周辺のチャンクを更新（ロード・クライアント配信・外れたチャンクの解放）
      */
-    public static void updateDroneChunks(ServerPlayer pilot, DroneEntity drone) {
+    public static void updateDroneChunks(ServerPlayer pilot, net.minecraft.world.entity.Entity drone) {
         if (pilot == null || drone == null || !(drone.level() instanceof ServerLevel serverLevel)) {
             return;
         }
@@ -79,7 +79,7 @@ public class DroneChunkManager {
                         result.ifSuccess(chunkAccess -> {
                             if (chunkAccess instanceof LevelChunk lc) {
                                 serverLevel.getServer().execute(() -> {
-                                    if (drone.isPilotedBy(pilot)) {
+                                    if (drone instanceof com.microdrone.mod.entity.RcControllable rc && rc.isPilotedBy(pilot)) {
                                         sendChunkToPlayer(pilot, serverLevel, lc);
                                     }
                                 });
@@ -117,7 +117,7 @@ public class DroneChunkManager {
     /**
      * 操縦終了・ドローン消滅時にすべての追加チャンクを安全に解放
      */
-    public static void releaseDroneChunks(ServerPlayer pilot, DroneEntity drone) {
+    public static void releaseDroneChunks(ServerPlayer pilot, net.minecraft.world.entity.Entity drone) {
         if (drone == null) return;
         UUID droneUUID = drone.getUUID();
         Set<ChunkPos> chunks = LOADED_CHUNKS.remove(droneUUID);
