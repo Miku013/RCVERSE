@@ -1,7 +1,10 @@
-﻿build/
+build/
 run/
 .gradle/
 .vscode/
 bin/
 out/
 *.log
+*.jar
+thercmod_extracted/
+thercmod_src/
