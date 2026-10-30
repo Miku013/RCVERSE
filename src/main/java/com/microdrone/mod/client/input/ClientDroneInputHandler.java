@@ -135,6 +135,8 @@ public class ClientDroneInputHandler {
 
             if (mc.player != null) {
                 mc.player.setInvisible(false); // 操縦終了時に透明化解除
+                mc.setCameraEntity(mc.player); // Restore camera to player
+                mc.options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON); // Restore first person
             }
 
             if (mc.level != null && activeDroneId != -1) {
@@ -146,6 +148,7 @@ public class ClientDroneInputHandler {
                 }
             }
 
+            carCameraMode = RcCameraMode.GROUND_RC; // Reset camera mode to ground
             isPiloting = false;
             activeDroneId = -1;
             capturedForward = 0.0f;
@@ -233,6 +236,11 @@ public class ClientDroneInputHandler {
             ));
         } else if (entity instanceof RcCarEntity car) {
             // RCカー操縦時: プレイヤーは立ち位置(startX, startY, startZ)にとどまる！
+            // Client-side battery empty failsafe
+            if (!car.hasBattery() || car.getBatteryRemaining() <= 0) {
+                stopPiloting();
+                return;
+            }
             player.setPos(startX, startY, startZ);
 
             car.inputForward = capturedForward;
@@ -365,11 +373,8 @@ public class ClientDroneInputHandler {
             // 手にドローンコントローラーを持っている時のみ操縦を終了
             Minecraft mc = Minecraft.getInstance();
             if (mc.player != null) {
-                boolean holdingController = mc.player.getMainHandItem().getItem() instanceof DroneControllerItem
-                        || mc.player.getOffhandItem().getItem() instanceof DroneControllerItem;
-                if (holdingController) {
-                    stopPiloting();
-                }
+                stopPiloting();
+                return;
             }
             return;
         }

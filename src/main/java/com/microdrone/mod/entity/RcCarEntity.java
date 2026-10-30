@@ -270,6 +270,16 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                     com.microdrone.mod.chunk.DroneChunkManager.updateDroneChunks(pilot, this);
                 }
 
+                // Battery empty failsafe (checked every server tick)
+                if (!this.hasBattery() || this.getBatteryRemaining() <= 0) {
+                    MicroDroneMod.LOGGER.warn("[SERVER] [BATTERY_EMPTY_FAILSAFE] Car {} ran out of battery. Stopping piloting.", this.getUUID());
+                    pilot.sendSystemMessage(Component.translatable("message.microdrone.battery_empty_failsafe"));
+                    this.inputForward = 0.0f;
+                    this.inputSteer = 0.0f;
+                    this.stopPiloting(pilot);
+                    return;
+                }
+
 // プレイヤーは立ち位置に静止
             }
 
@@ -474,16 +484,9 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             if (this.accumulatedDistance >= 1.0) {
                 int drain = (int) this.accumulatedDistance;
                 this.accumulatedDistance -= drain;
-                int remaining = Math.max(0, this.getBatteryRemaining() - drain);
-                this.entityData.set(DATA_BATTERY_REMAINING, remaining);
-                this.installedBattery.setDamageValue(this.installedBattery.getMaxDamage() - remaining);
-                if (remaining <= 0) {
-                    this.inputForward = 0.0f;
-                    this.inputSteer = 0.0f;
-                    if (this.pilotUUID != null && this.level() instanceof ServerLevel sl) {
-                        ServerPlayer p = (ServerPlayer) sl.getPlayerByUUID(this.pilotUUID);
-                        if (p != null) this.stopPiloting(p);
-                    }
+                if (this.installedBattery.getItem() instanceof DroneBatteryItem batteryItem) {
+                    batteryItem.consumeFlightDistance(this.installedBattery, drain);
+                    updateBatterySyncData();
                 }
             }
         }
