@@ -262,6 +262,13 @@ DroneEntity.java（および今後のRCビークル共通）で shouldRenderAtSq
 今後追加するRCカーや戦車等の陸上モデルにも同様のオーバーライドを適用すること。
 
 ---
+### ⑥ 多機種共通RCビークルフレームワーク（RcControllable / RcVehicleManager）
+プロポ（送信機: DroneControllerItem）でドローン・RCカー・戦車・ボート等の複数機種をシームレスに操作（方式A: ワンクリックスマートバインド）できるように設計を共通化。
+- RcControllable: 全RCビークルが実装する共通操縦インターフェース（isPiloted(), startPiloting(), stopPiloting() 等）。
+- RcVehicleManager: 操縦中プレイヤーや身代わり人形と機体のマッピングを一元管理。
+- プロポ操作時、周囲32ブロック以内の利用可能な機体（ドローンや車）を自動検出してスマートバインド。操縦中の右クリック解除も全ビークル共通で動作。
+
+---
 ## 5. 今後の拡張ロードマップ（RCシリーズ展開）
 1. **ドローン本体・コントローラー・バッテリーの GeckoLib 3Dモデル化**:
    - 本ドキュメントのボーン構成に従って `.geo.json` を配置し、`DroneEntity` を `GeoEntity` 対応へ。
