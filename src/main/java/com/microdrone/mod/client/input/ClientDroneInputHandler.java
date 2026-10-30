@@ -73,12 +73,14 @@ public class ClientDroneInputHandler {
                 mc.player.setInvisible(true); // 操縦中のプレイヤーモデル不可視化
             }
 
-            // クライアント側ドローンにローカル制御フラグを設定（カクつき防止・予測物理用）
+            // クライアント側ビークルにローカル制御フラグを設定（カクつき防止・予測物理用）
             if (mc.level != null) {
                 Entity entity = mc.level.getEntity(droneId);
                 if (entity instanceof DroneEntity drone) {
                     drone.setLocallyControlled(true);
                     com.microdrone.mod.client.audio.DroneSoundManager.startPilotingSound(drone);
+                } else if (entity instanceof RcCarEntity car) {
+                    car.setLocallyControlled(true);
                 }
             }
 
@@ -91,10 +93,11 @@ public class ClientDroneInputHandler {
             }
 
             if (mc.level != null && activeDroneId != -1) {
-
                 Entity entity = mc.level.getEntity(activeDroneId);
                 if (entity instanceof DroneEntity drone) {
                     drone.setLocallyControlled(false);
+                } else if (entity instanceof RcCarEntity car) {
+                    car.setLocallyControlled(false);
                 }
             }
 
@@ -230,7 +233,7 @@ public class ClientDroneInputHandler {
                 float carYaw = car.getYRot();
                 mc.player.setYRot(carYaw);
                 event.setYaw(carYaw);
-                event.setPitch(car.getXRot());
+                event.setPitch(mc.player.getXRot());
             }
         }
     }

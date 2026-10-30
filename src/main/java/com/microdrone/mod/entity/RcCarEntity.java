@@ -82,10 +82,45 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     private float currentSpeed = 0.0f;
     private float wheelRotation = 0.0f;
     private float steerAngle = 0.0f;
+    private boolean locallyControlled = false;
 
     public RcCarEntity(EntityType<?> entityType, Level level) {
         super(entityType, level);
         this.blocksBuilding = true;
+        
+    }
+
+    public void setLocallyControlled(boolean locallyControlled) {
+        this.locallyControlled = locallyControlled;
+    }
+
+    public boolean isLocallyControlled() {
+        return this.locallyControlled;
+    }
+
+    @Override
+    public float maxUpStep() {
+        return 1.0f;
+    }
+
+    /**
+     * サーバーからの位置同期パケット受信時の処理。
+     * 自プレイヤー操縦中は、サーバーからの遅延同期で画面がカクつくのを防ぐため、
+     * 大幅なズレ（壁埋まりなど）を除きクライアント側の予測移動を優先。
+     */
+    @Override
+    public void lerpTo(double x, double y, double z, float yRot, float xRot, int steps) {
+        if (this.locallyControlled) {
+            double dx = x - this.getX();
+            double dy = y - this.getY();
+            double dz = z - this.getZ();
+            double distSq = dx * dx + dy * dy + dz * dz;
+            if (distSq > 16.0) {
+                super.lerpTo(x, y, z, yRot, xRot, steps);
+            }
+            return;
+        }
+        super.lerpTo(x, y, z, yRot, xRot, steps);
     }
 
     @Override
@@ -236,8 +271,6 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     public void tick() {
         super.tick();
 
-        this.maxUpStep(); // 段差乗り越え
-
         if (!this.level().isClientSide) {
             ServerPlayer pilot = this.pilotUUID != null ? (ServerPlayer) this.level().getPlayerByUUID(this.pilotUUID) : null;
 
@@ -262,44 +295,55 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                 pilot.absMoveTo(this.getX(), this.getY(), this.getZ(), pilot.getYRot(), pilot.getXRot());
             }
 
-            // 物理処理
+            // サーバー側物理処理
             tickCarPhysics();
 
             // クライアント同期用角度
             this.entityData.set(DATA_WHEEL_ROTATION, this.wheelRotation);
             this.entityData.set(DATA_STEER_ANGLE, this.steerAngle);
         } else {
-            // クライアント側アニメーション角度補間
-            this.wheelRotation = this.entityData.get(DATA_WHEEL_ROTATION);
-            this.steerAngle = this.entityData.get(DATA_STEER_ANGLE);
+            // クライアント側処理
+            if (this.locallyControlled) {
+                // ローカル操縦中はクライアント側でも即座に物理演算を行い、遅延ゼロ＆カクツキゼロを実現
+                tickCarPhysics();
+            } else {
+                // 他プレイヤーが操縦中または放置中はサーバー同期値を使用
+                this.wheelRotation = this.entityData.get(DATA_WHEEL_ROTATION);
+                this.steerAngle = this.entityData.get(DATA_STEER_ANGLE);
+            }
         }
     }
 
     private void tickCarPhysics() {
         DroneMotorItem motor = getActiveMotorItem();
-        // モーターTierに応じた性能 (m/s -> 1tickあたりの移動量)
-        double maxSpeed = (motor.getMaxHorizontalSpeed() * 1.5) / 20.0; // 車はドローンより最高速が高め
-        double accel = motor.getAcceleration() * 0.4;
-        double friction = 0.94; // 地面摩擦
+        // モーターTierに応じた最高速 (blocks/tick)
+        // Tier 1 (0.35) -> 0.77 blocks/tick (約 15.4 m/s = 55 km/h)
+        // Tier 4 (0.95) -> 2.09 blocks/tick (約 41.8 m/s = 150 km/h)
+        double maxSpeed = motor.getMaxHorizontalSpeed() * 2.2;
+        double accel = 0.08 + (motor.getTier() * 0.02); // 0.10 ~ 0.16 の機敏で力強い加速
+        double friction = 0.93; // 慣性滑走
 
-        // ステアリング操舵
-        float targetSteer = this.inputSteer * 35.0f; // 最大35度
-        this.steerAngle = Mth.lerp(0.25f, this.steerAngle, targetSteer);
+        // ステアリング操舵 (最大35度)
+        float targetSteer = this.inputSteer * 35.0f;
+        this.steerAngle = Mth.lerp(0.35f, this.steerAngle, targetSteer);
 
         // 前進 / 後退アクセル
-        if (this.inputForward > 0.1f) {
-            this.currentSpeed += accel * this.inputForward;
-        } else if (this.inputForward < -0.1f) {
-            this.currentSpeed += accel * this.inputForward * 0.6; // バックはやや控えめ
+        if (this.inputForward > 0.05f) {
+            this.currentSpeed += (float) (accel * this.inputForward);
+        } else if (this.inputForward < -0.05f) {
+            this.currentSpeed += (float) (accel * this.inputForward * 0.65f); // バックはややマイルド
         } else {
             this.currentSpeed *= friction;
+            if (Math.abs(this.currentSpeed) < 0.002f) {
+                this.currentSpeed = 0.0f;
+            }
         }
 
-        this.currentSpeed = (float) Mth.clamp(this.currentSpeed, -maxSpeed * 0.5, maxSpeed);
+        this.currentSpeed = (float) Mth.clamp(this.currentSpeed, -maxSpeed * 0.4, maxSpeed);
 
         // 車体ヨー旋回 (速度がある時のみステアリングに応じて旋回)
-        if (Math.abs(this.currentSpeed) > 0.005f) {
-            float turnSpeed = (this.steerAngle / 35.0f) * (this.currentSpeed > 0 ? 3.5f : -3.5f);
+        if (Math.abs(this.currentSpeed) > 0.008f) {
+            float turnSpeed = (this.steerAngle / 35.0f) * (this.currentSpeed > 0 ? 4.5f : -4.5f);
             this.setYRot(this.getYRot() - turnSpeed);
         }
 
@@ -307,7 +351,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         float yawRad = this.getYRot() * Mth.DEG_TO_RAD;
         double motionX = -Mth.sin(yawRad) * this.currentSpeed;
         double motionZ = Mth.cos(yawRad) * this.currentSpeed;
-        double motionY = this.getDeltaMovement().y - 0.08; // 重力
+        double motionY = this.onGround() ? 0.0 : (this.getDeltaMovement().y - 0.08); // 重力
 
         this.setDeltaMovement(new Vec3(motionX, motionY, motionZ));
         this.move(MoverType.SELF, this.getDeltaMovement());
@@ -317,11 +361,12 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             this.setDeltaMovement(this.getDeltaMovement().multiply(1.0, 0.0, 1.0));
         }
 
-        // タイヤ回転角の積算
-        this.wheelRotation += (this.currentSpeed * 20.0f) * 15.0f; // 移動距離に応じた回転
+        // タイヤ回転角の積算 (走行距離に応じて回転)
+        // タイヤ外周約2.5ブロック -> 360 / 2.5 ≈ 144度/ブロック
+        this.wheelRotation += (this.currentSpeed * 144.0f);
 
-        // バッテリー消費
-        if (!this.installedBattery.isEmpty()) {
+        // バッテリー消費 (サーバー側でのみ実行)
+        if (!this.level().isClientSide && !this.installedBattery.isEmpty()) {
             double moveDist = Math.sqrt(motionX * motionX + motionZ * motionZ);
             this.accumulatedDistance += moveDist;
             if (this.accumulatedDistance >= 1.0) {

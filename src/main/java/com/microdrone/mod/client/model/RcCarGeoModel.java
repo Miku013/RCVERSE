@@ -43,17 +43,31 @@ public class RcCarGeoModel extends GeoModel<RcCarEntity> {
         if (steerFL != null) steerFL.setRotY(steerRad);
         if (steerFR != null) steerFR.setRotY(steerRad);
 
-        // 2. 4輪タイヤ回転 (X軸回転: ラジアン変換)
+        // 2. 4輪タイヤ回転 (車輪モデルの転がり軸 = ローカルY軸!)
+        // 左輪(FL, RL)は rotZ=90度、右輪(FR, RR)は rotZ=-90度 で横に倒れているため、
+        // 転がり回転は Y 軸回転で行う。X軸回転は0にリセットして横ブレを完全防止。
         float wheelRad = animatable.getWheelRotation() * Mth.DEG_TO_RAD;
         GeoBone wheelFL = this.getAnimationProcessor().getBone("wheel_fl");
         GeoBone wheelFR = this.getAnimationProcessor().getBone("wheel_fr");
         GeoBone wheelRL = this.getAnimationProcessor().getBone("wheel_rl");
         GeoBone wheelRR = this.getAnimationProcessor().getBone("wheel_rr");
 
-        if (wheelFL != null) wheelFL.setRotX(wheelRad);
-        if (wheelFR != null) wheelFR.setRotX(wheelRad);
-        if (wheelRL != null) wheelRL.setRotX(wheelRad);
-        if (wheelRR != null) wheelRR.setRotX(wheelRad);
+        if (wheelFL != null) {
+            wheelFL.setRotX(0.0f);
+            wheelFL.setRotY(-wheelRad);
+        }
+        if (wheelFR != null) {
+            wheelFR.setRotX(0.0f);
+            wheelFR.setRotY(wheelRad);
+        }
+        if (wheelRL != null) {
+            wheelRL.setRotX(0.0f);
+            wheelRL.setRotY(-wheelRad);
+        }
+        if (wheelRR != null) {
+            wheelRR.setRotX(0.0f);
+            wheelRR.setRotY(wheelRad);
+        }
     }
 }
 
