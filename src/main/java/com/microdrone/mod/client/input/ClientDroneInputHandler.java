@@ -3,6 +3,8 @@ package com.microdrone.mod.client.input;
 import com.microdrone.mod.MicroDroneMod;
 import com.microdrone.mod.client.camera.DroneCameraController;
 import com.microdrone.mod.entity.DroneEntity;
+import com.microdrone.mod.entity.RcCarEntity;
+import com.microdrone.mod.entity.RcControllable;
 import com.microdrone.mod.item.DroneControllerItem;
 import com.microdrone.mod.network.DroneControlPayload;
 import net.minecraft.client.Minecraft;
@@ -152,7 +154,7 @@ public class ClientDroneInputHandler {
         }
 
         Entity entity = mc.level.getEntity(activeDroneId);
-        if (!(entity instanceof DroneEntity drone) || drone.isRemoved()) {
+        if (entity == null || entity.isRemoved() || !(entity instanceof RcControllable)) {
             missingTicks++;
             // 一時的なパケット遅延や遠距離チャンク移行での即座切断を防止（約2秒間猶予）
             if (missingTicks > 40) {
@@ -161,25 +163,42 @@ public class ClientDroneInputHandler {
             return;
         }
 
-        // パターンA: クライアント側ローカルプレイヤーの座標をドローンに同期
-        player.setPos(drone.getX(), drone.getY(), drone.getZ());
+        missingTicks = 0;
 
-        // プレイヤーのマウス最新角度を取得してドローン制御とサーバー同期を行う
+        // クライアント側ローカルプレイヤーの座標を機体に同期
+        player.setPos(entity.getX(), entity.getY(), entity.getZ());
+
         float currentYaw = player.getYRot();
         float currentPitch = player.getXRot();
 
-        drone.applyControlInput(capturedForward, capturedStrafe, capturedVertical, currentYaw, currentPitch);
+        if (entity instanceof DroneEntity drone) {
+            drone.applyControlInput(capturedForward, capturedStrafe, capturedVertical, currentYaw, currentPitch);
 
-        // サーバーへ最新の姿勢と移動入力を送信
-        PacketDistributor.sendToServer(new DroneControlPayload(
-                activeDroneId,
-                capturedForward,
-                capturedStrafe,
-                capturedVertical,
-                currentYaw,
-                currentPitch,
-                false
-        ));
+            // サーバーへ最新の姿勢と移動入力を送信
+            PacketDistributor.sendToServer(new DroneControlPayload(
+                    activeDroneId,
+                    capturedForward,
+                    capturedStrafe,
+                    capturedVertical,
+                    currentYaw,
+                    currentPitch,
+                    false
+            ));
+        } else if (entity instanceof RcCarEntity car) {
+            car.inputForward = capturedForward;
+            car.inputSteer = capturedStrafe;
+
+            // サーバーへ車の操作入力（W/S: 前後, A/D: ステアリング）を送信
+            PacketDistributor.sendToServer(new DroneControlPayload(
+                    activeDroneId,
+                    capturedForward,
+                    capturedStrafe,
+                    0.0f,
+                    car.getYRot(),
+                    car.getXRot(),
+                    false
+            ));
+        }
     }
 
     /**
@@ -206,6 +225,12 @@ public class ClientDroneInputHandler {
                 drone.setYRot(yaw);
                 drone.setYHeadRot(yaw);
                 drone.setXRot(pitch);
+            } else if (entity instanceof RcCarEntity car) {
+                // RCカー操縦時: 車体の向きにカメラをスムーズに追従
+                float carYaw = car.getYRot();
+                mc.player.setYRot(carYaw);
+                event.setYaw(carYaw);
+                event.setPitch(car.getXRot());
             }
         }
     }

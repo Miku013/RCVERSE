@@ -44,23 +44,26 @@ public class DroneCameraController {
         if (mc.level == null || mc.player == null) return;
 
         Entity entity = mc.level.getEntity(droneId);
-        if (entity instanceof DroneEntity drone) {
+        if (entity != null && !entity.isRemoved()) {
             originalCameraType = mc.options.getCameraType();
 
-            // カメラをドローンエンティティへ設定
-            mc.setCameraEntity(drone);
+            // カメラを対象エンティティ（ドローンまたはRCカー）へ設定
+            mc.setCameraEntity(entity);
             isViewing = true;
             activeDroneId = droneId;
 
             // ドローンの初期向きをプレイヤーの視線に合わせる
-            drone.setYRot(mc.player.getYRot());
-            drone.setXRot(mc.player.getXRot());
+            if (entity instanceof DroneEntity drone) {
+                drone.setYRot(mc.player.getYRot());
+                drone.setXRot(mc.player.getXRot());
+            }
             missingTicks = 0;
 
-            MicroDroneMod.LOGGER.info("[CLIENT] [CAMERA_START] DroneId: {}, DronePos: [{}, {}, {}], DroneChunk: [{}, {}], PlayerPos: [{}, {}, {}]",
+            MicroDroneMod.LOGGER.info("[CLIENT] [CAMERA_START] VehicleId: {}, Type: {}, Pos: [{}, {}, {}], Chunk: [{}, {}], PlayerPos: [{}, {}, {}]",
                     droneId,
-                    String.format("%.2f", drone.getX()), String.format("%.2f", drone.getY()), String.format("%.2f", drone.getZ()),
-                    drone.chunkPosition().x, drone.chunkPosition().z,
+                    entity.getClass().getSimpleName(),
+                    String.format("%.2f", entity.getX()), String.format("%.2f", entity.getY()), String.format("%.2f", entity.getZ()),
+                    entity.chunkPosition().x, entity.chunkPosition().z,
                     String.format("%.2f", mc.player.getX()), String.format("%.2f", mc.player.getY()), String.format("%.2f", mc.player.getZ()));
         }
     }
@@ -116,16 +119,16 @@ public class DroneCameraController {
             return;
         }
 
-        // ドローンが存在しない、または削除されている
-        Entity drone = mc.level.getEntity(activeDroneId);
-        if (drone == null || drone.isRemoved()) {
+        // ビークルが存在しない、または削除されている
+        Entity vehicle = mc.level.getEntity(activeDroneId);
+        if (vehicle == null || vehicle.isRemoved()) {
             missingTicks++;
             if (missingTicks % 10 == 0) {
-                MicroDroneMod.LOGGER.warn("[CLIENT] [CAMERA_DRONE_MISSING] DroneId: {} missing in client level for {} ticks", activeDroneId, missingTicks);
+                MicroDroneMod.LOGGER.warn("[CLIENT] [CAMERA_VEHICLE_MISSING] VehicleId: {} missing in client level for {} ticks", activeDroneId, missingTicks);
             }
             // 遠距離移動時のパケット遅延を考慮し、約2秒間（40ticks）見失われた場合のみ切断
             if (missingTicks > 40) {
-                MicroDroneMod.LOGGER.error("[CLIENT] [CAMERA_LOST_DRONE] DroneId: {} lost for >40 ticks! Restoring camera and stopping piloting.", activeDroneId);
+                MicroDroneMod.LOGGER.error("[CLIENT] [CAMERA_LOST_VEHICLE] VehicleId: {} lost for >40 ticks! Restoring camera and stopping piloting.", activeDroneId);
                 stopViewing();
                 ClientDroneInputHandler.stopPiloting();
             }
@@ -136,9 +139,9 @@ public class DroneCameraController {
         missingTicks = 0;
 
         // カメラが外れていた場合の自己修復
-        if (mc.getCameraEntity() != drone) {
-            MicroDroneMod.LOGGER.warn("[CLIENT] [CAMERA_MISMATCH_REPAIR] Reset camera entity back to drone: {}", activeDroneId);
-            mc.setCameraEntity(drone);
+        if (mc.getCameraEntity() != vehicle) {
+            MicroDroneMod.LOGGER.warn("[CLIENT] [CAMERA_MISMATCH_REPAIR] Reset camera entity back to vehicle: {}", activeDroneId);
+            mc.setCameraEntity(vehicle);
         }
     }
 
