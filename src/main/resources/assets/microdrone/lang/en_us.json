@@ -79,6 +79,7 @@
   "entity.microdrone.rc_car": "Micro RC Car",
   "item.microdrone.rc_tank_item": "Micro RC Tank",
   "entity.microdrone.rc_tank": "Micro RC Tank",
+  "subtitles.microdrone.tank_cannon_fire": "Tank Cannon Fires",
   "message.microdrone.cam_gunner": "§c[RC] View: Gunner Aim (Turret FPV) [Toggle: F5]",
   "message.microdrone.cam_ground": "§b[RC] View: Ground Controller [Toggle: F5]",
   "message.microdrone.cam_chase": "§6[RC] View: Chase Camera [Toggle: F5]",

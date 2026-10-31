@@ -437,9 +437,8 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
         double muzzleY = getY() + 0.38 + dirY * muzzleDist;
         double muzzleZ = getZ() + dirZ * muzzleDist;
 
-        // 迫力の発砲音
-        serverLevel.playSound(null, getX(), getY(), getZ(), SoundEvents.GENERIC_EXPLODE.value(), SoundSource.NEUTRAL, 0.8f, 1.6f);
-        serverLevel.playSound(null, getX(), getY(), getZ(), SoundEvents.FIREWORK_ROCKET_BLAST, SoundSource.NEUTRAL, 1.0f, 0.8f);
+        // 【カスタム発砲音】迫真の戦車主砲発射サウンドを再生！
+        serverLevel.playSound(null, getX(), getY(), getZ(), com.microdrone.mod.sound.ModSounds.TANK_CANNON_FIRE.get(), SoundSource.NEUTRAL, 1.3f, 1.0f);
 
         // マズルフラッシュ・煙
         serverLevel.sendParticles(ParticleTypes.FLASH, muzzleX, muzzleY, muzzleZ, 1, 0, 0, 0, 0);

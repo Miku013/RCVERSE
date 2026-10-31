@@ -1,0 +1,9 @@
+{
+  "tank_cannon_fire": {
+    "category": "neutral",
+    "subtitle": "subtitles.microdrone.tank_cannon_fire",
+    "sounds": [
+      "microdrone:tank_cannon_fire"
+    ]
+  }
+}

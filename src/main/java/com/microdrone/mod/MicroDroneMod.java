@@ -27,6 +27,7 @@ public class MicroDroneMod {
         ModItems.register(modEventBus);
         ModCreativeTabs.register(modEventBus);
         ModNetworking.register(modEventBus);
+        com.microdrone.mod.sound.ModSounds.register(modEventBus);
 
         if (FMLEnvironment.dist.isClient()) {
             ClientModEvents.register(modEventBus);

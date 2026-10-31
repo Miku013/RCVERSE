@@ -79,6 +79,7 @@
   "entity.microdrone.rc_car": "マイクロRCカー",
   "item.microdrone.rc_tank_item": "マイクロRC戦車",
   "entity.microdrone.rc_tank": "マイクロRC戦車",
+  "subtitles.microdrone.tank_cannon_fire": "主砲発射音",
   "message.microdrone.cam_gunner": "§c[RC] 視点: ガンナー照準視点 (砲塔同軸FPV) [F5キーで切替]",
   "message.microdrone.cam_ground": "§b[RCカー] 視点: 地上プロポ視点 (本物RC追従) [F5キーで切替]",
   "message.microdrone.cam_chase": "§6[RCカー] 視点: 車載チェイス視点 (後方追従) [F5キーで切替]",
