@@ -70,7 +70,7 @@ public class RcTankGeoModel extends GeoModel<RcTankEntity> {
         float pitchDeg = animatable.getCannonPitch();
         GeoBone cannon = this.getAnimationProcessor().getBone("cannon");
         if (cannon != null) {
-            cannon.setRotX((-90.0f - pitchDeg) * Mth.DEG_TO_RAD);
+            cannon.setRotX(-pitchDeg * Mth.DEG_TO_RAD);
         }
 
         // 4. 発砲リコイル（後座反動）
@@ -82,3 +82,4 @@ public class RcTankGeoModel extends GeoModel<RcTankEntity> {
         }
     }
 }
+

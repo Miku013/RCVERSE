@@ -42,8 +42,9 @@ public class ClientDroneInputHandler {
     private static float capturedVertical = 0.0f;
 
     public enum RcCameraMode {
-        GROUND_RC,   // 地上プロポ視点 (本物のラジコン感覚: 立ち位置から車を見下ろし視線追従)
-        CHASE_CAR    // 車載チェイス視点 (車体斜め後方上空の見下ろしカメラ)
+        GROUND_RC,
+        CHASE_CAR,
+        GUNNER_AIM
     }
 
     private static RcCameraMode carCameraMode = RcCameraMode.GROUND_RC;
@@ -258,6 +259,31 @@ public class ClientDroneInputHandler {
                     car.getXRot(),
                     false
             ));
+                } else if (entity instanceof RcTankEntity tank) {
+            if (!tank.hasBattery() || tank.getBatteryRemaining() <= 0) {
+                stopPiloting();
+                return;
+            }
+            player.setPos(startX, startY, startZ);
+            tank.inputForward = capturedForward;
+            tank.inputSteer = capturedStrafe;
+            tank.inputFire = (capturedVertical > 0.5f);
+
+            float mouseYaw = player.getYRot();
+            float mousePitch = player.getXRot();
+            float relativeYaw = Mth.wrapDegrees(mouseYaw - tank.getYRot());
+            tank.targetTurretYaw = relativeYaw;
+            tank.targetCannonPitch = mousePitch;
+
+            PacketDistributor.sendToServer(new DroneControlPayload(
+                    activeDroneId,
+                    capturedForward,
+                    capturedStrafe,
+                    capturedVertical,
+                    mouseYaw,
+                    mousePitch,
+                    false
+            ));
         }
     }
 
@@ -350,8 +376,52 @@ public class ClientDroneInputHandler {
                     event.setPitch(pitch);
                     mc.player.setYRot(carYaw);
                 }
-            }
+            } else if (entity instanceof RcTankEntity tank) {
+                float partialTick = (float) event.getPartialTick();
+                float tankYaw = Mth.rotLerp(partialTick, tank.yRotO, tank.getYRot());
+                double tankX = Mth.lerp(partialTick, tank.xOld, tank.getX());
+                double tankY = Mth.lerp(partialTick, tank.yOld, tank.getY());
+                double tankZ = Mth.lerp(partialTick, tank.zOld, tank.getZ());
+
+                if (carCameraMode == RcCameraMode.GROUND_RC) {
+                    double eyeX = mc.player.getX();
+                    double eyeY = mc.player.getEyeY();
+                    double eyeZ = mc.player.getZ();
+                    double dx = tankX - eyeX;
+                    double dy = tankY - eyeY;
+                    double dz = tankZ - eyeZ;
+                    double distXZ = Math.sqrt(dx * dx + dz * dz);
+                    float targetYaw = (float) (Mth.atan2(dz, dx) * (180.0 / Math.PI)) - 90.0f;
+                    float targetPitch = (float) (-(Mth.atan2(dy, distXZ) * (180.0 / Math.PI)));
+                    event.setYaw(targetYaw);
+                    event.setPitch(targetPitch);
+                    mc.player.setYRot(targetYaw);
+                    mc.player.setXRot(targetPitch);
+                } else if (carCameraMode == RcCameraMode.CHASE_CAR) {
+                    double dist = 1.8;
+                    double height = 0.9;
+                    float yawRad = tankYaw * Mth.DEG_TO_RAD;
+                    double targetCamX = tankX - Mth.sin(yawRad) * dist;
+                    double targetCamY = tankY + height;
+                    double targetCamZ = tankZ + Mth.cos(yawRad) * dist;
+                    setCameraPositionSafe(event.getCamera(), targetCamX, targetCamY, targetCamZ);
+                    float mousePitch = mc.player.getXRot();
+                    float pitch = Mth.clamp(20.0f + mousePitch * 0.25f, 5.0f, 60.0f);
+                    event.setYaw(tankYaw);
+                    event.setPitch(pitch);
+                    mc.player.setYRot(tankYaw);
+                } else if (carCameraMode == RcCameraMode.GUNNER_AIM) {
+                    double camX = tankX;
+                    double camY = tankY + 0.38;
+                    double camZ = tankZ;
+                    setCameraPositionSafe(event.getCamera(), camX, camY, camZ);
+                    float mouseYaw = mc.player.getYRot();
+                    float mousePitch = mc.player.getXRot();
+                    event.setYaw(mouseYaw);
+                    event.setPitch(mousePitch);
+                }
         }
+    }
     }
 
     /**

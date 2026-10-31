@@ -379,7 +379,12 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
 
     @Override
     public InteractionResult interact(Player player, InteractionHand hand) {
-        if (level().isClientSide) return InteractionResult.SUCCESS;
+        if (hand != InteractionHand.MAIN_HAND) {
+            return InteractionResult.PASS;
+        }
+        if (level().isClientSide) {
+            return InteractionResult.SUCCESS;
+        }
 
         ItemStack held = player.getItemInHand(hand);
 
