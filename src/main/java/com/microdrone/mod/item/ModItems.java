@@ -19,6 +19,9 @@ public class ModItems {
     public static final DeferredHolder<Item, RcCarItem> RC_CAR_ITEM =
             ITEMS.register("rc_car_item", () -> new RcCarItem(new Item.Properties().stacksTo(16)));
 
+    public static final DeferredHolder<Item, RcTankItem> RC_TANK_ITEM =
+            ITEMS.register("rc_tank_item", () -> new RcTankItem(new Item.Properties().stacksTo(16)));
+
     public static final DeferredHolder<Item, DroneControllerItem> DRONE_CONTROLLER =
             ITEMS.register("drone_controller", () -> new DroneControllerItem(new Item.Properties().stacksTo(1)));
 

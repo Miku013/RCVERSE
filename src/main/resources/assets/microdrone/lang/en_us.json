@@ -74,5 +74,12 @@
   "message.microdrone.motor_installed": "§a[Drone] Upgraded motor! (Tier %d: %s, Max Speed: %s m/s)",
   "message.microdrone.charger.inserted": "[Charging Station] Inserted %s. (Remaining: %d%% [%dm / %dm])",
   "message.microdrone.charger.removed": "[Charging Station] Removed %s. (Remaining: %d%% [%dm / %dm])",
-  "message.microdrone.charger.empty": "[Charging Station] Slot is empty. Right-click with a battery to insert."
+  "message.microdrone.charger.empty": "[Charging Station] Slot is empty. Right-click with a battery to insert.",
+  "item.microdrone.rc_car_item": "Micro RC Car",
+  "entity.microdrone.rc_car": "Micro RC Car",
+  "item.microdrone.rc_tank_item": "Micro RC Tank",
+  "entity.microdrone.rc_tank": "Micro RC Tank",
+  "message.microdrone.cam_gunner": "§c[RC] View: Gunner Aim (Turret FPV) [Toggle: F5]",
+  "message.microdrone.cam_ground": "§b[RC] View: Ground Controller [Toggle: F5]",
+  "message.microdrone.cam_chase": "§6[RC] View: Chase Camera [Toggle: F5]"
 }

@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " I ",
+    "DFM",
+    "ECE"
+  ],
+  "key": {
+    "I": { "item": "minecraft:iron_ingot" },
+    "D": { "item": "minecraft:dispenser" },
+    "F": { "item": "microdrone:drone_frame" },
+    "M": { "item": "microdrone:motor_tier_1" },
+    "C": { "item": "microdrone:connection_cable" },
+    "E": { "item": "microdrone:esc_board" }
+  },
+  "result": {
+    "id": "microdrone:rc_tank_item",
+    "count": 1
+  }
+}

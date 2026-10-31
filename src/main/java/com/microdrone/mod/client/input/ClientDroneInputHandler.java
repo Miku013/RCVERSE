@@ -4,6 +4,7 @@ import com.microdrone.mod.MicroDroneMod;
 import com.microdrone.mod.client.camera.DroneCameraController;
 import com.microdrone.mod.entity.DroneEntity;
 import com.microdrone.mod.entity.RcCarEntity;
+import com.microdrone.mod.entity.RcTankEntity;
 import com.microdrone.mod.entity.RcControllable;
 import com.microdrone.mod.item.DroneControllerItem;
 import com.microdrone.mod.network.DroneControlPayload;

@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " S ",
+    "LFR",
+    "ECE"
+  ],
+  "key": {
+    "S": { "item": "microdrone:drone_screws" },
+    "L": { "item": "minecraft:leather" },
+    "F": { "item": "microdrone:drone_frame" },
+    "R": { "item": "minecraft:redstone" },
+    "C": { "item": "microdrone:connection_cable" },
+    "E": { "item": "microdrone:esc_board" }
+  },
+  "result": {
+    "id": "microdrone:rc_car_item",
+    "count": 1
+  }
+}

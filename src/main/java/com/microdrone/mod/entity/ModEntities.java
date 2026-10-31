@@ -28,6 +28,14 @@ public class ModEntities {
                     .updateInterval(1)
                     .build("rc_car"));
 
+    public static final DeferredHolder<EntityType<?>, EntityType<RcTankEntity>> RC_TANK =
+            ENTITIES.register("rc_tank", () -> EntityType.Builder.<RcTankEntity>of(RcTankEntity::new, MobCategory.MISC)
+                    .sized(0.6f, 0.45f)
+                    .eyeHeight(0.35f)
+                    .clientTrackingRange(32)
+                    .updateInterval(1)
+                    .build("rc_tank"));
+
     public static void register(IEventBus eventBus) {
         ENTITIES.register(eventBus);
     }
