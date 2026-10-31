@@ -343,17 +343,6 @@ public class ClientDroneInputHandler {
             float sendYaw, sendPitch;
 
             if (carCameraMode == RcCameraMode.GROUND_RC) {
-                // 地上プロポ視点: プレイヤーのマウス操作デルタ分だけ砲塔・砲身を自由に旋回！
-                if (!groundCameraInit) {
-                    lastGroundCameraYaw = mouseYaw;
-                    lastGroundCameraPitch = mousePitch;
-                    groundCameraInit = true;
-                }
-                float deltaYaw = Mth.wrapDegrees(mouseYaw - lastGroundCameraYaw);
-                float deltaPitch = mousePitch - lastGroundCameraPitch;
-                tankAimYaw = Mth.wrapDegrees(tankAimYaw + deltaYaw);
-                tankAimPitch = Mth.clamp(tankAimPitch + deltaPitch, -15.0f, 35.0f);
-
                 tank.targetTurretYaw = tankAimYaw;
                 tank.targetCannonPitch = tankAimPitch;
                 sendYaw = tank.getYRot() + tankAimYaw;
@@ -487,6 +476,23 @@ public class ClientDroneInputHandler {
                     double distXZ = Math.sqrt(dx * dx + dz * dz);
                     float targetYaw = (float) (Mth.atan2(dz, dx) * (180.0 / Math.PI)) - 90.0f;
                     float targetPitch = (float) (-(Mth.atan2(dy, distXZ) * (180.0 / Math.PI)));
+
+                    // 【マウス移動デルタのリアルタイム取得】上書きされる直前のマウス移動量を即座に砲塔角度へ加算！
+                    if (!groundCameraInit) {
+                        lastGroundCameraYaw = targetYaw;
+                        lastGroundCameraPitch = targetPitch;
+                        groundCameraInit = true;
+                    } else {
+                        float deltaYaw = Mth.wrapDegrees(mc.player.getYRot() - lastGroundCameraYaw);
+                        float deltaPitch = mc.player.getXRot() - lastGroundCameraPitch;
+                        if (Math.abs(deltaYaw) > 0.001f || Math.abs(deltaPitch) > 0.001f) {
+                            tankAimYaw = Mth.wrapDegrees(tankAimYaw + deltaYaw);
+                            tankAimPitch = Mth.clamp(tankAimPitch + deltaPitch, -15.0f, 35.0f);
+                            tank.targetTurretYaw = tankAimYaw;
+                            tank.targetCannonPitch = tankAimPitch;
+                        }
+                    }
+
                     event.setYaw(targetYaw);
                     event.setPitch(targetPitch);
                     mc.player.setYRot(targetYaw);

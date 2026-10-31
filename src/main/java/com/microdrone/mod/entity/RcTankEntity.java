@@ -78,6 +78,16 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
             SynchedEntityData.defineId(RcTankEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Integer> DATA_RELOAD_TICKS =
             SynchedEntityData.defineId(RcTankEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Float> DATA_PITCH_ANGLE =
+            SynchedEntityData.defineId(RcTankEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_ROLL_ANGLE =
+            SynchedEntityData.defineId(RcTankEntity.class, EntityDataSerializers.FLOAT);
+
+    // 4点接地による車体傾斜角 (度)
+    private float pitchAngle = 0.0f;
+    public float prevPitchAngle = 0.0f;
+    private float rollAngle = 0.0f;
+    public float prevRollAngle = 0.0f;
 
     // 操縦者UUID
     private UUID pilotUUID = null;
@@ -152,6 +162,8 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
         builder.define(DATA_CANNON_PITCH, 0.0f);
         builder.define(DATA_RECOIL, 0.0f);
         builder.define(DATA_RELOAD_TICKS, 0);
+        builder.define(DATA_PITCH_ANGLE, 0.0f);
+        builder.define(DATA_ROLL_ANGLE, 0.0f);
     }
 
     // === Getter / Setter ===
@@ -168,6 +180,8 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
     public float getCannonPitch() { return entityData.get(DATA_CANNON_PITCH); }
     public float getRecoil() { return entityData.get(DATA_RECOIL); }
     public int getReloadTicks() { return entityData.get(DATA_RELOAD_TICKS); }
+    public float getPitchAngle() { return this.pitchAngle; }
+    public float getRollAngle() { return this.rollAngle; }
 
     private void updateBatterySyncData() {
         if (!this.installedBattery.isEmpty() && this.installedBattery.getItem() instanceof DroneBatteryItem bat) {
@@ -193,6 +207,13 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
         }
         if (!level().isClientSide) {
             entityData.set(DATA_RELOAD_TICKS, fireCooldown);
+            entityData.set(DATA_PITCH_ANGLE, this.pitchAngle);
+            entityData.set(DATA_ROLL_ANGLE, this.rollAngle);
+        } else if (!this.locallyControlled) {
+            this.prevPitchAngle = this.pitchAngle;
+            this.prevRollAngle = this.rollAngle;
+            this.pitchAngle = entityData.get(DATA_PITCH_ANGLE);
+            this.rollAngle = entityData.get(DATA_ROLL_ANGLE);
         }
 
         // リコイル反動の減衰
@@ -325,6 +346,70 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
                 fireCooldown = 20; // 1秒間隔
             }
         }
+
+        // 【接地ポイント4点方式】地形の凹凸・傾斜に合わせたリアルなピッチ＆ロール傾斜物理
+        updateGroundTiltPhysics();
+    }
+
+    private void updateGroundTiltPhysics() {
+        this.prevPitchAngle = this.pitchAngle;
+        this.prevRollAngle = this.rollAngle;
+
+        if (!this.onGround()) {
+            this.pitchAngle = Mth.lerp(0.15f, this.pitchAngle, 0.0f);
+            this.rollAngle = Mth.lerp(0.15f, this.rollAngle, 0.0f);
+            return;
+        }
+
+        float yaw = this.getYRot();
+        double rad = Math.toRadians(yaw);
+        double fwdX = -Math.sin(rad);
+        double fwdZ = Math.cos(rad);
+        double rightX = -Math.cos(rad);
+        double rightZ = -Math.sin(rad);
+
+        double halfL = 0.22; // 前後スパン
+        double halfW = 0.16; // 左右スパン
+
+        double px = getX();
+        double py = getY();
+        double pz = getZ();
+
+        double hFL = sampleGroundY(px + fwdX * halfL - rightX * halfW, py, pz + fwdZ * halfL - rightZ * halfW);
+        double hFR = sampleGroundY(px + fwdX * halfL + rightX * halfW, py, pz + fwdZ * halfL + rightZ * halfW);
+        double hRL = sampleGroundY(px - fwdX * halfL - rightX * halfW, py, pz - fwdZ * halfL - rightZ * halfW);
+        double hRR = sampleGroundY(px - fwdX * halfL + rightX * halfW, py, pz - fwdZ * halfL + rightZ * halfW);
+
+        double hFront = (hFL + hFR) * 0.5;
+        double hRear = (hRL + hRR) * 0.5;
+        double deltaPitch = hRear - hFront;
+        float targetPitch = (float) Math.toDegrees(Math.atan2(deltaPitch, halfL * 2.0));
+
+        double hLeft = (hFL + hRL) * 0.5;
+        double hRight = (hFR + hRR) * 0.5;
+        double deltaRoll = hLeft - hRight;
+        float targetRoll = (float) Math.toDegrees(Math.atan2(deltaRoll, halfW * 2.0));
+
+        targetPitch = Mth.clamp(targetPitch, -28.0f, 28.0f);
+        targetRoll = Mth.clamp(targetRoll, -28.0f, 28.0f);
+
+        this.pitchAngle = Mth.lerp(0.35f, this.pitchAngle, targetPitch);
+        this.rollAngle = Mth.lerp(0.35f, this.rollAngle, targetRoll);
+    }
+
+    private double sampleGroundY(double x, double y, double z) {
+        net.minecraft.world.phys.Vec3 from = new net.minecraft.world.phys.Vec3(x, y + 0.35, z);
+        net.minecraft.world.phys.Vec3 to = new net.minecraft.world.phys.Vec3(x, y - 0.55, z);
+        net.minecraft.world.phys.BlockHitResult hit = level().clip(new net.minecraft.world.level.ClipContext(
+                from, to,
+                net.minecraft.world.level.ClipContext.Block.COLLIDER,
+                net.minecraft.world.level.ClipContext.Fluid.NONE,
+                this
+        ));
+        if (hit.getType() != net.minecraft.world.phys.HitResult.Type.MISS) {
+            return hit.getLocation().y;
+        }
+        return y;
     }
 
     /**
