@@ -109,21 +109,21 @@ public class ClientDroneInputHandler {
             if (carCameraMode == RcCameraMode.CHASE_CAR) {
                 carCameraMode = RcCameraMode.GUNNER_AIM;
                 if (mc.player != null) {
-                    mc.player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.microdrone.cam_gunner"), true);
+                    mc.player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.microdrone.tank_cam_gunner"), true);
                     mc.player.setInvisible(true);
                 }
                 mc.setCameraEntity(tank);
             } else if (carCameraMode == RcCameraMode.GUNNER_AIM) {
                 carCameraMode = RcCameraMode.GROUND_RC;
                 if (mc.player != null) {
-                    mc.player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.microdrone.cam_ground"), true);
+                    mc.player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.microdrone.tank_cam_ground"), true);
                     mc.player.setInvisible(false);
                 }
                 mc.setCameraEntity(mc.player);
             } else {
                 carCameraMode = RcCameraMode.CHASE_CAR;
                 if (mc.player != null) {
-                    mc.player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.microdrone.cam_chase"), true);
+                    mc.player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.microdrone.tank_cam_chase"), true);
                     mc.player.setInvisible(true);
                 }
                 mc.setCameraEntity(tank);
@@ -184,7 +184,7 @@ public class ClientDroneInputHandler {
                 if (mc.player != null) {
                     lastPlayerYaw = mc.player.getYRot();
                     mc.player.setInvisible(true);
-                    mc.player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.microdrone.cam_chase"), true);
+                    mc.player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.microdrone.tank_cam_chase"), true);
                 }
                 mc.setCameraEntity(tank);
                 tank.setLocallyControlled(true);
@@ -500,13 +500,16 @@ public class ClientDroneInputHandler {
                     lastGroundCameraYaw = targetYaw;
                     lastGroundCameraPitch = targetPitch;
                 } else if (carCameraMode == RcCameraMode.CHASE_CAR) {
-                    // 【モデル側視点（チェイス）: 少し上から見下ろすクォータービュー】
+                    // 【モデル側視点（チェイス）: 戦車後方上空から見下ろすTPSクォータービュー】
                     double dist = 2.2;
-                    double height = 1.1; // 戦車の少し上から見下ろす
-                    float yawRad = tankYaw * Mth.DEG_TO_RAD;
-                    double targetCamX = tankX - Mth.sin(yawRad) * dist;
+                    double height = 1.0;
+                    float mouseYaw = mc.player.getYRot();
+                    float mousePitch = mc.player.getXRot();
+                    float camYawRad = mouseYaw * Mth.DEG_TO_RAD;
+                    // 照準(mouseYaw)の背後上空にカメラを配置し、常に画面中央に戦車を捉える！
+                    double targetCamX = tankX + Mth.sin(camYawRad) * dist;
                     double targetCamY = tankY + height;
-                    double targetCamZ = tankZ + Mth.cos(yawRad) * dist;
+                    double targetCamZ = tankZ - Mth.cos(camYawRad) * dist;
                     net.minecraft.world.phys.Vec3 tankCenter = new net.minecraft.world.phys.Vec3(tankX, tankY + 0.35, tankZ);
                     net.minecraft.world.phys.Vec3 camPos = new net.minecraft.world.phys.Vec3(targetCamX, targetCamY, targetCamZ);
                     net.minecraft.world.phys.BlockHitResult hit = mc.level.clip(new net.minecraft.world.level.ClipContext(
@@ -523,8 +526,6 @@ public class ClientDroneInputHandler {
                         targetCamZ = Mth.lerp(0.85, hitPos.z, tankCenter.z);
                     }
                     setCameraPositionSafe(event.getCamera(), targetCamX, targetCamY, targetCamZ);
-                    float mouseYaw = mc.player.getYRot();
-                    float mousePitch = mc.player.getXRot();
                     // 基本22度見下ろし ＋ マウス操作で俯瞰アングルを直感的に調整可能
                     float pitch = Mth.clamp(22.0f + mousePitch * 0.45f, 5.0f, 65.0f);
                     event.setYaw(mouseYaw);

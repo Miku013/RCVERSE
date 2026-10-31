@@ -81,5 +81,8 @@
   "entity.microdrone.rc_tank": "マイクロRC戦車",
   "message.microdrone.cam_gunner": "§c[RC] 視点: ガンナー照準視点 (砲塔同軸FPV) [F5キーで切替]",
   "message.microdrone.cam_ground": "§b[RCカー] 視点: 地上プロポ視点 (本物RC追従) [F5キーで切替]",
-  "message.microdrone.cam_chase": "§6[RCカー] 視点: 車載チェイス視点 (後方追従) [F5キーで切替]"
+  "message.microdrone.cam_chase": "§6[RCカー] 視点: 車載チェイス視点 (後方追従) [F5キーで切替]",
+  "message.microdrone.tank_cam_chase": "§6[RC戦車] 視点: 車載チェイス視点 (後方見下ろし) [F5キーで切替]",
+  "message.microdrone.tank_cam_gunner": "§c[RC戦車] 視点: ガンナー照準視点 (砲塔FPS) [F5キーで切替]",
+  "message.microdrone.tank_cam_ground": "§b[RC戦車] 視点: 地上プロポ視点 (実機RC) [F5キーで切替]"
 }

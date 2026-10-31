@@ -81,5 +81,8 @@
   "entity.microdrone.rc_tank": "Micro RC Tank",
   "message.microdrone.cam_gunner": "§c[RC] View: Gunner Aim (Turret FPV) [Toggle: F5]",
   "message.microdrone.cam_ground": "§b[RC] View: Ground Controller [Toggle: F5]",
-  "message.microdrone.cam_chase": "§6[RC] View: Chase Camera [Toggle: F5]"
+  "message.microdrone.cam_chase": "§6[RC] View: Chase Camera [Toggle: F5]",
+  "message.microdrone.tank_cam_chase": "§6[RC Tank] View: Chase Camera [Toggle: F5]",
+  "message.microdrone.tank_cam_gunner": "§c[RC Tank] View: Gunner Aim FPV [Toggle: F5]",
+  "message.microdrone.tank_cam_ground": "§b[RC Tank] View: Ground Controller [Toggle: F5]"
 }
