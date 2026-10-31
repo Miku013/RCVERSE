@@ -226,17 +226,17 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
         boolean hasPower = hasBattery() && getBatteryRemaining() > 0;
         int tier = getMotorTier();
 
-        // 速度パラメータ
-        float maxSpeed = 0.18f + (tier * 0.035f); // 適度な重厚感
-        float accel = 0.02f + (tier * 0.005f);
-        float pivotTurnSpeed = 3.5f + (tier * 0.5f); // 超信地旋回速度 (度/tick)
+        // 速度パラメータ（実機ラジコン戦車の重厚感を再現: 従来の約1/3に調整）
+        float maxSpeed = 0.06f + (tier * 0.012f);
+        float accel = 0.007f + (tier * 0.002f);
+        float pivotTurnSpeed = 1.2f + (tier * 0.18f); // 超信地旋回速度 (度/tick)
 
         float targetSpeed = 0.0f;
         if (hasPower) {
             if (inputForward > 0.1f) {
                 targetSpeed = maxSpeed * inputForward;
             } else if (inputForward < -0.1f) {
-                targetSpeed = -maxSpeed * 0.55f * Math.abs(inputForward); // バック
+                targetSpeed = -maxSpeed * 0.6f * Math.abs(inputForward); // バック
             }
         }
 
@@ -252,23 +252,23 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
         // === 超信地旋回（Pivot Turn）& ステアリング ===
         // Aキー: leftImpulse > 0 (左), Dキー: leftImpulse < 0 (右)
         if (hasPower && Math.abs(inputSteer) > 0.1f) {
-            if (Math.abs(currentSpeed) < 0.03f) {
+            if (Math.abs(currentSpeed) < 0.02f) {
                 // 【超信地旋回】: その場でピボット回転！
                 float turnDeg = pivotTurnSpeed * inputSteer;
                 yaw -= turnDeg;
-                leftTrackSpeed = -turnDeg * 1.2f;
-                rightTrackSpeed = turnDeg * 1.2f;
+                leftTrackSpeed = -turnDeg * 2.5f;
+                rightTrackSpeed = turnDeg * 2.5f;
             } else {
                 // 【走行中旋回】
-                float turnFactor = 2.8f * (currentSpeed > 0 ? 1.0f : -1.0f);
+                float turnFactor = 1.0f * (currentSpeed > 0 ? 1.0f : -1.0f);
                 float turnDeg = turnFactor * inputSteer;
                 yaw -= turnDeg;
-                leftTrackSpeed = currentSpeed * 20.0f - (turnDeg * 0.8f);
-                rightTrackSpeed = currentSpeed * 20.0f + (turnDeg * 0.8f);
+                leftTrackSpeed = currentSpeed * 25.0f - (turnDeg * 1.5f);
+                rightTrackSpeed = currentSpeed * 25.0f + (turnDeg * 1.5f);
             }
         } else {
-            leftTrackSpeed = currentSpeed * 20.0f;
-            rightTrackSpeed = currentSpeed * 20.0f;
+            leftTrackSpeed = currentSpeed * 25.0f;
+            rightTrackSpeed = currentSpeed * 25.0f;
         }
 
         this.setYRot(yaw);
@@ -338,10 +338,11 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
         double dirY = -Math.sin(pitchRad);
         double dirZ = Math.cos(yawRad) * Math.cos(pitchRad);
 
-        // 砲口の位置（車体から砲身先端へ）
-        double muzzleX = getX() + dirX * 0.45;
-        double muzzleY = getY() + 0.35 + dirY * 0.45;
-        double muzzleZ = getZ() + dirZ * 0.45;
+        // 砲口の位置（車体Hitbox外側へしっかり離し、自爆や地面接触を完全防止）
+        double muzzleDist = 0.65;
+        double muzzleX = getX() + dirX * muzzleDist;
+        double muzzleY = getY() + 0.38 + dirY * muzzleDist;
+        double muzzleZ = getZ() + dirZ * muzzleDist;
 
         // 迫力の発砲音
         serverLevel.playSound(null, getX(), getY(), getZ(), SoundEvents.GENERIC_EXPLODE.value(), SoundSource.NEUTRAL, 0.8f, 1.6f);
@@ -354,11 +355,24 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
         // 反動（リコイル）
         entityData.set(DATA_RECOIL, 1.0f);
 
-        // 車体のノックバック
-        this.setDeltaMovement(this.getDeltaMovement().add(-dirX * 0.12, 0.05, -dirZ * 0.12));
+        // 車体のノックバック（重厚な戦車に合わせて微小な揺れに抑制）
+        this.setDeltaMovement(this.getDeltaMovement().add(-dirX * 0.04, 0.02, -dirZ * 0.04));
 
         // 砲弾スポーン（小型火球）
-        SmallFireball fireball = new SmallFireball(serverLevel, muzzleX, muzzleY, muzzleZ, new Vec3(dirX, dirY, dirZ).scale(0.8));
+        Vec3 velocity = new Vec3(dirX, dirY, dirZ).scale(1.2);
+        SmallFireball fireball = new SmallFireball(serverLevel, muzzleX, muzzleY, muzzleZ, velocity);
+        fireball.setDeltaMovement(velocity);
+        // 【自爆防止】戦車自身および操縦者をOwnerにして直後の衝突・誤爆を完全防止！
+        if (pilotUUID != null) {
+            Player pilot = level().getPlayerByUUID(pilotUUID);
+            if (pilot != null) {
+                fireball.setOwner(pilot);
+            } else {
+                fireball.setOwner(this);
+            }
+        } else {
+            fireball.setOwner(this);
+        }
         serverLevel.addFreshEntity(fireball);
 
         // 発砲時バッテリー消費
