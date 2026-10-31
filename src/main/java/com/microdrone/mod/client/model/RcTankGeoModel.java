@@ -59,18 +59,18 @@ public class RcTankGeoModel extends GeoModel<RcTankEntity> {
         if (idlerR != null) { idlerR.setRotX(0.0f); idlerR.setRotY(rightRad); }
         if (wheelsR != null) { wheelsR.setRotX(0.0f); wheelsR.setRotY(rightRad); }
 
-        // 2. 砲塔旋回（ローカル Y 軸）
+        // 2. 砲塔旋回（モデル側で180度回転させた初期基準 rotation: [0, 180, 0] を反映）
         float turretYawRad = animatable.getTurretYaw() * Mth.DEG_TO_RAD;
         GeoBone turret = this.getAnimationProcessor().getBone("turret");
         if (turret != null) {
-            turret.setRotY(-turretYawRad);
+            turret.setRotY((float) Math.PI - turretYawRad);
         }
 
-        // 3. 砲身仰俯角（初期回転 [-90, 0, 0] に対してピッチ角を加算）
+        // 3. 砲身仰俯角（砲塔が180度回転したためピッチ軸の符号を適合）
         float pitchDeg = animatable.getCannonPitch();
         GeoBone cannon = this.getAnimationProcessor().getBone("cannon");
         if (cannon != null) {
-            cannon.setRotX(-pitchDeg * Mth.DEG_TO_RAD);
+            cannon.setRotX(pitchDeg * Mth.DEG_TO_RAD);
         }
 
         // 4. 発砲リコイル（後座反動）
