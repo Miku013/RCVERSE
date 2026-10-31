@@ -258,6 +258,16 @@ public class ClientDroneInputHandler {
             return;
         }
 
+        // 【バニラ三人称背面化の完全防止 ＆ F5キーの完全インターセプト】
+        while (mc.options.keyTogglePerspective.consumeClick()) {
+            if (isGroundVehiclePiloting()) {
+                toggleGroundCameraMode();
+            }
+        }
+        if (mc.options.getCameraType() != net.minecraft.client.CameraType.FIRST_PERSON) {
+            mc.options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);
+        }
+
         Entity entity = mc.level.getEntity(activeDroneId);
         if (entity == null || entity.isRemoved() || !(entity instanceof RcControllable)) {
             missingTicks++;
@@ -606,13 +616,6 @@ public class ClientDroneInputHandler {
      */
     @SubscribeEvent
     public void onKeyInput(net.neoforged.neoforge.client.event.InputEvent.Key event) {
-        if (!isPiloting || activeDroneId == -1) return;
-
-        Minecraft mc = Minecraft.getInstance();
-        if (isGroundVehiclePiloting()) {
-            if (mc.options.keyTogglePerspective.matches(event.getKey(), event.getScanCode()) && event.getAction() == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
-                toggleGroundCameraMode();
-            }
-        }
+        // F5キーは onClientTick の keyTogglePerspective.consumeClick() で安全に処理
     }
 }
