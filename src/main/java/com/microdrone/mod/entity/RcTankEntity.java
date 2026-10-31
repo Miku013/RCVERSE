@@ -328,14 +328,15 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
         ServerLevel serverLevel = (ServerLevel) level();
 
         // 砲身の方向ベクトル（車体Yaw + 砲塔Yaw, CannonPitch）
+        // Minecraft標準仕様: 上向きが負(マイナス)、下向きが正(プラス)
         float totalYaw = this.getYRot() + getTurretYaw();
-        float pitch = -getCannonPitch(); // 上向きがマイナス
+        float pitch = getCannonPitch();
 
         double yawRad = Math.toRadians(totalYaw);
         double pitchRad = Math.toRadians(pitch);
 
         double dirX = -Math.sin(yawRad) * Math.cos(pitchRad);
-        double dirY = -Math.sin(pitchRad);
+        double dirY = -Math.sin(pitchRad); // pitchが負（上向き）のとき -sin(負) = 正（上向きベクトル）
         double dirZ = Math.cos(yawRad) * Math.cos(pitchRad);
 
         // 砲口の位置（車体Hitbox外側へしっかり離し、自爆や地面接触を完全防止）
