@@ -53,6 +53,14 @@ public class ClientDroneInputHandler {
         return carCameraMode;
     }
 
+    public static boolean isGroundVehiclePiloting() {
+        if (!isPiloting || activeDroneId == -1) return false;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) return false;
+        Entity e = mc.level.getEntity(activeDroneId);
+        return e instanceof RcCarEntity || e instanceof RcTankEntity;
+    }
+
     public static boolean isRcCarPiloting() {
         if (!isPiloting || activeDroneId == -1) return false;
         Minecraft mc = Minecraft.getInstance();
@@ -60,26 +68,58 @@ public class ClientDroneInputHandler {
         return mc.level.getEntity(activeDroneId) instanceof RcCarEntity;
     }
 
-    public static void toggleCarCameraMode() {
+    public static boolean isRcTankPiloting() {
+        if (!isPiloting || activeDroneId == -1) return false;
         Minecraft mc = Minecraft.getInstance();
-        if (carCameraMode == RcCameraMode.GROUND_RC) {
-            carCameraMode = RcCameraMode.CHASE_CAR;
-            if (mc.player != null) {
-                mc.player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.microdrone.cam_chase"), true);
-                mc.player.setInvisible(true);
-            }
-            if (mc.level != null && activeDroneId != -1) {
-                Entity car = mc.level.getEntity(activeDroneId);
-                if (car != null) {
-                    mc.setCameraEntity(car);
+        if (mc.level == null) return false;
+        return mc.level.getEntity(activeDroneId) instanceof RcTankEntity;
+    }
+
+    public static void toggleGroundCameraMode() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null || activeDroneId == -1) return;
+        Entity entity = mc.level.getEntity(activeDroneId);
+
+        mc.options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);
+
+        if (entity instanceof RcCarEntity car) {
+            if (carCameraMode == RcCameraMode.GROUND_RC) {
+                carCameraMode = RcCameraMode.CHASE_CAR;
+                if (mc.player != null) {
+                    mc.player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.microdrone.cam_chase"), true);
+                    mc.player.setInvisible(true);
                 }
-            }
-        } else {
-            carCameraMode = RcCameraMode.GROUND_RC;
-            if (mc.player != null) {
-                mc.player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.microdrone.cam_ground"), true);
-                mc.player.setInvisible(false);
+                mc.setCameraEntity(car);
+            } else {
+                carCameraMode = RcCameraMode.GROUND_RC;
+                if (mc.player != null) {
+                    mc.player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.microdrone.cam_ground"), true);
+                    mc.player.setInvisible(false);
+                }
                 mc.setCameraEntity(mc.player);
+            }
+        } else if (entity instanceof RcTankEntity tank) {
+            if (carCameraMode == RcCameraMode.CHASE_CAR) {
+                carCameraMode = RcCameraMode.GUNNER_AIM;
+                if (mc.player != null) {
+                    mc.player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.microdrone.cam_gunner"), true);
+                    mc.player.setInvisible(true);
+                }
+                mc.setCameraEntity(tank);
+            } else if (carCameraMode == RcCameraMode.GUNNER_AIM) {
+                carCameraMode = RcCameraMode.GROUND_RC;
+                if (mc.player != null) {
+                    mc.player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.microdrone.cam_ground"), true);
+                    mc.player.setInvisible(false);
+                }
+                mc.setCameraEntity(mc.player);
+            } else {
+                carCameraMode = RcCameraMode.CHASE_CAR;
+                if (mc.player != null) {
+                    mc.player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.microdrone.cam_chase"), true);
+                    mc.player.setInvisible(true);
+                }
+                mc.setCameraEntity(tank);
             }
         }
     }
@@ -125,12 +165,22 @@ public class ClientDroneInputHandler {
                 com.microdrone.mod.client.audio.DroneSoundManager.startPilotingSound(drone);
                 DroneCameraController.startViewing(droneId);
             } else if (targetEnt instanceof RcCarEntity car) {
+                carCameraMode = RcCameraMode.GROUND_RC;
                 if (mc.player != null) {
                     lastPlayerYaw = mc.player.getYRot();
-                    mc.player.setInvisible(false); // 地上プロポ視点: 手元にプロポが見える！
-                    mc.setCameraEntity(mc.player); // カメラはプレイヤー自身の頭！
+                    mc.player.setInvisible(false);
+                    mc.setCameraEntity(mc.player);
                 }
                 car.setLocallyControlled(true);
+            } else if (targetEnt instanceof RcTankEntity tank) {
+                carCameraMode = RcCameraMode.CHASE_CAR;
+                if (mc.player != null) {
+                    lastPlayerYaw = mc.player.getYRot();
+                    mc.player.setInvisible(true);
+                    mc.player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.microdrone.cam_chase"), true);
+                }
+                mc.setCameraEntity(tank);
+                tank.setLocallyControlled(true);
             }
         } else {
             com.microdrone.mod.client.audio.DroneSoundManager.stopPilotingSound();
@@ -147,6 +197,8 @@ public class ClientDroneInputHandler {
                     drone.setLocallyControlled(false);
                 } else if (entity instanceof RcCarEntity car) {
                     car.setLocallyControlled(false);
+                } else if (entity instanceof RcTankEntity tank) {
+                    tank.setLocallyControlled(false);
                 }
             }
 
@@ -271,9 +323,14 @@ public class ClientDroneInputHandler {
 
             float mouseYaw = player.getYRot();
             float mousePitch = player.getXRot();
-            float relativeYaw = Mth.wrapDegrees(mouseYaw - tank.getYRot());
-            tank.targetTurretYaw = relativeYaw;
-            tank.targetCannonPitch = mousePitch;
+            if (carCameraMode == RcCameraMode.GROUND_RC) {
+                tank.targetTurretYaw = 0.0f;
+                tank.targetCannonPitch = 0.0f;
+            } else {
+                float relativeYaw = Mth.wrapDegrees(mouseYaw - tank.getYRot());
+                tank.targetTurretYaw = relativeYaw;
+                tank.targetCannonPitch = mousePitch;
+            }
 
             PacketDistributor.sendToServer(new DroneControlPayload(
                     activeDroneId,
@@ -398,18 +455,32 @@ public class ClientDroneInputHandler {
                     mc.player.setYRot(targetYaw);
                     mc.player.setXRot(targetPitch);
                 } else if (carCameraMode == RcCameraMode.CHASE_CAR) {
-                    double dist = 1.8;
+                    double dist = 2.0;
                     double height = 0.9;
                     float yawRad = tankYaw * Mth.DEG_TO_RAD;
                     double targetCamX = tankX - Mth.sin(yawRad) * dist;
                     double targetCamY = tankY + height;
                     double targetCamZ = tankZ + Mth.cos(yawRad) * dist;
+                    net.minecraft.world.phys.Vec3 tankCenter = new net.minecraft.world.phys.Vec3(tankX, tankY + 0.35, tankZ);
+                    net.minecraft.world.phys.Vec3 camPos = new net.minecraft.world.phys.Vec3(targetCamX, targetCamY, targetCamZ);
+                    net.minecraft.world.phys.BlockHitResult hit = mc.level.clip(new net.minecraft.world.level.ClipContext(
+                            tankCenter,
+                            camPos,
+                            net.minecraft.world.level.ClipContext.Block.VISUAL,
+                            net.minecraft.world.level.ClipContext.Fluid.NONE,
+                            tank
+                    ));
+                    if (hit.getType() != net.minecraft.world.phys.HitResult.Type.MISS) {
+                        net.minecraft.world.phys.Vec3 hitPos = hit.getLocation();
+                        targetCamX = Mth.lerp(0.85, hitPos.x, tankCenter.x);
+                        targetCamY = Mth.lerp(0.85, hitPos.y, tankCenter.y);
+                        targetCamZ = Mth.lerp(0.85, hitPos.z, tankCenter.z);
+                    }
                     setCameraPositionSafe(event.getCamera(), targetCamX, targetCamY, targetCamZ);
+                    float mouseYaw = mc.player.getYRot();
                     float mousePitch = mc.player.getXRot();
-                    float pitch = Mth.clamp(20.0f + mousePitch * 0.25f, 5.0f, 60.0f);
-                    event.setYaw(tankYaw);
-                    event.setPitch(pitch);
-                    mc.player.setYRot(tankYaw);
+                    event.setYaw(mouseYaw);
+                    event.setPitch(mousePitch);
                 } else if (carCameraMode == RcCameraMode.GUNNER_AIM) {
                     double camX = tankX;
                     double camY = tankY + 0.38;
@@ -538,9 +609,9 @@ public class ClientDroneInputHandler {
         if (!isPiloting || activeDroneId == -1) return;
 
         Minecraft mc = Minecraft.getInstance();
-        if (isRcCarPiloting()) {
+        if (isGroundVehiclePiloting()) {
             if (mc.options.keyTogglePerspective.matches(event.getKey(), event.getScanCode()) && event.getAction() == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
-                toggleCarCameraMode();
+                toggleGroundCameraMode();
             }
         }
     }
