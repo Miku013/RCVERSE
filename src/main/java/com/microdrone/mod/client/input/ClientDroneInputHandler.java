@@ -41,13 +41,6 @@ public class ClientDroneInputHandler {
     private static float capturedStrafe = 0.0f;
     private static float capturedVertical = 0.0f;
 
-    // 戦車: 地上プロポ視点でのマウス砲塔旋回用累積角
-    private static float tankAimYaw = 0.0f;
-    private static float tankAimPitch = 0.0f;
-    private static float lastGroundCameraYaw = 0.0f;
-    private static float lastGroundCameraPitch = 0.0f;
-    private static boolean groundCameraInit = false;
-
     public enum RcCameraMode {
         GROUND_RC,
         CHASE_CAR,
@@ -96,7 +89,7 @@ public class ClientDroneInputHandler {
                     mc.player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.microdrone.cam_chase"), true);
                     mc.player.setInvisible(true);
                 }
-                mc.setCameraEntity(car);
+                mc.setCameraEntity(mc.player); // 車体モデルの非表示化を防ぐためplayerのまま自前カメラ配置
             } else {
                 carCameraMode = RcCameraMode.GROUND_RC;
                 if (mc.player != null) {
@@ -106,27 +99,30 @@ public class ClientDroneInputHandler {
                 mc.setCameraEntity(mc.player);
             }
         } else if (entity instanceof RcTankEntity tank) {
-            if (carCameraMode == RcCameraMode.CHASE_CAR) {
+            if (carCameraMode == RcCameraMode.GROUND_RC) {
+                // 地上プロポ視点 -> 車載チェイス視点（戦車後方見下ろしクォータービュー）
+                carCameraMode = RcCameraMode.CHASE_CAR;
+                if (mc.player != null) {
+                    mc.player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.microdrone.tank_cam_chase"), true);
+                    mc.player.setInvisible(true);
+                }
+                mc.setCameraEntity(mc.player); // 戦車モデルが消えないようplayerのまま後方上空へカメラ配置！
+            } else if (carCameraMode == RcCameraMode.CHASE_CAR) {
+                // 車載チェイス視点 -> ガンナー照準視点（砲塔同軸FPS・専用HUD）
                 carCameraMode = RcCameraMode.GUNNER_AIM;
                 if (mc.player != null) {
                     mc.player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.microdrone.tank_cam_gunner"), true);
                     mc.player.setInvisible(true);
                 }
-                mc.setCameraEntity(tank);
-            } else if (carCameraMode == RcCameraMode.GUNNER_AIM) {
+                mc.setCameraEntity(tank); // 砲塔FPS視点: 内部ポリゴンを隠して視界をクリアに
+            } else {
+                // ガンナー照準視点 -> 地上プロポ視点（プロポを持って実機を見下ろすRC視点）
                 carCameraMode = RcCameraMode.GROUND_RC;
                 if (mc.player != null) {
                     mc.player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.microdrone.tank_cam_ground"), true);
                     mc.player.setInvisible(false);
                 }
                 mc.setCameraEntity(mc.player);
-            } else {
-                carCameraMode = RcCameraMode.CHASE_CAR;
-                if (mc.player != null) {
-                    mc.player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.microdrone.tank_cam_chase"), true);
-                    mc.player.setInvisible(true);
-                }
-                mc.setCameraEntity(tank);
             }
         }
     }
@@ -180,13 +176,13 @@ public class ClientDroneInputHandler {
                 }
                 car.setLocallyControlled(true);
             } else if (targetEnt instanceof RcTankEntity tank) {
-                carCameraMode = RcCameraMode.CHASE_CAR;
+                carCameraMode = RcCameraMode.GROUND_RC; // 戦車も手元にプロポを持つ「地上プロポ視点」で操縦開始！
                 if (mc.player != null) {
                     lastPlayerYaw = mc.player.getYRot();
-                    mc.player.setInvisible(true);
-                    mc.player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.microdrone.tank_cam_chase"), true);
+                    mc.player.setInvisible(false);
+                    mc.setCameraEntity(mc.player);
+                    mc.player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.microdrone.tank_cam_ground"), true);
                 }
-                mc.setCameraEntity(tank);
                 tank.setLocallyControlled(true);
             }
         } else {
@@ -340,31 +336,19 @@ public class ClientDroneInputHandler {
 
             float mouseYaw = player.getYRot();
             float mousePitch = player.getXRot();
-            float sendYaw, sendPitch;
+            float relativeYaw = Mth.wrapDegrees(mouseYaw - tank.getYRot());
+            float cannonPitch = Mth.clamp(mousePitch, -15.0f, 35.0f);
 
-            if (carCameraMode == RcCameraMode.GROUND_RC) {
-                tank.targetTurretYaw = tankAimYaw;
-                tank.targetCannonPitch = tankAimPitch;
-                sendYaw = tank.getYRot() + tankAimYaw;
-                sendPitch = tankAimPitch;
-            } else {
-                groundCameraInit = false;
-                float relativeYaw = Mth.wrapDegrees(mouseYaw - tank.getYRot());
-                tank.targetTurretYaw = relativeYaw;
-                tank.targetCannonPitch = mousePitch;
-                tankAimYaw = relativeYaw;
-                tankAimPitch = mousePitch;
-                sendYaw = mouseYaw;
-                sendPitch = mousePitch;
-            }
+            tank.targetTurretYaw = relativeYaw;
+            tank.targetCannonPitch = cannonPitch;
 
             PacketDistributor.sendToServer(new DroneControlPayload(
                     activeDroneId,
                     capturedForward,
                     capturedStrafe,
                     capturedVertical,
-                    sendYaw,
-                    sendPitch,
+                    mouseYaw,
+                    cannonPitch,
                     false
             ));
         }
@@ -466,7 +450,19 @@ public class ClientDroneInputHandler {
                 double tankY = Mth.lerp(partialTick, tank.yOld, tank.getY());
                 double tankZ = Mth.lerp(partialTick, tank.zOld, tank.getZ());
 
+                float mouseYaw = mc.player.getYRot();
+                float mousePitch = mc.player.getXRot();
+                float relativeYaw = Mth.wrapDegrees(mouseYaw - tank.getYRot());
+                float cannonPitch = Mth.clamp(mousePitch, -15.0f, 35.0f);
+
+                // 144Hz描画フレーム単位で砲塔＆砲身の描画用ローカル姿勢を即座に更新！
+                tank.targetTurretYaw = relativeYaw;
+                tank.targetCannonPitch = cannonPitch;
+                tank.clientTurretYaw = relativeYaw;
+                tank.clientCannonPitch = cannonPitch;
+
                 if (carCameraMode == RcCameraMode.GROUND_RC) {
+                    // === 【モード1: 地上プロポ視点（実機RC感覚・プロポを手に見下ろし）】 ===
                     double eyeX = mc.player.getX();
                     double eyeY = mc.player.getEyeY();
                     double eyeZ = mc.player.getZ();
@@ -477,34 +473,16 @@ public class ClientDroneInputHandler {
                     float targetYaw = (float) (Mth.atan2(dz, dx) * (180.0 / Math.PI)) - 90.0f;
                     float targetPitch = (float) (-(Mth.atan2(dy, distXZ) * (180.0 / Math.PI)));
 
-                    // 【マウス移動デルタのリアルタイム取得】上書きされる直前のマウス移動量を即座に砲塔角度へ加算！
-                    if (!groundCameraInit) {
-                        lastGroundCameraYaw = targetYaw;
-                        lastGroundCameraPitch = targetPitch;
-                        groundCameraInit = true;
-                    } else {
-                        float deltaYaw = Mth.wrapDegrees(mc.player.getYRot() - lastGroundCameraYaw);
-                        float deltaPitch = mc.player.getXRot() - lastGroundCameraPitch;
-                        if (Math.abs(deltaYaw) > 0.001f || Math.abs(deltaPitch) > 0.001f) {
-                            tankAimYaw = Mth.wrapDegrees(tankAimYaw + deltaYaw);
-                            tankAimPitch = Mth.clamp(tankAimPitch + deltaPitch, -15.0f, 35.0f);
-                            tank.targetTurretYaw = tankAimYaw;
-                            tank.targetCannonPitch = tankAimPitch;
-                        }
-                    }
-
+                    // カメラの描画角度のみを戦車（Look-At）に向ける！
+                    // ※ mc.player.setYRot / setXRot はあえて呼ばない！
+                    // これによりプレイヤーはマウスを自在に動かして砲塔を旋回でき、
+                    // かつ画面中央には常に戦車が安定して見下ろし表示される！
                     event.setYaw(targetYaw);
                     event.setPitch(targetPitch);
-                    mc.player.setYRot(targetYaw);
-                    mc.player.setXRot(targetPitch);
-                    lastGroundCameraYaw = targetYaw;
-                    lastGroundCameraPitch = targetPitch;
                 } else if (carCameraMode == RcCameraMode.CHASE_CAR) {
-                    // 【モデル側視点（チェイス）: 戦車後方上空から見下ろすTPSクォータービュー】
+                    // === 【モード2: 車載チェイス視点（戦車後方上空から見下ろすTPSクォータービュー）】 ===
                     double dist = 2.2;
                     double height = 1.0;
-                    float mouseYaw = mc.player.getYRot();
-                    float mousePitch = mc.player.getXRot();
                     float camYawRad = mouseYaw * Mth.DEG_TO_RAD;
                     // 照準(mouseYaw)の背後上空にカメラを配置し、常に画面中央に戦車を捉える！
                     double targetCamX = tankX + Mth.sin(camYawRad) * dist;
@@ -531,12 +509,11 @@ public class ClientDroneInputHandler {
                     event.setYaw(mouseYaw);
                     event.setPitch(pitch);
                 } else if (carCameraMode == RcCameraMode.GUNNER_AIM) {
+                    // === 【モード3: ガンナー照準視点（砲塔同軸FPS・専用HUDオーバーレイ）】 ===
                     double camX = tankX;
                     double camY = tankY + 0.38;
                     double camZ = tankZ;
                     setCameraPositionSafe(event.getCamera(), camX, camY, camZ);
-                    float mouseYaw = mc.player.getYRot();
-                    float mousePitch = mc.player.getXRot();
                     event.setYaw(mouseYaw);
                     event.setPitch(mousePitch);
                 }

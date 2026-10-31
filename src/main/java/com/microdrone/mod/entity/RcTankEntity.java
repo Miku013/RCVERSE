@@ -92,9 +92,12 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
     // 操縦者UUID
     private UUID pilotUUID = null;
     private double startX, startY, startZ;
+    private net.minecraft.world.level.ChunkPos lastChunkPos = null;
 
     // クライアント側ローカル操縦フラグ
     private boolean locallyControlled = false;
+    public float clientTurretYaw = 0.0f;
+    public float clientCannonPitch = 0.0f;
 
     // 実装アイテムスタック保持
     private ItemStack installedBattery = ItemStack.EMPTY;
@@ -176,8 +179,12 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
 
     public float getLeftTrackRotation() { return entityData.get(DATA_LEFT_TRACK_ROT); }
     public float getRightTrackRotation() { return entityData.get(DATA_RIGHT_TRACK_ROT); }
-    public float getTurretYaw() { return entityData.get(DATA_TURRET_YAW); }
-    public float getCannonPitch() { return entityData.get(DATA_CANNON_PITCH); }
+    public float getTurretYaw() {
+        return (level().isClientSide && this.locallyControlled) ? this.clientTurretYaw : entityData.get(DATA_TURRET_YAW);
+    }
+    public float getCannonPitch() {
+        return (level().isClientSide && this.locallyControlled) ? this.clientCannonPitch : entityData.get(DATA_CANNON_PITCH);
+    }
     public float getRecoil() { return entityData.get(DATA_RECOIL); }
     public int getReloadTicks() { return entityData.get(DATA_RELOAD_TICKS); }
     public float getPitchAngle() { return this.pitchAngle; }
@@ -226,11 +233,35 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
             }
         }
 
-        // バッテリー切れフェイルセーフ (Server-side)
+        // サーバー側監視（電波距離・チャンク維持・バッテリー）
         if (!level().isClientSide && isPiloted()) {
-            if (!hasBattery() || getBatteryRemaining() <= 0) {
-                ServerPlayer player = (ServerPlayer) level().getPlayerByUUID(pilotUUID);
-                stopPiloting(player);
+            ServerPlayer player = (ServerPlayer) level().getPlayerByUUID(pilotUUID);
+            if (player != null) {
+                // 電波距離監視 (250m)
+                double distToStart = Math.sqrt(this.distanceToSqr(this.startX, this.startY, this.startZ));
+                if (distToStart > 250.0) {
+                    player.sendSystemMessage(Component.translatable("message.microdrone.signal_lost_failsafe"));
+                    this.inputForward = 0.0f;
+                    this.inputSteer = 0.0f;
+                    stopPiloting(player);
+                    return;
+                }
+
+                // チャンク配信
+                net.minecraft.world.level.ChunkPos currentChunk = new net.minecraft.world.level.ChunkPos(this.blockPosition());
+                if (!currentChunk.equals(this.lastChunkPos)) {
+                    this.lastChunkPos = currentChunk;
+                    com.microdrone.mod.chunk.DroneChunkManager.updateDroneChunks(player, this);
+                }
+
+                // バッテリー切れフェイルセーフ
+                if (!hasBattery() || getBatteryRemaining() <= 0) {
+                    player.sendSystemMessage(Component.translatable("message.microdrone.battery_empty_failsafe"));
+                    stopPiloting(player);
+                    return;
+                }
+            } else {
+                stopPiloting(null);
                 return;
             }
         }
@@ -327,7 +358,10 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
         float newTurretYaw = curTurretYaw + Mth.wrapDegrees(targetTurretYaw - curTurretYaw) * 0.35f;
         float newCannonPitch = Mth.clamp(curCannonPitch + (targetCannonPitch - curCannonPitch) * 0.35f, -15.0f, 35.0f);
 
-        if (!level().isClientSide) {
+        if (level().isClientSide) {
+            this.clientTurretYaw = newTurretYaw;
+            this.clientCannonPitch = newCannonPitch;
+        } else {
             entityData.set(DATA_LEFT_TRACK_ROT, newLeftRot);
             entityData.set(DATA_RIGHT_TRACK_ROT, newRightRot);
             entityData.set(DATA_TURRET_YAW, newTurretYaw);
