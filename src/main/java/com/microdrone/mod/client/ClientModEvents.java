@@ -32,6 +32,7 @@ public class ClientModEvents {
         DroneCameraController.register();
         com.microdrone.mod.client.chunk.ClientChunkEvents.register();
         DroneHudOverlay.register();
+        com.microdrone.mod.client.gui.TankGunnerHudOverlay.register();
         DroneSoundManager.register();
     }
 

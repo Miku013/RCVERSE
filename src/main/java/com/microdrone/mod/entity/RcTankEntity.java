@@ -76,6 +76,8 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
             SynchedEntityData.defineId(RcTankEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> DATA_RECOIL =
             SynchedEntityData.defineId(RcTankEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Integer> DATA_RELOAD_TICKS =
+            SynchedEntityData.defineId(RcTankEntity.class, EntityDataSerializers.INT);
 
     // 操縦者UUID
     private UUID pilotUUID = null;
@@ -149,6 +151,7 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
         builder.define(DATA_TURRET_YAW, 0.0f);
         builder.define(DATA_CANNON_PITCH, 0.0f);
         builder.define(DATA_RECOIL, 0.0f);
+        builder.define(DATA_RELOAD_TICKS, 0);
     }
 
     // === Getter / Setter ===
@@ -164,6 +167,7 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
     public float getTurretYaw() { return entityData.get(DATA_TURRET_YAW); }
     public float getCannonPitch() { return entityData.get(DATA_CANNON_PITCH); }
     public float getRecoil() { return entityData.get(DATA_RECOIL); }
+    public int getReloadTicks() { return entityData.get(DATA_RELOAD_TICKS); }
 
     private void updateBatterySyncData() {
         if (!this.installedBattery.isEmpty() && this.installedBattery.getItem() instanceof DroneBatteryItem bat) {
@@ -186,6 +190,9 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
 
         if (fireCooldown > 0) {
             fireCooldown--;
+        }
+        if (!level().isClientSide) {
+            entityData.set(DATA_RELOAD_TICKS, fireCooldown);
         }
 
         // リコイル反動の減衰

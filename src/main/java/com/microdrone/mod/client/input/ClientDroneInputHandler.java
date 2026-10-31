@@ -41,6 +41,13 @@ public class ClientDroneInputHandler {
     private static float capturedStrafe = 0.0f;
     private static float capturedVertical = 0.0f;
 
+    // 戦車: 地上プロポ視点でのマウス砲塔旋回用累積角
+    private static float tankAimYaw = 0.0f;
+    private static float tankAimPitch = 0.0f;
+    private static float lastGroundCameraYaw = 0.0f;
+    private static float lastGroundCameraPitch = 0.0f;
+    private static boolean groundCameraInit = false;
+
     public enum RcCameraMode {
         GROUND_RC,
         CHASE_CAR,
@@ -333,13 +340,33 @@ public class ClientDroneInputHandler {
 
             float mouseYaw = player.getYRot();
             float mousePitch = player.getXRot();
+            float sendYaw, sendPitch;
+
             if (carCameraMode == RcCameraMode.GROUND_RC) {
-                tank.targetTurretYaw = 0.0f;
-                tank.targetCannonPitch = 0.0f;
+                // 地上プロポ視点: プレイヤーのマウス操作デルタ分だけ砲塔・砲身を自由に旋回！
+                if (!groundCameraInit) {
+                    lastGroundCameraYaw = mouseYaw;
+                    lastGroundCameraPitch = mousePitch;
+                    groundCameraInit = true;
+                }
+                float deltaYaw = Mth.wrapDegrees(mouseYaw - lastGroundCameraYaw);
+                float deltaPitch = mousePitch - lastGroundCameraPitch;
+                tankAimYaw = Mth.wrapDegrees(tankAimYaw + deltaYaw);
+                tankAimPitch = Mth.clamp(tankAimPitch + deltaPitch, -15.0f, 35.0f);
+
+                tank.targetTurretYaw = tankAimYaw;
+                tank.targetCannonPitch = tankAimPitch;
+                sendYaw = tank.getYRot() + tankAimYaw;
+                sendPitch = tankAimPitch;
             } else {
+                groundCameraInit = false;
                 float relativeYaw = Mth.wrapDegrees(mouseYaw - tank.getYRot());
                 tank.targetTurretYaw = relativeYaw;
                 tank.targetCannonPitch = mousePitch;
+                tankAimYaw = relativeYaw;
+                tankAimPitch = mousePitch;
+                sendYaw = mouseYaw;
+                sendPitch = mousePitch;
             }
 
             PacketDistributor.sendToServer(new DroneControlPayload(
@@ -347,8 +374,8 @@ public class ClientDroneInputHandler {
                     capturedForward,
                     capturedStrafe,
                     capturedVertical,
-                    mouseYaw,
-                    mousePitch,
+                    sendYaw,
+                    sendPitch,
                     false
             ));
         }
@@ -464,9 +491,12 @@ public class ClientDroneInputHandler {
                     event.setPitch(targetPitch);
                     mc.player.setYRot(targetYaw);
                     mc.player.setXRot(targetPitch);
+                    lastGroundCameraYaw = targetYaw;
+                    lastGroundCameraPitch = targetPitch;
                 } else if (carCameraMode == RcCameraMode.CHASE_CAR) {
-                    double dist = 2.0;
-                    double height = 0.9;
+                    // 【モデル側視点（チェイス）: 少し上から見下ろすクォータービュー】
+                    double dist = 2.2;
+                    double height = 1.1; // 戦車の少し上から見下ろす
                     float yawRad = tankYaw * Mth.DEG_TO_RAD;
                     double targetCamX = tankX - Mth.sin(yawRad) * dist;
                     double targetCamY = tankY + height;
@@ -489,8 +519,10 @@ public class ClientDroneInputHandler {
                     setCameraPositionSafe(event.getCamera(), targetCamX, targetCamY, targetCamZ);
                     float mouseYaw = mc.player.getYRot();
                     float mousePitch = mc.player.getXRot();
+                    // 基本22度見下ろし ＋ マウス操作で俯瞰アングルを直感的に調整可能
+                    float pitch = Mth.clamp(22.0f + mousePitch * 0.45f, 5.0f, 65.0f);
                     event.setYaw(mouseYaw);
-                    event.setPitch(mousePitch);
+                    event.setPitch(pitch);
                 } else if (carCameraMode == RcCameraMode.GUNNER_AIM) {
                     double camX = tankX;
                     double camY = tankY + 0.38;
