@@ -408,42 +408,48 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             this.turboBoostTicks--;
         }
 
-        // === Body Roll Tilt Angle Calculation (Deeper tilt on counter-steer) ===
+        // === Counter-Steer and In-Steer Calculations ===
+        float counterAmount = 0.0f; // 0.0 (none) to 1.0 (full counter-steer)
+        float inSteerAmount = 0.0f; // 0.0 (none) to 1.0 (full in-steer)
+
+        if (this.driftDirection == -1) {
+            // Drift Left: Right steer (>0) is counter-steer, Left steer (<0) is in-steer
+            if (this.inputSteer > 0.05f) {
+                counterAmount = this.inputSteer;
+            } else if (this.inputSteer < -0.05f) {
+                inSteerAmount = -this.inputSteer;
+            }
+        } else if (this.driftDirection == 1) {
+            // Drift Right: Left steer (<0) is counter-steer, Right steer (>0) is in-steer
+            if (this.inputSteer < -0.05f) {
+                counterAmount = -this.inputSteer;
+            } else if (this.inputSteer > 0.05f) {
+                inSteerAmount = this.inputSteer;
+            }
+        }
+
+        // === Body Roll Tilt Angle Calculation (Deep roll tilt on counter-steer) ===
         this.prevRollAngle = this.rollAngle;
         float targetRoll = 0.0f;
         if (this.driftDirection != 0) {
-            float baseRoll = 9.0f; // Standard drift roll
-            float counterAmount = 0.0f;
-            if (this.driftDirection == -1 && this.inputSteer > 0.05f) {
-                counterAmount = this.inputSteer; // 0.05 ~ 1.0
-            } else if (this.driftDirection == 1 && this.inputSteer < -0.05f) {
-                counterAmount = -this.inputSteer; // 0.05 ~ 1.0
-            }
-            // Deep aggressive tilt up to 16.5 degrees when counter-steering!
-            float totalRoll = baseRoll + (counterAmount * 7.5f);
+            float baseRoll = 9.0f;
+            // Counter-steering deepens roll tilt up to 17.5 degrees!
+            float totalRoll = baseRoll + (counterAmount * 8.5f);
             targetRoll = -this.driftDirection * totalRoll;
         }
         this.rollAngle = Mth.lerp(0.35f, this.rollAngle, targetRoll);
 
-        // === Steering / Yaw Turn (Gentle wide drift curve) ===
+        // === Steering / Yaw Turn ===
         if (this.driftDirection != 0 && Math.abs(this.currentSpeed) > 0.002f) {
-            float steerMult = 1.0f;
-            if (this.driftDirection == -1) {
-                if (this.inputSteer < -0.05f) {
-                    steerMult = 1.0f + (-this.inputSteer * 0.55f); // In-steer tighter
-                } else if (this.inputSteer > 0.05f) {
-                    steerMult = 1.0f - (this.inputSteer * 0.75f);  // Counter-steer: very gentle 0.25x
-                }
-            } else if (this.driftDirection == 1) {
-                if (this.inputSteer > 0.05f) {
-                    steerMult = 1.0f + (this.inputSteer * 0.55f);  // In-steer tighter
-                } else if (this.inputSteer < -0.05f) {
-                    steerMult = 1.0f - (-this.inputSteer * 0.75f); // Counter-steer: very gentle 0.25x
-                }
+            float baseTurn = 4.2f;
+            float turnSpeed;
+            if (inSteerAmount > 0.0f) {
+                turnSpeed = baseTurn * (1.0f + inSteerAmount * 0.80f); // In-steer tighter
+            } else {
+                // Counter-steer stops inward turning and holds/controls drift angle!
+                turnSpeed = baseTurn * (1.0f - counterAmount * 0.90f);
             }
-            // Base drift turn speed reduced to 4.5f for gentle long slides!
-            float driftTurnSpeed = 4.5f * steerMult * (-this.driftDirection);
-            this.setYRot(this.getYRot() + driftTurnSpeed);
+            this.setYRot(this.getYRot() + turnSpeed * (-this.driftDirection));
         } else {
             if (Math.abs(this.currentSpeed) > 0.002f) {
                 float baseTurn = (this.currentSpeed > 0 ? 13.5f : -13.5f);
@@ -452,32 +458,45 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             }
         }
 
-        // === Inertial drift movement vector synthesis ===
+        // === Inertial drift movement vector synthesis (Lateral slide along counter-steer) ===
         float yawRad = this.getYRot() * Mth.DEG_TO_RAD;
-        double driveX = -Mth.sin(yawRad) * this.currentSpeed;
-        double driveZ = Mth.cos(yawRad) * this.currentSpeed;
+        double driveX = -Mth.sin(yawRad);
+        double driveZ = Mth.cos(yawRad);
 
         if (this.driftDirection != 0) {
-            double normalX = Mth.cos(yawRad) * this.currentSpeed * this.driftDirection;
-            double normalZ = Mth.sin(yawRad) * this.currentSpeed * this.driftDirection;
+            // Normal vector in the counter-steer (outward) direction
+            double normalX = Mth.cos(yawRad) * this.driftDirection;
+            double normalZ = Mth.sin(yawRad) * this.driftDirection;
 
-            // 0.90 forward + 0.28 slide for broad sweeping smooth curve
-            double targetVelX = driveX * 0.90 + normalX * 0.28;
-            double targetVelZ = driveZ * 0.90 + normalZ * 0.28;
+            // When counter-steering, lateral slide weight dominates heavily!
+            // Neutral: drive 0.60, slide 0.55
+            // Counter-steer full: drive 0.28, slide 0.98 -> strongly slides in counter-steer direction!
+            // In-steer full: drive 0.85, slide 0.25 -> dives forward inward
+            double driveWeight = 0.60 - (counterAmount * 0.32) + (inSteerAmount * 0.25);
+            double slideWeight = 0.55 + (counterAmount * 0.43) - (inSteerAmount * 0.30);
+
+            double combinedX = (driveX * driveWeight) + (normalX * slideWeight);
+            double combinedZ = (driveZ * driveWeight) + (normalZ * slideWeight);
+
+            double mag = Math.sqrt(combinedX * combinedX + combinedZ * combinedZ);
+            if (mag > 0.001) {
+                combinedX = (combinedX / mag) * this.currentSpeed;
+                combinedZ = (combinedZ / mag) * this.currentSpeed;
+            }
 
             this.carVelocity = new Vec3(
-                    Mth.lerp(0.18, this.carVelocity.x, targetVelX),
+                    Mth.lerp(0.20, this.carVelocity.x, combinedX),
                     0,
-                    Mth.lerp(0.18, this.carVelocity.z, targetVelZ)
+                    Mth.lerp(0.20, this.carVelocity.z, combinedZ)
             );
         } else {
             if (Math.abs(this.currentSpeed) < 0.001f) {
                 this.carVelocity = Vec3.ZERO;
             } else {
                 this.carVelocity = new Vec3(
-                        Mth.lerp(0.55, this.carVelocity.x, driveX),
+                        Mth.lerp(0.55, this.carVelocity.x, driveX * this.currentSpeed),
                         0,
-                        Mth.lerp(0.55, this.carVelocity.z, driveZ)
+                        Mth.lerp(0.55, this.carVelocity.z, driveZ * this.currentSpeed)
                 );
             }
         }
