@@ -89,7 +89,8 @@ public class ClientDroneInputHandler {
                     mc.player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.microdrone.cam_chase"), true);
                     mc.player.setInvisible(true);
                 }
-                mc.setCameraEntity(mc.player); // 車体モデルの非表示化を防ぐためplayerのまま自前カメラ配置
+                mc.setCameraEntity(car);
+                mc.options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_BACK);
             } else {
                 carCameraMode = RcCameraMode.GROUND_RC;
                 if (mc.player != null) {
@@ -97,16 +98,18 @@ public class ClientDroneInputHandler {
                     mc.player.setInvisible(false);
                 }
                 mc.setCameraEntity(mc.player);
+                mc.options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);
             }
         } else if (entity instanceof RcTankEntity tank) {
             if (carCameraMode == RcCameraMode.GROUND_RC) {
-                // 地上プロポ視点 -> 車載チェイス視点（戦車後方見下ろしクォータービュー）
+                // 地上プロポ視点 -> 車載チェイス視点（三人称後方追従）
                 carCameraMode = RcCameraMode.CHASE_CAR;
                 if (mc.player != null) {
                     mc.player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.microdrone.tank_cam_chase"), true);
                     mc.player.setInvisible(true);
                 }
-                mc.setCameraEntity(mc.player); // 戦車モデルが消えないようplayerのまま後方上空へカメラ配置！
+                mc.setCameraEntity(tank); // 戦車に直接カメラを設定し、100%自動追従！
+                mc.options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_BACK); // 三人称で戦車モデルを確実に描画！
             } else if (carCameraMode == RcCameraMode.CHASE_CAR) {
                 // 車載チェイス視点 -> ガンナー照準視点（砲塔同軸FPS・専用HUD）
                 carCameraMode = RcCameraMode.GUNNER_AIM;
@@ -114,7 +117,8 @@ public class ClientDroneInputHandler {
                     mc.player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.microdrone.tank_cam_gunner"), true);
                     mc.player.setInvisible(true);
                 }
-                mc.setCameraEntity(tank); // 砲塔FPS視点: 内部ポリゴンを隠して視界をクリアに
+                mc.setCameraEntity(tank); // 砲塔位置の一人称視点
+                mc.options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON); // 一人称で砲塔内ポリゴンを隠して視界クリア！
             } else {
                 // ガンナー照準視点 -> 地上プロポ視点（プロポを持って実機を見下ろすRC視点）
                 carCameraMode = RcCameraMode.GROUND_RC;
@@ -123,6 +127,7 @@ public class ClientDroneInputHandler {
                     mc.player.setInvisible(false);
                 }
                 mc.setCameraEntity(mc.player);
+                mc.options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);
             }
         }
     }
@@ -267,8 +272,11 @@ public class ClientDroneInputHandler {
                 toggleGroundCameraMode();
             }
         }
-        if (mc.options.getCameraType() != net.minecraft.client.CameraType.FIRST_PERSON) {
-            mc.options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);
+        net.minecraft.client.CameraType expectedCameraType = (isGroundVehiclePiloting() && carCameraMode == RcCameraMode.CHASE_CAR)
+                ? net.minecraft.client.CameraType.THIRD_PERSON_BACK
+                : net.minecraft.client.CameraType.FIRST_PERSON;
+        if (mc.options.getCameraType() != expectedCameraType) {
+            mc.options.setCameraType(expectedCameraType);
         }
 
         Entity entity = mc.level.getEntity(activeDroneId);
@@ -409,46 +417,18 @@ public class ClientDroneInputHandler {
                     mc.player.setYRot(targetYaw);
                     mc.player.setXRot(targetPitch);
                 } else {
-                    // === 【モード2: 車載チェイス視点（見下ろし追従カメラ）】 ===
-                    double dist = 1.6;
-                    double height = 0.9;
-                    float yawRad = carYaw * Mth.DEG_TO_RAD;
-
-                    double targetCamX = carX + Mth.sin(yawRad) * dist;
-                    double targetCamY = carY + height;
-                    double targetCamZ = carZ - Mth.cos(yawRad) * dist;
-
-                    // 壁抜け防止
-                    net.minecraft.world.phys.Vec3 carCenter = new net.minecraft.world.phys.Vec3(carX, carY + 0.2, carZ);
-                    net.minecraft.world.phys.Vec3 camPos = new net.minecraft.world.phys.Vec3(targetCamX, targetCamY, targetCamZ);
-                    net.minecraft.world.phys.BlockHitResult hit = mc.level.clip(new net.minecraft.world.level.ClipContext(
-                            carCenter, camPos,
-                            net.minecraft.world.level.ClipContext.Block.VISUAL,
-                            net.minecraft.world.level.ClipContext.Fluid.NONE,
-                            car
-                    ));
-                    if (hit.getType() != net.minecraft.world.phys.HitResult.Type.MISS) {
-                        net.minecraft.world.phys.Vec3 hitPos = hit.getLocation();
-                        targetCamX = Mth.lerp(0.85, hitPos.x, carCenter.x);
-                        targetCamY = Mth.lerp(0.85, hitPos.y, carCenter.y);
-                        targetCamZ = Mth.lerp(0.85, hitPos.z, carCenter.z);
-                    }
-
-                    setCameraPositionSafe(event.getCamera(), targetCamX, targetCamY, targetCamZ);
-
+                    // === 【モード2: 車載チェイス視点（三人称後方追従）】 ===
+                    // Minecraftが car に100%追従。マウスでピッチを調整し、後方から車を見下ろす！
                     float mousePitch = mc.player.getXRot();
-                    float pitch = Mth.clamp(22.0f + mousePitch * 0.25f, 10.0f, 60.0f);
-
+                    float pitch = Mth.clamp(20.0f + mousePitch * 0.35f, 10.0f, 60.0f);
                     event.setYaw(carYaw);
                     event.setPitch(pitch);
                     mc.player.setYRot(carYaw);
+                    moveCameraSafe(event.getCamera(), 1.8, 0.2, 0.0);
                 }
             } else if (entity instanceof RcTankEntity tank) {
                 float partialTick = (float) event.getPartialTick();
                 float tankYaw = Mth.rotLerp(partialTick, tank.yRotO, tank.getYRot());
-                double tankX = Mth.lerp(partialTick, tank.xOld, tank.getX());
-                double tankY = Mth.lerp(partialTick, tank.yOld, tank.getY());
-                double tankZ = Mth.lerp(partialTick, tank.zOld, tank.getZ());
 
                 float mouseYaw = mc.player.getYRot();
                 float mousePitch = mc.player.getXRot();
@@ -463,6 +443,9 @@ public class ClientDroneInputHandler {
 
                 if (carCameraMode == RcCameraMode.GROUND_RC) {
                     // === 【モード1: 地上プロポ視点（実機RC感覚・プロポを手に見下ろし）】 ===
+                    double tankX = Mth.lerp(partialTick, tank.xOld, tank.getX());
+                    double tankY = Mth.lerp(partialTick, tank.yOld, tank.getY());
+                    double tankZ = Mth.lerp(partialTick, tank.zOld, tank.getZ());
                     double eyeX = mc.player.getX();
                     double eyeY = mc.player.getEyeY();
                     double eyeZ = mc.player.getZ();
@@ -474,46 +457,21 @@ public class ClientDroneInputHandler {
                     float targetPitch = (float) (-(Mth.atan2(dy, distXZ) * (180.0 / Math.PI)));
 
                     // カメラの描画角度のみを戦車（Look-At）に向ける！
-                    // ※ mc.player.setYRot / setXRot はあえて呼ばない！
-                    // これによりプレイヤーはマウスを自在に動かして砲塔を旋回でき、
-                    // かつ画面中央には常に戦車が安定して見下ろし表示される！
+                    // ※ mc.player.setYRot / setXRot は呼ばないため、マウスで砲塔を自在に旋回可能！
                     event.setYaw(targetYaw);
                     event.setPitch(targetPitch);
                 } else if (carCameraMode == RcCameraMode.CHASE_CAR) {
-                    // === 【モード2: 車載チェイス視点（戦車後方上空から見下ろすTPSクォータービュー）】 ===
-                    double dist = 2.2;
-                    double height = 1.0;
-                    float camYawRad = mouseYaw * Mth.DEG_TO_RAD;
-                    // 照準(mouseYaw)の背後上空にカメラを配置し、常に画面中央に戦車を捉える！
-                    double targetCamX = tankX + Mth.sin(camYawRad) * dist;
-                    double targetCamY = tankY + height;
-                    double targetCamZ = tankZ - Mth.cos(camYawRad) * dist;
-                    net.minecraft.world.phys.Vec3 tankCenter = new net.minecraft.world.phys.Vec3(tankX, tankY + 0.35, tankZ);
-                    net.minecraft.world.phys.Vec3 camPos = new net.minecraft.world.phys.Vec3(targetCamX, targetCamY, targetCamZ);
-                    net.minecraft.world.phys.BlockHitResult hit = mc.level.clip(new net.minecraft.world.level.ClipContext(
-                            tankCenter,
-                            camPos,
-                            net.minecraft.world.level.ClipContext.Block.VISUAL,
-                            net.minecraft.world.level.ClipContext.Fluid.NONE,
-                            tank
-                    ));
-                    if (hit.getType() != net.minecraft.world.phys.HitResult.Type.MISS) {
-                        net.minecraft.world.phys.Vec3 hitPos = hit.getLocation();
-                        targetCamX = Mth.lerp(0.85, hitPos.x, tankCenter.x);
-                        targetCamY = Mth.lerp(0.85, hitPos.y, tankCenter.y);
-                        targetCamZ = Mth.lerp(0.85, hitPos.z, tankCenter.z);
-                    }
-                    setCameraPositionSafe(event.getCamera(), targetCamX, targetCamY, targetCamZ);
-                    // 基本22度見下ろし ＋ マウス操作で俯瞰アングルを直感的に調整可能
-                    float pitch = Mth.clamp(22.0f + mousePitch * 0.45f, 5.0f, 65.0f);
+                    // === 【モード2: 車載チェイス視点（三人称後方追従）】 ===
+                    // Minecraft本体が tank に100%自動追従！
+                    // 照準(mouseYaw)に合わせて戦車の周りを360度見回せ、戦車モデルも100%確実に表示！
+                    float pitch = Mth.clamp(18.0f + mousePitch * 0.45f, 5.0f, 65.0f);
                     event.setYaw(mouseYaw);
                     event.setPitch(pitch);
+                    // バニラ4.0mから少し近づけて見下ろしクォータービューに調整
+                    moveCameraSafe(event.getCamera(), 1.8, 0.2, 0.0);
                 } else if (carCameraMode == RcCameraMode.GUNNER_AIM) {
                     // === 【モード3: ガンナー照準視点（砲塔同軸FPS・専用HUDオーバーレイ）】 ===
-                    double camX = tankX;
-                    double camY = tankY + 0.38;
-                    double camZ = tankZ;
-                    setCameraPositionSafe(event.getCamera(), camX, camY, camZ);
+                    // mc.setCameraEntity(tank) + FIRST_PERSON により砲塔位置（eyeHeight=0.35m）から前方を見る！
                     event.setYaw(mouseYaw);
                     event.setPitch(mousePitch);
                 }
@@ -597,6 +555,37 @@ public class ClientDroneInputHandler {
     public void onAttackEntity(AttackEntityEvent event) {
         if (isPiloting) {
             event.setCanceled(true);
+        }
+    }
+
+    private static java.lang.reflect.Method cameraMoveMethod = null;
+    private static boolean cameraMoveResolved = false;
+
+    private static void moveCameraSafe(net.minecraft.client.Camera camera, double distanceOffset, double yOffset, double xOffset) {
+        if (!cameraMoveResolved) {
+            try {
+                for (java.lang.reflect.Method m : net.minecraft.client.Camera.class.getDeclaredMethods()) {
+                    if (m.getParameterCount() == 3 &&
+                            m.getParameterTypes()[0] == double.class &&
+                            m.getParameterTypes()[1] == double.class &&
+                            m.getParameterTypes()[2] == double.class &&
+                            (m.getName().equals("move") || m.getName().contains("move") || m.getName().equals("m_90584_"))) {
+                        cameraMoveMethod = m;
+                        cameraMoveMethod.setAccessible(true);
+                        MicroDroneMod.LOGGER.info("[CAMERA_FIX] Resolved Camera move method: {}", m.getName());
+                        break;
+                    }
+                }
+            } catch (Exception e) {
+                MicroDroneMod.LOGGER.error("[CAMERA_FIX] Failed to reflect Camera move method", e);
+            }
+            cameraMoveResolved = true;
+        }
+
+        if (cameraMoveMethod != null) {
+            try {
+                cameraMoveMethod.invoke(camera, distanceOffset, yOffset, xOffset);
+            } catch (Exception ignored) {}
         }
     }
 
