@@ -353,28 +353,29 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         this.currentSpeed = (float) Mth.clamp(this.currentSpeed, -maxSpeed * 0.45, currentMax);
 
         // === Mario Kart Drift State Machine ===
+        // inputSteer > 0: A key (Left), inputSteer < 0: D key (Right)
         boolean wantsDrift = this.inputHandbrake && (this.currentSpeed > 0.03f || this.driftDirection != 0);
 
         if (wantsDrift) {
             // Start drift lock
             if (this.driftDirection == 0) {
-                if (this.inputSteer < -0.05f) {
-                    this.driftDirection = -1; // Drift Left
+                if (this.inputSteer > 0.05f) {
+                    this.driftDirection = -1; // A key: Drift Left
                     this.driftTicks = 0;
                     if (this.onGround()) {
                         Vec3 cur = this.getDeltaMovement();
-                        this.setDeltaMovement(new Vec3(cur.x, 0.24, cur.z)); // Noticeable Hop jump!
+                        this.setDeltaMovement(new Vec3(cur.x, 0.24, cur.z)); // Hop jump!
                         this.setOnGround(false);
                         this.hasImpulse = true;
                         this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
                                 SoundEvents.ARMOR_EQUIP_LEATHER.value(), SoundSource.PLAYERS, 0.6F, 1.8F);
                     }
-                } else if (this.inputSteer > 0.05f) {
-                    this.driftDirection = 1;  // Drift Right
+                } else if (this.inputSteer < -0.05f) {
+                    this.driftDirection = 1;  // D key: Drift Right
                     this.driftTicks = 0;
                     if (this.onGround()) {
                         Vec3 cur = this.getDeltaMovement();
-                        this.setDeltaMovement(new Vec3(cur.x, 0.24, cur.z)); // Noticeable Hop jump!
+                        this.setDeltaMovement(new Vec3(cur.x, 0.24, cur.z)); // Hop jump!
                         this.setOnGround(false);
                         this.hasImpulse = true;
                         this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
@@ -409,22 +410,23 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         }
 
         // === Counter-Steer and In-Steer Calculations ===
+        // inputSteer > 0 is Left (A key), inputSteer < 0 is Right (D key)
         float counterAmount = 0.0f; // 0.0 (none) to 1.0 (full counter-steer)
         float inSteerAmount = 0.0f; // 0.0 (none) to 1.0 (full in-steer)
 
         if (this.driftDirection == -1) {
-            // Drift Left: Right steer (>0) is counter-steer, Left steer (<0) is in-steer
-            if (this.inputSteer > 0.05f) {
-                counterAmount = this.inputSteer;
-            } else if (this.inputSteer < -0.05f) {
-                inSteerAmount = -this.inputSteer;
+            // Left Drift: D key (<0) is Counter-Steer to Right! A key (>0) is In-Steer to Left
+            if (this.inputSteer < -0.05f) {
+                counterAmount = -this.inputSteer; // D key = Counter-steer
+            } else if (this.inputSteer > 0.05f) {
+                inSteerAmount = this.inputSteer;  // A key = In-steer
             }
         } else if (this.driftDirection == 1) {
-            // Drift Right: Left steer (<0) is counter-steer, Right steer (>0) is in-steer
-            if (this.inputSteer < -0.05f) {
-                counterAmount = -this.inputSteer;
-            } else if (this.inputSteer > 0.05f) {
-                inSteerAmount = this.inputSteer;
+            // Right Drift: A key (>0) is Counter-Steer to Left! D key (<0) is In-Steer to Right
+            if (this.inputSteer > 0.05f) {
+                counterAmount = this.inputSteer;  // A key = Counter-steer
+            } else if (this.inputSteer < -0.05f) {
+                inSteerAmount = -this.inputSteer; // D key = In-steer
             }
         }
 
@@ -444,12 +446,12 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             float baseTurn = 4.2f;
             float turnSpeed;
             if (inSteerAmount > 0.0f) {
-                turnSpeed = baseTurn * (1.0f + inSteerAmount * 0.80f); // In-steer tighter
+                turnSpeed = baseTurn * (1.0f + inSteerAmount * 0.85f); // In-steer tighter
             } else {
-                // Counter-steer stops inward turning and holds/controls drift angle!
+                // Counter-steer controls and holds the drift angle
                 turnSpeed = baseTurn * (1.0f - counterAmount * 0.90f);
             }
-            this.setYRot(this.getYRot() + turnSpeed * (-this.driftDirection));
+            this.setYRot(this.getYRot() + turnSpeed * this.driftDirection);
         } else {
             if (Math.abs(this.currentSpeed) > 0.002f) {
                 float baseTurn = (this.currentSpeed > 0 ? 13.5f : -13.5f);
@@ -458,25 +460,31 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             }
         }
 
-        // === Inertial drift movement vector synthesis (Lateral slide along counter-steer) ===
+        // === Inertial drift movement vector synthesis (Power slide along counter-steer) ===
         float yawRad = this.getYRot() * Mth.DEG_TO_RAD;
         double driveX = -Mth.sin(yawRad);
         double driveZ = Mth.cos(yawRad);
 
+        // Right vector: rightX = -driveZ = -cos, rightZ = driveX = -sin
+        double rightX = -driveZ;
+        double rightZ = driveX;
+
         if (this.driftDirection != 0) {
-            // Normal vector in the counter-steer (outward) direction
-            double normalX = Mth.cos(yawRad) * this.driftDirection;
-            double normalZ = Mth.sin(yawRad) * this.driftDirection;
+            // Slide direction vector in the counter-steer direction:
+            // Left Drift (driftDirection == -1): Counter is Right -> slide direction is Right Vector (rightX, rightZ)
+            // Right Drift (driftDirection == 1): Counter is Left -> slide direction is Left Vector (-rightX, -rightZ)
+            double counterSlideX = -rightX * this.driftDirection;
+            double counterSlideZ = -rightZ * this.driftDirection;
 
-            // When counter-steering, lateral slide weight dominates heavily!
+            // When counter-steering, the car strongly slides in the counter-steered direction!
             // Neutral: drive 0.60, slide 0.55
-            // Counter-steer full: drive 0.28, slide 0.98 -> strongly slides in counter-steer direction!
-            // In-steer full: drive 0.85, slide 0.25 -> dives forward inward
-            double driveWeight = 0.60 - (counterAmount * 0.32) + (inSteerAmount * 0.25);
-            double slideWeight = 0.55 + (counterAmount * 0.43) - (inSteerAmount * 0.30);
+            // Full Counter: drive 0.25, slide 1.05 -> Power slide laterally in counter-steer direction!
+            // Full In-steer: drive 0.90, slide 0.20 -> Drives forward into turn
+            double driveWeight = 0.60 - (counterAmount * 0.35) + (inSteerAmount * 0.30);
+            double slideWeight = 0.55 + (counterAmount * 0.50) - (inSteerAmount * 0.35);
 
-            double combinedX = (driveX * driveWeight) + (normalX * slideWeight);
-            double combinedZ = (driveZ * driveWeight) + (normalZ * slideWeight);
+            double combinedX = (driveX * driveWeight) + (counterSlideX * slideWeight);
+            double combinedZ = (driveZ * driveWeight) + (counterSlideZ * slideWeight);
 
             double mag = Math.sqrt(combinedX * combinedX + combinedZ * combinedZ);
             if (mag > 0.001) {
@@ -485,9 +493,9 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             }
 
             this.carVelocity = new Vec3(
-                    Mth.lerp(0.20, this.carVelocity.x, combinedX),
+                    Mth.lerp(0.22, this.carVelocity.x, combinedX),
                     0,
-                    Mth.lerp(0.20, this.carVelocity.z, combinedZ)
+                    Mth.lerp(0.22, this.carVelocity.z, combinedZ)
             );
         } else {
             if (Math.abs(this.currentSpeed) < 0.001f) {
