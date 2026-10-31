@@ -437,7 +437,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             float baseRoll = 9.0f;
             // Counter-steering deepens roll tilt up to 17.5 degrees!
             float totalRoll = baseRoll + (counterAmount * 8.5f);
-            targetRoll = -this.driftDirection * totalRoll;
+            targetRoll = this.driftDirection * totalRoll; // Roll dip towards counter-steer side
         }
         this.rollAngle = Mth.lerp(0.35f, this.rollAngle, targetRoll);
 
