@@ -624,27 +624,62 @@ public class ClientDroneInputHandler {
     }
 
     private static java.lang.reflect.Method cameraSetPositionMethod = null;
+    private static java.lang.reflect.Field cameraPositionField = null;
     private static boolean cameraMethodResolved = false;
 
     private static void setCameraPositionSafe(net.minecraft.client.Camera camera, double x, double y, double z) {
         if (!cameraMethodResolved) {
             try {
+                // 1. (double, double, double) メソッドをシグネチャで検索（名前の難読化に依存しない）
                 for (java.lang.reflect.Method m : net.minecraft.client.Camera.class.getDeclaredMethods()) {
-                    if (m.getName().equals("setPosition") && m.getParameterCount() == 3) {
+                    if (m.getParameterCount() == 3 &&
+                            m.getParameterTypes()[0] == double.class &&
+                            m.getParameterTypes()[1] == double.class &&
+                            m.getParameterTypes()[2] == double.class) {
                         cameraSetPositionMethod = m;
                         cameraSetPositionMethod.setAccessible(true);
+                        MicroDroneMod.LOGGER.info("[CAMERA_FIX] Resolved Camera setPosition method: {}", m.getName());
+                        break;
+                    }
+                }
+                // 2. (Vec3) メソッドを検索
+                if (cameraSetPositionMethod == null) {
+                    for (java.lang.reflect.Method m : net.minecraft.client.Camera.class.getDeclaredMethods()) {
+                        if (m.getParameterCount() == 1 && m.getParameterTypes()[0] == net.minecraft.world.phys.Vec3.class) {
+                            cameraSetPositionMethod = m;
+                            cameraSetPositionMethod.setAccessible(true);
+                            MicroDroneMod.LOGGER.info("[CAMERA_FIX] Resolved Camera setPosition(Vec3) method: {}", m.getName());
+                            break;
+                        }
+                    }
+                }
+                // 3. Vec3 型のフィールド (position) を検索して直接代入用バックアップ
+                for (java.lang.reflect.Field f : net.minecraft.client.Camera.class.getDeclaredFields()) {
+                    if (f.getType() == net.minecraft.world.phys.Vec3.class) {
+                        cameraPositionField = f;
+                        cameraPositionField.setAccessible(true);
+                        MicroDroneMod.LOGGER.info("[CAMERA_FIX] Resolved Camera position field: {}", f.getName());
                         break;
                     }
                 }
             } catch (Exception e) {
-                MicroDroneMod.LOGGER.error("Failed to reflect Camera.setPosition", e);
+                MicroDroneMod.LOGGER.error("[CAMERA_FIX] Failed to reflect Camera position", e);
             }
             cameraMethodResolved = true;
         }
 
         if (cameraSetPositionMethod != null) {
             try {
-                cameraSetPositionMethod.invoke(camera, x, y, z);
+                if (cameraSetPositionMethod.getParameterCount() == 3) {
+                    cameraSetPositionMethod.invoke(camera, x, y, z);
+                } else {
+                    cameraSetPositionMethod.invoke(camera, new net.minecraft.world.phys.Vec3(x, y, z));
+                }
+            } catch (Exception ignored) {}
+        }
+        if (cameraPositionField != null) {
+            try {
+                cameraPositionField.set(camera, new net.minecraft.world.phys.Vec3(x, y, z));
             } catch (Exception ignored) {}
         }
     }
