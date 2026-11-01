@@ -437,15 +437,18 @@ public class ClientDroneInputHandler {
                     // チェイス視点 または コックピット視点:
                     float keyRudder = -capturedStrafe * 0.7f;
 
-                    // マウスの向きによるアシスト旋回 (不感帯デッドゾーン付き)
+                    // マウスの向きによる穏やかなアシスト旋回 (デッドゾーン±8.0度 ＆ マイルド感度)
                     float mouseRudder = 0.0f;
                     float yawDiff = Mth.wrapDegrees(player.getYRot() - plane.getYRot());
 
-                    // デッドゾーン (±3.5度以内は直進維持)
-                    if (Math.abs(yawDiff) > 3.5f) {
-                        float effectiveDiff = yawDiff - Math.signum(yawDiff) * 3.5f;
-                        mouseRudder = Mth.clamp(effectiveDiff * 0.012f, -0.6f, 0.6f);
+                    // デッドゾーン (±8.0度以内は完全直進維持)
+                    if (Math.abs(yawDiff) > 8.0f) {
+                        float effectiveDiff = yawDiff - Math.signum(yawDiff) * 8.0f;
+                        mouseRudder = Mth.clamp(effectiveDiff * 0.003f, -0.20f, 0.20f);
                     }
+
+                    // プレイヤーの視線を機体進行方向へ穏やかに緩慢追従（ズレっぱなし防止）
+                    player.setYRot(Mth.rotLerp(0.08f, player.getYRot(), plane.getYRot()));
 
                     if (Math.abs(capturedStrafe) > 0.05f) {
                         rudder = keyRudder;
@@ -627,7 +630,7 @@ public class ClientDroneInputHandler {
                     // === 【モード3: コックピット一人称FPV視点】 ===
                     event.setYaw(planeYaw);
                     event.setPitch(-planePitch);
-                    event.setRoll(-planeRoll);
+                    event.setRoll(planeRoll);
                 }
             }
         }
