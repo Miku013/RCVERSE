@@ -371,13 +371,24 @@ public class ClientDroneInputHandler {
 
         // F5キーのインターセプト
         while (mc.options.keyTogglePerspective.consumeClick()) {
-            if (isGroundVehiclePiloting()) {
+            if (isDronePiloting()) {
+                toggleDroneCameraMode();
+            } else if (isGroundVehiclePiloting()) {
                 toggleGroundCameraMode();
             }
         }
-        net.minecraft.client.CameraType expectedCameraType = (isGroundVehiclePiloting() && carCameraMode == RcCameraMode.CHASE_CAR)
-                ? net.minecraft.client.CameraType.THIRD_PERSON_BACK
-                : net.minecraft.client.CameraType.FIRST_PERSON;
+        net.minecraft.client.CameraType expectedCameraType;
+        if (isDronePiloting()) {
+            expectedCameraType = (droneCameraMode == DroneCameraMode.CHASE)
+                    ? net.minecraft.client.CameraType.THIRD_PERSON_BACK
+                    : net.minecraft.client.CameraType.FIRST_PERSON;
+        } else if (isGroundVehiclePiloting()) {
+            expectedCameraType = (carCameraMode == RcCameraMode.CHASE_CAR)
+                    ? net.minecraft.client.CameraType.THIRD_PERSON_BACK
+                    : net.minecraft.client.CameraType.FIRST_PERSON;
+        } else {
+            expectedCameraType = net.minecraft.client.CameraType.FIRST_PERSON;
+        }
         if (mc.options.getCameraType() != expectedCameraType) {
             mc.options.setCameraType(expectedCameraType);
         }
@@ -394,7 +405,12 @@ public class ClientDroneInputHandler {
         missingTicks = 0;
 
         if (entity instanceof DroneEntity drone) {
-            player.setPos(drone.getX(), drone.getY(), drone.getZ());
+            if (droneCameraMode == DroneCameraMode.GROUND) {
+                player.setPos(startX, startY, startZ);
+                player.setDeltaMovement(0, 0, 0);
+            } else {
+                player.setPos(drone.getX(), drone.getY(), drone.getZ());
+            }
             float currentYaw = player.getYRot();
             float currentPitch = player.getXRot();
             drone.applyControlInput(capturedForward, capturedStrafe, capturedVertical, currentYaw, currentPitch);
@@ -567,15 +583,40 @@ public class ClientDroneInputHandler {
         if (mc.player != null && mc.level != null) {
             Entity entity = mc.level.getEntity(activeDroneId);
             if (entity instanceof DroneEntity drone) {
-                float yaw = mc.player.getYRot();
-                float pitch = mc.player.getXRot();
+                if (droneCameraMode == DroneCameraMode.GROUND) {
+                    float partialTick = (float) event.getPartialTick();
+                    double droneX = Mth.lerp(partialTick, drone.xOld, drone.getX());
+                    double droneY = Mth.lerp(partialTick, drone.yOld, drone.getY());
+                    double droneZ = Mth.lerp(partialTick, drone.zOld, drone.getZ());
+                    double eyeX = startX;
+                    double eyeY = startY + mc.player.getEyeHeight();
+                    double eyeZ = startZ;
+                    double dx = droneX - eyeX;
+                    double dy = droneY - eyeY;
+                    double dz = droneZ - eyeZ;
+                    double distXZ = Math.sqrt(dx * dx + dz * dz);
+                    float targetYaw = (float) (Mth.atan2(dz, dx) * (180.0 / Math.PI)) - 90.0f;
+                    float targetPitch = (float) (-(Mth.atan2(dy, distXZ) * (180.0 / Math.PI)));
 
-                event.setYaw(yaw);
-                event.setPitch(pitch);
+                    event.setYaw(targetYaw);
+                    event.setPitch(targetPitch);
+                } else if (droneCameraMode == DroneCameraMode.CHASE) {
+                    float partialTick = (float) event.getPartialTick();
+                    float droneYaw = Mth.rotLerp(partialTick, drone.yRotO, drone.getYRot());
+                    event.setYaw(droneYaw);
+                    event.setPitch(15.0f);
+                    event.setRoll(0.0f);
+                } else {
+                    float yaw = mc.player.getYRot();
+                    float pitch = mc.player.getXRot();
 
-                drone.setYRot(yaw);
-                drone.setYHeadRot(yaw);
-                drone.setXRot(pitch);
+                    event.setYaw(yaw);
+                    event.setPitch(pitch);
+
+                    drone.setYRot(yaw);
+                    drone.setYHeadRot(yaw);
+                    drone.setXRot(pitch);
+                }
             } else if (entity instanceof RcCarEntity car) {
                 float partialTick = (float) event.getPartialTick();
                 float carYaw = Mth.rotLerp(partialTick, car.yRotO, car.getYRot());
