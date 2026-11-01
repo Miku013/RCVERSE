@@ -417,26 +417,25 @@ public class ClientDroneInputHandler {
             plane.inputThrottleDelta = capturedVertical;
 
             // ラダー（方向舵）および地上ステアリングの計算
+            // Aキー(左)で負(-1.0)、Dキー(右)で正(+1.0)
             float rudder = 0.0f;
 
             if (plane.onGround()) {
                 // === 【地上タキシング＆滑走時】 ===
-                // 車と同様に A/D キー (capturedStrafe) で直感的に尾輪ステアリング！
-                // キーを離せば瞬時に 0（直進ニュートラル）に戻り、絶対に勝手に曲がらずまっすぐ滑走可能！
-                // capturedStrafe: Aで+1.0(左), Dで-1.0(右) -> ラダー正で左旋回
-                rudder = capturedStrafe;
+                // A/D キーで直感的に尾輪ステアリング（Aで左、Dで右）
+                // キーを離せば瞬時に 0（直進ニュートラル）に戻り、まっすぐ滑走可能！
+                rudder = -capturedStrafe;
             } else {
                 // === 【空中飛行時】 ===
                 if (carCameraMode == RcCameraMode.GROUND_RC) {
                     // 地上プロポ視点:
                     // マウスは空の飛行機を見上げるための視線操作。
-                    // 旋回は A/D キーのバンク・ラダー操作を100%忠実に反映！
-                    // キーを離せば自動水平復帰（ASSIST）でピシッとまっすぐ直進！
-                    rudder = capturedStrafe * 0.7f;
+                    // 旋回は A/D キーの操作を100%忠実に反映！
+                    rudder = -capturedStrafe * 0.7f;
                 } else {
                     // チェイス視点 または コックピット視点:
                     // 1. A/D キーによる確実な旋回操作
-                    float keyRudder = capturedStrafe * 0.7f;
+                    float keyRudder = -capturedStrafe * 0.7f;
 
                     // 2. マウスの向きによるアシスト旋回 (不感帯デッドゾーン付き)
                     float mouseRudder = 0.0f;
@@ -621,15 +620,15 @@ public class ClientDroneInputHandler {
                     event.setPitch(targetPitch);
                 } else if (carCameraMode == RcCameraMode.CHASE_CAR) {
                     // === 【モード2: チェイス視点（三人称後方追従）】 ===
+                    // バニラの三人称後方カメラで超滑らかに完全追従（ジッター・カクつき防止）
                     event.setYaw(planeYaw);
-                    event.setPitch(planePitch * 0.5f + 12.0f);
-                    event.setRoll(planeRoll * 0.3f);
-                    moveCameraSafe(event.getCamera(), 2.2, 0.4, 0.0);
+                    event.setPitch(-planePitch * 0.35f + 12.0f);
+                    event.setRoll(-planeRoll * 0.35f);
                 } else if (carCameraMode == RcCameraMode.GUNNER_AIM) {
                     // === 【モード3: コックピット一人称FPV視点】 ===
                     event.setYaw(planeYaw);
-                    event.setPitch(planePitch);
-                    event.setRoll(planeRoll);
+                    event.setPitch(-planePitch);
+                    event.setRoll(-planeRoll);
                 }
             }
         }

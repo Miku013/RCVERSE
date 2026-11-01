@@ -4,8 +4,6 @@ import com.microdrone.mod.MicroDroneMod;
 import com.microdrone.mod.item.DroneBatteryItem;
 import com.microdrone.mod.item.DroneMotorItem;
 import com.microdrone.mod.item.ModItems;
-import com.microdrone.mod.entity.RcControllable;
-import com.microdrone.mod.entity.RcVehicleManager;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -38,11 +36,11 @@ import java.util.UUID;
 
 /**
  * プロポで遠隔操縦可能なマイクロRCプレーン（セスナ風・固定翼ラジコン飛行機）
- * - 固定翼航空力学: スロットル推進力、対気速度、揚力、失速(ストール)、滑空
+ * - 固定翼航空力学: スロットル推進力、対気速度、揚力、失速(ストール)、急降下重力、滑空
  * - 3軸舵面可動: エレベーター(昇降舵)、エルロン(補助翼)、ラダー(方向舵)
  * - 尾輪式(テールドラッガー)ランディングギア: 前2輪 + 尾輪1輪による地上タキシング＆滑走離着陸
- * - モード切替ハイブリッド: 直感アシスト飛行(自動バンク) ⇔ 本格アクロバット(手動ロール・宙返り)
- * - バッテリー・モーター換装スロット
+ * - モード切替ハイブリッド: 直感アシスト飛行(自動水平復帰) ⇔ 本格アクロバット(手動ロール・宙返り)
+ * - 144Hz超滑らか補間 (lerpToオーバーライド) によるカメラカクつき防止
  */
 public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
     private final AnimatableInstanceCache geoCache = GeckoLibUtil.createInstanceCache(this);
@@ -105,15 +103,18 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
     private ItemStack installedMotor = ItemStack.EMPTY;
 
     // 操縦入力
-    public float inputElevator = 0.0f; // W/S: ピッチ (-1.0 〜 +1.0)
-    public float inputAileron = 0.0f;  // A/D: ロール (-1.0 〜 +1.0)
-    public float inputRudder = 0.0f;   // ラダー/ステア (-1.0 〜 +1.0)
+    public float inputElevator = 0.0f; // S(+1.0:機首上げ) / W(-1.0:機首下げ)
+    public float inputAileron = 0.0f;  // A(-1.0:左ロール) / D(+1.0:右ロール)
+    public float inputRudder = 0.0f;   // A(-1.0:左旋回) / D(+1.0:右旋回)
     public float inputThrottleDelta = 0.0f; // Space(+)/Shift(-): スロットル増減
 
     // フライトステート
     public float throttle = 0.0f; // 0.0f 〜 1.0f (スロットル開度)
-    public float airspeed = 0.0f; // m/s
+    public float airspeed = 0.0f; // ブロック/tick
     public int flightMode = 0;    // 0: ASSIST (直感アシスト), 1: ACRO (アクロバット)
+
+    // 累積垂直速度（重力・失速急降下用）
+    private double verticalVelocity = 0.0;
 
     public RcPlaneEntity(EntityType<?> entityType, Level level) {
         super(entityType, level);
@@ -122,12 +123,34 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
 
     @Override
     public float maxUpStep() {
-        return 0.5f; // 滑走路の段差やハーフブロックを踏破
+        return 0.5f;
     }
 
     @Override
     public boolean isPickable() {
         return true;
+    }
+
+    /**
+     * 【ドローン準拠: カメラカクつき防止 lerpTo】
+     * 自プレイヤーが操縦している場合は、サーバーからの遅延位置同期パケットによる
+     * 画面のガクつき・引き戻しを防止し、クライアント側の滑らかな移動を最優先する。
+     */
+    @Override
+    public void lerpTo(double x, double y, double z, float yRot, float xRot, int steps) {
+        if (this.locallyControlled) {
+            double dx = x - this.getX();
+            double dy = y - this.getY();
+            double dz = z - this.getZ();
+            double distSq = dx * dx + dy * dy + dz * dz;
+
+            // ズレが極端に大きい場合（壁埋まりなど）を除き、クライアント側の滑らかな移動を優先
+            if (distSq > 36.0) {
+                super.lerpTo(x, y, z, yRot, xRot, steps);
+            }
+            return;
+        }
+        super.lerpTo(x, y, z, yRot, xRot, steps);
     }
 
     @Override
@@ -151,7 +174,6 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
         builder.define(DATA_FLIGHT_MODE, 0);
     }
 
-    // === Getter / Setter ===
     public boolean hasBattery() { return entityData.get(DATA_HAS_BATTERY); }
     public int getBatteryRemaining() { return entityData.get(DATA_BATTERY_REMAINING); }
     public int getBatteryMax() { return entityData.get(DATA_BATTERY_MAX); }
@@ -217,7 +239,6 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
         if (!level().isClientSide && isPiloted()) {
             ServerPlayer player = (ServerPlayer) level().getPlayerByUUID(pilotUUID);
             if (player != null) {
-                // 電波距離監視 (250m)
                 double distToStart = Math.sqrt(this.distanceToSqr(this.startX, this.startY, this.startZ));
                 if (distToStart > 250.0) {
                     player.sendSystemMessage(Component.translatable("message.microdrone.signal_lost_failsafe"));
@@ -225,14 +246,12 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
                     return;
                 }
 
-                // チャンク配信
                 ChunkPos currentChunk = new ChunkPos(this.blockPosition());
                 if (!currentChunk.equals(this.lastChunkPos)) {
                     this.lastChunkPos = currentChunk;
                     com.microdrone.mod.chunk.DroneChunkManager.updateDroneChunks(player, this);
                 }
 
-                // バッテリー切れフェイルセーフ
                 if (!hasBattery() || getBatteryRemaining() <= 0) {
                     player.sendSystemMessage(Component.translatable("message.microdrone.battery_empty_failsafe"));
                     stopPiloting(player);
@@ -247,22 +266,24 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
         if (this.locallyControlled || (!level().isClientSide && isPiloted())) {
             tickFlightPhysics();
         } else if (!level().isClientSide && !isPiloted()) {
-            // 自然落下重力・滑空沈降
+            // 無操縦時の自然落下
             if (!this.onGround()) {
                 Vec3 curDelta = this.getDeltaMovement();
-                this.setDeltaMovement(curDelta.x * 0.95, curDelta.y - 0.05, curDelta.z * 0.95);
+                this.verticalVelocity = Math.max(-0.6, this.verticalVelocity - 0.05);
+                this.setDeltaMovement(curDelta.x * 0.95, this.verticalVelocity, curDelta.z * 0.95);
                 this.move(MoverType.SELF, this.getDeltaMovement());
-                this.pitchAngle = Mth.lerp(0.05f, this.pitchAngle, 15.0f); // 機首を下げて降下
+                this.pitchAngle = Mth.lerp(0.08f, this.pitchAngle, -25.0f);
                 this.rollAngle = Mth.lerp(0.1f, this.rollAngle, 0.0f);
             } else {
-                this.pitchAngle = Mth.lerp(0.2f, this.pitchAngle, 6.0f); // テールドラッガー地上傾斜(+6度)
+                this.verticalVelocity = 0.0;
+                this.pitchAngle = Mth.lerp(0.2f, this.pitchAngle, 6.0f);
                 this.rollAngle = Mth.lerp(0.2f, this.rollAngle, 0.0f);
             }
         }
     }
 
     /**
-     * 固定翼航空力学・飛行物理シミュレーション
+     * 固定翼航空力学・失速急降下・旋回物理シミュレーション
      */
     private void tickFlightPhysics() {
         boolean hasPower = hasBattery() && getBatteryRemaining() > 0;
@@ -270,121 +291,147 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
 
         // 1. スロットル調整 (0.0 〜 1.0)
         if (hasPower) {
-            this.throttle = Mth.clamp(this.throttle + this.inputThrottleDelta * 0.03f, 0.0f, 1.0f);
+            this.throttle = Mth.clamp(this.throttle + this.inputThrottleDelta * 0.035f, 0.0f, 1.0f);
         } else {
             this.throttle = Math.max(0.0f, this.throttle - 0.02f);
         }
 
-        // プロペラ回転 (スロットル開度に応じた回転速度)
+        // プロペラ回転
         float propSpeed = 15.0f + this.throttle * (65.0f + tier * 15.0f);
         this.propRotation = (this.propRotation + propSpeed) % 360.0f;
 
         // 2. 推進力 (Thrust) と 対気速度 (Airspeed)
-        float maxSpeedBlocks = 0.55f + (tier * 0.12f); // 約 40 〜 60 km/h (マイクロRCプレーンのスケール速度)
+        float maxSpeedBlocks = 0.58f + (tier * 0.12f); // 約 42 〜 65 km/h
         float targetAirspeed = this.throttle * maxSpeedBlocks;
 
-        // 加減速
-        float accelRate = 0.015f + (tier * 0.005f);
+        float accelRate = 0.018f + (tier * 0.005f);
         if (this.airspeed < targetAirspeed) {
             this.airspeed = Math.min(this.airspeed + accelRate, targetAirspeed);
         } else {
-            // 空気抵抗による自然減速
-            this.airspeed = Math.max(this.airspeed - 0.008f, targetAirspeed);
+            this.airspeed = Math.max(this.airspeed - 0.007f, targetAirspeed);
         }
 
-        // 3. 3軸姿勢角の制御 (ピッチ・ロール・ヨー)
         boolean onGround = this.onGround();
 
+        // 3. 3軸姿勢角の制御
         if (onGround) {
-            // === 【地上タキシング＆滑走状態】 ===
-            // テールドラッガー地上傾斜姿勢(+6度)。滑走中のエレベーター引きで機首が上下に反応
+            this.verticalVelocity = 0.0;
+
+            // 地上待機ピッチ(+6度)。エレベーター操作でピョコピョコ上下
             float groundPitch = 6.0f + (this.inputElevator * 5.0f);
             this.pitchAngle = Mth.lerp(0.25f, this.pitchAngle, groundPitch);
             this.rollAngle = Mth.lerp(0.25f, this.rollAngle, 0.0f);
 
-            // 地上ステアリング (ラダー/A-D操作で直感的に滑らかにステア)
-            // 速度が出ている時ほど自然に旋回
-            float turnRate = 2.2f * this.inputRudder * Math.max(0.12f, this.airspeed);
-            this.setYRot(this.getYRot() - turnRate);
+            // 地上ステアリング:
+            // inputRudder: 左(-1.0)で左旋回(YRot減少)、右(+1.0)で右旋回(YRot増加)
+            float turnRate = 2.4f * this.inputRudder * Math.max(0.15f, this.airspeed);
+            this.setYRot(this.getYRot() + turnRate);
 
-            // 離陸判定 (Takeoff):
-            // スロットルを上げて対気速度が 0.16 以上に達し、かつ Sキー (inputElevator > 0.2f: 引き起こし上昇) でふわりと離陸！
+            // 離陸判定 (Takeoff): 速度0.16以上 かつ Sキー引き(inputElevator > 0.2f)
             if (this.airspeed > 0.16f && this.inputElevator > 0.2f) {
                 this.setOnGround(false);
-                this.setDeltaMovement(this.getDeltaMovement().add(0, 0.18, 0));
-                this.pitchAngle = 18.0f; // 離陸初頭の上昇角
+                this.verticalVelocity = 0.16;
+                this.setDeltaMovement(this.getDeltaMovement().add(0, 0.16, 0));
+                this.pitchAngle = 18.0f;
             }
         } else {
             // === 【空中飛行状態】 ===
-            // 対気速度が足りているほど舵面がよく効く（低速では舵の効きが甘くなるリアルな特性）
-            float controlEfficacy = Mth.clamp(this.airspeed / (maxSpeedBlocks * 0.5f), 0.25f, 1.0f);
+            float stallSpeed = 0.16f; // 失速境界速度 (約 12 km/h)
+            boolean isStalling = this.airspeed < stallSpeed;
 
-            if (this.flightMode == 0) {
-                // --- 【直感アシスト飛行モード (ASSIST)】 ---
-                // Sキー(+1.0: 引き)で機首上げ上昇(+35度)、Wキー(-1.0: 倒し)で機首下げ降下(-30度)
-                float targetPitch = Mth.clamp(this.inputElevator * 35.0f, -30.0f, 35.0f);
-                this.pitchAngle = Mth.lerp(0.18f * controlEfficacy, this.pitchAngle, targetPitch);
+            // 舵面効果度: 速度があるほど舵が効き、失速時は舵が効かない
+            float controlEfficacy = Mth.clamp(this.airspeed / (maxSpeedBlocks * 0.5f), 0.1f, 1.0f);
 
-                // A/D入力に応じた自然な自動バンク傾斜 (最大36度)
-                float targetRoll = Mth.clamp(-this.inputAileron * 36.0f, -45.0f, 45.0f);
-                this.rollAngle = Mth.lerp(0.18f * controlEfficacy, this.rollAngle, targetRoll);
+            if (isStalling) {
+                // 【失速物理 (Stall Physics)】:
+                // 揚力を完全に失い、機首が重力で下を向く（ノーズダイブ急降下）
+                this.pitchAngle = Mth.lerp(0.08f, this.pitchAngle, -32.0f);
+                this.rollAngle = Mth.lerp(0.08f, this.rollAngle, 0.0f);
 
-                // バンク角とラダーによるスムーズな協調旋回
-                float yawTurn = (this.rollAngle * 0.07f) - (this.inputRudder * 1.5f);
-                this.setYRot(this.getYRot() + yawTurn * controlEfficacy);
+                // 重力による急降下加速（その場に留まらずリアルに墜落）
+                this.verticalVelocity = Math.max(-0.75, this.verticalVelocity - 0.065);
+
+                // 急降下によって対気速度が重力から供給される（リカバリーへの道）
+                this.airspeed = Math.min(this.airspeed + 0.012f, maxSpeedBlocks * 0.6f);
             } else {
-                // --- 【本格アクロバットモード (ACRO)】 ---
-                // 完全マニュアル3軸制御（宙返り・バレルロール自由自在）
-                float pitchRate = this.inputElevator * 4.2f * controlEfficacy;
-                this.pitchAngle = (this.pitchAngle + pitchRate) % 360.0f;
+                // 【通常飛行物理】
+                if (this.flightMode == 0) {
+                    // --- 【直感アシスト飛行モード (ASSIST)】 ---
+                    // Sキー(+1.0:引き)で機首上げ(+35度)、Wキー(-1.0:倒し)で機首下げ(-30度)
+                    float targetPitch = Mth.clamp(this.inputElevator * 35.0f, -30.0f, 35.0f);
+                    this.pitchAngle = Mth.lerp(0.18f * controlEfficacy, this.pitchAngle, targetPitch);
 
-                float rollRate = -this.inputAileron * 6.5f * controlEfficacy;
-                this.rollAngle = (this.rollAngle + rollRate) % 360.0f;
+                    // A/D入力による自然なバンク傾斜:
+                    // inputAileron: 左(-1.0)で左ロール(-32度)、右(+1.0)で右ロール(+32度)
+                    float targetRoll = Mth.clamp(this.inputAileron * 32.0f, -40.0f, 40.0f);
+                    this.rollAngle = Mth.lerp(0.18f * controlEfficacy, this.rollAngle, targetRoll);
 
-                float yawRate = -this.inputRudder * 2.0f * controlEfficacy;
-                this.setYRot(this.getYRot() + yawRate);
+                    // バンク角とラダーによるスムーズな協調旋回:
+                    // 左ロール(負)で左旋回(YRot減少)、右ロール(正)で右旋回(YRot増加)
+                    float yawTurn = (this.rollAngle * 0.08f) + (this.inputRudder * 1.8f);
+                    this.setYRot(this.getYRot() + yawTurn * controlEfficacy);
+                } else {
+                    // --- 【本格アクロバットモード (ACRO)】 ---
+                    // 完全マニュアル3軸制御（宙返り・バレルロール自由自在）
+                    float pitchRate = this.inputElevator * 4.2f * controlEfficacy;
+                    this.pitchAngle = (this.pitchAngle + pitchRate) % 360.0f;
+
+                    float rollRate = this.inputAileron * 6.5f * controlEfficacy;
+                    this.rollAngle = (this.rollAngle + rollRate) % 360.0f;
+
+                    float yawRate = this.inputRudder * 2.2f * controlEfficacy;
+                    this.setYRot(this.getYRot() + yawRate);
+                }
+
+                // 通常飛行時の昇降速度計算（揚力と重力のバランス）
+                float pitchRad = (float) Math.toRadians(this.pitchAngle);
+                float liftFactor = Mth.clamp(this.airspeed / 0.22f, 0.0f, 1.0f);
+                double lift = 0.045 * liftFactor * Math.max(0.0, Math.cos(pitchRad));
+                double forwardY = Math.sin(pitchRad) * this.airspeed;
+
+                this.verticalVelocity = forwardY + lift - 0.045;
             }
         }
 
-        // 4. 運動ベクトル計算（3次元空間への投影）
+        // 4. 運動ベクトル計算（前進・昇降）
         float yawRad = (float) Math.toRadians(this.getYRot());
         float pitchRad = (float) Math.toRadians(this.pitchAngle);
 
-        // 前進方向ベクトル（機首上げ pitchAngle > 0 で上向き fwdY > 0）
+        // 前進方向ベクトル（Yaw=0は南=+Z、Yaw=90は西=-X）
         double fwdX = -Math.sin(yawRad) * Math.cos(pitchRad);
-        double fwdY = Math.sin(pitchRad);
         double fwdZ = Math.cos(yawRad) * Math.cos(pitchRad);
 
-        // 揚力 (Lift): 水平対気速度から発生
-        double lift = 0.0;
-        if (!onGround) {
-            float liftFactor = Mth.clamp(this.airspeed / 0.20f, 0.0f, 1.0f);
-            lift = 0.045 * liftFactor * Math.max(0.0, Math.cos(pitchRad));
-        }
-
-        double gravity = onGround ? 0.0 : -0.045;
-
-        // 速度ベクトル
         double mx = fwdX * this.airspeed;
-        double my = (fwdY * this.airspeed) + lift + gravity;
+        double my = this.verticalVelocity;
         double mz = fwdZ * this.airspeed;
 
         this.setDeltaMovement(mx, my, mz);
         this.move(MoverType.SELF, this.getDeltaMovement());
 
-        // 車輪回転 (地上走行時)
+        // 着地判定
+        if (this.onGround() && !onGround) {
+            // 接地した瞬間に垂直速度リセット
+            this.verticalVelocity = 0.0;
+            if (Math.abs(my) > 0.4) {
+                // ハードランディング・煙パーティクル
+                if (level() instanceof ServerLevel sl) {
+                    sl.sendParticles(ParticleTypes.CAMPFIRE_COSY_SMOKE, getX(), getY(), getZ(), 6, 0.2, 0.1, 0.2, 0.02);
+                }
+            }
+        }
+
+        // 車輪回転
         if (onGround && this.airspeed > 0.01f) {
             this.wheelRotation = (this.wheelRotation + this.airspeed * 45.0f) % 360.0f;
         }
 
-        // バッテリー消費 (スロットル開度に応じて消費)
+        // バッテリー消費
         if (!level().isClientSide && hasPower) {
             if (this.throttle > 0.1f && tickCount % (int) Math.max(10, 40 - (this.throttle * 25)) == 0) {
                 consumeBattery(1);
             }
         }
 
-        // エンティティデータ同期
         if (!level().isClientSide) {
             entityData.set(DATA_ELEVATOR_INPUT, this.inputElevator);
             entityData.set(DATA_AILERON_INPUT, this.inputAileron);
@@ -399,7 +446,6 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
         }
     }
 
-    // === インタラクト処理（バッテリー・モーター換装・回収） ===
     @Override
     public InteractionResult interact(Player player, InteractionHand hand) {
         ItemStack held = player.getItemInHand(hand);
@@ -464,7 +510,6 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
         return super.interact(player, hand);
     }
 
-    // === RcControllable 実装 ===
     @Override
     public boolean isPiloted() { return this.pilotUUID != null; }
 
@@ -550,7 +595,6 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
 
     @Override
     public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
-        // ボーンの回転は GeoModel でダイナミックに制御するためデフォルトコントローラーを登録
     }
 
     @Override
