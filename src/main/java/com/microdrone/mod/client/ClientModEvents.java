@@ -4,11 +4,16 @@ import com.microdrone.mod.block.entity.ModBlockEntities;
 import com.microdrone.mod.client.audio.DroneSoundManager;
 import com.microdrone.mod.client.camera.DroneCameraController;
 import com.microdrone.mod.client.gui.DroneHudOverlay;
+import com.microdrone.mod.client.gui.PlaneFlightHudOverlay;
+import com.microdrone.mod.client.gui.TankGunnerHudOverlay;
 import com.microdrone.mod.client.input.ClientDroneInputHandler;
 import com.microdrone.mod.client.model.DroneModel;
 import com.microdrone.mod.client.renderer.DroneChargerBlockEntityRenderer;
 import com.microdrone.mod.client.renderer.DroneGeoRenderer;
 import com.microdrone.mod.client.renderer.DroneRenderer;
+import com.microdrone.mod.client.renderer.RcCarGeoRenderer;
+import com.microdrone.mod.client.renderer.RcPlaneGeoRenderer;
+import com.microdrone.mod.client.renderer.RcTankGeoRenderer;
 import com.microdrone.mod.client.renderer.TestPivotBlockEntityRenderer;
 import com.microdrone.mod.client.renderer.item.DroneBatteryItemRenderer;
 import com.microdrone.mod.client.renderer.item.DroneControllerItemRenderer;
@@ -32,14 +37,16 @@ public class ClientModEvents {
         DroneCameraController.register();
         com.microdrone.mod.client.chunk.ClientChunkEvents.register();
         DroneHudOverlay.register();
-        com.microdrone.mod.client.gui.TankGunnerHudOverlay.register();
+        TankGunnerHudOverlay.register();
+        PlaneFlightHudOverlay.register();
         DroneSoundManager.register();
     }
 
     private static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(ModEntities.DRONE.get(), DroneGeoRenderer::new);
-        event.registerEntityRenderer(ModEntities.RC_CAR.get(), com.microdrone.mod.client.renderer.RcCarGeoRenderer::new);
-        event.registerEntityRenderer(ModEntities.RC_TANK.get(), com.microdrone.mod.client.renderer.RcTankGeoRenderer::new);
+        event.registerEntityRenderer(ModEntities.RC_CAR.get(), RcCarGeoRenderer::new);
+        event.registerEntityRenderer(ModEntities.RC_TANK.get(), RcTankGeoRenderer::new);
+        event.registerEntityRenderer(ModEntities.RC_PLANE.get(), RcPlaneGeoRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.DRONE_CHARGER_BE.get(), DroneChargerBlockEntityRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.TEST_PIVOT_BE.get(), TestPivotBlockEntityRenderer::new);
     }

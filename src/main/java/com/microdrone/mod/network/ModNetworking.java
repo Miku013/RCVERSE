@@ -22,6 +22,13 @@ public class ModNetworking {
                 ServerPayloadHandler::handleDroneControl
         );
 
+        // クライアント -> サーバー (プレーン機フライトモード切替)
+        registrar.playToServer(
+                PlaneModeTogglePayload.TYPE,
+                PlaneModeTogglePayload.STREAM_CODEC,
+                ServerPayloadHandler::handlePlaneModeToggle
+        );
+
         // サーバー -> クライアント (操縦状態通知)
         registrar.playToClient(
                 DronePilotStatePayload.TYPE,
