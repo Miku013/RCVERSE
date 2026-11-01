@@ -368,7 +368,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                         this.setOnGround(false);
                         this.hasImpulse = true;
                         this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
-                                SoundEvents.ARMOR_EQUIP_LEATHER.value(), SoundSource.PLAYERS, 0.6F, 1.8F);
+                                SoundEvents.ARMOR_EQUIP_LEATHER.value(), SoundSource.PLAYERS, 12.0F, 1.8F);
                     }
                 } else if (this.inputSteer < -0.05f) {
                     this.driftDirection = 1;  // D key: Drift Right
@@ -379,7 +379,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                         this.setOnGround(false);
                         this.hasImpulse = true;
                         this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
-                                SoundEvents.ARMOR_EQUIP_LEATHER.value(), SoundSource.PLAYERS, 0.6F, 1.8F);
+                                SoundEvents.ARMOR_EQUIP_LEATHER.value(), SoundSource.PLAYERS, 12.0F, 1.8F);
                     }
                 }
             }
@@ -395,7 +395,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                     this.turboBoostTicks = 10; // Boost dash
                     this.currentSpeed = (float) Math.min(this.currentSpeed * 1.35f, maxSpeed * 1.30f);
                     this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
-                            SoundEvents.FIREWORK_ROCKET_LAUNCH, SoundSource.PLAYERS, 0.5F, 1.8F);
+                            SoundEvents.FIREWORK_ROCKET_LAUNCH, SoundSource.PLAYERS, 12.0F, 1.8F);
                     if (this.level().isClientSide) {
                         spawnMiniTurboBurst();
                     }

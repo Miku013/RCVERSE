@@ -471,8 +471,11 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
         double muzzleY = getY() + 0.38 + dirY * muzzleDist;
         double muzzleZ = getZ() + dirZ * muzzleDist;
 
-        // 【カスタム発砲音】迫真の戦車主砲発射サウンドを再生！
-        serverLevel.playSound(null, getX(), getY(), getZ(), com.microdrone.mod.sound.ModSounds.TANK_CANNON_FIRE.get(), SoundSource.NEUTRAL, 1.3f, 1.0f);
+        // 【カスタム発砲音】迫真の戦車主砲発射サウンドを広域再生（可聴半径256m）
+        // volume=16.0f により、最大電波範囲(250m)のどこに戦車がいてもサウンドパケットが操縦者へ確実に到達！
+        // - 車載チェイス/ガンナー視点: クライアント側リスナーが戦車至近(0〜2m)にあるため、常に100%の大迫力至近距離音で再生
+        // - 地上プロポ視点: リスナーがプレイヤー位置にあるため、OpenALにより戦車との距離に応じて自然に減衰（遠くなら小さく）
+        serverLevel.playSound(null, getX(), getY(), getZ(), com.microdrone.mod.sound.ModSounds.TANK_CANNON_FIRE.get(), SoundSource.NEUTRAL, 16.0f, 1.0f);
 
         // マズルフラッシュ・煙
         serverLevel.sendParticles(ParticleTypes.FLASH, muzzleX, muzzleY, muzzleZ, 1, 0, 0, 0, 0);
