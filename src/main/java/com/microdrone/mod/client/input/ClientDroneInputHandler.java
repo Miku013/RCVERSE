@@ -601,9 +601,11 @@ public class ClientDroneInputHandler {
                     event.setYaw(targetYaw);
                     event.setPitch(targetPitch);
                 } else if (droneCameraMode == DroneCameraMode.CHASE) {
-                    float partialTick = (float) event.getPartialTick();
-                    float droneYaw = Mth.rotLerp(partialTick, drone.yRotO, drone.getYRot());
-                    event.setYaw(droneYaw);
+                    float yaw = mc.player.getYRot();
+                    drone.setYRot(yaw);
+                    drone.setYHeadRot(yaw);
+
+                    event.setYaw(yaw);
                     event.setPitch(15.0f);
                     event.setRoll(0.0f);
                 } else {
@@ -816,6 +818,20 @@ public class ClientDroneInputHandler {
             try {
                 cameraMoveMethod.invoke(camera, distanceOffset, yOffset, xOffset);
             } catch (Exception ignored) {}
+        }
+    }
+
+    @SubscribeEvent
+    public void onRenderLiving(net.neoforged.neoforge.client.event.RenderLivingEvent.Pre<?, ?> event) {
+        if (isDronePiloting() && droneCameraMode == DroneCameraMode.GROUND) {
+            if (event.getEntity() instanceof net.minecraft.world.entity.decoration.ArmorStand stand) {
+                double dx = stand.getX() - startX;
+                double dy = stand.getY() - startY;
+                double dz = stand.getZ() - startZ;
+                if (dx * dx + dy * dy + dz * dz < 4.0) {
+                    event.setCanceled(true);
+                }
+            }
         }
     }
 }
