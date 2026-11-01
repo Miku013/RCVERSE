@@ -138,13 +138,15 @@ Minecraft 1.21.1 (NeoForge) 向けの超リアル・高機能ラジコン MOD。
 
 ---
 
-### I. モデルロールとバンク旋回進行方向の符号完全統一（2026-11-01 / 最新）
-- [x] **「右に傾いているのに左に進む（旋回する）」違和感・酔いの完全根絶**:
-  - **根本原因**: `RcPlaneGeoRenderer` でモデルの描画ロールに `Axis.ZP.rotationDegrees(-roll)` とマイナス符号が掛かっていたため、機体が右に傾いて見えるのは `rollAngle` がマイナス（負）の時になっていた。その結果、物理エンジンのバンク旋回計算（`sin(rollRad)`）で負のヨー変化が生じ、「右に傾いているのに左に曲がっていく」という深刻な進行方向の逆転が発生していた。
-  - **対策**:
-    - `RcPlaneGeoRenderer` のロール回転を `Axis.ZP.rotationDegrees(roll)`（正のロール）に統一。Dキー（右バンク）で正の `rollAngle` となり、モデルも正しく右に傾く。
-    - 物理計算の `sin(rollRad)` も正となり、機体は確実に「右傾き $\to$ 右旋回」「左傾き $\to$ 左旋回」と進行方向が完全に一致。
-    - コックピット視点のカメラロールも `event.setRoll(-planeRoll)` となり、右バンク時に右下に向かって景色が流れていく実機操縦席の自然な視界を実現。
+### I. サーバーエルロン符号同期 ＆ バンク旋回方向の符号完全統一（2026-11-02 / 最新）
+- [x] **サーバー側・クライアント側の左右エルロン入力不一致を完全同期**:
+  - `ServerPayloadHandler` で `plane.inputAileron = payload.strafe()` となっていたため、クライアント側（`-capturedStrafe`）と左右の符号が真逆に衝突していた問題を解消し、`-payload.strafe()` に統一。
+- [x] **バンク旋回物理の符号整合（右バンクで右旋回、左バンクで左旋回）**:
+  - Minecraftの座標系において、右バンク（右翼下がり、`roll < 0`）時に Yaw を増加（右旋回）させるため、旋回物理計算の係数を `bankTurnFactor = -(float) Math.sin(rollRad)` に反転。
+  - ACROモードでも `acroBankTurn = -(float) Math.sin(rollRad) * 2.0f * controlEfficacy` に反転。
+  - これにより、Aキー（左）で確実に左旋回、Dキー（右）で確実に右旋回し、チェイス視点でもコックピット視点でも傾きと旋回方向が100%一致。
+- [x] **HUD人工水平儀バーの完全同位相化**:
+  - `PlaneFlightHudOverlay` の水平バー描画を `Axis.ZP.rotationDegrees(-roll)` に修正し、機体モデルの右下がり傾斜とバーの右下がり傾斜を完全に同一位相に同期。
 
 ---
 
