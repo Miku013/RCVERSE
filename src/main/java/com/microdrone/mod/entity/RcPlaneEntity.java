@@ -402,10 +402,10 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
                     // バンク旋回＋エレベーター引き起こし求心旋回（右ロール(roll>0)で右旋回(Yaw増加)に正整合）
                     float rollRad = (float) Math.toRadians(this.rollAngle);
                     float bankTurnFactor = (float) Math.sin(rollRad);
-                    float elevatorTighten = 1.0f + (this.inputElevator > 0 ? this.inputElevator * 1.5f : 0.0f);
+                    float elevatorTighten = 1.0f + (this.inputElevator > 0 ? this.inputElevator * 1.0f : 0.0f);
 
-                    float bankYawRate = bankTurnFactor * 2.6f * elevatorTighten * controlEfficacy;
-                    float rudderYawRate = this.inputRudder * 1.6f * controlEfficacy;
+                    float bankYawRate = bankTurnFactor * 1.9f * elevatorTighten * controlEfficacy;
+                    float rudderYawRate = this.inputRudder * 1.2f * controlEfficacy;
 
                     this.setYRot(this.getYRot() + bankYawRate + rudderYawRate);
 
@@ -423,16 +423,16 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
                 // アクロバット機らしく、パイロットの手動操縦を100%尊重。
                 // 機体ローカル座標系（主翼・胴体基準）の3軸角速度からワールドオイラー角へ正しく変換
                 
-                // 1. 機体ローカル角速度の算出
-                // q: ピッチ角速度 (機首上げ正)
-                float localPitchRate = this.inputElevator * 4.5f * controlEfficacy;
-                // p: ロール角速度 (右ロール正)
-                float localRollRate = this.inputAileron * 6.5f * controlEfficacy;
-                // r: ヨー角速度 (右ラダー正) + 主翼揚力による自然な求心旋回モーメント
+                // 1. 機体ローカル角速度の算出（旋回半径を拡大・旋回速度をマイルド化）
+                // q: ピッチ角速度 (機首上げ正: 4.5f -> 3.4f でバンク旋回時の急激な回り込みを抑制し旋回半径を拡大)
+                float localPitchRate = this.inputElevator * 3.4f * controlEfficacy;
+                // p: ロール角速度 (右ロール正: 6.5f -> 5.8f で適度な安定性)
+                float localRollRate = this.inputAileron * 5.8f * controlEfficacy;
+                // r: ヨー角速度 (右ラダー正) + 主翼揚力による自然な求心旋回モーメント (1.6f -> 1.2f)
                 float rollRad = (float) Math.toRadians(this.rollAngle);
                 float pitchRad = (float) Math.toRadians(this.pitchAngle);
-                float bankNaturalTurn = (float) Math.sin(rollRad) * 1.6f * controlEfficacy;
-                float localYawRate = this.inputRudder * 2.2f * controlEfficacy + bankNaturalTurn;
+                float bankNaturalTurn = (float) Math.sin(rollRad) * 1.2f * controlEfficacy;
+                float localYawRate = this.inputRudder * 1.6f * controlEfficacy + bankNaturalTurn;
 
                 // 2. 航空機オイラー角微分変換 (Body to World Euler transformation)
                 // 横を向いている(Roll=±90°)時にエレベーターを引くと、ワールド上下(Pitch)ではなく
