@@ -348,19 +348,28 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
                 // 【通常飛行物理】
                 if (this.flightMode == 0) {
                     // --- 【直感アシスト飛行モード (ASSIST)】 ---
-                    // Sキー(+1.0:引き)で機首上げ(+35度)、Wキー(-1.0:倒し)で機首下げ(-30度)
+                    // 1. A/Dキーによる自然なバンク傾斜:
+                    // inputAileron: 左(-1.0)で左ロール(-35度)、右(+1.0)で右ロール(+35度)
+                    float targetRoll = Mth.clamp(this.inputAileron * 35.0f, -45.0f, 45.0f);
+                    this.rollAngle = Mth.lerp(0.18f * controlEfficacy, this.rollAngle, targetRoll);
+
+                    // 2. S/Wキーによるエレベーター引き起こし:
+                    // inputElevator: S(+1.0:引き)で機首上げ(+35度)、W(-1.0:倒し)で機首下げ(-30度)
                     float targetPitch = Mth.clamp(this.inputElevator * 35.0f, -30.0f, 35.0f);
                     this.pitchAngle = Mth.lerp(0.18f * controlEfficacy, this.pitchAngle, targetPitch);
 
-                    // A/D入力による自然なバンク傾斜:
-                    // inputAileron: 左(-1.0)で左ロール(-32度)、右(+1.0)で右ロール(+32度)
-                    float targetRoll = Mth.clamp(this.inputAileron * 32.0f, -40.0f, 40.0f);
-                    this.rollAngle = Mth.lerp(0.18f * controlEfficacy, this.rollAngle, targetRoll);
+                    // 3. 【本物の航空機バンク旋回物理 (Banked Turn Physics)】:
+                    // 主翼が傾いたことによる水平求心力旋回。
+                    // さらに！バンクした状態でエレベーターを引くと (inputElevator > 0)、
+                    // 機体自身の主翼基準で内側に鋭く回り込む本物の「引き起こし旋回 (Pull-up Turn)」が発動！
+                    float rollRad = (float) Math.toRadians(this.rollAngle);
+                    float bankTurnFactor = (float) Math.sin(rollRad); // 右(+): 右旋回, 左(-): 左旋回
+                    float elevatorTighten = 1.0f + (this.inputElevator > 0 ? this.inputElevator * 1.5f : 0.0f);
 
-                    // バンク角とラダーによるスムーズな協調旋回:
-                    // 左ロール(負)で左旋回(YRot減少)、右ロール(正)で右旋回(YRot増加)
-                    float yawTurn = (this.rollAngle * 0.08f) + (this.inputRudder * 1.8f);
-                    this.setYRot(this.getYRot() + yawTurn * controlEfficacy);
+                    float bankYawRate = bankTurnFactor * 2.6f * elevatorTighten * controlEfficacy;
+                    float rudderYawRate = this.inputRudder * 1.6f * controlEfficacy;
+
+                    this.setYRot(this.getYRot() + bankYawRate + rudderYawRate);
                 } else {
                     // --- 【本格アクロバットモード (ACRO)】 ---
                     // 完全マニュアル3軸制御（宙返り・バレルロール自由自在）
@@ -370,15 +379,21 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
                     float rollRate = this.inputAileron * 6.5f * controlEfficacy;
                     this.rollAngle = (this.rollAngle + rollRate) % 360.0f;
 
+                    float rollRad = (float) Math.toRadians(this.rollAngle);
+                    float acroBankTurn = (float) Math.sin(rollRad) * 2.0f * controlEfficacy;
                     float yawRate = this.inputRudder * 2.2f * controlEfficacy;
-                    this.setYRot(this.getYRot() + yawRate);
+                    this.setYRot(this.getYRot() + acroBankTurn + yawRate);
                 }
 
-                // 通常飛行時の昇降速度計算（揚力と重力のバランス）
+                // 通常飛行時の昇降速度計算（揚力と重力のバランス）:
+                // ※ 機体がバンク（傾斜）しているときは、上向き揚力成分が cos(roll) に減少し、
+                // 余計な上下動を起こさず水平に美しく旋回する！
                 float pitchRad = (float) Math.toRadians(this.pitchAngle);
+                float rollRad = (float) Math.toRadians(this.rollAngle);
                 float liftFactor = Mth.clamp(this.airspeed / 0.22f, 0.0f, 1.0f);
-                double lift = 0.045 * liftFactor * Math.max(0.0, Math.cos(pitchRad));
-                double forwardY = Math.sin(pitchRad) * this.airspeed;
+
+                double lift = 0.045 * liftFactor * Math.max(0.0, Math.cos(pitchRad) * Math.cos(rollRad));
+                double forwardY = Math.sin(pitchRad) * this.airspeed * Math.max(0.2, Math.cos(rollRad));
 
                 this.verticalVelocity = forwardY + lift - 0.045;
             }

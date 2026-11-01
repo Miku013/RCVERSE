@@ -24,18 +24,22 @@ public class RcPlaneGeoRenderer extends GeoEntityRenderer<RcPlaneEntity> {
         poseStack.scale(0.25F, 0.25F, 0.25F);
 
         float yaw = Mth.rotLerp(partialTick, entity.yRotO, entity.getYRot());
-        // 進行方向の回転（ドローン・RCカー標準: 180.0F - yaw）
-        poseStack.mulPose(Axis.YP.rotationDegrees(180.0F - yaw));
-
-        // 3軸航空機姿勢角（ピッチ・ロール）
         float pitch = Mth.lerp(partialTick, entity.prevPitchAngle, entity.getPitchAngle());
         float roll = Mth.lerp(partialTick, entity.prevRollAngle, entity.getRollAngle());
 
+        // 1. 進行方向（ワールド水平Yaw旋回）
+        poseStack.mulPose(Axis.YP.rotationDegrees(180.0F - yaw));
+
+        // 2. 機体の進行軸周りのロール（主翼のバンク傾き: Dキーで右に傾くよう符号整合）
+        if (Math.abs(roll) > 0.01f) {
+            poseStack.mulPose(Axis.ZP.rotationDegrees(-roll));
+        }
+
+        // 3. 傾いた主翼を基準としたエレベーターピッチ（機首上下）
+        // ※ ロールした後にピッチを掛けることで、バンク旋回時に機体自身の主翼基準で機首が起こされ、
+        // 「横向きのまま縦回転する」不自然な挙動を完全に防止！
         if (Math.abs(pitch) > 0.01f) {
             poseStack.mulPose(Axis.XP.rotationDegrees(pitch));
-        }
-        if (Math.abs(roll) > 0.01f) {
-            poseStack.mulPose(Axis.ZP.rotationDegrees(roll));
         }
 
         super.render(entity, entityYaw, partialTick, poseStack, bufferSource, packedLight);
@@ -43,4 +47,3 @@ public class RcPlaneGeoRenderer extends GeoEntityRenderer<RcPlaneEntity> {
         poseStack.popPose();
     }
 }
-
