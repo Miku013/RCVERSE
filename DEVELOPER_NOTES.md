@@ -206,3 +206,7 @@ Minecraft 1.21.1 (NeoForge) 向けの超リアル・高機能ラジコン MOD。
   - **見下ろしチェイス視点**: `onComputeCameraAngles` 内で `drone.setYRot(yaw); drone.setYHeadRot(yaw);` を更新し、マウス左右でドローンが自在に旋回してカメラも真後ろに追従するよう修正。
   - **地上プロポ見上げ視点**: `onRenderLiving` を実装し、地上視点（`GROUND`）時のみ立ち位置 `(startX, startY, startZ)` に立っている身代わりダミー人形（ArmorStand）の描画をキャンセル（非表示化）。目の前にダミー人形が重なる問題を100%解決し、手元にプロポを持って大空を見上げるクリアな視界を実現。
   - コミット `2396946`。他ラジコン（車・戦車・飛行機）への干渉はゼロ。
+- [x] **1人称FPV視点におけるマウス機体旋回の完全復旧（2026-11-02）**:
+  - **原因**: カメラエンティティが `drone` の場合、バニラの `MouseHandler` は `drone.turn()` を動かすため、静止している `player.getYRot()` でドローン角度を上書きリセットしていたことがフリーズの原因だった。
+  - **修正**: FPV視点時は `drone.getYRot()` / `drone.getXRot()` をマウス入力のマスターとして扱い、`onComputeCameraAngles` での上書きリセットを撤廃。`onClientTick` で `player.setYRot(currentYaw)` とプレイヤー側へ同期。
+  - コミット `b64969d`。これにより操縦開始直後からマウスで144Hz超滑らかに旋回・首振りが動作。
