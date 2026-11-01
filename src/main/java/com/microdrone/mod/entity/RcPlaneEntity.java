@@ -421,19 +421,34 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
                 // --- 【本格アクロバットモード (ACRO)】 ---
                 // ※ 失速しても姿勢（ピッチ・ロール）を勝手に固定・リセットしない！
                 // アクロバット機らしく、パイロットの手動操縦を100%尊重。
-                // 失速時は舵の効きが下がり、揚力が失われて自然落下する。
-                float pitchRate = this.inputElevator * 4.2f * controlEfficacy;
-                this.pitchAngle = Mth.wrapDegrees(this.pitchAngle + pitchRate);
-
-                float rollRate = this.inputAileron * 6.5f * controlEfficacy;
-                this.rollAngle = Mth.wrapDegrees(this.rollAngle + rollRate);
-
+                // 機体ローカル座標系（主翼・胴体基準）の3軸角速度からワールドオイラー角へ正しく変換
+                
+                // 1. 機体ローカル角速度の算出
+                // q: ピッチ角速度 (機首上げ正)
+                float localPitchRate = this.inputElevator * 4.5f * controlEfficacy;
+                // p: ロール角速度 (右ロール正)
+                float localRollRate = this.inputAileron * 6.5f * controlEfficacy;
+                // r: ヨー角速度 (右ラダー正) + 主翼揚力による自然な求心旋回モーメント
                 float rollRad = (float) Math.toRadians(this.rollAngle);
-                float acroBankTurn = (float) Math.sin(rollRad) * 2.0f * controlEfficacy;
-                float yawRate = this.inputRudder * 2.2f * controlEfficacy;
-                this.setYRot(this.getYRot() + acroBankTurn + yawRate);
-
                 float pitchRad = (float) Math.toRadians(this.pitchAngle);
+                float bankNaturalTurn = (float) Math.sin(rollRad) * 1.6f * controlEfficacy;
+                float localYawRate = this.inputRudder * 2.2f * controlEfficacy + bankNaturalTurn;
+
+                // 2. 航空機オイラー角微分変換 (Body to World Euler transformation)
+                // 横を向いている(Roll=±90°)時にエレベーターを引くと、ワールド上下(Pitch)ではなく
+                // ワールド水平(Yaw)の急旋回へ正しく変換され、旋回半径が縮小する
+                float cosRoll = (float) Math.cos(rollRad);
+                float sinRoll = (float) Math.sin(rollRad);
+                float cosPitchSafe = Math.max(0.15f, Math.abs((float) Math.cos(pitchRad)));
+
+                float deltaPitch = localPitchRate * cosRoll - localYawRate * sinRoll;
+                float deltaYaw = (localPitchRate * sinRoll + localYawRate * cosRoll) / cosPitchSafe;
+                float deltaRoll = localRollRate;
+
+                this.pitchAngle = Mth.wrapDegrees(this.pitchAngle + deltaPitch);
+                this.setYRot(this.getYRot() + deltaYaw);
+                this.rollAngle = Mth.wrapDegrees(this.rollAngle + deltaRoll);
+
                 if (this.isStalling) {
                     // アクロバット失速: 揚力喪失により重力落下、急降下で速度が自然回復
                     this.verticalVelocity = Math.max(-0.75, this.verticalVelocity - 0.055);
