@@ -28,11 +28,12 @@ public class RcPlaneGeoRenderer extends GeoEntityRenderer<RcPlaneEntity> {
         poseStack.mulPose(Axis.YP.rotationDegrees(-yaw));
 
         // 3軸航空機姿勢角（ピッチ・ロール）
+        // ※ Minecraft/PoseStack の空間では、機首上げ(pitch > 0)は Axis.XP の負の回転(-pitch)で正しく上を向く
         float pitch = Mth.lerp(partialTick, entity.prevPitchAngle, entity.getPitchAngle());
         float roll = Mth.lerp(partialTick, entity.prevRollAngle, entity.getRollAngle());
 
         if (Math.abs(pitch) > 0.01f) {
-            poseStack.mulPose(Axis.XP.rotationDegrees(pitch));
+            poseStack.mulPose(Axis.XP.rotationDegrees(-pitch));
         }
         if (Math.abs(roll) > 0.01f) {
             poseStack.mulPose(Axis.ZP.rotationDegrees(roll));
@@ -43,3 +44,4 @@ public class RcPlaneGeoRenderer extends GeoEntityRenderer<RcPlaneEntity> {
         poseStack.popPose();
     }
 }
+

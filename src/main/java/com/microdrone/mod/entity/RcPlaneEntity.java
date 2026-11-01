@@ -297,47 +297,51 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
 
         if (onGround) {
             // === 【地上タキシング＆滑走状態】 ===
-            // テールドラッガー特有の少し機首が上を向いた姿勢 (+6度)
-            this.pitchAngle = Mth.lerp(0.2f, this.pitchAngle, 6.0f);
-            this.rollAngle = Mth.lerp(0.2f, this.rollAngle, 0.0f);
+            // テールドラッガー地上傾斜姿勢(+6度)。滑走中のエレベーター引きで機首が上下に反応
+            float groundPitch = 6.0f + (this.inputElevator * 5.0f);
+            this.pitchAngle = Mth.lerp(0.25f, this.pitchAngle, groundPitch);
+            this.rollAngle = Mth.lerp(0.25f, this.rollAngle, 0.0f);
 
-            // 地上ステアリング (ラダー操作で左右に曲がる)
-            float turnRate = 2.5f * this.inputRudder * (Math.max(0.1f, this.airspeed));
+            // 地上ステアリング (ラダー/A-D操作で直感的に滑らかにステア)
+            // 速度が出ている時ほど自然に旋回
+            float turnRate = 2.2f * this.inputRudder * Math.max(0.12f, this.airspeed);
             this.setYRot(this.getYRot() - turnRate);
 
-            // 離陸判定 (Takeoff): 速度が一定以上(0.22ブロック/tick)かつエレベーター引き(上昇入力)でフワリと離陸！
-            if (this.airspeed > 0.22f && this.inputElevator < -0.2f) { // エレベーター引き(ピッチ上げ: 負)
+            // 離陸判定 (Takeoff):
+            // スロットルを上げて対気速度が 0.16 以上に達し、かつ Sキー (inputElevator > 0.2f: 引き起こし上昇) でふわりと離陸！
+            if (this.airspeed > 0.16f && this.inputElevator > 0.2f) {
                 this.setOnGround(false);
-                this.setDeltaMovement(this.getDeltaMovement().add(0, 0.12, 0));
+                this.setDeltaMovement(this.getDeltaMovement().add(0, 0.18, 0));
+                this.pitchAngle = 18.0f; // 離陸初頭の上昇角
             }
         } else {
             // === 【空中飛行状態】 ===
             // 対気速度が足りているほど舵面がよく効く（低速では舵の効きが甘くなるリアルな特性）
-            float controlEfficacy = Mth.clamp(this.airspeed / (maxSpeedBlocks * 0.6f), 0.2f, 1.0f);
+            float controlEfficacy = Mth.clamp(this.airspeed / (maxSpeedBlocks * 0.5f), 0.25f, 1.0f);
 
             if (this.flightMode == 0) {
                 // --- 【直感アシスト飛行モード (ASSIST)】 ---
-                // マウス追従＋自動バンク角制御
-                float targetPitch = Mth.clamp(this.inputElevator * 45.0f, -40.0f, 40.0f);
-                this.pitchAngle = Mth.lerp(0.15f * controlEfficacy, this.pitchAngle, targetPitch);
+                // Sキー(+1.0: 引き)で機首上げ上昇(+35度)、Wキー(-1.0: 倒し)で機首下げ降下(-30度)
+                float targetPitch = Mth.clamp(this.inputElevator * 35.0f, -30.0f, 35.0f);
+                this.pitchAngle = Mth.lerp(0.18f * controlEfficacy, this.pitchAngle, targetPitch);
 
-                // 旋回入力に応じた自然な自動バンク傾斜 (最大38度)
-                float targetRoll = Mth.clamp(-this.inputAileron * 38.0f, -45.0f, 45.0f);
-                this.rollAngle = Mth.lerp(0.15f * controlEfficacy, this.rollAngle, targetRoll);
+                // A/D入力に応じた自然な自動バンク傾斜 (最大36度)
+                float targetRoll = Mth.clamp(-this.inputAileron * 36.0f, -45.0f, 45.0f);
+                this.rollAngle = Mth.lerp(0.18f * controlEfficacy, this.rollAngle, targetRoll);
 
-                // バンク角とラダーによる旋回
-                float yawTurn = (this.rollAngle * 0.08f) - (this.inputRudder * 1.8f);
+                // バンク角とラダーによるスムーズな協調旋回
+                float yawTurn = (this.rollAngle * 0.07f) - (this.inputRudder * 1.5f);
                 this.setYRot(this.getYRot() + yawTurn * controlEfficacy);
             } else {
                 // --- 【本格アクロバットモード (ACRO)】 ---
                 // 完全マニュアル3軸制御（宙返り・バレルロール自由自在）
-                float pitchRate = -this.inputElevator * 3.8f * controlEfficacy;
-                this.pitchAngle = (this.pitchAngle + pitchRate);
+                float pitchRate = this.inputElevator * 4.2f * controlEfficacy;
+                this.pitchAngle = (this.pitchAngle + pitchRate) % 360.0f;
 
                 float rollRate = -this.inputAileron * 6.5f * controlEfficacy;
                 this.rollAngle = (this.rollAngle + rollRate) % 360.0f;
 
-                float yawRate = -this.inputRudder * 2.2f * controlEfficacy;
+                float yawRate = -this.inputRudder * 2.0f * controlEfficacy;
                 this.setYRot(this.getYRot() + yawRate);
             }
         }
@@ -346,18 +350,16 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
         float yawRad = (float) Math.toRadians(this.getYRot());
         float pitchRad = (float) Math.toRadians(this.pitchAngle);
 
-        // 前進方向ベクトル（Minecraft標準: Yaw=0は南、上向きが負）
-        // ※このモデルは前方が+Z基準のため、yawに合わせて正しくベクトル算出
+        // 前進方向ベクトル（機首上げ pitchAngle > 0 で上向き fwdY > 0）
         double fwdX = -Math.sin(yawRad) * Math.cos(pitchRad);
-        double fwdY = -Math.sin(pitchRad);
+        double fwdY = Math.sin(pitchRad);
         double fwdZ = Math.cos(yawRad) * Math.cos(pitchRad);
 
-        // 揚力 (Lift): 対気速度と機首角度から発生
-        // 水平飛行速度があれば重力(0.04)を完全に打ち消して高度維持
+        // 揚力 (Lift): 水平対気速度から発生
         double lift = 0.0;
         if (!onGround) {
-            float liftFactor = Mth.clamp(this.airspeed / 0.28f, 0.0f, 1.0f);
-            lift = 0.045 * liftFactor * Math.cos(pitchRad);
+            float liftFactor = Mth.clamp(this.airspeed / 0.20f, 0.0f, 1.0f);
+            lift = 0.045 * liftFactor * Math.max(0.0, Math.cos(pitchRad));
         }
 
         double gravity = onGround ? 0.0 : -0.045;

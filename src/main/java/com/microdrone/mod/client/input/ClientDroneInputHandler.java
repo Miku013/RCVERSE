@@ -409,27 +409,57 @@ public class ClientDroneInputHandler {
             player.setPos(startX, startY, startZ);
 
             // クライアント側へ即座に反映（ノーディレイ操作感）
-            // W: ピッチダウン(正), S: ピッチアップ/上昇(負)
+            // W: ピッチダウン(-1.0: 機首下げ), S: ピッチアップ(+1.0: 機首引き上げ・上昇離陸)
             plane.inputElevator = -capturedForward;
-            // A: 左ロール(負), D: 右ロール(正)
-            plane.inputAileron = capturedStrafe;
+            // A: 左ロール/左傾斜(-1.0), D: 右ロール/右傾斜(+1.0)
+            plane.inputAileron = -capturedStrafe;
             // Space: スロットル増(+1.0), Shift: スロットル減(-1.0)
             plane.inputThrottleDelta = capturedVertical;
 
-            // マウスによる操縦アシスト / ラダー
+            // ラダー（方向舵）および地上ステアリングの計算
             float rudder = 0.0f;
-            if (plane.getFlightMode() == 0) {
-                // ASSISTモード: マウスの向きとの相対角で旋回
-                float yawDiff = Mth.wrapDegrees(player.getYRot() - plane.getYRot());
-                rudder = Mth.clamp(yawDiff * 0.05f, -1.0f, 1.0f);
+
+            if (plane.onGround()) {
+                // === 【地上タキシング＆滑走時】 ===
+                // 車と同様に A/D キー (capturedStrafe) で直感的に尾輪ステアリング！
+                // キーを離せば瞬時に 0（直進ニュートラル）に戻り、絶対に勝手に曲がらずまっすぐ滑走可能！
+                // capturedStrafe: Aで+1.0(左), Dで-1.0(右) -> ラダー正で左旋回
+                rudder = capturedStrafe;
             } else {
-                // ACROモード: A/Dが直接ロール、キーボードの旋回またはマウスでラダー
-                float yawDiff = Mth.wrapDegrees(player.getYRot() - plane.getYRot());
-                rudder = Mth.clamp(yawDiff * 0.04f, -1.0f, 1.0f);
+                // === 【空中飛行時】 ===
+                if (carCameraMode == RcCameraMode.GROUND_RC) {
+                    // 地上プロポ視点:
+                    // マウスは空の飛行機を見上げるための視線操作。
+                    // 旋回は A/D キーのバンク・ラダー操作を100%忠実に反映！
+                    // キーを離せば自動水平復帰（ASSIST）でピシッとまっすぐ直進！
+                    rudder = capturedStrafe * 0.7f;
+                } else {
+                    // チェイス視点 または コックピット視点:
+                    // 1. A/D キーによる確実な旋回操作
+                    float keyRudder = capturedStrafe * 0.7f;
+
+                    // 2. マウスの向きによるアシスト旋回 (不感帯デッドゾーン付き)
+                    float mouseRudder = 0.0f;
+                    float yawDiff = Mth.wrapDegrees(player.getYRot() - plane.getYRot());
+
+                    // デッドゾーン (±3.5度以内は直進維持)
+                    if (Math.abs(yawDiff) > 3.5f) {
+                        float effectiveDiff = yawDiff - Math.signum(yawDiff) * 3.5f;
+                        // 急激な舵角を防止する緩やかな感度係数 (0.012)
+                        mouseRudder = Mth.clamp(effectiveDiff * 0.012f, -0.6f, 0.6f);
+                    }
+
+                    // A/Dキー入力があればキー入力を最優先、キー入力がなければマウス追従
+                    if (Math.abs(capturedStrafe) > 0.05f) {
+                        rudder = keyRudder;
+                    } else {
+                        rudder = mouseRudder;
+                    }
+                }
             }
             plane.inputRudder = rudder;
 
-            // サーバーへ送信
+            // サーバーへ送信 (yaw に計算済み rudder を格納して同期)
             PacketDistributor.sendToServer(new DroneControlPayload(
                     activeDroneId,
                     capturedForward,
@@ -586,10 +616,9 @@ public class ClientDroneInputHandler {
                     float targetYaw = (float) (Mth.atan2(dz, dx) * (180.0 / Math.PI)) - 90.0f;
                     float targetPitch = (float) (-(Mth.atan2(dy, distXZ) * (180.0 / Math.PI)));
 
+                    // カメラの描画角度のみを飛行機（Look-At）に向ける！
                     event.setYaw(targetYaw);
                     event.setPitch(targetPitch);
-                    mc.player.setYRot(targetYaw);
-                    mc.player.setXRot(targetPitch);
                 } else if (carCameraMode == RcCameraMode.CHASE_CAR) {
                     // === 【モード2: チェイス視点（三人称後方追従）】 ===
                     event.setYaw(planeYaw);

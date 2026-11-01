@@ -307,3 +307,4 @@ public class PlaneFlightHudOverlay {
         graphics.drawString(font, "CAM: " + camName, x, y + 20, 0xFFAAAAAA, false);
     }
 }
+

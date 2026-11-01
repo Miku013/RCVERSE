@@ -27,3 +27,4 @@ public record PlaneModeTogglePayload(int planeId, int mode) implements CustomPac
         return TYPE;
     }
 }
+
