@@ -584,22 +584,15 @@ public class ClientDroneInputHandler {
             Entity entity = mc.level.getEntity(activeDroneId);
             if (entity instanceof DroneEntity drone) {
                 if (droneCameraMode == DroneCameraMode.GROUND) {
-                    float partialTick = (float) event.getPartialTick();
-                    double droneX = Mth.lerp(partialTick, drone.xOld, drone.getX());
-                    double droneY = Mth.lerp(partialTick, drone.yOld, drone.getY());
-                    double droneZ = Mth.lerp(partialTick, drone.zOld, drone.getZ());
-                    double eyeX = startX;
-                    double eyeY = startY + mc.player.getEyeHeight();
-                    double eyeZ = startZ;
-                    double dx = droneX - eyeX;
-                    double dy = droneY - eyeY;
-                    double dz = droneZ - eyeZ;
-                    double distXZ = Math.sqrt(dx * dx + dz * dz);
-                    float targetYaw = (float) (Mth.atan2(dz, dx) * (180.0 / Math.PI)) - 90.0f;
-                    float targetPitch = (float) (-(Mth.atan2(dy, distXZ) * (180.0 / Math.PI)));
+                    float yaw = mc.player.getYRot();
+                    float pitch = mc.player.getXRot();
 
-                    event.setYaw(targetYaw);
-                    event.setPitch(targetPitch);
+                    event.setYaw(yaw);
+                    event.setPitch(pitch);
+                    event.setRoll(0.0f);
+
+                    drone.setYRot(yaw);
+                    drone.setYHeadRot(yaw);
                 } else if (droneCameraMode == DroneCameraMode.CHASE) {
                     float yaw = mc.player.getYRot();
                     drone.setYRot(yaw);
