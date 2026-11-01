@@ -595,8 +595,8 @@ public class ClientDroneInputHandler {
             } else if (entity instanceof RcPlaneEntity plane) {
                 float partialTick = (float) event.getPartialTick();
                 float planeYaw = Mth.rotLerp(partialTick, plane.yRotO, plane.getYRot());
-                float planePitch = Mth.lerp(partialTick, plane.prevPitchAngle, plane.getPitchAngle());
-                float planeRoll = Mth.lerp(partialTick, plane.prevRollAngle, plane.getRollAngle());
+                float planePitch = Mth.rotLerp(partialTick, plane.prevPitchAngle, plane.getPitchAngle());
+                float planeRoll = Mth.rotLerp(partialTick, plane.prevRollAngle, plane.getRollAngle());
 
                 if (carCameraMode == RcCameraMode.GROUND_RC) {
                     // === 【モード1: 地上プロポ視点（RC飛行場感覚・見上げる視点）】 ===

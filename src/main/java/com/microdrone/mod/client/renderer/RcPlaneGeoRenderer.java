@@ -24,8 +24,8 @@ public class RcPlaneGeoRenderer extends GeoEntityRenderer<RcPlaneEntity> {
         poseStack.scale(0.25F, 0.25F, 0.25F);
 
         float yaw = Mth.rotLerp(partialTick, entity.yRotO, entity.getYRot());
-        float pitch = Mth.lerp(partialTick, entity.prevPitchAngle, entity.getPitchAngle());
-        float roll = Mth.lerp(partialTick, entity.prevRollAngle, entity.getRollAngle());
+        float pitch = Mth.rotLerp(partialTick, entity.prevPitchAngle, entity.getPitchAngle());
+        float roll = Mth.rotLerp(partialTick, entity.prevRollAngle, entity.getRollAngle());
 
         // 1. 進行方向（ワールド水平Yaw旋回）
         poseStack.mulPose(Axis.YP.rotationDegrees(180.0F - yaw));

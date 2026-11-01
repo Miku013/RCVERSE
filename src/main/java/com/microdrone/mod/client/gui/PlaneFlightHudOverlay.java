@@ -72,6 +72,28 @@ public class PlaneFlightHudOverlay {
 
         // 7. 右下: 通信距離 ＆ 電波強度 ＆ カメラモード
         renderSignalStatus(graphics, font, width - 110, height - 55, plane, mode);
+
+        // 8. 右上: 飛行制御・姿勢デバッグテレメトリ (原因探求用)
+        renderDebugTelemetry(graphics, font, width - 130, 8, plane);
+    }
+
+    /**
+     * 右上: リアルタイム姿勢・接地デバッグテレメトリ（がたつき・姿勢巻き戻し原因探求用）
+     */
+    private void renderDebugTelemetry(GuiGraphics graphics, Font font, int x, int y, RcPlaneEntity plane) {
+        int w = 122;
+        int h = 48;
+        graphics.fill(x - 4, y - 4, x + w, y + h, 0x88000000);
+        graphics.renderOutline(x - 4, y - 4, w + 4, h + 4, 0xAA00DDFF);
+
+        boolean ground = plane.onGround();
+        boolean taxi = ground && (plane.airspeed < 0.20f) && (Math.abs(plane.getRollAngle()) < 22.0f);
+
+        int gndColor = ground ? 0xFFFF4444 : 0xFF00FF66;
+        graphics.drawString(font, "[DBG TELEMETRY]", x, y, 0xFF00DDFF, false);
+        graphics.drawString(font, String.format("Gnd:%b  Taxi:%b", ground, taxi), x, y + 10, gndColor, false);
+        graphics.drawString(font, String.format("P: %+.1f°  R: %+.1f°", plane.getPitchAngle(), plane.getRollAngle()), x, y + 20, 0xFFFFFFFF, false);
+        graphics.drawString(font, String.format("vVel:%+.2f  Spd:%.1f", plane.verticalVelocity, plane.airspeed * 72.0f), x, y + 30, 0xFFCCCCCC, false);
     }
 
     /**
@@ -142,8 +164,8 @@ public class PlaneFlightHudOverlay {
         int barHeight = (int) (ratio * 50);
         graphics.fill(x + 20, cy + 28 - barHeight, x + 23, cy + 28, 0xFF00FF66);
 
-        // 失速（STALL）警告表示: 空中飛行中で速度が20km/h以下のとき赤色点滅
-        if (!plane.onGround() && speedKmh < 22.0f) {
+        // 失速（STALL）警告表示: 空中飛行中で失速判定(isStalling)のとき赤色点滅
+        if (!plane.onGround() && plane.isStalling) {
             boolean blink = (plane.tickCount / 5) % 2 == 0;
             if (blink) {
                 graphics.fill(x - 24, cy + 18, x + 18, cy + 32, 0xEECC0000);
