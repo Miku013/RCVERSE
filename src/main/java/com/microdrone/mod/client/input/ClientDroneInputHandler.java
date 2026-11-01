@@ -45,6 +45,12 @@ public class ClientDroneInputHandler {
     private static float capturedStrafe = 0.0f;
     private static float capturedVertical = 0.0f;
 
+    // ドローン地上プロポ視点（GROUND）用のLook-At追尾＆マウス旋回制御
+    private static float droneGroundAimYaw = 0.0f;
+    private static float lastDroneGroundLookYaw = 0.0f;
+    private static float lastDroneGroundLookPitch = 0.0f;
+    private static boolean droneGroundCameraInit = false;
+
     public enum RcCameraMode {
         GROUND_RC,
         CHASE_CAR,
@@ -121,6 +127,8 @@ public class ClientDroneInputHandler {
             mc.options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_BACK);
         } else if (droneCameraMode == DroneCameraMode.CHASE) {
             droneCameraMode = DroneCameraMode.GROUND;
+            droneGroundAimYaw = drone.getYRot();
+            droneGroundCameraInit = false;
             if (mc.player != null) {
                 mc.player.displayClientMessage(Component.translatable("message.microdrone.cam_ground"), true);
                 mc.player.setInvisible(false);
@@ -132,6 +140,8 @@ public class ClientDroneInputHandler {
             if (mc.player != null) {
                 mc.player.displayClientMessage(Component.translatable("message.microdrone.cam_gunner"), true);
                 mc.player.setInvisible(true);
+                mc.player.setYRot(droneGroundAimYaw);
+                mc.player.setXRot(0.0f);
             }
             mc.setCameraEntity(drone);
             mc.options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);
@@ -258,6 +268,8 @@ public class ClientDroneInputHandler {
             Entity targetEnt = mc.level != null ? mc.level.getEntity(droneId) : null;
             if (targetEnt instanceof DroneEntity drone) {
                 droneCameraMode = DroneCameraMode.FPV;
+                droneGroundAimYaw = drone.getYRot();
+                droneGroundCameraInit = false;
                 if (mc.player != null) {
                     lastPlayerYaw = mc.player.getYRot();
                     mc.player.setInvisible(true);
@@ -315,6 +327,7 @@ public class ClientDroneInputHandler {
             }
 
             carCameraMode = RcCameraMode.GROUND_RC;
+            droneGroundCameraInit = false;
             isPiloting = false;
             activeDroneId = -1;
             capturedForward = 0.0f;
@@ -405,14 +418,18 @@ public class ClientDroneInputHandler {
         missingTicks = 0;
 
         if (entity instanceof DroneEntity drone) {
+            float currentYaw;
+            float currentPitch;
             if (droneCameraMode == DroneCameraMode.GROUND) {
                 player.setPos(startX, startY, startZ);
                 player.setDeltaMovement(0, 0, 0);
+                currentYaw = droneGroundAimYaw;
+                currentPitch = 0.0f;
             } else {
                 player.setPos(drone.getX(), drone.getY(), drone.getZ());
+                currentYaw = player.getYRot();
+                currentPitch = player.getXRot();
             }
-            float currentYaw = player.getYRot();
-            float currentPitch = player.getXRot();
             drone.applyControlInput(capturedForward, capturedStrafe, capturedVertical, currentYaw, currentPitch);
 
             PacketDistributor.sendToServer(new DroneControlPayload(
@@ -584,15 +601,50 @@ public class ClientDroneInputHandler {
             Entity entity = mc.level.getEntity(activeDroneId);
             if (entity instanceof DroneEntity drone) {
                 if (droneCameraMode == DroneCameraMode.GROUND) {
-                    float yaw = mc.player.getYRot();
-                    float pitch = mc.player.getXRot();
+                    float partialTick = (float) event.getPartialTick();
+                    double droneX = Mth.lerp(partialTick, drone.xOld, drone.getX());
+                    double droneY = Mth.lerp(partialTick, drone.yOld, drone.getY());
+                    double droneZ = Mth.lerp(partialTick, drone.zOld, drone.getZ());
+                    double eyeX = startX;
+                    double eyeY = startY + mc.player.getEyeHeight();
+                    double eyeZ = startZ;
+                    double dx = droneX - eyeX;
+                    double dy = droneY - eyeY;
+                    double dz = droneZ - eyeZ;
+                    double distXZ = Math.sqrt(dx * dx + dz * dz);
 
-                    event.setYaw(yaw);
-                    event.setPitch(pitch);
+                    // ドローンを常に画面中央に捉え続ける自動追尾カメラ角度 (Look-At)
+                    float targetYaw = (float) (Mth.atan2(dz, dx) * (180.0 / Math.PI)) - 90.0f;
+                    float targetPitch = (float) (-(Mth.atan2(dy, distXZ) * (180.0 / Math.PI)));
+
+                    // 【マウス移動デルタのリアルタイム取得】
+                    // カメラ上書き直前のプレイヤーマウス移動差分 (deltaYaw) を即座にドローン旋回角へ加算！
+                    if (!droneGroundCameraInit) {
+                        lastDroneGroundLookYaw = targetYaw;
+                        lastDroneGroundLookPitch = targetPitch;
+                        droneGroundAimYaw = drone.getYRot();
+                        droneGroundCameraInit = true;
+                    } else {
+                        float deltaYaw = Mth.wrapDegrees(mc.player.getYRot() - lastDroneGroundLookYaw);
+                        if (Math.abs(deltaYaw) > 0.001f) {
+                            droneGroundAimYaw = Mth.wrapDegrees(droneGroundAimYaw + deltaYaw);
+                        }
+                    }
+
+                    // カメラはドローンを自動追尾 (Look-At)
+                    event.setYaw(targetYaw);
+                    event.setPitch(targetPitch);
                     event.setRoll(0.0f);
 
-                    drone.setYRot(yaw);
-                    drone.setYHeadRot(yaw);
+                    // プレイヤーの視線もLook-At角度にリセットして視線追尾を維持
+                    mc.player.setYRot(targetYaw);
+                    mc.player.setXRot(targetPitch);
+                    lastDroneGroundLookYaw = targetYaw;
+                    lastDroneGroundLookPitch = targetPitch;
+
+                    // ドローン自身の機首はマウス旋回角度へリアルタイム同期！
+                    drone.setYRot(droneGroundAimYaw);
+                    drone.setYHeadRot(droneGroundAimYaw);
                 } else if (droneCameraMode == DroneCameraMode.CHASE) {
                     float yaw = mc.player.getYRot();
                     drone.setYRot(yaw);
