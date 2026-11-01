@@ -628,10 +628,10 @@ public class ClientDroneInputHandler {
                     event.setRoll(0.0f);
                 } else if (carCameraMode == RcCameraMode.GUNNER_AIM) {
                     // === 【モード3: コックピット一人称FPV視点】 ===
-                    // 機体自身のロール・ピッチ・ヨーと完全同期（右ロールで地平線が正しく傾く）
+                    // 機体自身のロール・ピッチ・ヨーと完全同期（右ロールで地平線が正しく右上がりに傾く）
                     event.setYaw(planeYaw);
                     event.setPitch(-planePitch);
-                    event.setRoll(-planeRoll);
+                    event.setRoll(planeRoll);
                 }
             }
         }

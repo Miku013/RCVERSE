@@ -399,9 +399,9 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
                     float targetPitch = Mth.clamp(this.inputElevator * 35.0f, -30.0f, 35.0f);
                     this.pitchAngle = Mth.lerp(0.18f * controlEfficacy, this.pitchAngle, targetPitch);
 
-                    // バンク旋回＋エレベーター引き起こし求心旋回（右バンク(roll<0)で右旋回(Yaw増加)に正整合）
+                    // バンク旋回＋エレベーター引き起こし求心旋回（右ロール(roll>0)で右旋回(Yaw増加)に正整合）
                     float rollRad = (float) Math.toRadians(this.rollAngle);
-                    float bankTurnFactor = -(float) Math.sin(rollRad);
+                    float bankTurnFactor = (float) Math.sin(rollRad);
                     float elevatorTighten = 1.0f + (this.inputElevator > 0 ? this.inputElevator * 1.5f : 0.0f);
 
                     float bankYawRate = bankTurnFactor * 2.6f * elevatorTighten * controlEfficacy;
@@ -429,7 +429,7 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
                 this.rollAngle = Mth.wrapDegrees(this.rollAngle + rollRate);
 
                 float rollRad = (float) Math.toRadians(this.rollAngle);
-                float acroBankTurn = -(float) Math.sin(rollRad) * 2.0f * controlEfficacy;
+                float acroBankTurn = (float) Math.sin(rollRad) * 2.0f * controlEfficacy;
                 float yawRate = this.inputRudder * 2.2f * controlEfficacy;
                 this.setYRot(this.getYRot() + acroBankTurn + yawRate);
 

@@ -109,9 +109,9 @@ public class PlaneFlightHudOverlay {
         // センターピッチオフセット (ピッチ1度あたり1.2ピクセル移動)
         float pitchOffset = pitch * 1.2f;
 
-        // 中央回転 (ロール角: 機体モデルの傾きと完全に同位相で回転)
+        // 中央回転 (ロール角: 機体モデルの右下がり傾きと同位相で回転)
         poseStack.translate(cx, cy, 0);
-        poseStack.mulPose(Axis.ZP.rotationDegrees(-roll));
+        poseStack.mulPose(Axis.ZP.rotationDegrees(roll));
 
         // 水平線 (人工水平バー: ロールとピッチに合わせて傾斜・上下)
         int hWidth = 44;
