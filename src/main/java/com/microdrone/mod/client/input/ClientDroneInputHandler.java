@@ -405,14 +405,20 @@ public class ClientDroneInputHandler {
         missingTicks = 0;
 
         if (entity instanceof DroneEntity drone) {
+            float currentYaw;
+            float currentPitch;
             if (droneCameraMode == DroneCameraMode.GROUND) {
                 player.setPos(startX, startY, startZ);
                 player.setDeltaMovement(0, 0, 0);
+                currentYaw = player.getYRot();
+                currentPitch = player.getXRot();
             } else {
                 player.setPos(drone.getX(), drone.getY(), drone.getZ());
+                currentYaw = drone.getYRot();
+                currentPitch = drone.getXRot();
+                player.setYRot(currentYaw);
+                player.setXRot(currentPitch);
             }
-            float currentYaw = player.getYRot();
-            float currentPitch = player.getXRot();
             drone.applyControlInput(capturedForward, capturedStrafe, capturedVertical, currentYaw, currentPitch);
 
             PacketDistributor.sendToServer(new DroneControlPayload(
@@ -601,23 +607,20 @@ public class ClientDroneInputHandler {
                     event.setYaw(targetYaw);
                     event.setPitch(targetPitch);
                 } else if (droneCameraMode == DroneCameraMode.CHASE) {
-                    float yaw = mc.player.getYRot();
-                    drone.setYRot(yaw);
-                    drone.setYHeadRot(yaw);
-
-                    event.setYaw(yaw);
+                    float partialTick = (float) event.getPartialTick();
+                    float droneYaw = Mth.rotLerp(partialTick, drone.yRotO, drone.getYRot());
+                    event.setYaw(droneYaw);
                     event.setPitch(15.0f);
                     event.setRoll(0.0f);
                 } else {
-                    float yaw = mc.player.getYRot();
-                    float pitch = mc.player.getXRot();
+                    float yaw = drone.getYRot();
+                    float pitch = drone.getXRot();
 
                     event.setYaw(yaw);
                     event.setPitch(pitch);
+                    event.setRoll(0.0f);
 
-                    drone.setYRot(yaw);
                     drone.setYHeadRot(yaw);
-                    drone.setXRot(pitch);
                 }
             } else if (entity instanceof RcCarEntity car) {
                 float partialTick = (float) event.getPartialTick();
