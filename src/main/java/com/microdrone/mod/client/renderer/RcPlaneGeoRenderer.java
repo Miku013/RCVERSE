@@ -30,9 +30,9 @@ public class RcPlaneGeoRenderer extends GeoEntityRenderer<RcPlaneEntity> {
         // 1. 進行方向（ワールド水平Yaw旋回）
         poseStack.mulPose(Axis.YP.rotationDegrees(180.0F - yaw));
 
-        // 2. 機体の進行軸周りのロール（主翼のバンク傾き: Dキーで右に傾くよう符号整合）
+        // 2. 機体の進行軸周りのロール（主翼のバンク傾き: Dキーで右バンク/正ロール）
         if (Math.abs(roll) > 0.01f) {
-            poseStack.mulPose(Axis.ZP.rotationDegrees(-roll));
+            poseStack.mulPose(Axis.ZP.rotationDegrees(roll));
         }
 
         // 3. 傾いた主翼を基準としたエレベーターピッチ（機首上下）
