@@ -407,6 +407,8 @@ public class ClientDroneInputHandler {
                 return;
             }
             player.setPos(startX, startY, startZ);
+            player.setDeltaMovement(0, 0, 0); // プレイヤーの微小落下による画面テレポートジッターを完全防止
+            player.fallDistance = 0.0f;
 
             // クライアント側へ即座に反映（ノーディレイ操作感）
             // W: ピッチダウン(-1.0: 機首下げ), S: ピッチアップ(+1.0: 機首引き上げ・上昇離陸)
@@ -422,33 +424,29 @@ public class ClientDroneInputHandler {
 
             if (plane.onGround()) {
                 // === 【地上タキシング＆滑走時】 ===
-                // A/D キーで直感的に尾輪ステアリング（Aで左、Dで右）
-                // キーを離せば瞬時に 0（直進ニュートラル）に戻り、まっすぐ滑走可能！
+                // A/D キーで直感的に尾輪ステアリング（Aで左旋回、Dで右旋回）
+                // キーを離せば瞬時に 0（直進ニュートラル）に戻り、まっすぐ滑走！
                 rudder = -capturedStrafe;
             } else {
                 // === 【空中飛行時】 ===
                 if (carCameraMode == RcCameraMode.GROUND_RC) {
                     // 地上プロポ視点:
-                    // マウスは空の飛行機を見上げるための視線操作。
                     // 旋回は A/D キーの操作を100%忠実に反映！
                     rudder = -capturedStrafe * 0.7f;
                 } else {
                     // チェイス視点 または コックピット視点:
-                    // 1. A/D キーによる確実な旋回操作
                     float keyRudder = -capturedStrafe * 0.7f;
 
-                    // 2. マウスの向きによるアシスト旋回 (不感帯デッドゾーン付き)
+                    // マウスの向きによるアシスト旋回 (不感帯デッドゾーン付き)
                     float mouseRudder = 0.0f;
                     float yawDiff = Mth.wrapDegrees(player.getYRot() - plane.getYRot());
 
                     // デッドゾーン (±3.5度以内は直進維持)
                     if (Math.abs(yawDiff) > 3.5f) {
                         float effectiveDiff = yawDiff - Math.signum(yawDiff) * 3.5f;
-                        // 急激な舵角を防止する緩やかな感度係数 (0.012)
                         mouseRudder = Mth.clamp(effectiveDiff * 0.012f, -0.6f, 0.6f);
                     }
 
-                    // A/Dキー入力があればキー入力を最優先、キー入力がなければマウス追従
                     if (Math.abs(capturedStrafe) > 0.05f) {
                         rudder = keyRudder;
                     } else {

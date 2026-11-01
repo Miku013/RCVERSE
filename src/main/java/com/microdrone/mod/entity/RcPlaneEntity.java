@@ -132,22 +132,13 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
     }
 
     /**
-     * 【ドローン準拠: カメラカクつき防止 lerpTo】
-     * 自プレイヤーが操縦している場合は、サーバーからの遅延位置同期パケットによる
-     * 画面のガクつき・引き戻しを防止し、クライアント側の滑らかな移動を最優先する。
+     * 【戦車・ドローン準拠: サーバー遅延テレポート引き戻し遮断 lerpTo】
+     * 自プレイヤーが操縦している場合は、サーバーからの遅延パケットによる
+     * テレポート引き戻し・カクつきを100%遮断し、クライアント側の滑らかな移動を維持する。
      */
     @Override
     public void lerpTo(double x, double y, double z, float yRot, float xRot, int steps) {
         if (this.locallyControlled) {
-            double dx = x - this.getX();
-            double dy = y - this.getY();
-            double dz = z - this.getZ();
-            double distSq = dx * dx + dy * dy + dz * dz;
-
-            // ズレが極端に大きい場合（壁埋まりなど）を除き、クライアント側の滑らかな移動を優先
-            if (distSq > 36.0) {
-                super.lerpTo(x, y, z, yRot, xRot, steps);
-            }
             return;
         }
         super.lerpTo(x, y, z, yRot, xRot, steps);
