@@ -617,11 +617,12 @@ public class ClientDroneInputHandler {
                     event.setYaw(targetYaw);
                     event.setPitch(targetPitch);
                 } else if (carCameraMode == RcCameraMode.CHASE_CAR) {
-                    // === 【モード2: チェイス視点（三人称後方追従）】 ===
-                    // バニラの三人称後方カメラで超滑らかに完全追従（ジッター・カクつき防止）
+                    // === 【モード2: チェイス視点（見下ろし固定・一定距離追従）】 ===
+                    // カメラロールを0度に固定して世界の逆回転・傾きを完全防止し、
+                    // 常に機体の後方斜め上から一定の見下ろし角度(15°)と一定距離で追従
                     event.setYaw(planeYaw);
-                    event.setPitch(-planePitch * 0.35f + 12.0f);
-                    event.setRoll(-planeRoll * 0.35f);
+                    event.setPitch(15.0f);
+                    event.setRoll(0.0f);
                 } else if (carCameraMode == RcCameraMode.GUNNER_AIM) {
                     // === 【モード3: コックピット一人称FPV視点】 ===
                     event.setYaw(planeYaw);
