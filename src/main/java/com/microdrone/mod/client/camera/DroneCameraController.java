@@ -140,8 +140,12 @@ public class DroneCameraController {
 
         // カメラが外れていた場合の自己修復
         if (mc.getCameraEntity() != vehicle) {
-            MicroDroneMod.LOGGER.warn("[CLIENT] [CAMERA_MISMATCH_REPAIR] Reset camera entity back to vehicle: {}", activeDroneId);
-            mc.setCameraEntity(vehicle);
+            if (ClientDroneInputHandler.isDronePiloting() && ClientDroneInputHandler.getDroneCameraMode() == ClientDroneInputHandler.DroneCameraMode.GROUND) {
+                // Ground view bypass: player camera is expected
+            } else {
+                MicroDroneMod.LOGGER.warn("[CLIENT] [CAMERA_MISMATCH_REPAIR] Reset camera entity back to vehicle: {}", activeDroneId);
+                mc.setCameraEntity(vehicle);
+            }
         }
     }
 
@@ -175,7 +179,8 @@ public class DroneCameraController {
     public void onRenderHand(RenderHandEvent event) {
         if (isViewing || ClientDroneInputHandler.isPiloting()) {
             // RCカーの地上プロポ視点(GROUND_RC)のときは、手元にプロポ（送信機）を表示！
-            if (ClientDroneInputHandler.isGroundVehiclePiloting() && ClientDroneInputHandler.getCarCameraMode() == ClientDroneInputHandler.RcCameraMode.GROUND_RC) {
+            if ((ClientDroneInputHandler.isGroundVehiclePiloting() && ClientDroneInputHandler.getCarCameraMode() == ClientDroneInputHandler.RcCameraMode.GROUND_RC)
+                    || (ClientDroneInputHandler.isDronePiloting() && ClientDroneInputHandler.getDroneCameraMode() == ClientDroneInputHandler.DroneCameraMode.GROUND)) {
                 return;
             }
             event.setCanceled(true);
@@ -191,7 +196,8 @@ public class DroneCameraController {
             Minecraft mc = Minecraft.getInstance();
             if (event.getEntity() == mc.player) {
                 // RCカーの地上プロポ視点では自然な一人称視線を保つ
-                if (ClientDroneInputHandler.isGroundVehiclePiloting() && ClientDroneInputHandler.getCarCameraMode() == ClientDroneInputHandler.RcCameraMode.GROUND_RC) {
+                if ((ClientDroneInputHandler.isGroundVehiclePiloting() && ClientDroneInputHandler.getCarCameraMode() == ClientDroneInputHandler.RcCameraMode.GROUND_RC)
+                        || (ClientDroneInputHandler.isDronePiloting() && ClientDroneInputHandler.getDroneCameraMode() == ClientDroneInputHandler.DroneCameraMode.GROUND)) {
                     return;
                 }
                 event.setCanceled(true);

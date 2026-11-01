@@ -25,7 +25,10 @@ public class DroneHudOverlay {
     @SubscribeEvent
     public void onRenderGui(RenderGuiEvent.Post event) {
         // ドローン操縦中かつカメラがドローン視点の時のみ描画
-        if (!ClientDroneInputHandler.isPiloting() || !DroneCameraController.isViewing()) {
+        if (!ClientDroneInputHandler.isPiloting() || !ClientDroneInputHandler.isDronePiloting()) {
+            return;
+        }
+        if (ClientDroneInputHandler.getDroneCameraMode() == ClientDroneInputHandler.DroneCameraMode.GROUND) {
             return;
         }
 

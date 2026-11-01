@@ -86,6 +86,58 @@ public class ClientDroneInputHandler {
         return mc.level.getEntity(activeDroneId) instanceof RcPlaneEntity;
     }
 
+    public enum DroneCameraMode {
+        FPV,
+        CHASE,
+        GROUND
+    }
+
+    private static DroneCameraMode droneCameraMode = DroneCameraMode.FPV;
+
+    public static DroneCameraMode getDroneCameraMode() {
+        return droneCameraMode;
+    }
+
+    public static boolean isDronePiloting() {
+        if (!isPiloting || activeDroneId == -1) return false;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) return false;
+        return mc.level.getEntity(activeDroneId) instanceof DroneEntity;
+    }
+
+    public static void toggleDroneCameraMode() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null || activeDroneId == -1) return;
+        Entity entity = mc.level.getEntity(activeDroneId);
+        if (!(entity instanceof DroneEntity drone)) return;
+
+        if (droneCameraMode == DroneCameraMode.FPV) {
+            droneCameraMode = DroneCameraMode.CHASE;
+            if (mc.player != null) {
+                mc.player.displayClientMessage(Component.translatable("message.microdrone.cam_chase"), true);
+                mc.player.setInvisible(true);
+            }
+            mc.setCameraEntity(drone);
+            mc.options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_BACK);
+        } else if (droneCameraMode == DroneCameraMode.CHASE) {
+            droneCameraMode = DroneCameraMode.GROUND;
+            if (mc.player != null) {
+                mc.player.displayClientMessage(Component.translatable("message.microdrone.cam_ground"), true);
+                mc.player.setInvisible(false);
+            }
+            mc.setCameraEntity(mc.player);
+            mc.options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);
+        } else {
+            droneCameraMode = DroneCameraMode.FPV;
+            if (mc.player != null) {
+                mc.player.displayClientMessage(Component.translatable("message.microdrone.cam_gunner"), true);
+                mc.player.setInvisible(true);
+            }
+            mc.setCameraEntity(drone);
+            mc.options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);
+        }
+    }
+
     public static void toggleGroundCameraMode() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || activeDroneId == -1) return;
@@ -205,6 +257,7 @@ public class ClientDroneInputHandler {
 
             Entity targetEnt = mc.level != null ? mc.level.getEntity(droneId) : null;
             if (targetEnt instanceof DroneEntity drone) {
+                droneCameraMode = DroneCameraMode.FPV;
                 if (mc.player != null) {
                     lastPlayerYaw = mc.player.getYRot();
                     mc.player.setInvisible(true);
