@@ -138,15 +138,18 @@ Minecraft 1.21.1 (NeoForge) 向けの超リアル・高機能ラジコン MOD。
 
 ---
 
-### I. サーバーエルロン符号同期 ＆ バンク旋回方向の符号完全統一（2026-11-02 / 最新）
+### I. 旋回方向・モデル傾斜・HUD・カメラの符号完全統一（2026-11-02 / 最新）
 - [x] **サーバー側・クライアント側の左右エルロン入力不一致を完全同期**:
   - `ServerPayloadHandler` で `plane.inputAileron = payload.strafe()` となっていたため、クライアント側（`-capturedStrafe`）と左右の符号が真逆に衝突していた問題を解消し、`-payload.strafe()` に統一。
-- [x] **バンク旋回物理の符号整合（右バンクで右旋回、左バンクで左旋回）**:
-  - Minecraftの座標系において、右バンク（右翼下がり、`roll < 0`）時に Yaw を増加（右旋回）させるため、旋回物理計算の係数を `bankTurnFactor = -(float) Math.sin(rollRad)` に反転。
-  - ACROモードでも `acroBankTurn = -(float) Math.sin(rollRad) * 2.0f * controlEfficacy` に反転。
-  - これにより、Aキー（左）で確実に左旋回、Dキー（右）で確実に右旋回し、チェイス視点でもコックピット視点でも傾きと旋回方向が100%一致。
-- [x] **HUD人工水平儀バーの完全同位相化**:
-  - `PlaneFlightHudOverlay` の水平バー描画を `Axis.ZP.rotationDegrees(-roll)` に修正し、機体モデルの右下がり傾斜とバーの右下がり傾斜を完全に同一位相に同期。
+- [x] **旋回物理計算の正常化（Aキーで左旋回、Dキーで右旋回）**:
+  - Dキー（右）で `rollAngle = +35°`（正）、Aキー（左）で `rollAngle = -35°`（負）。
+  - バンク旋回計算の誤ったマイナス符号を撤去し、`bankTurnFactor = (float) Math.sin(rollRad)` および `acroBankTurn = (float) Math.sin(rollRad) * 2.0f * controlEfficacy` に修正。
+  - Dキー（右）で `sin(+35°) > 0` となり Yaw が増加（右旋回）、Aキー（左）で `sin(-35°) < 0` となり Yaw が減少（左旋回）と、直感と100%合致する旋回を実現。
+- [x] **モデル描画（RcPlaneGeoRenderer）のロール傾斜整合**:
+  - `Axis.ZP.rotationDegrees(-roll)` により、Dキー（`roll = +35°`）で確実に右翼が下がる右傾きバンク、Aキー（`roll = -35°`）で左翼が下がる左傾きバンクを描画。
+- [x] **HUD人工水平儀バー ＆ コックピットカメラロールの完全同位相化**:
+  - `PlaneFlightHudOverlay` の姿勢バーを `Axis.ZP.rotationDegrees(roll)` に設定し、チェイス視点で機体モデルが右下がりに傾いた際、バーも全く同じ右下がりに傾くよう同期。
+  - コックピット視点のカメラロールも `event.setRoll(planeRoll)` となり、実機の操縦席そのままの自然な旋回視界を実現。
 
 ---
 
