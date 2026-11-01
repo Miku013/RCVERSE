@@ -62,8 +62,8 @@ public class ServerPayloadHandler {
                             // 航空機操縦入力:
                             // W: ピッチダウン(正), S: ピッチアップ/上昇(負)
                             plane.inputElevator = -payload.forward();
-                            // A: 左ロール(負), D: 右ロール(正)
-                            plane.inputAileron = payload.strafe();
+                            // A: 左ロール(負), D: 右ロール(正) (クライアントと符号整合)
+                            plane.inputAileron = -payload.strafe();
                             // Space: スロットル増(+1.0), Shift: スロットル減(-1.0)
                             plane.inputThrottleDelta = payload.vertical();
                             // ラダー / ヨー旋回
