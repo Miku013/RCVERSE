@@ -109,9 +109,9 @@ public class PlaneFlightHudOverlay {
         // センターピッチオフセット (ピッチ1度あたり1.2ピクセル移動)
         float pitchOffset = pitch * 1.2f;
 
-        // 中央回転 (ロール角)
+        // 中央回転 (ロール角: 機体の傾きと同位相で回転)
         poseStack.translate(cx, cy, 0);
-        poseStack.mulPose(Axis.ZP.rotationDegrees(-roll));
+        poseStack.mulPose(Axis.ZP.rotationDegrees(roll));
 
         // 水平線 (人工水平バー: ロールとピッチに合わせて傾斜・上下)
         int hWidth = 44;
@@ -251,11 +251,14 @@ public class PlaneFlightHudOverlay {
         // 切替キーガイド
         graphics.drawCenteredString(font, "[R] キーで操縦モード切替", cx, y + 18, 0xCCDDDDDD);
 
-        // 2. 上部方位コンパス
-        float yaw = Mth.wrapDegrees(plane.getYRot());
-        int compassYaw = (int) (yaw < 0 ? yaw + 360 : yaw);
-        String dir = getHeadingName(compassYaw);
-        String compStr = String.format("HDG %03d° %s", compassYaw, dir);
+        // 2. 上部方位コンパス (Minecraft Yaw -> 航空方位角 Heading への変換)
+        // Minecraft: 0=南, 90=西, 180=北, 270=東
+        // 航空方位: 0=北, 90=東, 180=南, 270=西
+        float heading = Mth.wrapDegrees(plane.getYRot() + 180.0f);
+        if (heading < 0) heading += 360.0f;
+        int compassDeg = (int) heading;
+        String dir = getHeadingName(compassDeg);
+        String compStr = String.format("HDG %03d° %s", compassDeg, dir);
         graphics.drawCenteredString(font, compStr, cx, y + 29, 0xFF88DDFF);
     }
 

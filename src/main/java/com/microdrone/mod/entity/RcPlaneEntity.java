@@ -288,17 +288,17 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
         float rollDiff = Math.abs(Mth.wrapDegrees(this.rollAngle - this.prevRollAngle));
 
         if (pitchDiff > 25.0f || rollDiff > 25.0f) {
-            MicroDroneMod.LOGGER.warn("[RC_PLANE] [POSTURE_JUMP_ALERT] Tick: {} | Jump Detected! Pitch: {:.1f}->{:.1f} (diff={:.1f}), Roll: {:.1f}->{:.1f} (diff={:.1f}) | onGround: {}, vVel: {:.3f}, Spd: {:.3f}",
-                    tickCount, prevPitchAngle, pitchAngle, pitchDiff, prevRollAngle, rollAngle, rollDiff, this.onGround(), verticalVelocity, airspeed);
+            MicroDroneMod.LOGGER.warn(String.format("[RC_PLANE] [POSTURE_JUMP_ALERT] Tick: %d | Jump Detected! Pitch: %.1f->%.1f (diff=%.1f), Roll: %.1f->%.1f (diff=%.1f) | onGround: %b, vVel: %.3f, Spd: %.3f",
+                    tickCount, prevPitchAngle, pitchAngle, pitchDiff, prevRollAngle, rollAngle, rollDiff, this.onGround(), verticalVelocity, airspeed));
         }
 
         // 1秒おき (20 tick) のサマリーログ
         if (logTimer % 20 == 0) {
             String side = level().isClientSide ? "CLIENT" : "SERVER";
             String modeStr = flightMode == 0 ? "ASSIST" : "ACRO";
-            MicroDroneMod.LOGGER.info("[RC_PLANE] [{}] [{}] Alt:{:.1f}m, Spd:{:.0f}km/h({:.3f}), Thr:{:.0f}%, Grnd:{}, vVel:{:.3f} | Angles: [Yaw={:.1f}, Pitch={:.1f}, Roll={:.1f}] | Input: [Elev={:.2f}, Ail={:.2f}, Rud={:.2f}]",
+            MicroDroneMod.LOGGER.info(String.format("[RC_PLANE] [%s] [%s] Alt:%.1fm, Spd:%.0fkm/h(%.3f), Thr:%.0f%%, Grnd:%b, vVel:%.3f | Angles: [Yaw=%.1f, Pitch=%.1f, Roll=%.1f] | Input: [Elev=%.2f, Ail=%.2f, Rud=%.2f]",
                     side, modeStr, getY(), airspeed * 72.0f, airspeed, throttle * 100.0f, this.onGround(), verticalVelocity,
-                    getYRot(), pitchAngle, rollAngle, inputElevator, inputAileron, inputRudder);
+                    getYRot(), pitchAngle, rollAngle, inputElevator, inputAileron, inputRudder));
         }
     }
 
@@ -365,8 +365,8 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
             if (onGround) {
                 // 地面かすめ時: 姿勢を強制リセットせず、軽くバウンドさせて飛行を継続
                 this.verticalVelocity = Math.max(0.06, -this.verticalVelocity * 0.35);
-                MicroDroneMod.LOGGER.info("[RC_PLANE] [GROUND_SCRATCH] Scratched ground at Y={:.1f}, Spd={:.2f}, Roll={:.1f} -> Bouncing gently without posture reset",
-                        getY(), airspeed, rollAngle);
+                MicroDroneMod.LOGGER.info(String.format("[RC_PLANE] [GROUND_SCRATCH] Scratched ground at Y=%.1f, Spd=%.2f, Roll=%.1f -> Bouncing gently without posture reset",
+                        getY(), airspeed, rollAngle));
             }
 
             // 失速判定（ヒステリシス: 突入0.15f以下、脱出0.19f以上でチャタリング・がたつきを完全防止）
@@ -374,12 +374,12 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
             float stallExitSpeed = 0.19f;
             if (!this.isStalling && this.airspeed < stallEntrySpeed) {
                 this.isStalling = true;
-                MicroDroneMod.LOGGER.warn("[RC_PLANE] [STALL_ENTER] Entered stall at Alt:{:.1f}m, Spd:{:.1f}km/h({:.3f}), Pitch:{:.1f}, Roll:{:.1f}, Mode:{}",
-                        getY(), this.airspeed * 72.0f, this.airspeed, this.pitchAngle, this.rollAngle, this.flightMode == 0 ? "ASSIST" : "ACRO");
+                MicroDroneMod.LOGGER.warn(String.format("[RC_PLANE] [STALL_ENTER] Entered stall at Alt:%.1fm, Spd:%.1fkm/h(%.3f), Pitch:%.1f, Roll:%.1f, Mode:%s",
+                        getY(), this.airspeed * 72.0f, this.airspeed, this.pitchAngle, this.rollAngle, this.flightMode == 0 ? "ASSIST" : "ACRO"));
             } else if (this.isStalling && this.airspeed > stallExitSpeed) {
                 this.isStalling = false;
-                MicroDroneMod.LOGGER.info("[RC_PLANE] [STALL_RECOVER] Recovered from stall at Alt:{:.1f}m, Spd:{:.1f}km/h({:.3f})",
-                        getY(), this.airspeed * 72.0f, this.airspeed);
+                MicroDroneMod.LOGGER.info(String.format("[RC_PLANE] [STALL_RECOVER] Recovered from stall at Alt:%.1fm, Spd:%.1fkm/h(%.3f)",
+                        getY(), this.airspeed * 72.0f, this.airspeed));
             }
 
             float controlEfficacy = Mth.clamp(this.airspeed / (maxSpeedBlocks * 0.5f), 0.12f, 1.0f);
