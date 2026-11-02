@@ -1,31 +1,39 @@
 package com.microdrone.mod.client.input;
 
 import com.microdrone.mod.MicroDroneMod;
-import com.microdrone.mod.client.camera.DroneCameraController;
+import com.microdrone.mod.client.controller.DroneClientController;
+import com.microdrone.mod.client.controller.InputSnapshot;
+import com.microdrone.mod.client.controller.RcCarClientController;
+import com.microdrone.mod.client.controller.RcPlaneClientController;
+import com.microdrone.mod.client.controller.RcTankClientController;
+import com.microdrone.mod.client.controller.RcVehicleClientController;
+import com.microdrone.mod.client.controller.RcViewMode;
 import com.microdrone.mod.entity.DroneEntity;
 import com.microdrone.mod.entity.RcCarEntity;
+import com.microdrone.mod.entity.RcControllable;
 import com.microdrone.mod.entity.RcPlaneEntity;
 import com.microdrone.mod.entity.RcTankEntity;
-import com.microdrone.mod.entity.RcControllable;
+import com.microdrone.mod.item.DroneControllerItem;
 import com.microdrone.mod.network.DroneControlPayload;
-import com.microdrone.mod.network.PlaneModeTogglePayload;
+import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.network.chat.Component;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.decoration.ArmorStand;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.client.event.MovementInputUpdateEvent;
+import net.neoforged.neoforge.client.event.RenderLivingEvent;
 import net.neoforged.neoforge.client.event.ViewportEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
-import org.lwjgl.glfw.GLFW;
 
+/**
+ * すべてのRC機体（ドローン、カー、戦車、プレーン等）の共通セッション管理・イベント購読・入力インターセプトを担当する基盤マネージャー
+ */
 public class ClientDroneInputHandler {
 
     private static boolean isPiloting = false;
@@ -40,27 +48,69 @@ public class ClientDroneInputHandler {
     public static double getStartY() { return startY; }
     public static double getStartZ() { return startZ; }
 
-    private static float lastPlayerYaw = 0.0f;
     private static float capturedForward = 0.0f;
     private static float capturedStrafe = 0.0f;
     private static float capturedVertical = 0.0f;
 
-    // ドローン地上プロポ視点（GROUND）用のLook-At追尾＆マウス旋回制御
-    private static float droneGroundAimYaw = 0.0f;
-    private static float lastDroneGroundLookYaw = 0.0f;
-    private static float lastDroneGroundLookPitch = 0.0f;
-    private static boolean droneGroundCameraInit = false;
+    // 各機体専用コントローラーのインスタンス
+    private static final DroneClientController DRONE_CONTROLLER = new DroneClientController();
+    private static final RcCarClientController CAR_CONTROLLER = new RcCarClientController();
+    private static final RcTankClientController TANK_CONTROLLER = new RcTankClientController();
+    private static final RcPlaneClientController PLANE_CONTROLLER = new RcPlaneClientController();
 
+    // 既存コード互換用の列挙型
+    public enum DroneCameraMode {
+        FPV, CHASE, GROUND
+    }
     public enum RcCameraMode {
-        GROUND_RC,
-        CHASE_CAR,
-        GUNNER_AIM
+        GROUND_RC, CHASE_CAR, GUNNER_AIM
     }
 
-    private static RcCameraMode carCameraMode = RcCameraMode.GROUND_RC;
+    public static RcVehicleClientController getCurrentController() {
+        if (!isPiloting || activeDroneId == -1) return null;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) return null;
+        Entity entity = mc.level.getEntity(activeDroneId);
+        return getControllerForEntity(entity);
+    }
+
+    public static RcVehicleClientController getControllerForEntity(Entity entity) {
+        if (entity instanceof DroneEntity) return DRONE_CONTROLLER;
+        if (entity instanceof RcCarEntity) return CAR_CONTROLLER;
+        if (entity instanceof RcTankEntity) return TANK_CONTROLLER;
+        if (entity instanceof RcPlaneEntity) return PLANE_CONTROLLER;
+        return null;
+    }
+
+    public static RcViewMode getCurrentViewMode() {
+        RcVehicleClientController controller = getCurrentController();
+        return controller != null ? controller.getViewMode() : RcViewMode.GROUND;
+    }
+
+    // 既存コード互換メソッド
+    public static DroneCameraMode getDroneCameraMode() {
+        RcViewMode mode = DRONE_CONTROLLER.getViewMode();
+        return switch (mode) {
+            case CHASE -> DroneCameraMode.CHASE;
+            case GROUND -> DroneCameraMode.GROUND;
+            default -> DroneCameraMode.FPV;
+        };
+    }
 
     public static RcCameraMode getCarCameraMode() {
-        return carCameraMode;
+        RcVehicleClientController controller = getCurrentController();
+        RcViewMode mode = controller != null ? controller.getViewMode() : RcViewMode.GROUND;
+        return switch (mode) {
+            case CHASE -> RcCameraMode.CHASE_CAR;
+            case FIRST_PERSON -> RcCameraMode.GUNNER_AIM;
+            default -> RcCameraMode.GROUND_RC;
+        };
+    }
+
+    public static boolean isDronePiloting() {
+        if (!isPiloting || activeDroneId == -1) return false;
+        Minecraft mc = Minecraft.getInstance();
+        return mc.level != null && mc.level.getEntity(activeDroneId) instanceof DroneEntity;
     }
 
     public static boolean isGroundVehiclePiloting() {
@@ -74,164 +124,19 @@ public class ClientDroneInputHandler {
     public static boolean isRcCarPiloting() {
         if (!isPiloting || activeDroneId == -1) return false;
         Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null) return false;
-        return mc.level.getEntity(activeDroneId) instanceof RcCarEntity;
+        return mc.level != null && mc.level.getEntity(activeDroneId) instanceof RcCarEntity;
     }
 
     public static boolean isRcTankPiloting() {
         if (!isPiloting || activeDroneId == -1) return false;
         Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null) return false;
-        return mc.level.getEntity(activeDroneId) instanceof RcTankEntity;
+        return mc.level != null && mc.level.getEntity(activeDroneId) instanceof RcTankEntity;
     }
 
     public static boolean isRcPlanePiloting() {
         if (!isPiloting || activeDroneId == -1) return false;
         Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null) return false;
-        return mc.level.getEntity(activeDroneId) instanceof RcPlaneEntity;
-    }
-
-    public enum DroneCameraMode {
-        FPV,
-        CHASE,
-        GROUND
-    }
-
-    private static DroneCameraMode droneCameraMode = DroneCameraMode.FPV;
-
-    public static DroneCameraMode getDroneCameraMode() {
-        return droneCameraMode;
-    }
-
-    public static boolean isDronePiloting() {
-        if (!isPiloting || activeDroneId == -1) return false;
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null) return false;
-        return mc.level.getEntity(activeDroneId) instanceof DroneEntity;
-    }
-
-    public static void toggleDroneCameraMode() {
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null || activeDroneId == -1) return;
-        Entity entity = mc.level.getEntity(activeDroneId);
-        if (!(entity instanceof DroneEntity drone)) return;
-
-        if (droneCameraMode == DroneCameraMode.FPV) {
-            droneCameraMode = DroneCameraMode.CHASE;
-            if (mc.player != null) {
-                mc.player.displayClientMessage(Component.translatable("message.microdrone.cam_chase"), true);
-                mc.player.setInvisible(true);
-            }
-            mc.setCameraEntity(drone);
-            mc.options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_BACK);
-        } else if (droneCameraMode == DroneCameraMode.CHASE) {
-            droneCameraMode = DroneCameraMode.GROUND;
-            droneGroundAimYaw = drone.getYRot();
-            droneGroundCameraInit = false;
-            if (mc.player != null) {
-                mc.player.displayClientMessage(Component.translatable("message.microdrone.cam_ground"), true);
-                mc.player.setInvisible(false);
-            }
-            mc.setCameraEntity(mc.player);
-            mc.options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);
-        } else {
-            droneCameraMode = DroneCameraMode.FPV;
-            if (mc.player != null) {
-                mc.player.displayClientMessage(Component.translatable("message.microdrone.cam_gunner"), true);
-                mc.player.setInvisible(true);
-                mc.player.setYRot(droneGroundAimYaw);
-                mc.player.setXRot(0.0f);
-            }
-            mc.setCameraEntity(drone);
-            mc.options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);
-        }
-    }
-
-    public static void toggleGroundCameraMode() {
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null || activeDroneId == -1) return;
-        Entity entity = mc.level.getEntity(activeDroneId);
-
-        mc.options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);
-
-        if (entity instanceof RcCarEntity car) {
-            if (carCameraMode == RcCameraMode.GROUND_RC) {
-                carCameraMode = RcCameraMode.CHASE_CAR;
-                if (mc.player != null) {
-                    mc.player.displayClientMessage(Component.translatable("message.microdrone.cam_chase"), true);
-                    mc.player.setInvisible(true);
-                }
-                mc.setCameraEntity(car);
-                mc.options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_BACK);
-            } else {
-                carCameraMode = RcCameraMode.GROUND_RC;
-                if (mc.player != null) {
-                    mc.player.displayClientMessage(Component.translatable("message.microdrone.cam_ground"), true);
-                    mc.player.setInvisible(false);
-                }
-                mc.setCameraEntity(mc.player);
-                mc.options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);
-            }
-        } else if (entity instanceof RcTankEntity tank) {
-            if (carCameraMode == RcCameraMode.GROUND_RC) {
-                // 地上プロポ視点 -> 車載チェイス視点（三人称後方追従）
-                carCameraMode = RcCameraMode.CHASE_CAR;
-                if (mc.player != null) {
-                    mc.player.displayClientMessage(Component.translatable("message.microdrone.tank_cam_chase"), true);
-                    mc.player.setInvisible(true);
-                }
-                mc.setCameraEntity(tank);
-                mc.options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_BACK);
-            } else if (carCameraMode == RcCameraMode.CHASE_CAR) {
-                // 車載チェイス視点 -> ガンナー照準視点（砲塔同軸FPS・専用HUD）
-                carCameraMode = RcCameraMode.GUNNER_AIM;
-                if (mc.player != null) {
-                    mc.player.displayClientMessage(Component.translatable("message.microdrone.tank_cam_gunner"), true);
-                    mc.player.setInvisible(true);
-                }
-                mc.setCameraEntity(tank);
-                mc.options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);
-            } else {
-                // ガンナー照準視点 -> 地上プロポ視点
-                carCameraMode = RcCameraMode.GROUND_RC;
-                if (mc.player != null) {
-                    mc.player.displayClientMessage(Component.translatable("message.microdrone.tank_cam_ground"), true);
-                    mc.player.setInvisible(false);
-                }
-                mc.setCameraEntity(mc.player);
-                mc.options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);
-            }
-        } else if (entity instanceof RcPlaneEntity plane) {
-            if (carCameraMode == RcCameraMode.GROUND_RC) {
-                // 地上プロポ視点 -> チェイス視点（三人称後方追従）
-                carCameraMode = RcCameraMode.CHASE_CAR;
-                if (mc.player != null) {
-                    mc.player.displayClientMessage(Component.translatable("message.microdrone.plane_cam_chase"), true);
-                    mc.player.setInvisible(true);
-                }
-                mc.setCameraEntity(plane);
-                mc.options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_BACK);
-            } else if (carCameraMode == RcCameraMode.CHASE_CAR) {
-                // チェイス視点 -> コックピット一人称FPV視点
-                carCameraMode = RcCameraMode.GUNNER_AIM;
-                if (mc.player != null) {
-                    mc.player.displayClientMessage(Component.translatable("message.microdrone.plane_cam_cockpit"), true);
-                    mc.player.setInvisible(true);
-                }
-                mc.setCameraEntity(plane);
-                mc.options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);
-            } else {
-                // コックピット視点 -> 地上プロポ視点（地上で見上げるRC飛行場感覚）
-                carCameraMode = RcCameraMode.GROUND_RC;
-                if (mc.player != null) {
-                    mc.player.displayClientMessage(Component.translatable("message.microdrone.plane_cam_ground"), true);
-                    mc.player.setInvisible(false);
-                }
-                mc.setCameraEntity(mc.player);
-                mc.options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);
-            }
-        }
+        return mc.level != null && mc.level.getEntity(activeDroneId) instanceof RcPlaneEntity;
     }
 
     public static void register() {
@@ -263,78 +168,22 @@ public class ClientDroneInputHandler {
         if (state) {
             isPiloting = true;
             activeDroneId = droneId;
-            carCameraMode = RcCameraMode.GROUND_RC;
-
             Entity targetEnt = mc.level != null ? mc.level.getEntity(droneId) : null;
-            if (targetEnt instanceof DroneEntity drone) {
-                droneCameraMode = DroneCameraMode.FPV;
-                droneGroundAimYaw = drone.getYRot();
-                droneGroundCameraInit = false;
-                if (mc.player != null) {
-                    lastPlayerYaw = mc.player.getYRot();
-                    mc.player.setInvisible(true);
-                }
-                drone.setLocallyControlled(true);
-                com.microdrone.mod.client.audio.DroneSoundManager.startPilotingSound(drone);
-                DroneCameraController.startViewing(droneId);
-            } else if (targetEnt instanceof RcCarEntity car) {
-                carCameraMode = RcCameraMode.GROUND_RC;
-                if (mc.player != null) {
-                    lastPlayerYaw = mc.player.getYRot();
-                    mc.player.setInvisible(false);
-                    mc.setCameraEntity(mc.player);
-                }
-                car.setLocallyControlled(true);
-            } else if (targetEnt instanceof RcTankEntity tank) {
-                carCameraMode = RcCameraMode.GROUND_RC;
-                if (mc.player != null) {
-                    lastPlayerYaw = mc.player.getYRot();
-                    mc.player.setInvisible(false);
-                    mc.setCameraEntity(mc.player);
-                    mc.player.displayClientMessage(Component.translatable("message.microdrone.tank_cam_ground"), true);
-                }
-                tank.setLocallyControlled(true);
-            } else if (targetEnt instanceof RcPlaneEntity plane) {
-                carCameraMode = RcCameraMode.GROUND_RC;
-                if (mc.player != null) {
-                    lastPlayerYaw = mc.player.getYRot();
-                    mc.player.setInvisible(false);
-                    mc.setCameraEntity(mc.player);
-                    mc.player.displayClientMessage(Component.translatable("message.microdrone.plane_cam_ground"), true);
-                }
-                plane.setLocallyControlled(true);
+            RcVehicleClientController controller = getControllerForEntity(targetEnt);
+            if (controller != null) {
+                controller.onStart(targetEnt, mc.player, startX, startY, startZ);
             }
         } else {
-            com.microdrone.mod.client.audio.DroneSoundManager.stopPilotingSound();
-
-            if (mc.player != null) {
-                mc.player.setInvisible(false);
-                mc.setCameraEntity(mc.player);
-                mc.options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);
+            Entity entity = (mc.level != null && activeDroneId != -1) ? mc.level.getEntity(activeDroneId) : null;
+            RcVehicleClientController controller = getControllerForEntity(entity);
+            if (controller != null) {
+                controller.onStop(entity, mc.player);
             }
-
-            if (mc.level != null && activeDroneId != -1) {
-                Entity entity = mc.level.getEntity(activeDroneId);
-                if (entity instanceof DroneEntity drone) {
-                    drone.setLocallyControlled(false);
-                } else if (entity instanceof RcCarEntity car) {
-                    car.setLocallyControlled(false);
-                } else if (entity instanceof RcTankEntity tank) {
-                    tank.setLocallyControlled(false);
-                } else if (entity instanceof RcPlaneEntity plane) {
-                    plane.setLocallyControlled(false);
-                }
-            }
-
-            carCameraMode = RcCameraMode.GROUND_RC;
-            droneGroundCameraInit = false;
             isPiloting = false;
             activeDroneId = -1;
             capturedForward = 0.0f;
             capturedStrafe = 0.0f;
             capturedVertical = 0.0f;
-
-            DroneCameraController.stopViewing();
         }
     }
 
@@ -382,30 +231,6 @@ public class ClientDroneInputHandler {
             return;
         }
 
-        // F5キーのインターセプト
-        while (mc.options.keyTogglePerspective.consumeClick()) {
-            if (isDronePiloting()) {
-                toggleDroneCameraMode();
-            } else if (isGroundVehiclePiloting()) {
-                toggleGroundCameraMode();
-            }
-        }
-        net.minecraft.client.CameraType expectedCameraType;
-        if (isDronePiloting()) {
-            expectedCameraType = (droneCameraMode == DroneCameraMode.CHASE)
-                    ? net.minecraft.client.CameraType.THIRD_PERSON_BACK
-                    : net.minecraft.client.CameraType.FIRST_PERSON;
-        } else if (isGroundVehiclePiloting()) {
-            expectedCameraType = (carCameraMode == RcCameraMode.CHASE_CAR)
-                    ? net.minecraft.client.CameraType.THIRD_PERSON_BACK
-                    : net.minecraft.client.CameraType.FIRST_PERSON;
-        } else {
-            expectedCameraType = net.minecraft.client.CameraType.FIRST_PERSON;
-        }
-        if (mc.options.getCameraType() != expectedCameraType) {
-            mc.options.setCameraType(expectedCameraType);
-        }
-
         Entity entity = mc.level.getEntity(activeDroneId);
         if (entity == null || entity.isRemoved() || !(entity instanceof RcControllable)) {
             missingTicks++;
@@ -414,182 +239,23 @@ public class ClientDroneInputHandler {
             }
             return;
         }
-
         missingTicks = 0;
 
-        if (entity instanceof DroneEntity drone) {
-            float currentYaw;
-            float currentPitch;
-            if (droneCameraMode == DroneCameraMode.GROUND) {
-                player.setPos(startX, startY, startZ);
-                player.setDeltaMovement(0, 0, 0);
-                currentYaw = droneGroundAimYaw;
-                currentPitch = 0.0f;
-            } else {
-                player.setPos(drone.getX(), drone.getY(), drone.getZ());
-                currentYaw = player.getYRot();
-                currentPitch = player.getXRot();
-            }
-            drone.applyControlInput(capturedForward, capturedStrafe, capturedVertical, currentYaw, currentPitch);
+        RcVehicleClientController controller = getControllerForEntity(entity);
+        if (controller == null) return;
 
-            PacketDistributor.sendToServer(new DroneControlPayload(
-                    activeDroneId,
-                    capturedForward,
-                    capturedStrafe,
-                    capturedVertical,
-                    currentYaw,
-                    currentPitch,
-                    false
-            ));
-        } else if (entity instanceof RcCarEntity car) {
-            if (!car.hasBattery() || car.getBatteryRemaining() <= 0) {
-                stopPiloting();
-                return;
-            }
-            player.setPos(startX, startY, startZ);
-            car.inputForward = capturedForward;
-            car.inputSteer = capturedStrafe;
-            car.inputHandbrake = (capturedVertical > 0.5f);
-
-            PacketDistributor.sendToServer(new DroneControlPayload(
-                    activeDroneId,
-                    capturedForward,
-                    capturedStrafe,
-                    capturedVertical,
-                    car.getYRot(),
-                    car.getXRot(),
-                    false
-            ));
-        } else if (entity instanceof RcTankEntity tank) {
-            if (!tank.hasBattery() || tank.getBatteryRemaining() <= 0) {
-                stopPiloting();
-                return;
-            }
-            player.setPos(startX, startY, startZ);
-            tank.inputForward = capturedForward;
-            tank.inputSteer = capturedStrafe;
-            tank.inputFire = (capturedVertical > 0.5f);
-
-            float mouseYaw = player.getYRot();
-            float mousePitch = player.getXRot();
-            float relativeYaw = Mth.wrapDegrees(mouseYaw - tank.getYRot());
-            float cannonPitch = Mth.clamp(mousePitch, -15.0f, 35.0f);
-
-            tank.targetTurretYaw = relativeYaw;
-            tank.targetCannonPitch = cannonPitch;
-
-            PacketDistributor.sendToServer(new DroneControlPayload(
-                    activeDroneId,
-                    capturedForward,
-                    capturedStrafe,
-                    capturedVertical,
-                    mouseYaw,
-                    cannonPitch,
-                    false
-            ));
-        } else if (entity instanceof RcPlaneEntity plane) {
-            if (!plane.hasBattery() || plane.getBatteryRemaining() <= 0) {
-                stopPiloting();
-                return;
-            }
-            player.setPos(startX, startY, startZ);
-            player.setDeltaMovement(0, 0, 0); // プレイヤーの微小落下による画面テレポートジッターを完全防止
-            player.fallDistance = 0.0f;
-
-            // クライアント側へ即座に反映（ノーディレイ操作感）
-            // W: ピッチダウン(-1.0: 機首下げ), S: ピッチアップ(+1.0: 機首引き上げ・上昇離陸)
-            plane.inputElevator = -capturedForward;
-            // A: 左ロール/左傾斜(-1.0), D: 右ロール/右傾斜(+1.0)
-            plane.inputAileron = -capturedStrafe;
-            // Space: スロットル増(+1.0), Shift: スロットル減(-1.0)
-            plane.inputThrottleDelta = capturedVertical;
-
-            // ラダー（方向舵）および地上ステアリングの計算
-            // Aキー(左)で負(-1.0)、Dキー(右)で正(+1.0)
-            float rudder = 0.0f;
-
-            if (plane.onGround()) {
-                // === 【地上タキシング＆滑走時】 ===
-                // A/D キーで直感的に尾輪ステアリング（Aで左旋回、Dで右旋回）
-                // キーを離せば瞬時に 0（直進ニュートラル）に戻り、まっすぐ滑走！
-                rudder = -capturedStrafe;
-            } else {
-                // === 【空中飛行時】 ===
-                if (carCameraMode == RcCameraMode.GROUND_RC) {
-                    // 地上プロポ視点:
-                    // 旋回は A/D キーの操作を100%忠実に反映！
-                    rudder = -capturedStrafe * 0.7f;
-                } else {
-                    // チェイス視点 または コックピット視点:
-                    float keyRudder = -capturedStrafe * 0.7f;
-
-                    // マウスの向きによる穏やかなアシスト旋回 (デッドゾーン±8.0度 ＆ マイルド感度)
-                    float mouseRudder = 0.0f;
-                    float yawDiff = Mth.wrapDegrees(player.getYRot() - plane.getYRot());
-
-                    // デッドゾーン (±8.0度以内は完全直進維持)
-                    if (Math.abs(yawDiff) > 8.0f) {
-                        float effectiveDiff = yawDiff - Math.signum(yawDiff) * 8.0f;
-                        mouseRudder = Mth.clamp(effectiveDiff * 0.003f, -0.20f, 0.20f);
-                    }
-
-                    // プレイヤーの視線を機体進行方向へ穏やかに緩慢追従（ズレっぱなし防止）
-                    player.setYRot(Mth.rotLerp(0.08f, player.getYRot(), plane.getYRot()));
-
-                    if (Math.abs(capturedStrafe) > 0.05f) {
-                        rudder = keyRudder;
-                    } else {
-                        rudder = mouseRudder;
-                    }
-                }
-            }
-            plane.inputRudder = rudder;
-
-            // サーバーへ送信 (yaw に計算済み rudder を格納して同期)
-            PacketDistributor.sendToServer(new DroneControlPayload(
-                    activeDroneId,
-                    capturedForward,
-                    capturedStrafe,
-                    capturedVertical,
-                    rudder,
-                    plane.getPitchAngle(),
-                    false
-            ));
+        // F5キーのインターセプト
+        while (mc.options.keyTogglePerspective.consumeClick()) {
+            controller.toggleViewMode(entity, player);
         }
-    }
 
-    /**
-     * 【F5キーでの視点切替 ＆ Rキーでのフライトモード切替 (ASSIST ⇔ ACRO)】
-     */
-    @SubscribeEvent
-    public void onKeyInput(InputEvent.Key event) {
-        if (!isPiloting || activeDroneId == -1) return;
-        if (event.getAction() != GLFW.GLFW_PRESS) return;
-
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null) return;
-        Entity entity = mc.level.getEntity(activeDroneId);
-
-        // R キーでプレーン機のハイブリッドフライトモード切替！
-        if (event.getKey() == GLFW.GLFW_KEY_R && entity instanceof RcPlaneEntity plane) {
-            int currentMode = plane.getFlightMode();
-            int newMode = (currentMode == 0) ? 1 : 0;
-            plane.setFlightMode(newMode);
-
-            // サーバーへ通知
-            PacketDistributor.sendToServer(new PlaneModeTogglePayload(plane.getId(), newMode));
-
-            // アクションバー表示＆効果音
-            if (mc.player != null) {
-                if (newMode == 0) {
-                    mc.player.displayClientMessage(Component.translatable("message.microdrone.flight_mode_assist"), true);
-                    mc.player.playSound(SoundEvents.EXPERIENCE_ORB_PICKUP, 0.8f, 1.5f);
-                } else {
-                    mc.player.displayClientMessage(Component.translatable("message.microdrone.flight_mode_acro"), true);
-                    mc.player.playSound(SoundEvents.EXPERIENCE_ORB_PICKUP, 0.8f, 0.8f);
-                }
-            }
+        CameraType expectedCameraType = controller.getExpectedCameraType();
+        if (mc.options.getCameraType() != expectedCameraType) {
+            mc.options.setCameraType(expectedCameraType);
         }
+
+        InputSnapshot snapshot = new InputSnapshot(capturedForward, capturedStrafe, capturedVertical);
+        controller.handleTickInput(player, entity, snapshot, startX, startY, startZ);
     }
 
     @SubscribeEvent
@@ -599,183 +265,24 @@ public class ClientDroneInputHandler {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null && mc.level != null) {
             Entity entity = mc.level.getEntity(activeDroneId);
-            if (entity instanceof DroneEntity drone) {
-                if (droneCameraMode == DroneCameraMode.GROUND) {
-                    float partialTick = (float) event.getPartialTick();
-                    double droneX = Mth.lerp(partialTick, drone.xOld, drone.getX());
-                    double droneY = Mth.lerp(partialTick, drone.yOld, drone.getY());
-                    double droneZ = Mth.lerp(partialTick, drone.zOld, drone.getZ());
-                    double eyeX = startX;
-                    double eyeY = startY + mc.player.getEyeHeight();
-                    double eyeZ = startZ;
-                    double dx = droneX - eyeX;
-                    double dy = droneY - eyeY;
-                    double dz = droneZ - eyeZ;
-                    double distXZ = Math.sqrt(dx * dx + dz * dz);
-
-                    // ドローンを常に画面中央に捉え続ける自動追尾カメラ角度 (Look-At)
-                    float targetYaw = (float) (Mth.atan2(dz, dx) * (180.0 / Math.PI)) - 90.0f;
-                    float targetPitch = (float) (-(Mth.atan2(dy, distXZ) * (180.0 / Math.PI)));
-
-                    // 【マウス移動デルタのリアルタイム取得】
-                    // カメラ上書き直前のプレイヤーマウス移動差分 (deltaYaw) を即座にドローン旋回角へ加算！
-                    if (!droneGroundCameraInit) {
-                        lastDroneGroundLookYaw = targetYaw;
-                        lastDroneGroundLookPitch = targetPitch;
-                        droneGroundAimYaw = drone.getYRot();
-                        droneGroundCameraInit = true;
-                    } else {
-                        float deltaYaw = Mth.wrapDegrees(mc.player.getYRot() - lastDroneGroundLookYaw);
-                        if (Math.abs(deltaYaw) > 0.001f) {
-                            droneGroundAimYaw = Mth.wrapDegrees(droneGroundAimYaw + deltaYaw);
-                        }
-                    }
-
-                    // カメラはドローンを自動追尾 (Look-At)
-                    event.setYaw(targetYaw);
-                    event.setPitch(targetPitch);
-                    event.setRoll(0.0f);
-
-                    // プレイヤーの視線もLook-At角度にリセットして視線追尾を維持
-                    mc.player.setYRot(targetYaw);
-                    mc.player.setXRot(targetPitch);
-                    lastDroneGroundLookYaw = targetYaw;
-                    lastDroneGroundLookPitch = targetPitch;
-
-                    // ドローン自身の機首はマウス旋回角度へリアルタイム同期！
-                    drone.setYRot(droneGroundAimYaw);
-                    drone.setYHeadRot(droneGroundAimYaw);
-                } else if (droneCameraMode == DroneCameraMode.CHASE) {
-                    float yaw = mc.player.getYRot();
-                    drone.setYRot(yaw);
-                    drone.setYHeadRot(yaw);
-
-                    event.setYaw(yaw);
-                    event.setPitch(15.0f);
-                    event.setRoll(0.0f);
-                } else {
-                    float yaw = mc.player.getYRot();
-                    float pitch = mc.player.getXRot();
-
-                    event.setYaw(yaw);
-                    event.setPitch(pitch);
-                    event.setRoll(0.0f);
-
-                    drone.setYRot(yaw);
-                    drone.setYHeadRot(yaw);
-                    drone.setXRot(pitch);
-                }
-            } else if (entity instanceof RcCarEntity car) {
-                float partialTick = (float) event.getPartialTick();
-                float carYaw = Mth.rotLerp(partialTick, car.yRotO, car.getYRot());
-
-                double carX = Mth.lerp(partialTick, car.xOld, car.getX());
-                double carY = Mth.lerp(partialTick, car.yOld, car.getY());
-                double carZ = Mth.lerp(partialTick, car.zOld, car.getZ());
-
-                if (carCameraMode == RcCameraMode.GROUND_RC) {
-                    double eyeX = mc.player.getX();
-                    double eyeY = mc.player.getEyeY();
-                    double eyeZ = mc.player.getZ();
-
-                    double dx = carX - eyeX;
-                    double dy = carY - eyeY;
-                    double dz = carZ - eyeZ;
-                    double distXZ = Math.sqrt(dx * dx + dz * dz);
-
-                    float targetYaw = (float) (Mth.atan2(dz, dx) * (180.0 / Math.PI)) - 90.0f;
-                    float targetPitch = (float) (-(Mth.atan2(dy, distXZ) * (180.0 / Math.PI)));
-
-                    event.setYaw(targetYaw);
-                    event.setPitch(targetPitch);
-
-                    mc.player.setYRot(targetYaw);
-                    mc.player.setXRot(targetPitch);
-                } else {
-                    float mousePitch = mc.player.getXRot();
-                    float pitch = Mth.clamp(20.0f + mousePitch * 0.35f, 10.0f, 60.0f);
-                    event.setYaw(carYaw);
-                    event.setPitch(pitch);
-                    mc.player.setYRot(carYaw);
-                    moveCameraSafe(event.getCamera(), 1.8, 0.2, 0.0);
-                }
-            } else if (entity instanceof RcTankEntity tank) {
-                float partialTick = (float) event.getPartialTick();
-
-                float mouseYaw = mc.player.getYRot();
-                float mousePitch = mc.player.getXRot();
-                float relativeYaw = Mth.wrapDegrees(mouseYaw - tank.getYRot());
-                float cannonPitch = Mth.clamp(mousePitch, -15.0f, 35.0f);
-
-                tank.targetTurretYaw = relativeYaw;
-                tank.targetCannonPitch = cannonPitch;
-                tank.clientTurretYaw = relativeYaw;
-                tank.clientCannonPitch = cannonPitch;
-
-                if (carCameraMode == RcCameraMode.GROUND_RC) {
-                    double tankX = Mth.lerp(partialTick, tank.xOld, tank.getX());
-                    double tankY = Mth.lerp(partialTick, tank.yOld, tank.getY());
-                    double tankZ = Mth.lerp(partialTick, tank.zOld, tank.getZ());
-                    double eyeX = mc.player.getX();
-                    double eyeY = mc.player.getEyeY();
-                    double eyeZ = mc.player.getZ();
-                    double dx = tankX - eyeX;
-                    double dy = tankY - eyeY;
-                    double dz = tankZ - eyeZ;
-                    double distXZ = Math.sqrt(dx * dx + dz * dz);
-                    float targetYaw = (float) (Mth.atan2(dz, dx) * (180.0 / Math.PI)) - 90.0f;
-                    float targetPitch = (float) (-(Mth.atan2(dy, distXZ) * (180.0 / Math.PI)));
-
-                    event.setYaw(targetYaw);
-                    event.setPitch(targetPitch);
-                } else if (carCameraMode == RcCameraMode.CHASE_CAR) {
-                    float pitch = Mth.clamp(18.0f + mousePitch * 0.45f, 5.0f, 65.0f);
-                    event.setYaw(mouseYaw);
-                    event.setPitch(pitch);
-                    moveCameraSafe(event.getCamera(), 1.8, 0.2, 0.0);
-                } else if (carCameraMode == RcCameraMode.GUNNER_AIM) {
-                    event.setYaw(mouseYaw);
-                    event.setPitch(mousePitch);
-                }
-            } else if (entity instanceof RcPlaneEntity plane) {
-                float partialTick = (float) event.getPartialTick();
-                float planeYaw = Mth.rotLerp(partialTick, plane.yRotO, plane.getYRot());
-                float planePitch = Mth.rotLerp(partialTick, plane.prevPitchAngle, plane.getPitchAngle());
-                float planeRoll = Mth.rotLerp(partialTick, plane.prevRollAngle, plane.getRollAngle());
-
-                if (carCameraMode == RcCameraMode.GROUND_RC) {
-                    // === 【モード1: 地上プロポ視点（RC飛行場感覚・見上げる視点）】 ===
-                    double planeX = Mth.lerp(partialTick, plane.xOld, plane.getX());
-                    double planeY = Mth.lerp(partialTick, plane.yOld, plane.getY());
-                    double planeZ = Mth.lerp(partialTick, plane.zOld, plane.getZ());
-                    double eyeX = mc.player.getX();
-                    double eyeY = mc.player.getEyeY();
-                    double eyeZ = mc.player.getZ();
-                    double dx = planeX - eyeX;
-                    double dy = planeY - eyeY;
-                    double dz = planeZ - eyeZ;
-                    double distXZ = Math.sqrt(dx * dx + dz * dz);
-                    float targetYaw = (float) (Mth.atan2(dz, dx) * (180.0 / Math.PI)) - 90.0f;
-                    float targetPitch = (float) (-(Mth.atan2(dy, distXZ) * (180.0 / Math.PI)));
-
-                    // カメラの描画角度のみを飛行機（Look-At）に向ける！
-                    event.setYaw(targetYaw);
-                    event.setPitch(targetPitch);
-                } else if (carCameraMode == RcCameraMode.CHASE_CAR) {
-                    // === 【モード2: チェイス視点（見下ろし固定・一定距離追従）】 ===
-                    // カメラロールを0度に固定して世界の逆回転・傾きを完全防止し、
-                    // 常に機体の後方斜め上から一定の見下ろし角度(15°)と一定距離で追従
-                    event.setYaw(planeYaw);
-                    event.setPitch(15.0f);
-                    event.setRoll(0.0f);
-                } else if (carCameraMode == RcCameraMode.GUNNER_AIM) {
-                    // === 【モード3: コックピット一人称FPV視点】 ===
-                    // 機体自身のロール・ピッチ・ヨーと完全同期（右ロールで地平線が正しく右上がりに傾く）
-                    event.setYaw(planeYaw);
-                    event.setPitch(-planePitch);
-                    event.setRoll(planeRoll);
-                }
+            RcVehicleClientController controller = getControllerForEntity(entity);
+            if (controller != null) {
+                controller.computeCameraAngles(event, entity, startX, startY, startZ);
             }
+        }
+    }
+
+    @SubscribeEvent
+    public void onKeyInput(InputEvent.Key event) {
+        if (!isPiloting || activeDroneId == -1) return;
+        if (event.getAction() != org.lwjgl.glfw.GLFW.GLFW_PRESS) return;
+
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null || mc.player == null) return;
+        Entity entity = mc.level.getEntity(activeDroneId);
+        RcVehicleClientController controller = getControllerForEntity(entity);
+        if (controller != null) {
+            controller.onKeyInput(event.getKey(), event.getAction(), entity, mc.player);
         }
     }
 
@@ -789,8 +296,11 @@ public class ClientDroneInputHandler {
 
             Minecraft mc = Minecraft.getInstance();
             if (mc.player != null) {
-                stopPiloting();
-                return;
+                boolean holdingController = mc.player.getMainHandItem().getItem() instanceof DroneControllerItem
+                        || mc.player.getOffhandItem().getItem() instanceof DroneControllerItem;
+                if (holdingController) {
+                    stopPiloting();
+                }
             }
             return;
         }
@@ -803,79 +313,41 @@ public class ClientDroneInputHandler {
 
     @SubscribeEvent
     public void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
-        if (isPiloting) {
-            event.setCanceled(true);
-        }
+        if (isPiloting) event.setCanceled(true);
     }
 
     @SubscribeEvent
     public void onLeftClickBlock(PlayerInteractEvent.LeftClickBlock event) {
-        if (isPiloting) {
-            event.setCanceled(true);
-        }
+        if (isPiloting) event.setCanceled(true);
     }
 
     @SubscribeEvent
     public void onEntityInteract(PlayerInteractEvent.EntityInteract event) {
-        if (isPiloting) {
-            event.setCanceled(true);
-        }
+        if (isPiloting) event.setCanceled(true);
     }
 
     @SubscribeEvent
     public void onEntityInteractSpecific(PlayerInteractEvent.EntityInteractSpecific event) {
-        if (isPiloting) {
-            event.setCanceled(true);
-        }
+        if (isPiloting) event.setCanceled(true);
     }
 
     @SubscribeEvent
     public void onAttackEntity(AttackEntityEvent event) {
-        if (isPiloting) {
-            event.setCanceled(true);
-        }
-    }
-
-    private static java.lang.reflect.Method cameraMoveMethod = null;
-    private static boolean cameraMoveResolved = false;
-
-    private static void moveCameraSafe(net.minecraft.client.Camera camera, double distanceOffset, double yOffset, double xOffset) {
-        if (!cameraMoveResolved) {
-            try {
-                for (java.lang.reflect.Method m : net.minecraft.client.Camera.class.getDeclaredMethods()) {
-                    if (m.getParameterCount() == 3 &&
-                            m.getParameterTypes()[0] == double.class &&
-                            m.getParameterTypes()[1] == double.class &&
-                            m.getParameterTypes()[2] == double.class &&
-                            (m.getName().equals("move") || m.getName().contains("move") || m.getName().equals("m_90584_"))) {
-                        cameraMoveMethod = m;
-                        cameraMoveMethod.setAccessible(true);
-                        MicroDroneMod.LOGGER.info("[CAMERA_FIX] Resolved Camera move method: {}", m.getName());
-                        break;
-                    }
-                }
-            } catch (Exception e) {
-                MicroDroneMod.LOGGER.error("[CAMERA_FIX] Failed to reflect Camera move method", e);
-            }
-            cameraMoveResolved = true;
-        }
-
-        if (cameraMoveMethod != null) {
-            try {
-                cameraMoveMethod.invoke(camera, distanceOffset, yOffset, xOffset);
-            } catch (Exception ignored) {}
-        }
+        if (isPiloting) event.setCanceled(true);
     }
 
     @SubscribeEvent
-    public void onRenderLiving(net.neoforged.neoforge.client.event.RenderLivingEvent.Pre<?, ?> event) {
-        if (isDronePiloting() && droneCameraMode == DroneCameraMode.GROUND) {
-            if (event.getEntity() instanceof net.minecraft.world.entity.decoration.ArmorStand stand) {
-                double dx = stand.getX() - startX;
-                double dy = stand.getY() - startY;
-                double dz = stand.getZ() - startZ;
-                if (dx * dx + dy * dy + dz * dz < 4.0) {
-                    event.setCanceled(true);
+    public void onRenderLiving(RenderLivingEvent.Pre<?, ?> event) {
+        if (isPiloting) {
+            RcVehicleClientController controller = getCurrentController();
+            if (controller != null && controller.getViewMode() == RcViewMode.GROUND) {
+                if (event.getEntity() instanceof ArmorStand stand) {
+                    double dx = stand.getX() - startX;
+                    double dy = stand.getY() - startY;
+                    double dz = stand.getZ() - startZ;
+                    if (dx * dx + dy * dy + dz * dz < 4.0) {
+                        event.setCanceled(true);
+                    }
                 }
             }
         }

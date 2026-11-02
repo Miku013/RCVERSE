@@ -234,11 +234,19 @@ Minecraft 1.21.1 (NeoForge) 向けの超リアル・高機能ラジコン MOD。
    - 地上プロポ / チェイス追従（一定見下ろし・水平維持）/ コックピット計器FPSの3視点正常。
    - RキーでのASSIST ⇔ ACROフライトモード切替、3次元航空力学（揚力・失速急降下・バンク旋回）、本格航空計器HUD正常。
 
-### 次回以降のTODO（リファクタリング計画）
-- **現状コードの位置づけ**:
-  - 本マイルストーン（コミット `c656cc0` / 最新）を、機能がすべて動作する**「リファクタリング前の基準コード（Golden Baseline）」**として扱う。
-- **リファクタリング検討項目**:
-  1. `ClientDroneInputHandler` の肥大化解消（機体ごとのハンドラーまたはステートパターンへの分割・責務分離）。
-  2. カメラ制御コード（`ViewportEvent.ComputeCameraAngles`）の共通化および各機体専用ストラテジーへの切り出し。
-  3. ネットワークパケット（`DroneControlPayload` 等）の共通インターフェース化・整理。
-  4. レンダラー・モデル・HUDオーバーレイの命名規則やリソース配置のクリーンアップ。
+### リファクタリング進捗（2026-11-02）
+- [x] **クライアント操縦・カメラ制御の共通化 ＆ ストラテジーパターン完全移行**:
+  - `com.microdrone.mod.client.controller` パッケージを新設。
+  - **共通インターフェース・列挙型**:
+    - `RcViewMode`: 全機体統一の3視点列挙型（`GROUND`, `CHASE`, `FIRST_PERSON`）。
+    - `InputSnapshot`: 入力値（forward, strafe, vertical）をまとめた不変レコード。
+    - `RcVehicleClientController`: 機体別クライアントコントローラーの責務インターフェース。
+  - **4機体の専用コントローラーへ完全分離**:
+    - `DroneClientController`: ドローン専用（FPV、見下ろしCHASE、地上Look-At+マウス旋回、applyControlInput、パケット送信）。
+    - `RcCarClientController`: RCカー専用（地上Look-At、CHASE+オフセット追従、W/A/S/D、ハンドブレーキ、パケット送信）。
+    - `RcTankClientController`: RC戦車専用（地上Look-At+マウス砲塔旋回、CHASE、ガンナーFPS、主砲発射、パケット送信）。
+    - `RcPlaneClientController`: RCプレーン専用（地上Look-At、CHASE水平維持、コックピットロール同期、Rキー切替、パケット送信）。
+  - **`ClientDroneInputHandler` のスリム化・共通マネージャー化**:
+    - 880行以上の巨大ファイルから、セッション管理・イベント購読・入力足止め・ダミー人形非表示に特化した約270行の共通マネージャーへスリム化。
+    - 相互干渉・競合リスクが物理的にゼロとなり、新機体追加時もコントローラーを追加するだけで共存可能に。
+  - コンパイル・JARビルド成功。
