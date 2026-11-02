@@ -60,7 +60,19 @@ public class ModEntities {
                     .updateInterval(1)
                     .build("rc_submarine"));
 
+    public static final DeferredHolder<EntityType<?>, EntityType<RcPilotDummyEntity>> RC_PILOT_DUMMY =
+            ENTITIES.register("rc_pilot_dummy", () -> EntityType.Builder.<RcPilotDummyEntity>of(RcPilotDummyEntity::new, MobCategory.MISC)
+                    .sized(0.6f, 1.8f)
+                    .eyeHeight(1.62f)
+                    .clientTrackingRange(32)
+                    .updateInterval(1)
+                    .build("rc_pilot_dummy"));
+
     public static void register(IEventBus eventBus) {
         ENTITIES.register(eventBus);
+    }
+
+    public static void registerAttributes(net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent event) {
+        event.put(RC_PILOT_DUMMY.get(), RcPilotDummyEntity.createAttributes().build());
     }
 }

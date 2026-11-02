@@ -119,7 +119,7 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable {
     private float startPitch = 0;
     private ChunkPos startChunkPos = null;
     private UUID dummyEntityUUID = null;
-    private ArmorStand dummyEntityRef = null;
+    private RcPilotDummyEntity dummyEntityRef = null;
 
     // クライアント側で自プレイヤーが操縦中かどうかのフラグ（カクつき防止・クライアント予測用）
     private boolean locallyControlled = false;
@@ -344,37 +344,10 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable {
         MicroDroneMod.LOGGER.info("[SERVER] [PLAYER_BODY_PROTECT] Protected player start chunk: [{}, {}]",
                 this.startChunkPos.x, this.startChunkPos.z);
 
-        // 2. 身代わりダミー人形（ArmorStand）の配置
-        ArmorStand dummy = new ArmorStand(serverLevel, this.startX, this.startY, this.startZ);
-        dummy.setYRot(this.startYaw);
-        dummy.setXRot(this.startPitch);
-        dummy.setCustomName(Component.literal("§e[操縦中] §r" + player.getName().getString()));
-        dummy.setCustomNameVisible(true);
-        dummy.setNoGravity(true);
-        dummy.setInvulnerable(false);
-        dummy.setShowArms(true);
-        dummy.setNoBasePlate(true);
-
-        dummy.setRightArmPose(new Rotations(-25.0f, -15.0f, 0.0f));
-        dummy.setLeftArmPose(new Rotations(-25.0f, 15.0f, 0.0f));
-        dummy.setHeadPose(new Rotations(12.0f, 0.0f, 0.0f));
-
-        dummy.setItemSlot(EquipmentSlot.FEET, player.getItemBySlot(EquipmentSlot.FEET).copy());
-        dummy.setItemSlot(EquipmentSlot.LEGS, player.getItemBySlot(EquipmentSlot.LEGS).copy());
-        dummy.setItemSlot(EquipmentSlot.CHEST, player.getItemBySlot(EquipmentSlot.CHEST).copy());
-
-        ItemStack headItem = player.getItemBySlot(EquipmentSlot.HEAD);
-        if (!headItem.isEmpty()) {
-            dummy.setItemSlot(EquipmentSlot.HEAD, headItem.copy());
-        } else {
-            ItemStack customHead = new ItemStack(Items.PLAYER_HEAD);
-            customHead.set(DataComponents.PROFILE, new ResolvableProfile(player.getGameProfile()));
-            dummy.setItemSlot(EquipmentSlot.HEAD, customHead);
-        }
-
-        dummy.setItemSlot(EquipmentSlot.MAINHAND, player.getItemBySlot(EquipmentSlot.MAINHAND).copy());
-        dummy.setItemSlot(EquipmentSlot.OFFHAND, player.getItemBySlot(EquipmentSlot.OFFHAND).copy());
-
+        // 2. 操縦者プレイヤーの身代わりクローン（RcPilotDummyEntity）の配置
+        RcPilotDummyEntity dummy = new RcPilotDummyEntity(ModEntities.RC_PILOT_DUMMY.get(), serverLevel);
+        dummy.moveTo(this.startX, this.startY, this.startZ, this.startYaw, this.startPitch);
+        dummy.setupFromPlayer(player);
         serverLevel.addFreshEntity(dummy);
         this.dummyEntityUUID = dummy.getUUID();
         this.dummyEntityRef = dummy;
@@ -417,7 +390,7 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable {
             ServerLevel serverLevel = player.serverLevel();
 
             UUID targetDummyUUID = this.dummyEntityUUID;
-            ArmorStand targetDummyRef = this.dummyEntityRef;
+            RcPilotDummyEntity targetDummyRef = this.dummyEntityRef;
             this.dummyEntityRef = null;
             this.dummyEntityUUID = null;
 
@@ -473,10 +446,10 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable {
 
                     AABB clearBox = new AABB(restoreX - 1.5, restoreY - 1.0, restoreZ - 1.5,
                                              restoreX + 1.5, restoreY + 2.5, restoreZ + 1.5);
-                    List<ArmorStand> nearbyStands = targetLevel.getEntitiesOfClass(ArmorStand.class, clearBox,
+                    List<RcPilotDummyEntity> nearbyStands = targetLevel.getEntitiesOfClass(RcPilotDummyEntity.class, clearBox,
                             stand -> (targetDummyUUID != null && targetDummyUUID.equals(stand.getUUID()))
                                   || (stand.getCustomName() != null && stand.getCustomName().getString().contains("[操縦中]")));
-                    for (ArmorStand stand : nearbyStands) {
+                    for (RcPilotDummyEntity stand : nearbyStands) {
                         stand.discard();
                         MicroDroneMod.LOGGER.info("[SERVER] [PLAYER_DUMMY_CLEANUP] Discarded remaining dummy stand: {}", stand.getUUID());
                     }

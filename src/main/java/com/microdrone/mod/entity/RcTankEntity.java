@@ -92,6 +92,8 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
     // 操縦者UUID
     private UUID pilotUUID = null;
     private double startX, startY, startZ;
+    private java.util.UUID dummyEntityUUID = null;
+    private RcPilotDummyEntity dummyEntityRef = null;
     private net.minecraft.world.level.ChunkPos lastChunkPos = null;
 
     // クライアント側ローカル操縦フラグ
@@ -620,6 +622,15 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
         this.startY = player.getY();
         this.startZ = player.getZ();
 
+        ServerLevel serverLevel = player.serverLevel();
+        RcPilotDummyEntity dummy = new RcPilotDummyEntity(ModEntities.RC_PILOT_DUMMY.get(), serverLevel);
+        dummy.moveTo(this.startX, this.startY, this.startZ, player.getYRot(), player.getXRot());
+        dummy.setupFromPlayer(player);
+        serverLevel.addFreshEntity(dummy);
+        this.dummyEntityRef = dummy;
+        this.dummyEntityUUID = dummy.getUUID();
+        RcVehicleManager.registerDummy(dummy.getUUID(), this);
+
         RcVehicleManager.registerPiloting(this.pilotUUID, this);
 
         PacketDistributor.sendToPlayer(player, new DronePilotStatePayload(this.getId(), true, startX, startY, startZ));
@@ -634,6 +645,18 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
         this.pilotUUID = null;
 
         RcVehicleManager.unregisterPiloting(oldPilotUUID);
+
+        if (this.dummyEntityRef != null && !this.dummyEntityRef.isRemoved()) {
+            this.dummyEntityRef.discard();
+            this.dummyEntityRef = null;
+        } else if (this.dummyEntityUUID != null && player != null && player.level() instanceof ServerLevel sl) {
+            net.minecraft.world.entity.Entity e = sl.getEntity(this.dummyEntityUUID);
+            if (e != null) e.discard();
+        }
+        if (this.dummyEntityUUID != null) {
+            RcVehicleManager.unregisterDummy(this.dummyEntityUUID);
+            this.dummyEntityUUID = null;
+        }
 
         if (player != null) {
             PacketDistributor.sendToPlayer(player, new DronePilotStatePayload(-1, false, 0, 0, 0));

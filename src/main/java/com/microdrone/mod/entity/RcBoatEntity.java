@@ -76,7 +76,7 @@ public class RcBoatEntity extends Entity implements GeoEntity, RcControllable {
     private UUID pilotUUID = null;
     private double startX, startY, startZ;
     private UUID dummyEntityUUID = null;
-    private ArmorStand dummyEntityRef = null;
+    private RcPilotDummyEntity dummyEntityRef = null;
     private ChunkPos lastChunkPos = null;
 
     // 装着中のアイテム
@@ -173,17 +173,11 @@ public class RcBoatEntity extends Entity implements GeoEntity, RcControllable {
 
         RcVehicleManager.registerPiloting(player.getUUID(), this);
 
-        // 身代わりダミー人形（ArmorStand）の生成
+        // 操縦者プレイヤーの身代わりクローン（RcPilotDummyEntity）の生成
         ServerLevel serverLevel = player.serverLevel();
-        ArmorStand dummy = new ArmorStand(serverLevel, this.startX, this.startY, this.startZ);
-        dummy.setYRot(player.getYRot());
-        dummy.setXRot(player.getXRot());
-        dummy.setYHeadRot(player.getYHeadRot());
-        dummy.setInvisible(false);
-        dummy.setInvulnerable(true);
-        dummy.setNoGravity(true);
-        dummy.setCustomName(Component.literal(player.getName().getString() + " [RC操縦中]"));
-        dummy.setCustomNameVisible(true);
+        RcPilotDummyEntity dummy = new RcPilotDummyEntity(ModEntities.RC_PILOT_DUMMY.get(), serverLevel);
+        dummy.moveTo(this.startX, this.startY, this.startZ, player.getYRot(), player.getXRot());
+        dummy.setupFromPlayer(player);
         serverLevel.addFreshEntity(dummy);
         this.dummyEntityRef = dummy;
         this.dummyEntityUUID = dummy.getUUID();

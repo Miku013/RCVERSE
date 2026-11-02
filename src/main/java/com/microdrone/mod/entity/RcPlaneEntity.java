@@ -93,6 +93,8 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
     // 操縦者UUID
     private UUID pilotUUID = null;
     private double startX, startY, startZ;
+    private java.util.UUID dummyEntityUUID = null;
+    private RcPilotDummyEntity dummyEntityRef = null;
     private ChunkPos lastChunkPos = null;
 
     // クライアント側ローカル操縦フラグ

@@ -68,7 +68,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     private UUID pilotUUID = null;
     private double startX, startY, startZ;
     private UUID dummyEntityUUID = null;
-    private ArmorStand dummyEntityRef = null;
+    private RcPilotDummyEntity dummyEntityRef = null;
     private ChunkPos lastChunkPos = null;
 
     // 装着中のアイテム
@@ -195,7 +195,16 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         this.startY = player.getY();
         this.startZ = player.getZ();
 
-        // 本物のラジコン感覚: プレイヤーは立ち位置にプロポを持って立ったまま！
+        // 本物のラジコン感覚: 操縦者プレイヤーの身代わりクローン（RcPilotDummyEntity）の配置
+        ServerLevel serverLevel = player.serverLevel();
+        RcPilotDummyEntity dummy = new RcPilotDummyEntity(ModEntities.RC_PILOT_DUMMY.get(), serverLevel);
+        dummy.moveTo(this.startX, this.startY, this.startZ, player.getYRot(), player.getXRot());
+        dummy.setupFromPlayer(player);
+        serverLevel.addFreshEntity(dummy);
+        this.dummyEntityRef = dummy;
+        this.dummyEntityUUID = dummy.getUUID();
+        RcVehicleManager.registerDummy(dummy.getUUID(), this);
+
         RcVehicleManager.registerPiloting(player.getUUID(), this);
 
         PacketDistributor.sendToPlayer(player, new DronePilotStatePayload(this.getId(), true, this.startX, this.startY, this.startZ));
@@ -213,7 +222,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             ServerLevel serverLevel = player.serverLevel();
 
             UUID targetDummyUUID = this.dummyEntityUUID;
-            ArmorStand targetDummyRef = this.dummyEntityRef;
+            RcPilotDummyEntity targetDummyRef = this.dummyEntityRef;
             this.dummyEntityRef = null;
             this.dummyEntityUUID = null;
 
