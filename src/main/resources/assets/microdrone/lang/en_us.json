@@ -93,5 +93,13 @@
   "message.microdrone.flight_mode_acro": "§c[Flight Mode] Aerobatic Mode [ACRO] (Manual 3-Axis Loops & Rolls)",
   "message.microdrone.plane_cam_ground": "§b[RC Plane] View: Ground Field View [Toggle: F5]",
   "message.microdrone.plane_cam_chase": "§6[RC Plane] View: Chase Camera [Toggle: F5]",
-  "message.microdrone.plane_cam_cockpit": "§c[RC Plane] View: Cockpit FPV View [Toggle: F5]"
+  "message.microdrone.plane_cam_cockpit": "§c[RC Plane] View: Cockpit FPV View [Toggle: F5]",
+  "item.microdrone.rc_boat_item": "Micro RC Boat",
+  "entity.microdrone.rc_boat": "Micro RC Boat",
+  "message.microdrone.boat_cam_fpv": "§c[RC Boat] View: Helm FPV View [Toggle: F5]",
+  "item.microdrone.rc_submarine_item": "Micro RC Submarine",
+  "entity.microdrone.rc_submarine": "Micro RC Submarine",
+  "message.microdrone.sub_cam_fpv": "§c[RC Submarine] View: Underwater FPV View [Toggle: F5]",
+  "message.microdrone.boat_pilot_start": "§a[RC Boat] Piloting started! (W/S: Forward/Reverse, A/D: Rudder, F5: Toggle View, Use Controller again to exit)",
+  "message.microdrone.submarine_pilot_start": "§a[RC Submarine] Piloting started! (W/S: Forward/Reverse, A/D: Turn, Space/Shift: Surface/Dive, F5: Toggle View, Use Controller again to exit)"
 }

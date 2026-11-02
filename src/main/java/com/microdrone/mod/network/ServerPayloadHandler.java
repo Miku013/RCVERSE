@@ -2,7 +2,9 @@ package com.microdrone.mod.network;
 
 import com.microdrone.mod.entity.DroneEntity;
 import com.microdrone.mod.entity.RcCarEntity;
+import com.microdrone.mod.entity.RcBoatEntity;
 import com.microdrone.mod.entity.RcPlaneEntity;
+import com.microdrone.mod.entity.RcSubmarineEntity;
 import com.microdrone.mod.entity.RcTankEntity;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
@@ -68,6 +70,25 @@ public class ServerPayloadHandler {
                             plane.inputThrottleDelta = payload.vertical();
                             // ラダー / ヨー旋回
                             plane.inputRudder = payload.yaw();
+                        }
+                    }
+                } else if (entity instanceof RcBoatEntity boat) {
+                    if (boat.isPilotedBy(player)) {
+                        if (payload.stop()) {
+                            boat.stopPiloting(player);
+                        } else {
+                            boat.inputForward = payload.forward();
+                            boat.inputSteer = payload.strafe();
+                        }
+                    }
+                } else if (entity instanceof RcSubmarineEntity submarine) {
+                    if (submarine.isPilotedBy(player)) {
+                        if (payload.stop()) {
+                            submarine.stopPiloting(player);
+                        } else {
+                            submarine.inputForward = payload.forward();
+                            submarine.inputSteer = payload.strafe();
+                            submarine.inputVertical = payload.vertical();
                         }
                     }
                 }

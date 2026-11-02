@@ -11,8 +11,10 @@ import com.microdrone.mod.client.model.DroneModel;
 import com.microdrone.mod.client.renderer.DroneChargerBlockEntityRenderer;
 import com.microdrone.mod.client.renderer.DroneGeoRenderer;
 import com.microdrone.mod.client.renderer.DroneRenderer;
+import com.microdrone.mod.client.renderer.RcBoatGeoRenderer;
 import com.microdrone.mod.client.renderer.RcCarGeoRenderer;
 import com.microdrone.mod.client.renderer.RcPlaneGeoRenderer;
+import com.microdrone.mod.client.renderer.RcSubmarineGeoRenderer;
 import com.microdrone.mod.client.renderer.RcTankGeoRenderer;
 import com.microdrone.mod.client.renderer.TestPivotBlockEntityRenderer;
 import com.microdrone.mod.client.renderer.item.DroneBatteryItemRenderer;
@@ -47,6 +49,8 @@ public class ClientModEvents {
         event.registerEntityRenderer(ModEntities.RC_CAR.get(), RcCarGeoRenderer::new);
         event.registerEntityRenderer(ModEntities.RC_TANK.get(), RcTankGeoRenderer::new);
         event.registerEntityRenderer(ModEntities.RC_PLANE.get(), RcPlaneGeoRenderer::new);
+        event.registerEntityRenderer(ModEntities.RC_BOAT.get(), RcBoatGeoRenderer::new);
+        event.registerEntityRenderer(ModEntities.RC_SUBMARINE.get(), RcSubmarineGeoRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.DRONE_CHARGER_BE.get(), DroneChargerBlockEntityRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.TEST_PIVOT_BE.get(), TestPivotBlockEntityRenderer::new);
     }

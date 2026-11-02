@@ -1,0 +1,532 @@
+package com.microdrone.mod.entity;
+
+import com.microdrone.mod.MicroDroneMod;
+import com.microdrone.mod.item.DroneBatteryItem;
+import com.microdrone.mod.item.DroneMotorItem;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.tags.FluidTags;
+import net.minecraft.util.Mth;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.MoverType;
+import net.minecraft.world.entity.decoration.ArmorStand;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.material.FluidState;
+import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.network.PacketDistributor;
+import software.bernie.geckolib.animatable.GeoEntity;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.AnimatableManager;
+import software.bernie.geckolib.util.GeckoLibUtil;
+
+import java.util.UUID;
+
+/**
+ * マイクロRC潜水艇（水中探査・潜水艦）
+ * 3次元水中潜航・浮力バラスト制御・潜舵エレベーター・ラダー操舵・水中泡トレイルをシミュレート
+ */
+public class RcSubmarineEntity extends Entity implements GeoEntity, RcControllable {
+
+    private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
+
+    // バッテリー & モーター同期データ
+    private static final EntityDataAccessor<Boolean> DATA_HAS_BATTERY =
+            SynchedEntityData.defineId(RcSubmarineEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Integer> DATA_BATTERY_REMAINING =
+            SynchedEntityData.defineId(RcSubmarineEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> DATA_BATTERY_MAX =
+            SynchedEntityData.defineId(RcSubmarineEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<ItemStack> DATA_INSTALLED_BATTERY =
+            SynchedEntityData.defineId(RcSubmarineEntity.class, EntityDataSerializers.ITEM_STACK);
+
+    private static final EntityDataAccessor<Integer> DATA_MOTOR_TIER =
+            SynchedEntityData.defineId(RcSubmarineEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<ItemStack> DATA_INSTALLED_MOTOR =
+            SynchedEntityData.defineId(RcSubmarineEntity.class, EntityDataSerializers.ITEM_STACK);
+
+    // クライアント描画同期
+    private static final EntityDataAccessor<Float> DATA_RUDDER_ANGLE =
+            SynchedEntityData.defineId(RcSubmarineEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_DIVE_PLANE_ANGLE =
+            SynchedEntityData.defineId(RcSubmarineEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_PITCH_ANGLE =
+            SynchedEntityData.defineId(RcSubmarineEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_ROLL_ANGLE =
+            SynchedEntityData.defineId(RcSubmarineEntity.class, EntityDataSerializers.FLOAT);
+
+    // 操縦者UUID
+    private UUID pilotUUID = null;
+    private double startX, startY, startZ;
+    private UUID dummyEntityUUID = null;
+    private ArmorStand dummyEntityRef = null;
+    private ChunkPos lastChunkPos = null;
+
+    // 装着中のアイテム
+    private ItemStack installedBattery = ItemStack.EMPTY;
+    private ItemStack installedMotor = ItemStack.EMPTY;
+    private double accumulatedDistance = 0.0;
+
+    // 操作入力（サーバー/クライアント共用）
+    public float inputForward = 0.0f;  // 前進(+1.0) / 後退(-0.5)
+    public float inputSteer = 0.0f;    // 左ステア(-1.0) / 右ステア(+1.0)
+    public float inputVertical = 0.0f; // 浮上(+1.0) / 潜航(-1.0)
+
+    // 内部物理パラメータ
+    private float currentSpeed = 0.0f;
+    private float verticalSpeed = 0.0f;
+    private float propellerRotation = 0.0f;
+    public float prevPropellerRotation = 0.0f;
+    private float rudderAngle = 0.0f;
+    public float prevRudderAngle = 0.0f;
+    private float divePlaneAngle = 0.0f;
+    public float prevDivePlaneAngle = 0.0f;
+    private float pitchAngle = 0.0f;
+    public float prevPitchAngle = 0.0f;
+    private float rollAngle = 0.0f;
+    public float prevRollAngle = 0.0f;
+
+    private boolean locallyControlled = false;
+
+    public RcSubmarineEntity(EntityType<?> entityType, Level level) {
+        super(entityType, level);
+        this.blocksBuilding = true;
+    }
+
+    @Override
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        builder.define(DATA_HAS_BATTERY, false);
+        builder.define(DATA_BATTERY_REMAINING, 0);
+        builder.define(DATA_BATTERY_MAX, 0);
+        builder.define(DATA_INSTALLED_BATTERY, ItemStack.EMPTY);
+        builder.define(DATA_MOTOR_TIER, 1);
+        builder.define(DATA_INSTALLED_MOTOR, ItemStack.EMPTY);
+
+        builder.define(DATA_RUDDER_ANGLE, 0.0f);
+        builder.define(DATA_DIVE_PLANE_ANGLE, 0.0f);
+        builder.define(DATA_PITCH_ANGLE, 0.0f);
+        builder.define(DATA_ROLL_ANGLE, 0.0f);
+    }
+
+    public boolean hasBattery() { return this.entityData.get(DATA_HAS_BATTERY); }
+    public int getBatteryRemaining() { return this.entityData.get(DATA_BATTERY_REMAINING); }
+    public int getBatteryMax() { return this.entityData.get(DATA_BATTERY_MAX); }
+    public int getMotorTier() { return this.entityData.get(DATA_MOTOR_TIER); }
+    public ItemStack getInstalledBattery() { return this.entityData.get(DATA_INSTALLED_BATTERY); }
+    public ItemStack getInstalledMotor() { return this.entityData.get(DATA_INSTALLED_MOTOR); }
+
+    public float getRudderAngle() { return this.entityData.get(DATA_RUDDER_ANGLE); }
+    public float getDivePlaneAngle() { return this.entityData.get(DATA_DIVE_PLANE_ANGLE); }
+    public float getPitchAngle() { return this.entityData.get(DATA_PITCH_ANGLE); }
+    public float getRollAngle() { return this.entityData.get(DATA_ROLL_ANGLE); }
+    public float getPropellerRotation() { return this.propellerRotation; }
+
+    public void setLocallyControlled(boolean controlled) {
+        this.locallyControlled = controlled;
+    }
+
+    @Override
+    public boolean isPiloted() { return this.pilotUUID != null; }
+
+    @Override
+    public boolean isPilotedBy(ServerPlayer player) {
+        return this.pilotUUID != null && this.pilotUUID.equals(player.getUUID());
+    }
+
+    @Override
+    public UUID getPilotUUID() { return this.pilotUUID; }
+
+    @Override
+    public boolean startPiloting(ServerPlayer player) {
+        if (this.pilotUUID != null) return false;
+
+        this.pilotUUID = player.getUUID();
+        this.startX = player.getX();
+        this.startY = player.getY();
+        this.startZ = player.getZ();
+
+        RcVehicleManager.registerPiloting(player.getUUID(), this);
+
+        // 身代わりダミー人形（ArmorStand）の生成
+        ServerLevel serverLevel = player.serverLevel();
+        ArmorStand dummy = new ArmorStand(serverLevel, this.startX, this.startY, this.startZ);
+        dummy.setYRot(player.getYRot());
+        dummy.setXRot(player.getXRot());
+        dummy.setYHeadRot(player.getYHeadRot());
+        dummy.setInvisible(false);
+        dummy.setInvulnerable(true);
+        dummy.setNoGravity(true);
+        dummy.setCustomName(Component.literal(player.getName().getString() + " [RC操縦中]"));
+        dummy.setCustomNameVisible(true);
+        serverLevel.addFreshEntity(dummy);
+        this.dummyEntityRef = dummy;
+        this.dummyEntityUUID = dummy.getUUID();
+        RcVehicleManager.registerDummy(dummy.getUUID(), this);
+
+        player.setInvisible(true);
+
+        com.microdrone.mod.network.DronePilotStatePayload payload =
+                new com.microdrone.mod.network.DronePilotStatePayload(this.getId(), true, this.startX, this.startY, this.startZ);
+        PacketDistributor.sendToPlayer(player, payload);
+        player.sendSystemMessage(Component.translatable("message.microdrone.submarine_pilot_start"));
+
+        this.lastChunkPos = new ChunkPos(this.blockPosition());
+        com.microdrone.mod.chunk.DroneChunkManager.updateDroneChunks(player, this);
+
+        return true;
+    }
+
+    @Override
+    public void stopPiloting(ServerPlayer player) {
+        if (this.pilotUUID != null && this.pilotUUID.equals(player.getUUID())) {
+            ServerLevel serverLevel = player.serverLevel();
+
+            if (this.dummyEntityRef != null) {
+                this.dummyEntityRef.discard();
+                this.dummyEntityRef = null;
+            }
+            if (this.dummyEntityUUID != null) {
+                Entity dummy = serverLevel.getEntity(this.dummyEntityUUID);
+                if (dummy != null) dummy.discard();
+                RcVehicleManager.unregisterDummy(this.dummyEntityUUID);
+                this.dummyEntityUUID = null;
+            }
+
+            this.lastChunkPos = null;
+            com.microdrone.mod.chunk.DroneChunkManager.releaseDroneChunks(player, this);
+
+            player.setCamera(player);
+            player.setInvisible(false);
+            player.removeEffect(MobEffects.NIGHT_VISION);
+            player.teleportTo(serverLevel, this.startX, this.startY, this.startZ, player.getYRot(), player.getXRot());
+
+            RcVehicleManager.unregisterPiloting(player.getUUID());
+            this.pilotUUID = null;
+            this.inputForward = 0.0f;
+            this.inputSteer = 0.0f;
+            this.inputVertical = 0.0f;
+
+            PacketDistributor.sendToPlayer(player, new com.microdrone.mod.network.DronePilotStatePayload(this.getId(), false, 0, 0, 0));
+            player.sendSystemMessage(Component.translatable("message.microdrone.pilot_stop"));
+        }
+    }
+
+    @Override
+    public void tick() {
+        super.tick();
+
+        this.prevPropellerRotation = this.propellerRotation;
+        this.prevRudderAngle = this.rudderAngle;
+        this.prevDivePlaneAngle = this.divePlaneAngle;
+        this.prevPitchAngle = this.pitchAngle;
+        this.prevRollAngle = this.rollAngle;
+
+        if (!this.level().isClientSide) {
+            if (this.pilotUUID != null) {
+                ServerPlayer pilot = this.getServer().getPlayerList().getPlayer(this.pilotUUID);
+                if (pilot == null || !pilot.isAlive() || pilot.level() != this.level()) {
+                    this.pilotUUID = null;
+                } else {
+                    // 水中探査用の暗視付与（水中でもクリアな視界）
+                    if (this.isInWater()) {
+                        pilot.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, 60, 0, false, false, false));
+                    }
+                }
+            }
+            tickSubmarinePhysics();
+        } else {
+            if (this.locallyControlled) {
+                tickSubmarinePhysics();
+            }
+        }
+    }
+
+    /**
+     * 3次元水中潜航・バラスト浮力・スクリュー推進物理
+     */
+    private void tickSubmarinePhysics() {
+        BlockPos pos = this.blockPosition();
+        FluidState fluid = this.level().getFluidState(pos);
+        boolean inWater = fluid.is(FluidTags.WATER) || this.level().getFluidState(pos.below()).is(FluidTags.WATER);
+
+        double vx = this.getDeltaMovement().x;
+        double vy = this.getDeltaMovement().y;
+        double vz = this.getDeltaMovement().z;
+
+        int tier = getMotorTier();
+        double maxForwardSpeed = 0.28 + (tier * 0.08); // 水中最高速度
+        double maxVerticalSpeed = 0.15 + (tier * 0.05);
+        double accel = 0.02 + (tier * 0.01);
+        double turnSpeed = 3.8f + (tier * 0.4f);
+
+        if (inWater) {
+            boolean hasPower = hasBattery() && getBatteryRemaining() > 0;
+            if (!hasPower) {
+                this.inputForward = 0.0f;
+                this.inputSteer = 0.0f;
+                this.inputVertical = 0.0f;
+            }
+
+            // === 1. 前後推進 ===
+            if (this.inputForward > 0.05f) {
+                this.currentSpeed = (float) Math.min(this.currentSpeed + accel, maxForwardSpeed);
+            } else if (this.inputForward < -0.05f) {
+                this.currentSpeed = (float) Math.max(this.currentSpeed - accel * 0.7, -maxForwardSpeed * 0.5);
+            } else {
+                this.currentSpeed *= 0.90f; // 水中抵抗
+            }
+
+            // スクリュー回転
+            if (Math.abs(this.currentSpeed) > 0.01f || Math.abs(this.verticalSpeed) > 0.01f) {
+                this.propellerRotation += (this.currentSpeed * 100.0f) + (this.verticalSpeed * 50.0f);
+            }
+
+            // === 2. 垂直潜航・浮上（バラスト＆潜舵制御）===
+            // 水面検出（浮上限界）
+            double waterSurfaceY = pos.getY() + fluid.getHeight(this.level(), pos);
+            if (!fluid.is(FluidTags.WATER)) {
+                FluidState belowFluid = this.level().getFluidState(pos.below());
+                if (belowFluid.is(FluidTags.WATER)) {
+                    waterSurfaceY = pos.below().getY() + belowFluid.getHeight(this.level(), pos.below());
+                }
+            }
+
+            boolean isAtSurface = (this.getY() + 0.1 >= waterSurfaceY);
+
+            if (this.inputVertical > 0.05f && !isAtSurface) {
+                // Spaceキー: 浮上（バラストブロー）
+                this.verticalSpeed = (float) Math.min(this.verticalSpeed + accel * 0.8, maxVerticalSpeed);
+            } else if (this.inputVertical < -0.05f) {
+                // Shiftキー: 潜航（注水）
+                this.verticalSpeed = (float) Math.max(this.verticalSpeed - accel * 0.8, -maxVerticalSpeed);
+            } else {
+                // 中性浮力（穏やかにその場に留まる）
+                this.verticalSpeed *= 0.85f;
+            }
+
+            // 水面での自然停止（飛び出し防止）
+            if (isAtSurface && this.verticalSpeed > 0) {
+                this.verticalSpeed = 0.0f;
+            }
+
+            vy = this.verticalSpeed;
+
+            // === 3. 舵面連動（ラダー＆潜舵）===
+            // ラダー（垂直舵）
+            float targetRudder = -this.inputSteer * 30.0f;
+            this.rudderAngle = Mth.rotLerp(0.25f, this.rudderAngle, targetRudder);
+
+            // 潜舵（水平舵: 浮上時機首上げ、潜航時機首下げ）
+            float targetDivePlane = -this.inputVertical * 25.0f;
+            this.divePlaneAngle = Mth.rotLerp(0.25f, this.divePlaneAngle, targetDivePlane);
+
+            // ステアリング旋回
+            if (Math.abs(this.currentSpeed) > 0.01f || Math.abs(this.verticalSpeed) > 0.01f) {
+                float steerFactor = Math.max((float) (Math.abs(this.currentSpeed) / maxForwardSpeed), 0.35f);
+                float yawChange = (float) (-this.inputSteer * turnSpeed * steerFactor);
+                this.setYRot(this.getYRot() + yawChange);
+            }
+
+            // 水平推進ベクトル
+            float yawRad = (float) Math.toRadians(this.getYRot());
+            vx = -Math.sin(yawRad) * this.currentSpeed;
+            vz = Math.cos(yawRad) * this.currentSpeed;
+
+            // 水中姿勢（潜航・浮上時のピッチ傾き ＆ 旋回時のマイルドなロール）
+            float targetPitch = -this.verticalSpeed * 45.0f;
+            this.pitchAngle = Mth.rotLerp(0.12f, this.pitchAngle, targetPitch);
+
+            float targetRoll = this.inputSteer * Math.min(Math.abs(this.currentSpeed) * 20.0f, 10.0f);
+            this.rollAngle = Mth.rotLerp(0.10f, this.rollAngle, targetRoll);
+
+            // === 4. 水中泡トレイルパーティクル ===
+            if (this.level().isClientSide && (Math.abs(this.currentSpeed) > 0.05f || Math.abs(this.verticalSpeed) > 0.05f)) {
+                double sternX = this.getX() + Math.sin(yawRad) * 0.45;
+                double sternZ = this.getZ() - Math.cos(yawRad) * 0.45;
+                this.level().addParticle(ParticleTypes.BUBBLE, sternX, this.getY() + 0.18, sternZ,
+                        -Math.sin(yawRad) * 0.08, (random.nextDouble() - 0.5) * 0.05, Math.cos(yawRad) * 0.08);
+            }
+
+        } else {
+            // 水外（陸地・空中）: 重力落下
+            vy = Math.max(vy - 0.04, -0.6);
+            vx *= 0.5;
+            vz *= 0.5;
+            this.currentSpeed *= 0.7f;
+            this.verticalSpeed = 0.0f;
+            this.pitchAngle = Mth.rotLerp(0.1f, this.pitchAngle, 0.0f);
+            this.rollAngle = Mth.rotLerp(0.1f, this.rollAngle, 0.0f);
+        }
+
+        this.setDeltaMovement(vx, vy, vz);
+        this.move(MoverType.SELF, this.getDeltaMovement());
+
+        // 同期データ更新
+        if (!this.level().isClientSide) {
+            this.entityData.set(DATA_RUDDER_ANGLE, this.rudderAngle);
+            this.entityData.set(DATA_DIVE_PLANE_ANGLE, this.divePlaneAngle);
+            this.entityData.set(DATA_PITCH_ANGLE, this.pitchAngle);
+            this.entityData.set(DATA_ROLL_ANGLE, this.rollAngle);
+
+            if (this.pilotUUID != null && this.getServer() != null) {
+                ServerPlayer pilot = this.getServer().getPlayerList().getPlayer(this.pilotUUID);
+                if (pilot != null && pilot.isAlive()) {
+                    pilot.absMoveTo(this.getX(), this.getY(), this.getZ(), this.getYRot(), this.getXRot());
+                    pilot.serverLevel().getChunkSource().move(pilot);
+
+                    ChunkPos currentChunk = new ChunkPos(this.blockPosition());
+                    if (this.lastChunkPos == null || !this.lastChunkPos.equals(currentChunk)) {
+                        com.microdrone.mod.chunk.DroneChunkManager.updateDroneChunks(pilot, this);
+                        this.lastChunkPos = currentChunk;
+                    }
+
+                    // バッテリー消費
+                    double moveDist = Math.sqrt(vx * vx + vy * vy + vz * vz);
+                    this.accumulatedDistance += moveDist;
+                    if (this.accumulatedDistance >= 2.0) {
+                        int blocksToConsume = (int) this.accumulatedDistance;
+                        this.accumulatedDistance -= blocksToConsume;
+                        if (!this.installedBattery.isEmpty() && this.installedBattery.getItem() instanceof DroneBatteryItem batteryItem) {
+                            batteryItem.consumeFlightDistance(this.installedBattery, blocksToConsume);
+                            updateBatterySyncData();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void updateBatterySyncData() {
+        if (!this.installedBattery.isEmpty() && this.installedBattery.getItem() instanceof DroneBatteryItem bat) {
+            this.entityData.set(DATA_HAS_BATTERY, true);
+            this.entityData.set(DATA_BATTERY_MAX, bat.getMaxFlightBlocks());
+            int remaining = bat.getRemainingBlocks(this.installedBattery);
+            this.entityData.set(DATA_BATTERY_REMAINING, Math.max(0, remaining));
+            this.entityData.set(DATA_INSTALLED_BATTERY, this.installedBattery.copy());
+        } else {
+            this.entityData.set(DATA_HAS_BATTERY, false);
+            this.entityData.set(DATA_BATTERY_REMAINING, 0);
+            this.entityData.set(DATA_BATTERY_MAX, 0);
+            this.entityData.set(DATA_INSTALLED_BATTERY, ItemStack.EMPTY);
+        }
+    }
+
+    @Override
+    public InteractionResult interact(Player player, InteractionHand hand) {
+        if (!this.level().isClientSide) {
+            ItemStack heldItem = player.getItemInHand(hand);
+
+            if (heldItem.getItem() instanceof DroneBatteryItem) {
+                if (!this.installedBattery.isEmpty()) {
+                    ItemStack old = this.installedBattery.copy();
+                    this.installedBattery = heldItem.split(1);
+                    if (!player.getInventory().add(old)) player.drop(old, false);
+                } else {
+                    this.installedBattery = heldItem.split(1);
+                }
+                updateBatterySyncData();
+                this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                        SoundEvents.IRON_TRAPDOOR_OPEN, SoundSource.PLAYERS, 0.8F, 1.2F);
+                return InteractionResult.SUCCESS;
+            }
+
+            if (heldItem.getItem() instanceof DroneMotorItem motorItem) {
+                if (!this.installedMotor.isEmpty()) {
+                    ItemStack old = this.installedMotor.copy();
+                    this.installedMotor = heldItem.split(1);
+                    if (!player.getInventory().add(old)) player.drop(old, false);
+                } else {
+                    this.installedMotor = heldItem.split(1);
+                }
+                this.entityData.set(DATA_MOTOR_TIER, motorItem.getTier());
+                this.entityData.set(DATA_INSTALLED_MOTOR, this.installedMotor.copy());
+                this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                        SoundEvents.ANVIL_USE, SoundSource.PLAYERS, 0.6F, 1.5F);
+                return InteractionResult.SUCCESS;
+            }
+
+            // スニーク右クリックで回収
+            if (player.isShiftKeyDown() && !isPiloted()) {
+                ItemStack drop = new ItemStack(com.microdrone.mod.item.ModItems.RC_SUBMARINE_ITEM.get());
+                if (!player.getInventory().add(drop)) player.drop(drop, false);
+                if (!this.installedBattery.isEmpty()) player.drop(this.installedBattery, false);
+                if (!this.installedMotor.isEmpty()) player.drop(this.installedMotor, false);
+                this.discard();
+                return InteractionResult.SUCCESS;
+            }
+        }
+        return InteractionResult.SUCCESS;
+    }
+
+    @Override
+    public boolean hurt(DamageSource source, float amount) {
+        if (this.isInvulnerableTo(source)) return false;
+        if (!this.level().isClientSide && !this.isRemoved()) {
+            if (source.getEntity() instanceof Player player) {
+                if (!player.getAbilities().instabuild) {
+                    ItemStack drop = new ItemStack(com.microdrone.mod.item.ModItems.RC_SUBMARINE_ITEM.get());
+                    this.spawnAtLocation(drop);
+                    if (!this.installedBattery.isEmpty()) this.spawnAtLocation(this.installedBattery);
+                    if (!this.installedMotor.isEmpty()) this.spawnAtLocation(this.installedMotor);
+                }
+                this.discard();
+                return true;
+            }
+        }
+        return super.hurt(source, amount);
+    }
+
+    @Override
+    public boolean isPickable() { return !this.isRemoved(); }
+
+    @Override
+    protected void readAdditionalSaveData(CompoundTag compound) {
+        if (compound.contains("InstalledBattery")) {
+            this.installedBattery = ItemStack.parseOptional(this.registryAccess(), compound.getCompound("InstalledBattery"));
+            updateBatterySyncData();
+        }
+        if (compound.contains("InstalledMotor")) {
+            this.installedMotor = ItemStack.parseOptional(this.registryAccess(), compound.getCompound("InstalledMotor"));
+            if (this.installedMotor.getItem() instanceof DroneMotorItem motorItem) {
+                this.entityData.set(DATA_MOTOR_TIER, motorItem.getTier());
+            }
+            this.entityData.set(DATA_INSTALLED_MOTOR, this.installedMotor.copy());
+        }
+    }
+
+    @Override
+    protected void addAdditionalSaveData(CompoundTag compound) {
+        if (!this.installedBattery.isEmpty()) {
+            compound.put("InstalledBattery", this.installedBattery.save(this.registryAccess()));
+        }
+        if (!this.installedMotor.isEmpty()) {
+            compound.put("InstalledMotor", this.installedMotor.save(this.registryAccess()));
+        }
+    }
+
+    @Override
+    public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
+    }
+
+    @Override
+    public AnimatableInstanceCache getAnimatableInstanceCache() {
+        return cache;
+    }
+}

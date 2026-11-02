@@ -44,6 +44,22 @@ public class ModEntities {
                     .updateInterval(1)
                     .build("rc_plane"));
 
+    public static final DeferredHolder<EntityType<?>, EntityType<RcBoatEntity>> RC_BOAT =
+            ENTITIES.register("rc_boat", () -> EntityType.Builder.<RcBoatEntity>of(RcBoatEntity::new, MobCategory.MISC)
+                    .sized(0.6f, 0.4f)
+                    .eyeHeight(0.3f)
+                    .clientTrackingRange(32)
+                    .updateInterval(1)
+                    .build("rc_boat"));
+
+    public static final DeferredHolder<EntityType<?>, EntityType<RcSubmarineEntity>> RC_SUBMARINE =
+            ENTITIES.register("rc_submarine", () -> EntityType.Builder.<RcSubmarineEntity>of(RcSubmarineEntity::new, MobCategory.MISC)
+                    .sized(0.6f, 0.4f)
+                    .eyeHeight(0.3f)
+                    .clientTrackingRange(32)
+                    .updateInterval(1)
+                    .build("rc_submarine"));
+
     public static void register(IEventBus eventBus) {
         ENTITIES.register(eventBus);
     }
