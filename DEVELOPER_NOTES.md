@@ -3,7 +3,7 @@
 **最終更新日**: 2026-11-02  
 **対象環境**: Minecraft 1.21.1 / NeoForge 21.1.244 / GeckoLib 4.7.7  
 **対象ディレクトリ**: `micro_drone_mod`  
-**ステータス**: 【コース小物・設備システム Phase 1 (カラーコーン仮実装) 完了】1ブロック内3×3グリッド（最大9個）の小物配置基盤システムを完全実装！土台ブロック（MiniaturePlacementBlock）、BlockEntity、カラーコーンアイテム（TrafficConeItem）、3D描画（TrafficConeModel/MiniaturePlacementBlockEntityRenderer）、半透明ゴーストプレビュー、複合当たり判定（VoxelShape）、回転・撤去機能を完備。ビルド成功。
+**ステータス**: 【コース小物・設備システム 枠ズレ根本解決完了】GeoBlockRendererのデフォルト preRender が自動適用していた (0.5, 0, 0.5) のブロック中心オフセットをオーバーライドにより完全キャンセル！5×5グリッドの各スロット座標と選択・当たり判定枠（VoxelShape）が1ピクセルも狂わず100%完全合致。ビルド成功。
 
 ---
 
@@ -272,3 +272,8 @@ Minecraft 1.21.1 (NeoForge) 向けの超リアル・高機能ラジコン MOD。
   - Blockbenchで作成された 	raffic_cone.geo.json およびテクスチャ 	raffic_cone.png をスロットごとに正確な位置・回転・縮尺（0.33倍スケール）で描画。
   - カラーコーンを手元に持っている際、視線の先にある空きスロットに半透明の配置ガイド（ゴーストプレビュー）を表示。
 
+
+  - **ワイヤーフレーム枠ズレの根本原因と解決**:
+    - GeckoLib の GeoBlockRenderer.preRender は、一般的な単一ブロック向けに内部で自動的に poseStack.translate(0.5, 0, 0.5) を実行する仕様。
+    - 我々がスロット座標 (slot.getXOffset(), slot.getZOffset()) に移動させた後に GeckoLib がさらに +0.5, +0.5 加算していたため、黒い当たり判定枠（VoxelShape）に対してモデル描画が斜め右下に 0.5 ブロック分ズレていた現象を特定。
+    - MiniaturePlacementBlockEntityRenderer.preRender をオーバーライドしてこの自動加算をバイパス（キャンセル）することで、黒い選択枠・当たり判定ボックスとカラーコーンの描画位置が 100% 完全一致！
