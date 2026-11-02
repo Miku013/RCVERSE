@@ -88,8 +88,9 @@ public class MiniaturePlacementBlockEntityRenderer extends GeoBlockRenderer<Mini
                 float snappedYaw = Math.round(yaw / 45.0f) * 45.0f;
                 poseStack.mulPose(Axis.YP.rotationDegrees(180f - snappedYaw));
 
-                // スケール
-                poseStack.scale(0.33f, 0.33f, 0.33f);
+                // スケール (1/2サイズ)
+                float ghostScale = MiniaturePlacementData.DEFAULT_CONE_SCALE;
+                poseStack.scale(ghostScale, ghostScale, ghostScale);
 
                 // 半透明 RenderType でゴースト描画
                 RenderType ghostRenderType = RenderType.entityTranslucentCull(getTextureLocation(entity));
@@ -100,3 +101,4 @@ public class MiniaturePlacementBlockEntityRenderer extends GeoBlockRenderer<Mini
         }
     }
 }
+

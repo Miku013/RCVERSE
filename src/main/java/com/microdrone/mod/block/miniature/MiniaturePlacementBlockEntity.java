@@ -62,11 +62,11 @@ public class MiniaturePlacementBlockEntity extends BlockEntity implements GeoBlo
      * 指定スロットに小物を配置
      */
     public boolean placeMiniature(int slotId, String miniatureId, float yaw) {
-        if (slotId < 0 || slotId >= 9) return false;
+        if (slotId < 0 || slotId >= MiniaturePlacementData.TOTAL_SLOTS) return false;
         if (slots.containsKey(slotId)) return false; // すでに配置済み
 
         MiniatureType type = MiniatureType.getById(miniatureId);
-        float scale = type != null ? type.getDefaultScale() : 0.33f;
+        float scale = type != null ? type.getDefaultScale() : MiniaturePlacementData.DEFAULT_CONE_SCALE;
 
         MiniaturePlacementData data = new MiniaturePlacementData(slotId, miniatureId, yaw, scale);
         slots.put(slotId, data);
@@ -123,10 +123,10 @@ public class MiniaturePlacementBlockEntity extends BlockEntity implements GeoBlo
                 if (type != null) {
                     float cx = data.getXOffset() * 16.0f; // 0〜16ピクセル単位
                     float cz = data.getZOffset() * 16.0f;
-                    // 幅4px (半径2px)、高さ7pxのコーン当たり判定
+                    // 1/2サイズコーンの当たり判定: 幅約2.8px (半径1.4px)、高さ4px (Y=1.0〜5.0)
                     VoxelShape coneBox = Block.box(
-                            Math.max(0, cx - 2.5), 1.0, Math.max(0, cz - 2.5),
-                            Math.min(16, cx + 2.5), 8.0, Math.min(16, cz + 2.5)
+                            Math.max(0, cx - 1.4), 1.0, Math.max(0, cz - 1.4),
+                            Math.min(16, cx + 1.4), 5.0, Math.min(16, cz + 1.4)
                     );
                     shape = Shapes.or(shape, coneBox);
                 }
@@ -190,3 +190,4 @@ public class MiniaturePlacementBlockEntity extends BlockEntity implements GeoBlo
         return this.cache;
     }
 }
+

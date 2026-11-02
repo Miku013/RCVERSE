@@ -30,3 +30,4 @@ public class TrafficConeModel extends GeoModel<MiniaturePlacementBlockEntity> {
         return null;
     }
 }
+

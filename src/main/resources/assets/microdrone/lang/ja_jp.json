@@ -9,7 +9,7 @@
   "item.microdrone.traffic_cone": "カラーコーン",
   "block.microdrone.miniature_placement": "コース小物配置ベース",
   "item.microdrone.miniature_placement": "コース小物配置ベース",
-  "tooltip.microdrone.traffic_cone_desc": "右クリックで配置（1ブロック内3×3グリッド対応） / 素手右クリックで撤去 / スニーク右クリックで回転",
+  "tooltip.microdrone.traffic_cone_desc": "右クリックで配置（1ブロック内5×5グリッド・最大25個対応） / 素手右クリックで撤去 / スニーク右クリックで回転",
   "item.microdrone.battery_tier_1": "ドローンバッテリー (3000m)",
   "item.microdrone.battery_tier_2": "ドローンバッテリー (4000m)",
   "item.microdrone.battery_tier_3": "ドローンバッテリー (5000m)",

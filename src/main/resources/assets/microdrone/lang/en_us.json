@@ -9,7 +9,7 @@
   "item.microdrone.traffic_cone": "Traffic Cone",
   "block.microdrone.miniature_placement": "Course Miniature Base",
   "item.microdrone.miniature_placement": "Course Miniature Base",
-  "tooltip.microdrone.traffic_cone_desc": "Right-click to place in 3x3 grid / Bare-hand right-click to pick up / Sneak right-click to rotate",
+  "tooltip.microdrone.traffic_cone_desc": "Right-click to place in 5x5 grid (up to 25 items) / Bare-hand right-click to pick up / Sneak right-click to rotate",
   "item.microdrone.battery_tier_1": "Drone Battery (3000m)",
   "item.microdrone.battery_tier_2": "Drone Battery (4000m)",
   "item.microdrone.battery_tier_3": "Drone Battery (5000m)",

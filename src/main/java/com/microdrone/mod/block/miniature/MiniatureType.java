@@ -19,8 +19,8 @@ public class MiniatureType {
             "traffic_cone",
             ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, "geo/traffic_cone.geo.json"),
             ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, "textures/entity/traffic_cone.png"),
-            0.33f, // 1ブロック(16px)のモデルを3x3マス(約5.3px)に縮小
-            Shapes.box(0.35, 0.0, 0.35, 0.65, 0.45, 0.65) // スロット中心基準の当たり判定
+            MiniaturePlacementData.DEFAULT_CONE_SCALE, // 1/2サイズ (0.165f: 幅約2.6px、高さ約3.5px)
+            Shapes.box(0.4, 0.0, 0.4, 0.6, 0.25, 0.6) // スロット中心基準の当たり判定
     ));
 
     private final String id;
@@ -67,3 +67,4 @@ public class MiniatureType {
         return baseCollisionShape;
     }
 }
+
