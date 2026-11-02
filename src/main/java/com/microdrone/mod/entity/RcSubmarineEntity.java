@@ -111,6 +111,20 @@ public class RcSubmarineEntity extends Entity implements GeoEntity, RcControllab
     }
 
     @Override
+    public void lerpTo(double x, double y, double z, float yRot, float xRot, int steps) {
+        if (this.locallyControlled) {
+            double dx = x - this.getX();
+            double dy = y - this.getY();
+            double dz = z - this.getZ();
+            if (dx * dx + dy * dy + dz * dz > 16.0) {
+                super.lerpTo(x, y, z, yRot, xRot, steps);
+            }
+            return;
+        }
+        super.lerpTo(x, y, z, yRot, xRot, steps);
+    }
+
+    @Override
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
         builder.define(DATA_HAS_BATTERY, false);
         builder.define(DATA_BATTERY_REMAINING, 0);
@@ -132,10 +146,10 @@ public class RcSubmarineEntity extends Entity implements GeoEntity, RcControllab
     public ItemStack getInstalledBattery() { return this.entityData.get(DATA_INSTALLED_BATTERY); }
     public ItemStack getInstalledMotor() { return this.entityData.get(DATA_INSTALLED_MOTOR); }
 
-    public float getRudderAngle() { return this.entityData.get(DATA_RUDDER_ANGLE); }
-    public float getDivePlaneAngle() { return this.entityData.get(DATA_DIVE_PLANE_ANGLE); }
-    public float getPitchAngle() { return this.entityData.get(DATA_PITCH_ANGLE); }
-    public float getRollAngle() { return this.entityData.get(DATA_ROLL_ANGLE); }
+    public float getRudderAngle() { return this.rudderAngle; }
+    public float getDivePlaneAngle() { return this.divePlaneAngle; }
+    public float getPitchAngle() { return this.pitchAngle; }
+    public float getRollAngle() { return this.rollAngle; }
     public float getPropellerRotation() { return this.propellerRotation; }
 
     public void setLocallyControlled(boolean controlled) {
@@ -254,6 +268,11 @@ public class RcSubmarineEntity extends Entity implements GeoEntity, RcControllab
         } else {
             if (this.locallyControlled) {
                 tickSubmarinePhysics();
+            } else {
+                this.rudderAngle = this.entityData.get(DATA_RUDDER_ANGLE);
+                this.divePlaneAngle = this.entityData.get(DATA_DIVE_PLANE_ANGLE);
+                this.pitchAngle = this.entityData.get(DATA_PITCH_ANGLE);
+                this.rollAngle = this.entityData.get(DATA_ROLL_ANGLE);
             }
         }
     }
@@ -270,11 +289,12 @@ public class RcSubmarineEntity extends Entity implements GeoEntity, RcControllab
         double vy = this.getDeltaMovement().y;
         double vz = this.getDeltaMovement().z;
 
+        // モーター性能値（速度を現在の1/3に調整）
         int tier = getMotorTier();
-        double maxForwardSpeed = 0.28 + (tier * 0.08); // 水中最高速度
-        double maxVerticalSpeed = 0.15 + (tier * 0.05);
-        double accel = 0.02 + (tier * 0.01);
-        double turnSpeed = 3.8f + (tier * 0.4f);
+        double maxForwardSpeed = (0.28 + (tier * 0.08)) / 3.0; // 水中最高速度
+        double maxVerticalSpeed = (0.15 + (tier * 0.05)) / 3.0; // 潜航・浮上最高速度
+        double accel = (0.02 + (tier * 0.01)) / 3.0;
+        double turnSpeed = 4.2f + (tier * 0.4f);
 
         if (inWater) {
             boolean hasPower = hasBattery() && getBatteryRemaining() > 0;
@@ -290,12 +310,12 @@ public class RcSubmarineEntity extends Entity implements GeoEntity, RcControllab
             } else if (this.inputForward < -0.05f) {
                 this.currentSpeed = (float) Math.max(this.currentSpeed - accel * 0.7, -maxForwardSpeed * 0.5);
             } else {
-                this.currentSpeed *= 0.90f; // 水中抵抗
+                this.currentSpeed *= 0.88f; // 水中抵抗
             }
 
-            // スクリュー回転
-            if (Math.abs(this.currentSpeed) > 0.01f || Math.abs(this.verticalSpeed) > 0.01f) {
-                this.propellerRotation += (this.currentSpeed * 100.0f) + (this.verticalSpeed * 50.0f);
+            // スクリュー回転（速度1/3でもしっかり回転）
+            if (Math.abs(this.currentSpeed) > 0.003f || Math.abs(this.verticalSpeed) > 0.003f) {
+                this.propellerRotation += (this.currentSpeed * 280.0f) + (this.verticalSpeed * 140.0f);
             }
 
             // === 2. 垂直潜航・浮上（バラスト＆潜舵制御）===
@@ -331,14 +351,14 @@ public class RcSubmarineEntity extends Entity implements GeoEntity, RcControllab
             // === 3. 舵面連動（ラダー＆潜舵）===
             // ラダー（垂直舵）
             float targetRudder = -this.inputSteer * 30.0f;
-            this.rudderAngle = Mth.rotLerp(0.25f, this.rudderAngle, targetRudder);
+            this.rudderAngle = Mth.rotLerp(0.30f, this.rudderAngle, targetRudder);
 
             // 潜舵（水平舵: 浮上時機首上げ、潜航時機首下げ）
             float targetDivePlane = -this.inputVertical * 25.0f;
-            this.divePlaneAngle = Mth.rotLerp(0.25f, this.divePlaneAngle, targetDivePlane);
+            this.divePlaneAngle = Mth.rotLerp(0.30f, this.divePlaneAngle, targetDivePlane);
 
-            // ステアリング旋回
-            if (Math.abs(this.currentSpeed) > 0.01f || Math.abs(this.verticalSpeed) > 0.01f) {
+            // ステアリング旋回（低速でも滑らかに旋回）
+            if (Math.abs(this.currentSpeed) > 0.003f || Math.abs(this.verticalSpeed) > 0.003f) {
                 float steerFactor = Math.max((float) (Math.abs(this.currentSpeed) / maxForwardSpeed), 0.35f);
                 float yawChange = (float) (-this.inputSteer * turnSpeed * steerFactor);
                 this.setYRot(this.getYRot() + yawChange);
@@ -350,14 +370,14 @@ public class RcSubmarineEntity extends Entity implements GeoEntity, RcControllab
             vz = Math.cos(yawRad) * this.currentSpeed;
 
             // 水中姿勢（潜航・浮上時のピッチ傾き ＆ 旋回時のマイルドなロール）
-            float targetPitch = -this.verticalSpeed * 45.0f;
-            this.pitchAngle = Mth.rotLerp(0.12f, this.pitchAngle, targetPitch);
+            float targetPitch = (maxVerticalSpeed > 0.001) ? (float) (-(this.verticalSpeed / maxVerticalSpeed) * 15.0f) : 0.0f;
+            this.pitchAngle = Mth.rotLerp(0.15f, this.pitchAngle, targetPitch);
 
-            float targetRoll = this.inputSteer * Math.min(Math.abs(this.currentSpeed) * 20.0f, 10.0f);
-            this.rollAngle = Mth.rotLerp(0.10f, this.rollAngle, targetRoll);
+            float targetRoll = this.inputSteer * Math.min((float)(Math.abs(this.currentSpeed) / maxForwardSpeed) * 8.0f, 8.0f);
+            this.rollAngle = Mth.rotLerp(0.12f, this.rollAngle, targetRoll);
 
             // === 4. 水中泡トレイルパーティクル ===
-            if (this.level().isClientSide && (Math.abs(this.currentSpeed) > 0.05f || Math.abs(this.verticalSpeed) > 0.05f)) {
+            if (this.level().isClientSide && (Math.abs(this.currentSpeed) > 0.02f || Math.abs(this.verticalSpeed) > 0.02f)) {
                 double sternX = this.getX() + Math.sin(yawRad) * 0.45;
                 double sternZ = this.getZ() - Math.cos(yawRad) * 0.45;
                 this.level().addParticle(ParticleTypes.BUBBLE, sternX, this.getY() + 0.18, sternZ,

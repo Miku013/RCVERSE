@@ -57,3 +57,4 @@ public class RcSubmarineGeoModel extends GeoModel<RcSubmarineEntity> {
         }
     }
 }
+

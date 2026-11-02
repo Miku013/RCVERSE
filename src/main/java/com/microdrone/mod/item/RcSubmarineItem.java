@@ -96,3 +96,4 @@ public class RcSubmarineItem extends Item {
         return InteractionResultHolder.pass(itemStack);
     }
 }
+

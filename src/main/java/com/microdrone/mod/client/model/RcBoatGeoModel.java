@@ -54,3 +54,4 @@ public class RcBoatGeoModel extends GeoModel<RcBoatEntity> {
         }
     }
 }
+

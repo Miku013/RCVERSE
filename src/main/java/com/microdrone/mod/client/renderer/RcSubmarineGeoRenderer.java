@@ -45,3 +45,4 @@ public class RcSubmarineGeoRenderer extends GeoEntityRenderer<RcSubmarineEntity>
         poseStack.popPose();
     }
 }
+

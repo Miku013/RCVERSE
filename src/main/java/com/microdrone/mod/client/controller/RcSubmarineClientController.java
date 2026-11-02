@@ -104,14 +104,10 @@ public class RcSubmarineClientController implements RcVehicleClientController {
             mc.player.setYRot(targetYaw);
             mc.player.setXRot(targetPitch);
         } else if (viewMode == RcViewMode.CHASE) {
-            // 水中チェイス視点
-            float mousePitch = mc.player.getXRot();
-            float pitch = Mth.clamp(subPitch + mousePitch * 0.35f, -60.0f, 60.0f);
+            // 水中チェイス視点（バニラ補間による滑らか追従）
             event.setYaw(subYaw);
-            event.setPitch(pitch);
+            event.setPitch(15.0f);
             event.setRoll(0.0f);
-            mc.player.setYRot(subYaw);
-            moveCameraSafe(event.getCamera(), 2.0, 0.3, 0.0);
         } else {
             // 水中探査コックピットFPV視点
             event.setYaw(subYaw);
@@ -194,3 +190,4 @@ public class RcSubmarineClientController implements RcVehicleClientController {
         }
     }
 }
+

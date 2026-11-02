@@ -103,14 +103,10 @@ public class RcBoatClientController implements RcVehicleClientController {
             mc.player.setYRot(targetYaw);
             mc.player.setXRot(targetPitch);
         } else if (viewMode == RcViewMode.CHASE) {
-            // チェイス視点（後方から一定見下ろし追従）
-            float mousePitch = mc.player.getXRot();
-            float pitch = Mth.clamp(15.0f + mousePitch * 0.35f, 5.0f, 60.0f);
+            // チェイス視点（後方から一定見下ろし追従・バニラ補間による滑らか追従）
             event.setYaw(boatYaw);
-            event.setPitch(pitch);
+            event.setPitch(15.0f);
             event.setRoll(0.0f);
-            mc.player.setYRot(boatYaw);
-            moveCameraSafe(event.getCamera(), 2.2, 0.4, 0.0);
         } else {
             // 一人称コックピットFPV視点
             event.setYaw(boatYaw);
@@ -193,3 +189,4 @@ public class RcBoatClientController implements RcVehicleClientController {
         }
     }
 }
+

@@ -45,3 +45,4 @@ public class RcBoatGeoRenderer extends GeoEntityRenderer<RcBoatEntity> {
         poseStack.popPose();
     }
 }
+
