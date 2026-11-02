@@ -49,10 +49,15 @@ public class DroneChunkManager {
             }
         }
 
+        long updateStartNanos = System.nanoTime();
+        int addedCount = 0;
+        int removedCount = 0;
+
         // 3. チャンクキャッシュ中心の変更（変化時のみログ）
         ChunkPos prevCenter = LAST_CENTER_POS.put(droneUUID, centerPos);
-        if (prevCenter == null || !prevCenter.equals(centerPos)) {
-            MicroDroneMod.LOGGER.debug("[SERVER] [CHUNK_CACHE_CENTER] DroneUUID: {}, PrevCenter: {}, NewCenter: [{}, {}]",
+        boolean centerChanged = (prevCenter == null || !prevCenter.equals(centerPos));
+        if (centerChanged) {
+            MicroDroneMod.LOGGER.debug("[CHUNK_CACHE_CENTER] DroneUUID: {}, PrevCenter: {}, NewCenter: [{}, {}]",
                     droneUUID, prevCenter != null ? "[" + prevCenter.x + ", " + prevCenter.z + "]" : "INIT", centerPos.x, centerPos.z);
         }
 
@@ -64,15 +69,20 @@ public class DroneChunkManager {
         // 1. 新たに範囲内に入ったチャンクの読み込みと配信
         for (ChunkPos pos : currentTargetChunks) {
             if (!previousChunks.contains(pos)) {
+                addedCount++;
+                long loadReqTime = System.currentTimeMillis();
+                MicroDroneMod.LOGGER.debug("[CHUNK_LOAD_REQUEST] DroneUUID: {}, Chunk: [{}, {}], ReqTime: {}",
+                        droneUUID, pos.x, pos.z, loadReqTime);
+
                 // サーバー側で強制ロード（チケット発行）
                 serverLevel.setChunkForced(pos.x, pos.z, true);
-                MicroDroneMod.LOGGER.debug("[SERVER] [FORCE_CHUNK_ADD] Chunk: [{}, {}], Reason: TARGET_ENTERED, DroneUUID: {}",
-                        pos.x, pos.z, droneUUID);
 
                 // チャンクを即時取得できる場合は即時配信
                 LevelChunk chunk = serverLevel.getChunkSource().getChunkNow(pos.x, pos.z);
                 if (chunk != null) {
                     sendChunkToPlayer(pilot, serverLevel, chunk);
+                    MicroDroneMod.LOGGER.debug("[CHUNK_LOAD_COMPLETE] DroneUUID: {}, Chunk: [{}, {}], Mode: SYNC_NOW, ElapsedMs: {}",
+                            droneUUID, pos.x, pos.z, System.currentTimeMillis() - loadReqTime);
                 } else {
                     // 非同期でロード完了を待機して配信
                     serverLevel.getChunkSource().getChunkFuture(pos.x, pos.z, ChunkStatus.FULL, true).thenAccept(result -> {
@@ -81,6 +91,8 @@ public class DroneChunkManager {
                                 serverLevel.getServer().execute(() -> {
                                     if (drone instanceof com.microdrone.mod.entity.RcControllable rc && rc.isPilotedBy(pilot)) {
                                         sendChunkToPlayer(pilot, serverLevel, lc);
+                                        MicroDroneMod.LOGGER.debug("[CHUNK_LOAD_COMPLETE] DroneUUID: {}, Chunk: [{}, {}], Mode: ASYNC_FUTURE, ElapsedMs: {}",
+                                                droneUUID, pos.x, pos.z, System.currentTimeMillis() - loadReqTime);
                                     }
                                 });
                             }
@@ -95,11 +107,14 @@ public class DroneChunkManager {
         for (ChunkPos oldPos : previousChunks) {
             if (!currentTargetChunks.contains(oldPos)) {
                 toRemove.add(oldPos);
+                removedCount++;
+                MicroDroneMod.LOGGER.debug("[CHUNK_UNLOAD_REQUEST] DroneUUID: {}, Chunk: [{}, {}], Reason: OUT_OF_RADIUS",
+                        droneUUID, oldPos.x, oldPos.z);
 
                 // サーバー側強制ロード解除
                 serverLevel.setChunkForced(oldPos.x, oldPos.z, false);
-                MicroDroneMod.LOGGER.debug("[SERVER] [FORCE_CHUNK_REMOVE] Chunk: [{}, {}], Reason: OUT_OF_RADIUS, DroneUUID: {}",
-                        oldPos.x, oldPos.z, droneUUID);
+                MicroDroneMod.LOGGER.debug("[CHUNK_UNLOAD_COMPLETE] DroneUUID: {}, Chunk: [{}, {}]",
+                        droneUUID, oldPos.x, oldPos.z);
 
                 // プレイヤー本来の視界範囲外であればクライアントへアンロードを送信
                 if (!isWithinPlayerNaturalView(pilot, oldPos)) {
@@ -112,6 +127,12 @@ public class DroneChunkManager {
 
         previousChunks.removeAll(toRemove);
         previousChunks.addAll(currentTargetChunks);
+
+        if (centerChanged || addedCount > 0 || removedCount > 0) {
+            long elapsedUs = (System.nanoTime() - updateStartNanos) / 1000;
+            MicroDroneMod.LOGGER.debug("[CHUNK_UPDATE_TIME] DroneUUID: {}, Center: [{}, {}], Added: {}, Removed: {}, TotalLoaded: {}, ElapsedUs: {}",
+                    droneUUID, centerPos.x, centerPos.z, addedCount, removedCount, previousChunks.size(), elapsedUs);
+        }
     }
 
     /**

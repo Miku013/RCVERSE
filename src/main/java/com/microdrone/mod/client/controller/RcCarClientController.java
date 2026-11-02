@@ -1,5 +1,7 @@
 package com.microdrone.mod.client.controller;
 
+import com.microdrone.mod.MicroDroneMod;
+
 import com.microdrone.mod.entity.RcCarEntity;
 import com.microdrone.mod.network.DroneControlPayload;
 import net.minecraft.client.Camera;
@@ -34,6 +36,8 @@ public class RcCarClientController implements RcVehicleClientController {
             player.setInvisible(false);
             Minecraft.getInstance().setCameraEntity(player);
             Minecraft.getInstance().options.setCameraType(CameraType.FIRST_PERSON);
+            MicroDroneMod.LOGGER.info("[CAMERA_SWITCH] Event: START_PILOTING, VehicleUUID: {}, InitialViewMode: GROUND, PlayerPos: [{}, {}, {}]",
+                    vehicle.getUUID(), String.format("%.2f", player.getX()), String.format("%.2f", player.getY()), String.format("%.2f", player.getZ()));
         }
     }
 
@@ -46,6 +50,8 @@ public class RcCarClientController implements RcVehicleClientController {
             player.setInvisible(false);
             Minecraft.getInstance().setCameraEntity(player);
             Minecraft.getInstance().options.setCameraType(CameraType.FIRST_PERSON);
+            MicroDroneMod.LOGGER.info("[CAMERA_SWITCH] Event: STOP_PILOTING, VehicleUUID: {}, FinalViewMode: GROUND, PlayerPos: [{}, {}, {}]",
+                    vehicle != null ? vehicle.getUUID() : "null", String.format("%.2f", player.getX()), String.format("%.2f", player.getY()), String.format("%.2f", player.getZ()));
         }
     }
 
@@ -116,6 +122,7 @@ public class RcCarClientController implements RcVehicleClientController {
         Minecraft mc = Minecraft.getInstance();
         if (!(vehicle instanceof RcCarEntity car)) return;
 
+        RcViewMode oldMode = viewMode;
         if (viewMode == RcViewMode.GROUND) {
             viewMode = RcViewMode.CHASE;
             if (player != null) {
@@ -133,6 +140,11 @@ public class RcCarClientController implements RcVehicleClientController {
             mc.setCameraEntity(player);
             mc.options.setCameraType(CameraType.FIRST_PERSON);
         }
+
+        MicroDroneMod.LOGGER.info("[CAMERA_SWITCH] VehicleUUID: {}, OldMode: {}, NewMode: {}, PlayerPos: [{}, {}, {}], CarPos: [{}, {}, {}]",
+                car.getUUID(), oldMode, viewMode,
+                player != null ? String.format("%.2f, %.2f, %.2f", player.getX(), player.getY(), player.getZ()) : "null",
+                String.format("%.2f, %.2f, %.2f", car.getX(), car.getY(), car.getZ()));
     }
 
     @Override

@@ -128,7 +128,16 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             double dz = z - this.getZ();
             double distSq = dx * dx + dy * dy + dz * dz;
             if (distSq > 16.0) {
+                MicroDroneMod.LOGGER.warn("[POSITION_CORRECTION] Reason: 4m_THRESHOLD_EXCEEDED, VehicleUUID: {}, ClientPos: [{}, {}, {}], ServerTargetPos: [{}, {}, {}], DeltaDist: {}m, CurrentSpeed: {}",
+                        this.getUUID(), String.format("%.2f", this.getX()), String.format("%.2f", this.getY()), String.format("%.2f", this.getZ()),
+                        String.format("%.2f", x), String.format("%.2f", y), String.format("%.2f", z),
+                        String.format("%.2f", Math.sqrt(distSq)), this.currentSpeed);
                 super.lerpTo(x, y, z, yRot, xRot, steps);
+            } else if (distSq > 0.25) {
+                MicroDroneMod.LOGGER.debug("[POSITION_CORRECTION_DELTA] VehicleUUID: {}, DeltaDist: {}m, ClientPos: [{}, {}, {}], ServerTargetPos: [{}, {}, {}], Speed: {}",
+                        this.getUUID(), String.format("%.2f", Math.sqrt(distSq)),
+                        String.format("%.2f", this.getX()), String.format("%.2f", this.getY()), String.format("%.2f", this.getZ()),
+                        String.format("%.2f", x), String.format("%.2f", y), String.format("%.2f", z), this.currentSpeed);
             }
             return;
         }
@@ -298,7 +307,20 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             }
 
             // サーバー側物理処理
+            long startNanos = System.nanoTime();
             tickCarPhysics();
+            long elapsedUs = (System.nanoTime() - startNanos) / 1000;
+            if (elapsedUs > 5000) {
+                MicroDroneMod.LOGGER.warn("[VEHICLE_TICK_TIME] SERVER car physics took {} us (>5ms) for {}", elapsedUs, this.getUUID());
+            }
+
+            if (this.tickCount % 20 == 0 && this.isPiloted()) {
+                MicroDroneMod.LOGGER.debug("[SERVER_POSITION] VehicleUUID: {}, Tick: {}, Pos: [{}, {}, {}], Speed: {}, Velocity: [{}, {}]",
+                        this.getUUID(), this.tickCount,
+                        String.format("%.2f", this.getX()), String.format("%.2f", this.getY()), String.format("%.2f", this.getZ()),
+                        String.format("%.2f", this.currentSpeed),
+                        String.format("%.2f", this.carVelocity.x), String.format("%.2f", this.carVelocity.z));
+            }
 
             // クライアント同期用角度
             this.entityData.set(DATA_WHEEL_ROTATION, this.wheelRotation);
@@ -308,7 +330,20 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             // クライアント側処理
             if (this.locallyControlled) {
                 // ローカル操縦中はクライアント側でも即座に物理演算を行い、遅延ゼロ＆カクツキゼロを実現
+                long startNanos = System.nanoTime();
                 tickCarPhysics();
+                long elapsedUs = (System.nanoTime() - startNanos) / 1000;
+                if (elapsedUs > 5000) {
+                    MicroDroneMod.LOGGER.warn("[VEHICLE_TICK_TIME] CLIENT car physics took {} us (>5ms) for {}", elapsedUs, this.getUUID());
+                }
+
+                if (this.tickCount % 20 == 0) {
+                    MicroDroneMod.LOGGER.debug("[CLIENT_POSITION] VehicleUUID: {}, Tick: {}, Pos: [{}, {}, {}], Speed: {}, Velocity: [{}, {}]",
+                            this.getUUID(), this.tickCount,
+                            String.format("%.2f", this.getX()), String.format("%.2f", this.getY()), String.format("%.2f", this.getZ()),
+                            String.format("%.2f", this.currentSpeed),
+                            String.format("%.2f", this.carVelocity.x), String.format("%.2f", this.carVelocity.z));
+                }
             } else {
                 // 他プレイヤーが操縦中または放置中はサーバー同期値を使用
                 this.wheelRotation = this.entityData.get(DATA_WHEEL_ROTATION);
@@ -527,8 +562,21 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             motionY = this.getDeltaMovement().y - 0.04; // Light gravity
         }
 
+        Vec3 preMovePos = this.position();
         this.setDeltaMovement(new Vec3(motionX, motionY, motionZ));
         this.move(MoverType.SELF, this.getDeltaMovement());
+        Vec3 actualMoved = this.position().subtract(preMovePos);
+
+        // 衝突検知 (予定移動量に対して実移動量が大幅に遮断された場合)
+        double expectedH = Math.sqrt(motionX * motionX + motionZ * motionZ);
+        double actualH = Math.sqrt(actualMoved.x * actualMoved.x + actualMoved.z * actualMoved.z);
+        if (expectedH > 0.04 && actualH < expectedH * 0.45) {
+            MicroDroneMod.LOGGER.debug("[COLLISION_DETECTED] Side: {}, VehicleUUID: {}, Pos: [{}, {}, {}], ExpectedSpeed: {}, ActualSpeed: {}, CurrentSpeed: {}",
+                    this.level().isClientSide ? "CLIENT" : "SERVER", this.getUUID(),
+                    String.format("%.2f", this.getX()), String.format("%.2f", this.getY()), String.format("%.2f", this.getZ()),
+                    String.format("%.3f", expectedH), String.format("%.3f", actualH),
+                    String.format("%.3f", this.currentSpeed));
+        }
 
         // 接地摩擦
         if (this.onGround()) {

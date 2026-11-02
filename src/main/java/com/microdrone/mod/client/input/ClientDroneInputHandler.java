@@ -227,9 +227,19 @@ public class ClientDroneInputHandler {
     }
 
     private static int missingTicks = 0;
+    private static long lastClientTickTime = 0;
 
     @SubscribeEvent
     public void onClientTick(ClientTickEvent.Pre event) {
+        long now = System.currentTimeMillis();
+        if (isPiloting && lastClientTickTime > 0) {
+            long delta = now - lastClientTickTime;
+            if (delta > 50) {
+                MicroDroneMod.LOGGER.warn("[CLIENT_FRAME_TIME] Frame/Tick interval spike: {}ms (>50ms / <20fps) during RC piloting", delta);
+            }
+        }
+        lastClientTickTime = now;
+
         if (!isPiloting || activeDroneId == -1) return;
 
         Minecraft mc = Minecraft.getInstance();
