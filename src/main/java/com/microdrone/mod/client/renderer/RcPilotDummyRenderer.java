@@ -54,6 +54,17 @@ public class RcPilotDummyRenderer extends LivingEntityRenderer<RcPilotDummyEntit
 
     @Override
     public void render(RcPilotDummyEntity entity, float entityYaw, float partialTicks, PoseStack poseStack, MultiBufferSource buffer, int packedLight) {
+        Minecraft mc = Minecraft.getInstance();
+
+        // 操縦者自身が地上プロポ視点（GROUND）のときは、自分の目の前にある身代わり人形の描画を完全にスキップ（視界遮断防止）
+        if (com.microdrone.mod.client.input.ClientDroneInputHandler.isPiloting() &&
+                com.microdrone.mod.client.input.ClientDroneInputHandler.getCurrentViewMode() == com.microdrone.mod.client.controller.RcViewMode.GROUND) {
+            java.util.UUID ownerUuid = entity.getOwnerUUID();
+            if (ownerUuid != null && mc.player != null && ownerUuid.equals(mc.player.getUUID())) {
+                return;
+            }
+        }
+
         GameProfile profile = entity.getOwnerProfile();
         boolean isSlim = false;
         if (profile != null) {
@@ -65,6 +76,22 @@ public class RcPilotDummyRenderer extends LivingEntityRenderer<RcPilotDummyEntit
         this.model = isSlim ? this.slimModel : this.wideModel;
 
         super.render(entity, entityYaw, partialTicks, poseStack, buffer, packedLight);
+    }
+
+    @Override
+    protected void renderNameTag(RcPilotDummyEntity entity, net.minecraft.network.chat.Component displayName, PoseStack poseStack, MultiBufferSource buffer, int packedLight, float partialTick) {
+        Minecraft mc = Minecraft.getInstance();
+
+        // 地上プロポ視点時は自分自身の頭上ネームタグも非表示
+        if (com.microdrone.mod.client.input.ClientDroneInputHandler.isPiloting() &&
+                com.microdrone.mod.client.input.ClientDroneInputHandler.getCurrentViewMode() == com.microdrone.mod.client.controller.RcViewMode.GROUND) {
+            java.util.UUID ownerUuid = entity.getOwnerUUID();
+            if (ownerUuid != null && mc.player != null && ownerUuid.equals(mc.player.getUUID())) {
+                return;
+            }
+        }
+
+        super.renderNameTag(entity, displayName, poseStack, buffer, packedLight, partialTick);
     }
 
     @Override
@@ -85,3 +112,4 @@ public class RcPilotDummyRenderer extends LivingEntityRenderer<RcPilotDummyEntit
         this.model.leftSleeve.copyFrom(this.model.leftArm);
     }
 }
+
