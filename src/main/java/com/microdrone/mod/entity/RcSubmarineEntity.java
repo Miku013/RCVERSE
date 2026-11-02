@@ -357,10 +357,11 @@ public class RcSubmarineEntity extends Entity implements GeoEntity, RcControllab
             float targetDivePlane = -this.inputVertical * 25.0f;
             this.divePlaneAngle = Mth.rotLerp(0.30f, this.divePlaneAngle, targetDivePlane);
 
-            // ステアリング旋回（低速でも滑らかに旋回）
+            // ステアリング旋回（後退時は舵を切った向きへ後退）
             if (Math.abs(this.currentSpeed) > 0.003f || Math.abs(this.verticalSpeed) > 0.003f) {
                 float steerFactor = Math.max((float) (Math.abs(this.currentSpeed) / maxForwardSpeed), 0.35f);
-                float yawChange = (float) (-this.inputSteer * turnSpeed * steerFactor);
+                float dirSign = (this.currentSpeed >= 0 ? 1.0f : -1.0f);
+                float yawChange = (float) (-this.inputSteer * turnSpeed * steerFactor * dirSign);
                 this.setYRot(this.getYRot() + yawChange);
             }
 
@@ -373,7 +374,8 @@ public class RcSubmarineEntity extends Entity implements GeoEntity, RcControllab
             float targetPitch = (maxVerticalSpeed > 0.001) ? (float) (-(this.verticalSpeed / maxVerticalSpeed) * 15.0f) : 0.0f;
             this.pitchAngle = Mth.rotLerp(0.15f, this.pitchAngle, targetPitch);
 
-            float targetRoll = this.inputSteer * Math.min((float)(Math.abs(this.currentSpeed) / maxForwardSpeed) * 8.0f, 8.0f);
+            float dirSign = (this.currentSpeed >= 0 ? 1.0f : -1.0f);
+            float targetRoll = this.inputSteer * Math.min((float)(Math.abs(this.currentSpeed) / maxForwardSpeed) * 8.0f, 8.0f) * dirSign;
             this.rollAngle = Mth.rotLerp(0.12f, this.rollAngle, targetRoll);
 
             // === 4. 水中泡トレイルパーティクル ===

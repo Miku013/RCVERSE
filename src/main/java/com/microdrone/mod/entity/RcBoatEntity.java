@@ -335,10 +335,11 @@ public class RcBoatEntity extends Entity implements GeoEntity, RcControllable {
             float targetRudder = -this.inputSteer * 35.0f;
             this.rudderAngle = Mth.rotLerp(0.35f, this.rudderAngle, targetRudder);
 
-            // ステアリング旋回（速度に比例して舵が効く・低速でも滑らかに旋回）
+            // ステアリング旋回（速度に比例して舵が効く・後退時は舵を切った向きへ後退）
             if (Math.abs(this.currentSpeed) > 0.005f) {
                 float steerFactor = Math.min((float) (Math.abs(this.currentSpeed) / maxForwardSpeed), 1.0f);
-                float yawChange = (float) (-this.inputSteer * turnSpeed * steerFactor);
+                float dirSign = (this.currentSpeed >= 0 ? 1.0f : -1.0f);
+                float yawChange = (float) (-this.inputSteer * turnSpeed * steerFactor * dirSign);
                 this.setYRot(this.getYRot() + yawChange);
             }
 
@@ -352,8 +353,9 @@ public class RcBoatEntity extends Entity implements GeoEntity, RcControllable {
             vz *= 0.90;
 
             // === 3. 船体姿勢（ロール・ピッチ）===
-            // 旋回時のインサイドバンク（内傾斜）
-            float targetRoll = this.inputSteer * Math.min((float)(Math.abs(this.currentSpeed) / maxForwardSpeed) * 15.0f, 15.0f);
+            // 旋回時のインサイドバンク（内傾斜・後退時も旋回方向に追従）
+            float dirSign = (this.currentSpeed >= 0 ? 1.0f : -1.0f);
+            float targetRoll = this.inputSteer * Math.min((float)(Math.abs(this.currentSpeed) / maxForwardSpeed) * 15.0f, 15.0f) * dirSign;
             this.rollAngle = Mth.rotLerp(0.20f, this.rollAngle, targetRoll);
 
             // 高速滑走時の船首持ち上がり（プレーニング: Bow Rise ピッチ約 -4度〜-7.5度）
