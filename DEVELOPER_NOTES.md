@@ -258,10 +258,11 @@ Minecraft 1.21.1 (NeoForge) 向けの超リアル・高機能ラジコン MOD。
 ---
 
 ## 3. コース小物・設備システム（Phase 1: カラーコーン仮実装）
-- [x] **3×3グリッド配置土台ブロック (MiniaturePlacementBlock / MiniaturePlacementBlockEntity)**:
-  - 通常の1ブロック空間を 3×3（計9スロット）に分割管理する薄型ベースプレートブロック。
-  - 各スロットに配置データ（MiniaturePlacementData: slotId, miniatureId, yaw, scale）を保持・保存・同期。
-  - スロットごとに合成される動的複合当たり判定（VoxelShape）を実装（コーンがある場所は高さ約0.5mの物理判定、ない場所はフラット）。
+- [x] **5×5グリッド（最大25個）配置土台ブロック (MiniaturePlacementBlock / MiniaturePlacementBlockEntity)**:
+  - 通常の1ブロック空間を 5×5（計25スロット）に高密度化。
+  - RCカーとの対比サイズに合わせてカラーコーンの描画スケールを 1/2（0.165f: 幅約2.6px、高さ約3.5px）に縮小。
+  - 1ブロックの外枠（16×16px）からのコーン台座のはみ出しを完全に根絶し、外枠の内側に美しく収まるように微調整。
+  - スロットごとに合成される動的複合当たり判定（VoxelShape）も 1/2 サイズに連動。
 - [x] **カラーコーン（Traffic Cone）アイテム＆Blockbenchモデル連携**:
   - TrafficConeItem: 地面を右クリックするだけで土台ブロックが自動配置され、狙った位置（0〜8）に即座にコーンが立つ直感操作。
   - スニーク＋右クリックで 45度ずつ回転。
@@ -270,3 +271,4 @@ Minecraft 1.21.1 (NeoForge) 向けの超リアル・高機能ラジコン MOD。
 - [x] **GeckoLibモデル描画＆ゴーストプレビュー (MiniaturePlacementBlockEntityRenderer)**:
   - Blockbenchで作成された 	raffic_cone.geo.json およびテクスチャ 	raffic_cone.png をスロットごとに正確な位置・回転・縮尺（0.33倍スケール）で描画。
   - カラーコーンを手元に持っている際、視線の先にある空きスロットに半透明の配置ガイド（ゴーストプレビュー）を表示。
+
