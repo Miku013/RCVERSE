@@ -1,0 +1,144 @@
+package com.microdrone.mod.block.miniature;
+
+import com.microdrone.mod.item.ModItems;
+import com.mojang.serialization.MapCodec;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.ItemInteractionResult;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.BaseEntityBlock;
+import net.minecraft.world.level.block.RenderShape;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.VoxelShape;
+import org.jetbrains.annotations.Nullable;
+
+/**
+ * 1ブロック内に複数のコース小物を配置できる土台ブロック
+ */
+public class MiniaturePlacementBlock extends BaseEntityBlock {
+    public static final MapCodec<MiniaturePlacementBlock> CODEC = simpleCodec(MiniaturePlacementBlock::new);
+
+    public MiniaturePlacementBlock(Properties properties) {
+        super(properties);
+    }
+
+    @Override
+    protected MapCodec<? extends BaseEntityBlock> codec() {
+        return CODEC;
+    }
+
+    @Override
+    public RenderShape getRenderShape(BlockState state) {
+        return RenderShape.MODEL;
+    }
+
+    @Nullable
+    @Override
+    public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
+        return new MiniaturePlacementBlockEntity(pos, state);
+    }
+
+    @Override
+    public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+        BlockEntity be = level.getBlockEntity(pos);
+        if (be instanceof MiniaturePlacementBlockEntity placementBe) {
+            return placementBe.getCompositeShape();
+        }
+        return MiniaturePlacementBlockEntity.BASE_PLATE_SHAPE;
+    }
+
+    @Override
+    public VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+        return getShape(state, level, pos, context);
+    }
+
+    /**
+     * 手持ちアイテム使用時の処理（カラーコーン設置など）
+     */
+    @Override
+    protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
+        // カラーコーン所持時は専用アイテムクラス（TrafficConeItem）側で処理を優先
+        if (stack.getItem() instanceof TrafficConeItem) {
+            return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+        }
+
+        return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+    }
+
+    /**
+     * 素手または未処理アイテム時の処理（回転、撤去）
+     */
+    @Override
+    protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
+        BlockEntity be = level.getBlockEntity(pos);
+        if (!(be instanceof MiniaturePlacementBlockEntity placementBe)) {
+            return InteractionResult.PASS;
+        }
+
+        // クリックしたローカル座標からスロットIDを計算
+        double localX = hitResult.getLocation().x - pos.getX();
+        double localZ = hitResult.getLocation().z - pos.getZ();
+        int slotId = MiniaturePlacementData.getSlotFromHit(localX, localZ);
+
+        if (player.isShiftKeyDown()) {
+            // スニーク右クリック: スロットの小物を回転
+            if (placementBe.hasSlot(slotId)) {
+                if (!level.isClientSide) {
+                    placementBe.rotateMiniature(slotId, 45.0f);
+                    level.playSound(null, pos, SoundEvents.DISPENSER_DISPENSE, SoundSource.BLOCKS, 0.5f, 1.5f);
+                }
+                return InteractionResult.sidedSuccess(level.isClientSide);
+            }
+        } else {
+            // 素手右クリック（スニークなし）: スロットに小物があれば撤去してアイテムドロップ
+            if (player.getItemInHand(InteractionHand.MAIN_HAND).isEmpty() && placementBe.hasSlot(slotId)) {
+                if (!level.isClientSide) {
+                    MiniaturePlacementData removed = placementBe.removeMiniature(slotId);
+                    if (removed != null) {
+                        // カラーコーンをドロップ
+                        ItemStack drop = new ItemStack(ModItems.TRAFFIC_CONE.get());
+                        if (!player.getInventory().add(drop)) {
+                            player.drop(drop, false);
+                        }
+                        level.playSound(null, pos, SoundEvents.LANTERN_BREAK, SoundSource.BLOCKS, 0.8f, 1.2f);
+
+                        // 全スロットが空になった場合、土台ブロック自体も消去
+                        if (placementBe.getSlotCount() == 0) {
+                            level.removeBlock(pos, false);
+                        }
+                    }
+                }
+                return InteractionResult.sidedSuccess(level.isClientSide);
+            }
+        }
+
+        return InteractionResult.PASS;
+    }
+
+    /**
+     * ブロック撤去時: 中に入っている全小物をドロップ
+     */
+    @Override
+    public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean isMoving) {
+        if (!state.is(newState.getBlock())) {
+            BlockEntity be = level.getBlockEntity(pos);
+            if (be instanceof MiniaturePlacementBlockEntity placementBe && !level.isClientSide) {
+                for (MiniaturePlacementData slot : placementBe.getAllSlots()) {
+                    ItemStack drop = new ItemStack(ModItems.TRAFFIC_CONE.get());
+                    popResource(level, pos, drop);
+                }
+            }
+            super.onRemove(state, level, pos, newState, isMoving);
+        }
+    }
+}

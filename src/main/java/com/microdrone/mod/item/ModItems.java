@@ -42,6 +42,13 @@ public class ModItems {
     public static final DeferredHolder<Item, BlockItem> TEST_PIVOT_ITEM =
             ITEMS.register("test_pivot", () -> new BlockItem(ModBlocks.TEST_PIVOT.get(), new Item.Properties()));
 
+    // === コース小物・設備システム (Phase 1: カラーコーン) ===
+    public static final DeferredHolder<Item, com.microdrone.mod.block.miniature.TrafficConeItem> TRAFFIC_CONE =
+            ITEMS.register("traffic_cone", () -> new com.microdrone.mod.block.miniature.TrafficConeItem(new Item.Properties().stacksTo(64)));
+
+    public static final DeferredHolder<Item, BlockItem> MINIATURE_PLACEMENT_ITEM =
+            ITEMS.register("miniature_placement", () -> new BlockItem(ModBlocks.MINIATURE_PLACEMENT.get(), new Item.Properties()));
+
     // === 4段階の航続距離バッテリーアイテム (Step 5) ===
     public static final DeferredHolder<Item, DroneBatteryItem> BATTERY_TIER_1 =
             ITEMS.register("battery_tier_1", () -> new DroneBatteryItem(new Item.Properties().stacksTo(1), 3000));

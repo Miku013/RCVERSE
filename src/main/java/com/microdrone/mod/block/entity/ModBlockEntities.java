@@ -20,6 +20,10 @@ public class ModBlockEntities {
             BLOCK_ENTITIES.register("test_pivot",
                     () -> BlockEntityType.Builder.of(TestPivotBlockEntity::new, ModBlocks.TEST_PIVOT.get()).build(null));
 
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<com.microdrone.mod.block.miniature.MiniaturePlacementBlockEntity>> MINIATURE_PLACEMENT_BE =
+            BLOCK_ENTITIES.register("miniature_placement",
+                    () -> BlockEntityType.Builder.of(com.microdrone.mod.block.miniature.MiniaturePlacementBlockEntity::new, ModBlocks.MINIATURE_PLACEMENT.get()).build(null));
+
     public static void register(IEventBus eventBus) {
         BLOCK_ENTITIES.register(eventBus);
     }

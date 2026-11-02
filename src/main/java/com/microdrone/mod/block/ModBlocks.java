@@ -25,6 +25,13 @@ public class ModBlocks {
                     .strength(1.5f)
                     .noOcclusion()));
 
+    // コース小物配置土台ブロック（薄型ベースプレート）
+    public static final DeferredBlock<com.microdrone.mod.block.miniature.MiniaturePlacementBlock> MINIATURE_PLACEMENT = BLOCKS.register("miniature_placement",
+            () -> new com.microdrone.mod.block.miniature.MiniaturePlacementBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_GRAY)
+                    .strength(0.5f)
+                    .noOcclusion()));
+
     public static void register(IEventBus eventBus) {
         BLOCKS.register(eventBus);
     }

@@ -28,6 +28,8 @@ public class ModCreativeTabs {
                         output.accept(ModItems.DRONE_CONTROLLER.get());
                         output.accept(ModItems.DRONE_CHARGER_ITEM.get());
                         output.accept(ModItems.TEST_PIVOT_ITEM.get());
+                        output.accept(ModItems.TRAFFIC_CONE.get());
+                        output.accept(ModItems.MINIATURE_PLACEMENT_ITEM.get());
 
                         // バッテリー
                         output.accept(ModItems.BATTERY_TIER_1.get());
