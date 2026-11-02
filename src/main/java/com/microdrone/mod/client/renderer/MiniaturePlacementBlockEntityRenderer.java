@@ -27,6 +27,16 @@ public class MiniaturePlacementBlockEntityRenderer extends GeoBlockRenderer<Mini
         super(new TrafficConeModel());
     }
 
+    /**
+     * GeoBlockRenderer デフォルトの (0.5, 0, 0.5) への自動移動をオーバーライドしてキャンセル。
+     * これにより、スロットごとのローカルオフセットと当たり判定枠（VoxelShape）が 100% 狂いなく一致する。
+     */
+    @Override
+    public void preRender(PoseStack poseStack, MiniaturePlacementBlockEntity animatable, BakedGeoModel model, MultiBufferSource bufferSource, VertexConsumer buffer, boolean isReRender, float partialTick, int packedLight, int packedOverlay, int colour) {
+        this.blockRenderTranslations = new org.joml.Matrix4f(poseStack.last().pose());
+        scaleModelForRender(this.scaleWidth, this.scaleHeight, poseStack, animatable, model, isReRender, partialTick, packedLight, packedOverlay);
+    }
+
     @Override
     public void render(MiniaturePlacementBlockEntity entity, float partialTick, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight, int packedOverlay) {
         this.animatable = entity;
