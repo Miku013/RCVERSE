@@ -33,10 +33,11 @@ public class MiniaturePlacementBlockEntity extends BlockEntity implements GeoBlo
     private final Map<Integer, MiniaturePlacementData> slots = new HashMap<>();
 
     // 動的当たり判定キャッシュ
-    private VoxelShape cachedShape = null;
+    private VoxelShape cachedOutlineShape = null;
+    private VoxelShape cachedCollisionShape = null;
 
-    // 基本の土台プレート形状（高さ1ピクセル: 1/16 = 0.0625）
-    public static final VoxelShape BASE_PLATE_SHAPE = Block.box(0, 0, 0, 16, 1, 16);
+    // 視線選択用（RayTrace用）の極薄シート形状 (厚さ 0.05ピクセル: ほぼフラット)
+    public static final VoxelShape BASE_PLATE_OUTLINE_SHAPE = Block.box(0, 0, 0, 16, 0.05, 16);
 
     public MiniaturePlacementBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.MINIATURE_PLACEMENT_BE.get(), pos, state);
@@ -113,31 +114,57 @@ public class MiniaturePlacementBlockEntity extends BlockEntity implements GeoBlo
     }
 
     /**
-     * 配置されている全小物の合成当たり判定を取得
+     * 視線選択用（RayTrace用）の枠形状を取得
      */
-    public VoxelShape getCompositeShape() {
-        if (cachedShape == null) {
-            VoxelShape shape = BASE_PLATE_SHAPE;
+    public VoxelShape getOutlineShape() {
+        if (cachedOutlineShape == null) {
+            VoxelShape shape = BASE_PLATE_OUTLINE_SHAPE;
             for (MiniaturePlacementData data : slots.values()) {
                 MiniatureType type = MiniatureType.getById(data.getMiniatureId());
                 if (type != null) {
                     float cx = data.getXOffset() * 16.0f; // 0〜16ピクセル単位
                     float cz = data.getZOffset() * 16.0f;
-                    // 1/2サイズコーンの当たり判定: 幅約2.8px (半径1.4px)、高さ4px (Y=1.0〜5.0)
+                    // 地面接地(Y=0.0)のコーン当たり判定: 幅約2.8px (半径1.4px)、高さ4px (Y=0.0〜4.0)
                     VoxelShape coneBox = Block.box(
-                            Math.max(0, cx - 1.4), 1.0, Math.max(0, cz - 1.4),
-                            Math.min(16, cx + 1.4), 5.0, Math.min(16, cz + 1.4)
+                            Math.max(0, cx - 1.4), 0.0, Math.max(0, cz - 1.4),
+                            Math.min(16, cx + 1.4), 4.0, Math.min(16, cz + 1.4)
                     );
                     shape = Shapes.or(shape, coneBox);
                 }
             }
-            cachedShape = shape.optimize();
+            cachedOutlineShape = shape.optimize();
         }
-        return cachedShape;
+        return cachedOutlineShape;
+    }
+
+    /**
+     * 物理衝突判定用（RCカー走行用）の形状を取得
+     * ベースプレートの物理厚みは完全ゼロ（段差なし）で、コーン部分のみ衝突判定を持つ
+     */
+    public VoxelShape getCollisionShape() {
+        if (cachedCollisionShape == null) {
+            VoxelShape shape = Shapes.empty();
+            for (MiniaturePlacementData data : slots.values()) {
+                MiniatureType type = MiniatureType.getById(data.getMiniatureId());
+                if (type != null) {
+                    float cx = data.getXOffset() * 16.0f;
+                    float cz = data.getZOffset() * 16.0f;
+                    // 地面接地(Y=0.0)のコーン物理当たり判定
+                    VoxelShape coneBox = Block.box(
+                            Math.max(0, cx - 1.4), 0.0, Math.max(0, cz - 1.4),
+                            Math.min(16, cx + 1.4), 4.0, Math.min(16, cz + 1.4)
+                    );
+                    shape = Shapes.or(shape, coneBox);
+                }
+            }
+            cachedCollisionShape = shape.optimize();
+        }
+        return cachedCollisionShape;
     }
 
     private void invalidateShape() {
-        this.cachedShape = null;
+        this.cachedOutlineShape = null;
+        this.cachedCollisionShape = null;
     }
 
     // === NBT 保存 & 同期 ===

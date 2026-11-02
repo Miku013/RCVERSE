@@ -52,14 +52,18 @@ public class MiniaturePlacementBlock extends BaseEntityBlock {
     public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
         BlockEntity be = level.getBlockEntity(pos);
         if (be instanceof MiniaturePlacementBlockEntity placementBe) {
-            return placementBe.getCompositeShape();
+            return placementBe.getOutlineShape();
         }
-        return MiniaturePlacementBlockEntity.BASE_PLATE_SHAPE;
+        return MiniaturePlacementBlockEntity.BASE_PLATE_OUTLINE_SHAPE;
     }
 
     @Override
     public VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-        return getShape(state, level, pos, context);
+        BlockEntity be = level.getBlockEntity(pos);
+        if (be instanceof MiniaturePlacementBlockEntity placementBe) {
+            return placementBe.getCollisionShape();
+        }
+        return net.minecraft.world.phys.shapes.Shapes.empty();
     }
 
     /**

@@ -45,8 +45,8 @@ public class MiniaturePlacementBlockEntityRenderer extends GeoBlockRenderer<Mini
         for (MiniaturePlacementData slot : entity.getAllSlots()) {
             poseStack.pushPose();
 
-            // スロット位置（X, Z）へ移動。Yは土台プレート(1px = 0.0625m)の上
-            poseStack.translate(slot.getXOffset(), 0.0625f, slot.getZOffset());
+            // スロット位置（X, Z）へ移動。Y=0.0f で地面に完全フラット接地
+            poseStack.translate(slot.getXOffset(), 0.0f, slot.getZOffset());
 
             // 向き（Y軸回転）
             poseStack.mulPose(Axis.YP.rotationDegrees(180f - slot.getYaw()));
@@ -91,7 +91,7 @@ public class MiniaturePlacementBlockEntityRenderer extends GeoBlockRenderer<Mini
 
                 float gx = MiniaturePlacementData.getSlotCenterX(hoverSlotId);
                 float gz = MiniaturePlacementData.getSlotCenterZ(hoverSlotId);
-                poseStack.translate(gx, 0.0625f, gz);
+                poseStack.translate(gx, 0.0f, gz);
 
                 // プレイヤーの視線角度にスナップ
                 float yaw = player.getYRot();
