@@ -3,7 +3,7 @@
 **最終更新日**: 2026-11-02  
 **対象環境**: Minecraft 1.21.1 / NeoForge 21.1.244 / GeckoLib 4.7.7  
 **対象ディレクトリ**: `micro_drone_mod`  
-**ステータス**: 【コース小物・設備システム 枠ズレ根本解決完了】GeoBlockRendererのデフォルト preRender が自動適用していた (0.5, 0, 0.5) のブロック中心オフセットをオーバーライドにより完全キャンセル！5×5グリッドの各スロット座標と選択・当たり判定枠（VoxelShape）が1ピクセルも狂わず100%完全合致。ビルド成功。
+**ステータス**: 【コース小物・設備システム 土台の厚みゼロ（完全フラット接地）完了】土台ベースプレートの厚みを完全ゼロ（地面直付け）に改修！物理衝突判定（getCollisionShape）から土台プレートを除去し、コーン本体部分のみ物理判定化。RCカー走行時の1px段差跳ねが100%消失し、コーン底面も芝生・道路に完全接地。ビルド成功。
 
 ---
 
@@ -277,3 +277,8 @@ Minecraft 1.21.1 (NeoForge) 向けの超リアル・高機能ラジコン MOD。
     - GeckoLib の GeoBlockRenderer.preRender は、一般的な単一ブロック向けに内部で自動的に poseStack.translate(0.5, 0, 0.5) を実行する仕様。
     - 我々がスロット座標 (slot.getXOffset(), slot.getZOffset()) に移動させた後に GeckoLib がさらに +0.5, +0.5 加算していたため、黒い当たり判定枠（VoxelShape）に対してモデル描画が斜め右下に 0.5 ブロック分ズレていた現象を特定。
     - MiniaturePlacementBlockEntityRenderer.preRender をオーバーライドしてこの自動加算をバイパス（キャンセル）することで、黒い選択枠・当たり判定ボックスとカラーコーンの描画位置が 100% 完全一致！
+
+  - **土台の厚みゼロ化（完全フラット接地）**:
+    - MiniaturePlacementBlock.getCollisionShape: 土台プレートの物理厚みを完全ゼロ（Shapes.empty()）化。RCカーが走行する際、1ピクセルの段差で跳ねたり引っかかる現象を根絶。コーンがある部分のみ衝突判定（Y=0.0〜4.0px）を適用。
+    - MiniaturePlacementBlock.getOutlineShape: プレイヤーが視線を合わせたときの選択・レイキャスト用枠は厚さ 0.05px の極薄シート＋コーン形状とし、空きマスへの追加設置や撤去の操作性を確保。
+    - MiniaturePlacementBlockEntityRenderer: 描画Yオフセットを  .0625f から  .0f に変更し、コーンの底面が地面にピッタリ接地。
