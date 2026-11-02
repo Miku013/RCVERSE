@@ -1,9 +1,9 @@
-# Micro Drone MOD - 開発引き継ぎノート (DEVELOPER_NOTES.md)
+﻿# Micro Drone MOD - 開発引き継ぎノート (DEVELOPER_NOTES.md)
 
 **最終更新日**: 2026-11-02  
 **対象環境**: Minecraft 1.21.1 / NeoForge 21.1.244 / GeckoLib 4.7.7  
 **対象ディレクトリ**: `micro_drone_mod`  
-**ステータス**: 【地上プロポ視点時の身代わり人形描画スキップ完了】地上プロポ視点（GROUND）時に操縦者本人の画面で身代わり人形の頭部やネームタグが視界を覆ってしまう問題を、レンダラーレベルでの完全スキップにより根絶！マルチプレイの他者視点では忠実に表示。ビルド成功。  
+**ステータス**: 【コース小物・設備システム Phase 1 (カラーコーン仮実装) 完了】1ブロック内3×3グリッド（最大9個）の小物配置基盤システムを完全実装！土台ブロック（MiniaturePlacementBlock）、BlockEntity、カラーコーンアイテム（TrafficConeItem）、3D描画（TrafficConeModel/MiniaturePlacementBlockEntityRenderer）、半透明ゴーストプレビュー、複合当たり判定（VoxelShape）、回転・撤去機能を完備。ビルド成功。
 
 ---
 
@@ -252,3 +252,21 @@ Minecraft 1.21.1 (NeoForge) 向けの超リアル・高機能ラジコン MOD。
     - 880行以上の巨大ファイルから、セッション管理・イベント購読・入力足止め・ダミー人形非表示に特化した約270行の共通マネージャーへスリム化。
     - 相互干渉・競合リスクが物理的にゼロとなり、新機体追加時もコントローラーを追加するだけで共存可能に。
   - コンパイル・JARビルド成功。
+
+
+
+---
+
+## 3. コース小物・設備システム（Phase 1: カラーコーン仮実装）
+- [x] **3×3グリッド配置土台ブロック (MiniaturePlacementBlock / MiniaturePlacementBlockEntity)**:
+  - 通常の1ブロック空間を 3×3（計9スロット）に分割管理する薄型ベースプレートブロック。
+  - 各スロットに配置データ（MiniaturePlacementData: slotId, miniatureId, yaw, scale）を保持・保存・同期。
+  - スロットごとに合成される動的複合当たり判定（VoxelShape）を実装（コーンがある場所は高さ約0.5mの物理判定、ない場所はフラット）。
+- [x] **カラーコーン（Traffic Cone）アイテム＆Blockbenchモデル連携**:
+  - TrafficConeItem: 地面を右クリックするだけで土台ブロックが自動配置され、狙った位置（0〜8）に即座にコーンが立つ直感操作。
+  - スニーク＋右クリックで 45度ずつ回転。
+  - 素手右クリックで狙ったコーンを撤去・アイテム回収（全スロット撤去で土台も自動消去）。
+  - ブロック破壊時にも内部の全コーンを安全にアイテムドロップ。
+- [x] **GeckoLibモデル描画＆ゴーストプレビュー (MiniaturePlacementBlockEntityRenderer)**:
+  - Blockbenchで作成された 	raffic_cone.geo.json およびテクスチャ 	raffic_cone.png をスロットごとに正確な位置・回転・縮尺（0.33倍スケール）で描画。
+  - カラーコーンを手元に持っている際、視線の先にある空きスロットに半透明の配置ガイド（ゴーストプレビュー）を表示。
