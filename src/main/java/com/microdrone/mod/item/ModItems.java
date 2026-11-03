@@ -42,9 +42,29 @@ public class ModItems {
     public static final DeferredHolder<Item, BlockItem> TEST_PIVOT_ITEM =
             ITEMS.register("test_pivot", () -> new BlockItem(ModBlocks.TEST_PIVOT.get(), new Item.Properties()));
 
-    // === コース小物・設備システム (Phase 1: カラーコーン) ===
+    // === コース小物・設備システム (Phase 1: カラーコーン ＆ Phase 2: 縁石・ガードレール・タイヤバリア) ===
     public static final DeferredHolder<Item, com.microdrone.mod.block.miniature.TrafficConeItem> TRAFFIC_CONE =
             ITEMS.register("traffic_cone", () -> new com.microdrone.mod.block.miniature.TrafficConeItem(new Item.Properties().stacksTo(64)));
+
+    public static final DeferredHolder<Item, com.microdrone.mod.block.miniature.MiniatureItem> RACING_CURB =
+            ITEMS.register("racing_curb", () -> new com.microdrone.mod.block.miniature.MiniatureItem(new Item.Properties().stacksTo(64), "racing_curb"));
+
+    public static final DeferredHolder<Item, com.microdrone.mod.block.miniature.MiniatureItem> CURB_STONE =
+            ITEMS.register("curb_stone", () -> new com.microdrone.mod.block.miniature.MiniatureItem(new Item.Properties().stacksTo(64), "curb_stone"));
+
+    public static final DeferredHolder<Item, com.microdrone.mod.block.miniature.MiniatureItem> GUARDRAIL =
+            ITEMS.register("guardrail", () -> new com.microdrone.mod.block.miniature.MiniatureItem(new Item.Properties().stacksTo(64), "guardrail"));
+
+    public static final DeferredHolder<Item, com.microdrone.mod.block.miniature.MiniatureItem> TIRE_BARRIER =
+            ITEMS.register("tire_barrier", () -> new com.microdrone.mod.block.miniature.MiniatureItem(new Item.Properties().stacksTo(64), "tire_barrier"));
+
+    public static Item getItemForMiniature(String id) {
+        if ("racing_curb".equals(id)) return RACING_CURB.get();
+        if ("curb_stone".equals(id)) return CURB_STONE.get();
+        if ("guardrail".equals(id)) return GUARDRAIL.get();
+        if ("tire_barrier".equals(id)) return TIRE_BARRIER.get();
+        return TRAFFIC_CONE.get();
+    }
 
     public static final DeferredHolder<Item, BlockItem> MINIATURE_PLACEMENT_ITEM =
             ITEMS.register("miniature_placement", () -> new BlockItem(ModBlocks.MINIATURE_PLACEMENT.get(), new Item.Properties()));

@@ -71,6 +71,12 @@ public class MiniaturePlacementBlockEntity extends BlockEntity implements GeoBlo
 
         MiniaturePlacementData data = new MiniaturePlacementData(slotId, miniatureId, yaw, scale);
         slots.put(slotId, data);
+
+        // autoAlign 有効時は周囲の仲間の角度も再計算して滑らかに連結
+        if (type != null && type.isAutoAlign()) {
+            updateNeighborAutoAlign(slotId, miniatureId);
+        }
+
         invalidateShape();
         setChanged();
 
@@ -78,6 +84,89 @@ public class MiniaturePlacementBlockEntity extends BlockEntity implements GeoBlo
             level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
         }
         return true;
+    }
+
+    /**
+     * 周囲の同種小物を探索し、接続角度（Yaw）を自動算出
+     */
+    public Float calculateAutoAlignYaw(int slotId, String miniatureId) {
+        int curCol = slotId % MiniaturePlacementData.GRID_SIZE;
+        int curRow = slotId / MiniaturePlacementData.GRID_SIZE;
+
+        // 同じブロック内の同種小物を距離順に収集
+        java.util.List<double[]> neighbors = new java.util.ArrayList<>();
+        for (MiniaturePlacementData other : slots.values()) {
+            if (other.getSlotId() == slotId) continue;
+            if (!other.getMiniatureId().equals(miniatureId)) continue;
+
+            int oCol = other.getSlotId() % MiniaturePlacementData.GRID_SIZE;
+            int oRow = other.getSlotId() / MiniaturePlacementData.GRID_SIZE;
+            double dx = oCol - curCol;
+            double dz = oRow - curRow;
+            double distSq = dx * dx + dz * dz;
+
+            // 探索範囲: 距離4マス以内 (1マス間隔や桂馬飛びも余裕でカバー)
+            if (distSq <= 16.0) {
+                neighbors.add(new double[]{dx, dz, distSq});
+            }
+        }
+
+        if (neighbors.isEmpty()) {
+            return null;
+        }
+
+        // 距離が近い順にソート
+        neighbors.sort(java.util.Comparator.comparingDouble(a -> a[2]));
+
+        if (neighbors.size() == 1) {
+            // 仲間が1つの場合: その仲間との接続方向へ向ける
+            double dx = neighbors.get(0)[0];
+            double dz = neighbors.get(0)[1];
+            double angleDeg = Math.toDegrees(Math.atan2(dz, dx));
+            return (float) -angleDeg;
+        } else {
+            // 仲間が2つ以上の場合: 前後の2点からカーブ接線（平均進行ベクトル）を算出
+            double dx1 = neighbors.get(0)[0];
+            double dz1 = neighbors.get(0)[1];
+            double dx2 = neighbors.get(1)[0];
+            double dz2 = neighbors.get(1)[1];
+
+            // 2つのベクトルが逆方向を向くように調整して滑らかな接線ベクトルを求める
+            double dot = dx1 * dx2 + dz1 * dz2;
+            if (dot > 0) {
+                // 同じ方向を向いている場合は外積や差分を考慮
+                dx2 = -dx2;
+                dz2 = -dz2;
+            }
+            double tangentX = dx1 - dx2;
+            double tangentZ = dz1 - dz2;
+            double angleDeg = Math.toDegrees(Math.atan2(tangentZ, tangentX));
+            return (float) -angleDeg;
+        }
+    }
+
+    /**
+     * 新しく小物が置かれた際、近隣の同種小物の角度も再計算して自然な曲線に更新
+     */
+    private void updateNeighborAutoAlign(int placedSlotId, String miniatureId) {
+        int curCol = placedSlotId % MiniaturePlacementData.GRID_SIZE;
+        int curRow = placedSlotId / MiniaturePlacementData.GRID_SIZE;
+
+        for (MiniaturePlacementData other : slots.values()) {
+            if (other.getSlotId() == placedSlotId) continue;
+            if (!other.getMiniatureId().equals(miniatureId)) continue;
+
+            int oCol = other.getSlotId() % MiniaturePlacementData.GRID_SIZE;
+            int oRow = other.getSlotId() / MiniaturePlacementData.GRID_SIZE;
+            double distSq = (oCol - curCol) * (oCol - curCol) + (oRow - curRow) * (oRow - curRow);
+
+            if (distSq <= 9.0) { // 半径3マス以内
+                Float newYaw = calculateAutoAlignYaw(other.getSlotId(), miniatureId);
+                if (newYaw != null) {
+                    other.setYaw(newYaw);
+                }
+            }
+        }
     }
 
     /**

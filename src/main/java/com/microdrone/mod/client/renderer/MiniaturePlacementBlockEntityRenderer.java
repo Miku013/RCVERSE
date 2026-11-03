@@ -1,9 +1,10 @@
 package com.microdrone.mod.client.renderer;
 
+import com.microdrone.mod.block.miniature.MiniatureItem;
 import com.microdrone.mod.block.miniature.MiniaturePlacementBlockEntity;
 import com.microdrone.mod.block.miniature.MiniaturePlacementData;
-import com.microdrone.mod.block.miniature.TrafficConeItem;
-import com.microdrone.mod.client.model.TrafficConeModel;
+import com.microdrone.mod.block.miniature.MiniatureType;
+import com.microdrone.mod.client.model.GenericMiniatureModel;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
@@ -12,19 +13,21 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import software.bernie.geckolib.cache.object.BakedGeoModel;
 import software.bernie.geckolib.renderer.GeoBlockRenderer;
 
 /**
- * 1ブロック内の全スロットのコース小物を描画するレンダラー
- * 手持ちカラーコーン時のゴーストプレビュー（半透明配置ガイド）にも対応
+ * 1ブロック内の全スロットのコース小物を動的描画するレンダラー
+ * カラーコーン、縁石、ガードレール、タイヤバリアなど複数種の同時混在描画に対応
+ * 手持ちアイテムに応じた半透明ゴーストプレビュー（オートアングル角度対応）
  */
 public class MiniaturePlacementBlockEntityRenderer extends GeoBlockRenderer<MiniaturePlacementBlockEntity> {
 
     public MiniaturePlacementBlockEntityRenderer(BlockEntityRendererProvider.Context context) {
-        super(new TrafficConeModel());
+        super(new GenericMiniatureModel());
     }
 
     /**
@@ -40,9 +43,15 @@ public class MiniaturePlacementBlockEntityRenderer extends GeoBlockRenderer<Mini
     @Override
     public void render(MiniaturePlacementBlockEntity entity, float partialTick, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight, int packedOverlay) {
         this.animatable = entity;
+        GenericMiniatureModel genericModel = (GenericMiniatureModel) this.model;
 
-        // 1. 設置済みの小物を全スロット描画
+        // 1. 設置済みの小物を全スロット描画（スロットごとにモデルとテクスチャを動的切り替え）
         for (MiniaturePlacementData slot : entity.getAllSlots()) {
+            MiniatureType type = MiniatureType.getById(slot.getMiniatureId());
+            if (type == null) continue;
+
+            genericModel.setMiniatureType(type);
+
             poseStack.pushPose();
 
             // スロット位置（X, Z）へ移動。Y=0.0f で地面に完全フラット接地
@@ -61,22 +70,29 @@ public class MiniaturePlacementBlockEntityRenderer extends GeoBlockRenderer<Mini
             poseStack.popPose();
         }
 
-        // 2. ゴーストプレビュー描画（プレイヤーがカラーコーンを持っている場合）
+        // 2. ゴーストプレビュー描画（プレイヤーがコース小物を持っている場合）
         renderGhostPreview(entity, partialTick, poseStack, bufferSource, packedLight);
     }
 
     /**
-     * 手持ちアイテムがカラーコーンの際、視線が指している空きスロットに半透明プレビューを表示
+     * 手持ちアイテムがコース小物の際、視線が指している空きスロットに半透明プレビューを表示
      */
     private void renderGhostPreview(MiniaturePlacementBlockEntity entity, float partialTick, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
         Minecraft mc = Minecraft.getInstance();
         Player player = mc.player;
         if (player == null) return;
 
-        // 手持ちアイテムが TrafficConeItem かチェック
-        boolean holdingCone = player.getMainHandItem().getItem() instanceof TrafficConeItem ||
-                player.getOffhandItem().getItem() instanceof TrafficConeItem;
-        if (!holdingCone) return;
+        // 手持ちアイテムから MiniatureItem を特定
+        ItemStack heldStack = player.getMainHandItem();
+        if (!(heldStack.getItem() instanceof MiniatureItem)) {
+            heldStack = player.getOffhandItem();
+            if (!(heldStack.getItem() instanceof MiniatureItem)) {
+                return;
+            }
+        }
+        MiniatureItem minItem = (MiniatureItem) heldStack.getItem();
+        MiniatureType type = MiniatureType.getById(minItem.getMiniatureId());
+        if (type == null) return;
 
         // 視線が当たっているブロックがこのBlockEntityかチェック
         HitResult hit = mc.hitResult;
@@ -87,23 +103,32 @@ public class MiniaturePlacementBlockEntityRenderer extends GeoBlockRenderer<Mini
 
             // 空きスロットであれば半透明ゴーストを描画
             if (!entity.hasSlot(hoverSlotId)) {
+                GenericMiniatureModel genericModel = (GenericMiniatureModel) this.model;
+                genericModel.setMiniatureType(type);
+
                 poseStack.pushPose();
 
                 float gx = MiniaturePlacementData.getSlotCenterX(hoverSlotId);
                 float gz = MiniaturePlacementData.getSlotCenterZ(hoverSlotId);
                 poseStack.translate(gx, 0.0f, gz);
 
-                // プレイヤーの視線角度にスナップ
-                float yaw = player.getYRot();
-                float snappedYaw = Math.round(yaw / 45.0f) * 45.0f;
-                poseStack.mulPose(Axis.YP.rotationDegrees(180f - snappedYaw));
+                // 向きの算出: autoAlign 対応の場合は接続角度をリアルタイムプレビュー
+                float yaw;
+                Float autoYaw = type.isAutoAlign() ? entity.calculateAutoAlignYaw(hoverSlotId, type.getId()) : null;
+                if (autoYaw != null) {
+                    yaw = autoYaw;
+                } else {
+                    float playerYaw = player.getYRot();
+                    yaw = Math.round(playerYaw / 45.0f) * 45.0f;
+                }
+                poseStack.mulPose(Axis.YP.rotationDegrees(180f - yaw));
 
-                // スケール (1/2サイズ)
-                float ghostScale = MiniaturePlacementData.DEFAULT_CONE_SCALE;
+                // スケール
+                float ghostScale = type.getDefaultScale();
                 poseStack.scale(ghostScale, ghostScale, ghostScale);
 
                 // 半透明 RenderType でゴースト描画
-                RenderType ghostRenderType = RenderType.entityTranslucentCull(getTextureLocation(entity));
+                RenderType ghostRenderType = RenderType.entityTranslucentCull(type.getTextureLocation());
                 defaultRender(poseStack, entity, bufferSource, ghostRenderType, null, 0, partialTick, packedLight);
 
                 poseStack.popPose();
@@ -111,4 +136,3 @@ public class MiniaturePlacementBlockEntityRenderer extends GeoBlockRenderer<Mini
         }
     }
 }
-

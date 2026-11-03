@@ -71,8 +71,8 @@ public class MiniaturePlacementBlock extends BaseEntityBlock {
      */
     @Override
     protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
-        // カラーコーン所持時は専用アイテムクラス（TrafficConeItem）側で処理を優先
-        if (stack.getItem() instanceof TrafficConeItem) {
+        // コース小物所持時はアイテムクラス（MiniatureItem）側で処理を優先
+        if (stack.getItem() instanceof MiniatureItem) {
             return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
         }
 
@@ -109,8 +109,8 @@ public class MiniaturePlacementBlock extends BaseEntityBlock {
                 if (!level.isClientSide) {
                     MiniaturePlacementData removed = placementBe.removeMiniature(slotId);
                     if (removed != null) {
-                        // カラーコーンをドロップ
-                        ItemStack drop = new ItemStack(ModItems.TRAFFIC_CONE.get());
+                        // 該当のコース小物をドロップ
+                        ItemStack drop = new ItemStack(ModItems.getItemForMiniature(removed.getMiniatureId()));
                         if (!player.getInventory().add(drop)) {
                             player.drop(drop, false);
                         }
@@ -138,7 +138,7 @@ public class MiniaturePlacementBlock extends BaseEntityBlock {
             BlockEntity be = level.getBlockEntity(pos);
             if (be instanceof MiniaturePlacementBlockEntity placementBe && !level.isClientSide) {
                 for (MiniaturePlacementData slot : placementBe.getAllSlots()) {
-                    ItemStack drop = new ItemStack(ModItems.TRAFFIC_CONE.get());
+                    ItemStack drop = new ItemStack(ModItems.getItemForMiniature(slot.getMiniatureId()));
                     popResource(level, pos, drop);
                 }
             }

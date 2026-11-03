@@ -29,6 +29,10 @@ public class ModCreativeTabs {
                         output.accept(ModItems.DRONE_CHARGER_ITEM.get());
                         output.accept(ModItems.TEST_PIVOT_ITEM.get());
                         output.accept(ModItems.TRAFFIC_CONE.get());
+                        output.accept(ModItems.RACING_CURB.get());
+                        output.accept(ModItems.CURB_STONE.get());
+                        output.accept(ModItems.GUARDRAIL.get());
+                        output.accept(ModItems.TIRE_BARRIER.get());
                         output.accept(ModItems.MINIATURE_PLACEMENT_ITEM.get());
 
                         // バッテリー
