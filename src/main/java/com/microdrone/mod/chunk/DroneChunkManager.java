@@ -26,9 +26,13 @@ public class DroneChunkManager {
     private static final Map<UUID, Set<ChunkPos>> LOADED_CHUNKS = new ConcurrentHashMap<>();
     // ドローンUUID -> 前回のチャンクキャッシュ中心
     private static final Map<UUID, ChunkPos> LAST_CENTER_POS = new ConcurrentHashMap<>();
+    // ドローンUUID -> 前回の中心チャンク変更時刻 (System.currentTimeMillis)
+    private static final Map<UUID, Long> LAST_CENTER_UPDATE_TIME = new ConcurrentHashMap<>();
 
     // 読み込み目標半径（半径2チャンク = 5x5 = 25チャンク。前後左右約32〜40mの視界確保）
     public static final int CHUNK_RADIUS = 2;
+    // 境界往復時のチャタリング防止用クールダウン（1500ms = 1.5秒）
+    public static final long CHUNK_HYSTERESIS_COOLDOWN_MS = 1500;
 
     /**
      * ドローン周辺のチャンクを更新（ロード・クライアント配信・外れたチャンクの解放）
@@ -39,10 +43,52 @@ public class DroneChunkManager {
         }
 
         UUID droneUUID = drone.getUUID();
-        ChunkPos centerPos = new ChunkPos(drone.blockPosition());
+        ChunkPos currentVehicleChunk = new ChunkPos(drone.blockPosition());
+        ChunkPos prevCenter = LAST_CENTER_POS.get(droneUUID);
+        long now = System.currentTimeMillis();
+
+        ChunkPos centerPos;
+        boolean centerChanged = false;
+
+        if (prevCenter == null) {
+            // 初回登録
+            centerPos = currentVehicleChunk;
+            LAST_CENTER_POS.put(droneUUID, centerPos);
+            LAST_CENTER_UPDATE_TIME.put(droneUUID, now);
+            centerChanged = true;
+            MicroDroneMod.LOGGER.debug("[CHUNK_CACHE_CENTER] DroneUUID: {}, PrevCenter: INIT, NewCenter: [{}, {}]",
+                    droneUUID, centerPos.x, centerPos.z);
+        } else if (prevCenter.equals(currentVehicleChunk)) {
+            // 中心チャンクに変更なし
+            centerPos = prevCenter;
+        } else {
+            // 機体が別のチャンクに移動した場合のヒステリシス判定 (A. チャンク更新のヒステリシス)
+            long lastChangeTime = LAST_CENTER_UPDATE_TIME.getOrDefault(droneUUID, 0L);
+            int distChebyshev = Math.max(Math.abs(currentVehicleChunk.x - prevCenter.x), Math.abs(currentVehicleChunk.z - prevCenter.z));
+
+            // 安全条件: 機体がまだ前回の維持範囲内（dist <= 1）にいて、
+            // かつ前回の中心変更からクールダウン時間（1.5秒）が経過していない場合は更新を保留（チャタリング防止）
+            if (distChebyshev <= 1 && (now - lastChangeTime) < CHUNK_HYSTERESIS_COOLDOWN_MS) {
+                centerPos = prevCenter;
+            } else {
+                // クールダウン経過、または維持範囲の端に達したため安全に更新
+                centerPos = currentVehicleChunk;
+                LAST_CENTER_POS.put(droneUUID, centerPos);
+                LAST_CENTER_UPDATE_TIME.put(droneUUID, now);
+                centerChanged = true;
+                MicroDroneMod.LOGGER.debug("[CHUNK_CACHE_CENTER] DroneUUID: {}, PrevCenter: [{}, {}], NewCenter: [{}, {}], CooldownElapsedMs: {}",
+                        droneUUID, prevCenter.x, prevCenter.z, centerPos.x, centerPos.z, (now - lastChangeTime));
+            }
+        }
+
+        // 中心チャンクが変化していない、かつ初回ロード完了済みなら、毎Tickの全チャンク走査やパケット送信をスキップ
+        if (!centerChanged && LOADED_CHUNKS.containsKey(droneUUID)) {
+            return;
+        }
+
         Set<ChunkPos> currentTargetChunks = new HashSet<>();
 
-        // 中心から半径 CHUNK_RADIUS チャンクの座標を収集 (3x3 = 9チャンク)
+        // 中心から半径 CHUNK_RADIUS チャンクの座標を収集 (5x5 = 25チャンク)
         for (int dx = -CHUNK_RADIUS; dx <= CHUNK_RADIUS; dx++) {
             for (int dz = -CHUNK_RADIUS; dz <= CHUNK_RADIUS; dz++) {
                 currentTargetChunks.add(new ChunkPos(centerPos.x + dx, centerPos.z + dz));
@@ -52,14 +98,6 @@ public class DroneChunkManager {
         long updateStartNanos = System.nanoTime();
         int addedCount = 0;
         int removedCount = 0;
-
-        // 3. チャンクキャッシュ中心の変更（変化時のみログ）
-        ChunkPos prevCenter = LAST_CENTER_POS.put(droneUUID, centerPos);
-        boolean centerChanged = (prevCenter == null || !prevCenter.equals(centerPos));
-        if (centerChanged) {
-            MicroDroneMod.LOGGER.debug("[CHUNK_CACHE_CENTER] DroneUUID: {}, PrevCenter: {}, NewCenter: [{}, {}]",
-                    droneUUID, prevCenter != null ? "[" + prevCenter.x + ", " + prevCenter.z + "]" : "INIT", centerPos.x, centerPos.z);
-        }
 
         // クライアントの描画・キャッシュ中心チャンクを機体位置にリアルタイム追従させる
         pilot.connection.send(new ClientboundSetChunkCacheCenterPacket(centerPos.x, centerPos.z));
@@ -143,6 +181,7 @@ public class DroneChunkManager {
         UUID droneUUID = drone.getUUID();
         Set<ChunkPos> chunks = LOADED_CHUNKS.remove(droneUUID);
         LAST_CENTER_POS.remove(droneUUID);
+        LAST_CENTER_UPDATE_TIME.remove(droneUUID);
 
         if (chunks != null && drone.level() instanceof ServerLevel serverLevel) {
             for (ChunkPos pos : chunks) {

@@ -86,6 +86,13 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     private float steerAngle = 0.0f;
     private boolean locallyControlled = false;
 
+    // クライアント側ソフト位置補正用フィールド (Phase 6 位置同期平滑化)
+    private double serverTargetX = 0;
+    private double serverTargetY = 0;
+    private double serverTargetZ = 0;
+    private float serverTargetYRot = 0;
+    private boolean hasServerTarget = false;
+
     // ドリフト走行パラメータ
     // Mario Kart Drift System
     public boolean inputHandbrake = false; // Space key: Drift button
@@ -127,17 +134,29 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             double dy = y - this.getY();
             double dz = z - this.getZ();
             double distSq = dx * dx + dy * dy + dz * dz;
+
+            // 4m 超過の致命的な位置ズレは即時スナップ補正
             if (distSq > 16.0) {
                 MicroDroneMod.LOGGER.warn("[POSITION_CORRECTION] Reason: 4m_THRESHOLD_EXCEEDED, VehicleUUID: {}, ClientPos: [{}, {}, {}], ServerTargetPos: [{}, {}, {}], DeltaDist: {}m, CurrentSpeed: {}",
                         this.getUUID(), String.format("%.2f", this.getX()), String.format("%.2f", this.getY()), String.format("%.2f", this.getZ()),
                         String.format("%.2f", x), String.format("%.2f", y), String.format("%.2f", z),
                         String.format("%.2f", Math.sqrt(distSq)), this.currentSpeed);
                 super.lerpTo(x, y, z, yRot, xRot, steps);
-            } else if (distSq > 0.25) {
-                MicroDroneMod.LOGGER.debug("[POSITION_CORRECTION_DELTA] VehicleUUID: {}, DeltaDist: {}m, ClientPos: [{}, {}, {}], ServerTargetPos: [{}, {}, {}], Speed: {}",
-                        this.getUUID(), String.format("%.2f", Math.sqrt(distSq)),
-                        String.format("%.2f", this.getX()), String.format("%.2f", this.getY()), String.format("%.2f", this.getZ()),
-                        String.format("%.2f", x), String.format("%.2f", y), String.format("%.2f", z), this.currentSpeed);
+                this.hasServerTarget = false;
+            } else {
+                // 0.05m 以上の微小〜中程度のズレは、毎Tick滑らかに引き寄せるためのターゲットとして保持 (ソフトLerp)
+                this.serverTargetX = x;
+                this.serverTargetY = y;
+                this.serverTargetZ = z;
+                this.serverTargetYRot = yRot;
+                this.hasServerTarget = true;
+
+                if (distSq > 0.25) {
+                    MicroDroneMod.LOGGER.debug("[POSITION_CORRECTION_DELTA] VehicleUUID: {}, DeltaDist: {}m, ClientPos: [{}, {}, {}], ServerTargetPos: [{}, {}, {}], Speed: {}",
+                            this.getUUID(), String.format("%.2f", Math.sqrt(distSq)),
+                            String.format("%.2f", this.getX()), String.format("%.2f", this.getY()), String.format("%.2f", this.getZ()),
+                            String.format("%.2f", x), String.format("%.2f", y), String.format("%.2f", z), this.currentSpeed);
+                }
             }
             return;
         }
@@ -332,6 +351,36 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                 // ローカル操縦中はクライアント側でも即座に物理演算を行い、遅延ゼロ＆カクツキゼロを実現
                 long startNanos = System.nanoTime();
                 tickCarPhysics();
+
+                // サーバー確定位置へのソフト補間（Smooth Damp / Exponential Smoothing）
+                // 操作の即応性（遅延ゼロ）を100%保ちつつ、ズレを自然にゼロへ収束させる
+                if (this.hasServerTarget) {
+                    double curX = this.getX();
+                    double curY = this.getY();
+                    double curZ = this.getZ();
+                    double dx = this.serverTargetX - curX;
+                    double dy = this.serverTargetY - curY;
+                    double dz = this.serverTargetZ - curZ;
+                    double distSq = dx * dx + dy * dy + dz * dz;
+
+                    if (distSq > 0.0025) { // 0.05m以上のズレがある場合
+                        // 水平方向は毎tick 10%ずつサーバー位置に滑らかに引き寄せる
+                        double smoothFactor = 0.10;
+                        double newX = curX + dx * smoothFactor;
+                        double newZ = curZ + dz * smoothFactor;
+
+                        // Y軸は段差・接地との競合を防ぐため、Yズレが大きい場合（0.15m以上）のみ緩やかに補正
+                        double newY = curY;
+                        if (Math.abs(dy) > 0.15) {
+                            newY = curY + dy * 0.08;
+                        }
+
+                        this.setPos(newX, newY, newZ);
+                    } else {
+                        this.hasServerTarget = false;
+                    }
+                }
+
                 long elapsedUs = (System.nanoTime() - startNanos) / 1000;
                 if (elapsedUs > 5000) {
                     MicroDroneMod.LOGGER.warn("[VEHICLE_TICK_TIME] CLIENT car physics took {} us (>5ms) for {}", elapsedUs, this.getUUID());
