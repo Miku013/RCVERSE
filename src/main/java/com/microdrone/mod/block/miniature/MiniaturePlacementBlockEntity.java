@@ -119,38 +119,59 @@ public class MiniaturePlacementBlockEntity extends BlockEntity implements GeoBlo
             }
         }
 
-        // 仲間が0または1個の場合 (始まり・終わりの端っこピース):
-        // 設置時の向き (プレイヤーの指定角) をそのまま100%尊重するため自動計算は行わない！
+        // 仲間が2つ未満なら端っこ確定
         if (neighbors.size() < 2) {
             return null;
         }
 
-        // 距離が近い順にソート
-        neighbors.sort(java.util.Comparator.comparingDouble(a -> a[2]));
+        // 自分から見て最も反対側（内積が最も負）にある前後ペア (In, Out) を探索
+        double[] bestA = null;
+        double[] bestB = null;
+        double minDot = 0.0; // 負の値のみ探索 (反対側にあるペア)
+
+        for (int i = 0; i < neighbors.size(); i++) {
+            double[] a = neighbors.get(i);
+            double distA = Math.sqrt(a[2]);
+            if (distA < 0.001) continue;
+
+            for (int j = i + 1; j < neighbors.size(); j++) {
+                double[] b = neighbors.get(j);
+                double distB = Math.sqrt(b[2]);
+                if (distB < 0.001) continue;
+
+                // 正規化内積 (cosθ)
+                double cosTheta = (a[0] * b[0] + a[1] * b[1]) / (distA * distB);
+                if (cosTheta < minDot) {
+                    minDot = cosTheta;
+                    bestA = a;
+                    bestB = b;
+                }
+            }
+        }
+
+        // 反対側にある仲間ペアが見つからない場合 (片側にしか仲間がいない＝端っこピース):
+        // プレイヤーの設置角をそのまま100%維持！
+        if (bestA == null || bestB == null || minDot > -0.2) {
+            return null;
+        }
 
         MiniatureType type = MiniatureType.getById(miniatureId);
         float offset = type != null ? type.getYawOffset() : 0.0f;
 
-        // 仲間が2つ以上の場合: 前後の2点からカーブ接線（平均進行ベクトル）を算出
-        double dx1 = neighbors.get(0)[0];
-        double dz1 = neighbors.get(0)[1];
-        double dx2 = neighbors.get(1)[0];
-        double dz2 = neighbors.get(1)[1];
-
-        // 2つの仲間を結ぶ線分（進行方向接線）
-        double tangentX = dx2 - dx1;
-        double tangentZ = dz2 - dz1;
+        // 手前(A)から自分を通って奥(B)へ抜ける滑らかなカーブ接線ベクトル
+        double tangentX = bestB[0] - bestA[0];
+        double tangentZ = bestB[1] - bestA[1];
 
         if (Math.abs(tangentX) < 0.001 && Math.abs(tangentZ) < 0.001) {
-            tangentX = dx1;
-            tangentZ = dz1;
+            tangentX = bestB[0];
+            tangentZ = bestB[1];
         }
 
         double angleDeg = Math.toDegrees(Math.atan2(tangentZ, tangentX));
         float finalYaw = (float) (angleDeg + offset);
 
         // 表裏の統一: 基準向き (手前の仲間のYawまたは設置時Yaw) に表裏を揃える
-        float baseYaw = referenceYaw != null ? referenceYaw : (float) neighbors.get(0)[4];
+        float baseYaw = referenceYaw != null ? referenceYaw : (float) bestA[4];
         float diff = finalYaw - baseYaw;
         while (diff > 90.0f) { finalYaw -= 180.0f; diff -= 180.0f; }
         while (diff < -90.0f) { finalYaw += 180.0f; diff += 180.0f; }
