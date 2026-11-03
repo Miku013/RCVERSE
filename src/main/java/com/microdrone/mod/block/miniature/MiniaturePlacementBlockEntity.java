@@ -123,11 +123,11 @@ public class MiniaturePlacementBlockEntity extends BlockEntity implements GeoBlo
 
         float finalYaw;
         if (neighbors.size() == 1) {
-            // 仲間が1つの場合: その仲間との接続方向へ向ける
+            // 仲間が1つの場合: その仲間との接続方向へ長さを揃える
             double dx = neighbors.get(0)[0];
             double dz = neighbors.get(0)[1];
             double angleDeg = Math.toDegrees(Math.atan2(dz, dx));
-            finalYaw = (float) (-angleDeg + offset);
+            finalYaw = (float) (angleDeg + offset);
         } else {
             // 仲間が2つ以上の場合: 前後の2点からカーブ接線（平均進行ベクトル）を算出
             double dx1 = neighbors.get(0)[0];
@@ -135,16 +135,18 @@ public class MiniaturePlacementBlockEntity extends BlockEntity implements GeoBlo
             double dx2 = neighbors.get(1)[0];
             double dz2 = neighbors.get(1)[1];
 
-            // 2つのベクトルが逆方向を向くように調整して滑らかな接線ベクトルを求める
-            double dot = dx1 * dx2 + dz1 * dz2;
-            if (dot > 0) {
-                dx2 = -dx2;
-                dz2 = -dz2;
+            // 2つの仲間を結ぶ線分（進行方向接線）
+            double tangentX = dx2 - dx1;
+            double tangentZ = dz2 - dz1;
+
+            // ほぼ同一直線上の逆向きでない場合のフォールバック
+            if (Math.abs(tangentX) < 0.001 && Math.abs(tangentZ) < 0.001) {
+                tangentX = dx1;
+                tangentZ = dz1;
             }
-            double tangentX = dx1 - dx2;
-            double tangentZ = dz1 - dz2;
+
             double angleDeg = Math.toDegrees(Math.atan2(tangentZ, tangentX));
-            finalYaw = (float) (-angleDeg + offset);
+            finalYaw = (float) (angleDeg + offset);
         }
         return finalYaw;
     }

@@ -146,16 +146,12 @@ public class MiniaturePlacementBlockEntityRenderer extends GeoBlockRenderer<Mini
     }
 
     /**
-     * 指定スロットのガードレールの右側（進行方向）に別のガードレールが連結しているか判定
+     * 指定スロットのガードレールの進行方向（接続先）に別のガードレールが連結しているか判定
      */
     private boolean checkHasGuardrailNeighbor(MiniaturePlacementBlockEntity entity, MiniaturePlacementData slot, boolean checkRight) {
         int curCol = slot.getSlotId() % MiniaturePlacementData.GRID_SIZE;
         int curRow = slot.getSlotId() / MiniaturePlacementData.GRID_SIZE;
         double yawRad = Math.toRadians(slot.getYaw());
-
-        // モデルの右方向 (+X) ベクトル（ワールド空間）
-        double rightDirX = Math.cos(yawRad);
-        double rightDirZ = -Math.sin(yawRad);
 
         for (MiniaturePlacementData other : entity.getAllSlots()) {
             if (other.getSlotId() == slot.getSlotId()) continue;
@@ -167,11 +163,11 @@ public class MiniaturePlacementBlockEntityRenderer extends GeoBlockRenderer<Mini
             double dz = oRow - curRow;
             double distSq = dx * dx + dz * dz;
 
-            // 探索距離: 3マス以内
-            if (distSq <= 9.0) {
-                // 内積で右側にあるかチェック
-                double dot = dx * rightDirX + dz * rightDirZ;
-                if (checkRight && dot > 0.4) {
+            // 探索距離: 2.5マス以内
+            if (distSq <= 5.0) {
+                // 進行方向ベクトル (cos(yaw), sin(yaw)) との内積
+                double dot = dx * Math.cos(yawRad) + dz * Math.sin(yawRad);
+                if (checkRight && dot > 0.3) {
                     return true;
                 }
             }

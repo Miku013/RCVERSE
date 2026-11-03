@@ -10,7 +10,7 @@ import software.bernie.geckolib.model.GeoModel;
 
 /**
  * コース小物を動的に切り替えて描画する汎用GeckoLibモデル
- * ガードレールのシームレス連結（重複ポールの非表示）にも対応
+ * ガードレールのシームレス連結（重複ポールの即時非表示）に対応
  */
 public class GenericMiniatureModel extends GeoModel<MiniaturePlacementBlockEntity> {
     private ResourceLocation currentModel = MiniatureType.TRAFFIC_CONE.getModelLocation();
@@ -29,6 +29,19 @@ public class GenericMiniatureModel extends GeoModel<MiniaturePlacementBlockEntit
     public void setGuardrailConnection(boolean hideLeft, boolean hideRight) {
         this.hidePostLeft = hideLeft;
         this.hidePostRight = hideRight;
+
+        // ボーンへ即時反映
+        try {
+            GeoBone postLeft = getAnimationProcessor().getBone("post_left");
+            if (postLeft != null) {
+                postLeft.setHidden(hideLeft);
+            }
+            GeoBone postRight = getAnimationProcessor().getBone("post_right");
+            if (postRight != null) {
+                postRight.setHidden(hideRight);
+            }
+        } catch (Exception ignored) {
+        }
     }
 
     @Override
