@@ -35,16 +35,7 @@ public class RcCarGeoModel extends GeoModel<RcCarEntity> {
     public void setCustomAnimations(RcCarEntity animatable, long instanceId, AnimationState<RcCarEntity> animationState) {
         super.setCustomAnimations(animatable, instanceId, animationState);
 
-        // 1. 車体（chassis）のピッチ角・ロール角傾斜 (4点サスペンション連動)
-        GeoBone chassis = this.getAnimationProcessor().getBone("chassis");
-        if (chassis != null) {
-            float pitchRad = animatable.getPitchAngle() * Mth.DEG_TO_RAD;
-            float rollRad = animatable.getRollAngle() * Mth.DEG_TO_RAD;
-            chassis.setRotX(pitchRad);
-            chassis.setRotZ(rollRad);
-        }
-
-        // 2. 前輪ステアリング操舵 (Y軸回転: ラジアン変換)
+        // 1. 前輪ステアリング操舵 (Y軸回転: ラジアン変換)
         float steerRad = animatable.getSteerAngle() * Mth.DEG_TO_RAD;
         GeoBone steerFL = this.getAnimationProcessor().getBone("steer_fl");
         GeoBone steerFR = this.getAnimationProcessor().getBone("steer_fr");
@@ -54,13 +45,14 @@ public class RcCarGeoModel extends GeoModel<RcCarEntity> {
         if (steerFL != null) steerFL.setRotY(steerRad);
         if (steerFR != null) steerFR.setRotY(steerRad);
 
-        // 3. 4輪サスペンションのストローク（タイヤ上下可動）
-        // GeckoLibピクセル単位 (1ブロック = 16px) でサス縮み量をオフセット
-        // サスが縮む（正）とタイヤは車体に対して上（+Y）に持ち上がる
-        float suspFL = animatable.getSuspFL() * 16.0f;
-        float suspFR = animatable.getSuspFR() * 16.0f;
-        float suspRL = animatable.getSuspRL() * 16.0f;
-        float suspRR = animatable.getSuspRR() * 16.0f;
+        // 2. 4輪サスペンションのストローク（タイヤ上下可動）
+        // 車体全体のピッチ・ロール姿勢は RcCarGeoRenderer (poseStack) 側で一元管理。
+        // ここではタイヤがフェンダー内へ出入りする微小ストロークを適用
+        float suspScale = 6.0f;
+        float suspFL = animatable.getSuspFL() * suspScale;
+        float suspFR = animatable.getSuspFR() * suspScale;
+        float suspRL = animatable.getSuspRL() * suspScale;
+        float suspRR = animatable.getSuspRR() * suspScale;
 
         if (steerFL != null) steerFL.setPosY(suspFL);
         if (steerFR != null) steerFR.setPosY(suspFR);

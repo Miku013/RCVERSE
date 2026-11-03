@@ -27,10 +27,16 @@ public class RcCarGeoRenderer extends GeoEntityRenderer<RcCarEntity> {
         // 車体の進行方向の回転（正面合わせ）
         poseStack.mulPose(Axis.YP.rotationDegrees(180.0F - yaw));
 
-        // ドリフト・サスペンション荷重によるロール（横傾き）
+        // サスペンション・路面追従によるロール（横傾き: 符号反転 -roll で持ち上がり/沈み込みを正常化）
         float roll = Mth.lerp(partialTick, entity.prevRollAngle, entity.getRollAngle());
         if (Math.abs(roll) > 0.01f) {
-            poseStack.mulPose(Axis.ZP.rotationDegrees(roll));
+            poseStack.mulPose(Axis.ZP.rotationDegrees(-roll));
+        }
+
+        // サスペンション・路面追従によるピッチ（前後傾き: ノーズダイブ/スクワット/段差傾斜）
+        float pitch = Mth.lerp(partialTick, entity.prevPitchAngle, entity.getPitchAngle());
+        if (Math.abs(pitch) > 0.01f) {
+            poseStack.mulPose(Axis.XP.rotationDegrees(pitch));
         }
 
         super.render(entity, entityYaw, partialTick, poseStack, bufferSource, packedLight);
