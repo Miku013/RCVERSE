@@ -35,22 +35,44 @@ public class RcCarGeoModel extends GeoModel<RcCarEntity> {
     public void setCustomAnimations(RcCarEntity animatable, long instanceId, AnimationState<RcCarEntity> animationState) {
         super.setCustomAnimations(animatable, instanceId, animationState);
 
-        // 1. 前輪ステアリング操舵 (Y軸回転: ラジアン変換)
+        // 1. 車体（chassis）のピッチ角・ロール角傾斜 (4点サスペンション連動)
+        GeoBone chassis = this.getAnimationProcessor().getBone("chassis");
+        if (chassis != null) {
+            float pitchRad = animatable.getPitchAngle() * Mth.DEG_TO_RAD;
+            float rollRad = animatable.getRollAngle() * Mth.DEG_TO_RAD;
+            chassis.setRotX(pitchRad);
+            chassis.setRotZ(rollRad);
+        }
+
+        // 2. 前輪ステアリング操舵 (Y軸回転: ラジアン変換)
         float steerRad = animatable.getSteerAngle() * Mth.DEG_TO_RAD;
         GeoBone steerFL = this.getAnimationProcessor().getBone("steer_fl");
         GeoBone steerFR = this.getAnimationProcessor().getBone("steer_fr");
+        GeoBone wheelRL = this.getAnimationProcessor().getBone("wheel_rl");
+        GeoBone wheelRR = this.getAnimationProcessor().getBone("wheel_rr");
 
         if (steerFL != null) steerFL.setRotY(steerRad);
         if (steerFR != null) steerFR.setRotY(steerRad);
 
-        // 2. 4輪タイヤ回転 (車輪モデルの転がり軸 = ローカルY軸!)
+        // 3. 4輪サスペンションのストローク（タイヤ上下可動）
+        // GeckoLibピクセル単位 (1ブロック = 16px) でサス縮み量をオフセット
+        // サスが縮む（正）とタイヤは車体に対して上（+Y）に持ち上がる
+        float suspFL = animatable.getSuspFL() * 16.0f;
+        float suspFR = animatable.getSuspFR() * 16.0f;
+        float suspRL = animatable.getSuspRL() * 16.0f;
+        float suspRR = animatable.getSuspRR() * 16.0f;
+
+        if (steerFL != null) steerFL.setPosY(suspFL);
+        if (steerFR != null) steerFR.setPosY(suspFR);
+        if (wheelRL != null) wheelRL.setPosY(suspRL);
+        if (wheelRR != null) wheelRR.setPosY(suspRR);
+
+        // 4. 4輪タイヤ回転 (車輪モデルの転がり軸 = ローカルY軸!)
         // 左輪(FL, RL)は rotZ=90度、右輪(FR, RR)は rotZ=-90度 で横に倒れているため、
         // 転がり回転は Y 軸回転で行う。X軸回転は0にリセットして横ブレを完全防止。
         float wheelRad = animatable.getWheelRotation() * Mth.DEG_TO_RAD;
         GeoBone wheelFL = this.getAnimationProcessor().getBone("wheel_fl");
         GeoBone wheelFR = this.getAnimationProcessor().getBone("wheel_fr");
-        GeoBone wheelRL = this.getAnimationProcessor().getBone("wheel_rl");
-        GeoBone wheelRR = this.getAnimationProcessor().getBone("wheel_rr");
 
         if (wheelFL != null) {
             wheelFL.setRotX(0.0f);

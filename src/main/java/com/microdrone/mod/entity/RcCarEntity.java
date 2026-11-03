@@ -63,6 +63,16 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             SynchedEntityData.defineId(RcCarEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> DATA_ROLL_ANGLE =
             SynchedEntityData.defineId(RcCarEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_PITCH_ANGLE =
+            SynchedEntityData.defineId(RcCarEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_SUSP_FL =
+            SynchedEntityData.defineId(RcCarEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_SUSP_FR =
+            SynchedEntityData.defineId(RcCarEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_SUSP_RL =
+            SynchedEntityData.defineId(RcCarEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_SUSP_RR =
+            SynchedEntityData.defineId(RcCarEntity.class, EntityDataSerializers.FLOAT);
 
     // 操縦者UUID
     private UUID pilotUUID = null;
@@ -102,6 +112,14 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     private int turboBoostTicks = 0;       // Mini-turbo boost remaining ticks
     private float rollAngle = 0.0f;        // Body roll tilt angle (degrees)
     public float prevRollAngle = 0.0f;     // Previous tick roll for smooth lerp
+    private float pitchAngle = 0.0f;       // Body pitch tilt angle (degrees)
+    public float prevPitchAngle = 0.0f;    // Previous tick pitch for smooth lerp
+
+    // 4輪サスペンションのストローク伸縮量 (ブロック単位, 正=縮み, 負=伸び)
+    private float suspFL = 0.0f;
+    private float suspFR = 0.0f;
+    private float suspRL = 0.0f;
+    private float suspRR = 0.0f;
 
     public RcCarEntity(EntityType<?> entityType, Level level) {
         super(entityType, level);
@@ -174,6 +192,11 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         builder.define(DATA_WHEEL_ROTATION, 0.0f);
         builder.define(DATA_STEER_ANGLE, 0.0f);
         builder.define(DATA_ROLL_ANGLE, 0.0f);
+        builder.define(DATA_PITCH_ANGLE, 0.0f);
+        builder.define(DATA_SUSP_FL, 0.0f);
+        builder.define(DATA_SUSP_FR, 0.0f);
+        builder.define(DATA_SUSP_RL, 0.0f);
+        builder.define(DATA_SUSP_RR, 0.0f);
     }
 
     @Override
@@ -341,10 +364,15 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                         String.format("%.2f", this.carVelocity.x), String.format("%.2f", this.carVelocity.z));
             }
 
-            // クライアント同期用角度
+            // クライアント同期用角度・サスペンション
             this.entityData.set(DATA_WHEEL_ROTATION, this.wheelRotation);
             this.entityData.set(DATA_STEER_ANGLE, this.steerAngle);
             this.entityData.set(DATA_ROLL_ANGLE, this.rollAngle);
+            this.entityData.set(DATA_PITCH_ANGLE, this.pitchAngle);
+            this.entityData.set(DATA_SUSP_FL, this.suspFL);
+            this.entityData.set(DATA_SUSP_FR, this.suspFR);
+            this.entityData.set(DATA_SUSP_RL, this.suspRL);
+            this.entityData.set(DATA_SUSP_RR, this.suspRR);
         } else {
             // クライアント側処理
             if (this.locallyControlled) {
@@ -398,6 +426,11 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                 this.wheelRotation = this.entityData.get(DATA_WHEEL_ROTATION);
                 this.steerAngle = this.entityData.get(DATA_STEER_ANGLE);
                 this.rollAngle = this.entityData.get(DATA_ROLL_ANGLE);
+                this.pitchAngle = this.entityData.get(DATA_PITCH_ANGLE);
+                this.suspFL = this.entityData.get(DATA_SUSP_FL);
+                this.suspFR = this.entityData.get(DATA_SUSP_FR);
+                this.suspRL = this.entityData.get(DATA_SUSP_RL);
+                this.suspRR = this.entityData.get(DATA_SUSP_RR);
             }
         }
     }
@@ -523,16 +556,10 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             }
         }
 
-        // === Body Roll Tilt Angle Calculation (Deep roll tilt on counter-steer) ===
+        // 4点サスペンション物理とピッチ・ロール姿勢角の計算 (サスペンションシステム)
         this.prevRollAngle = this.rollAngle;
-        float targetRoll = 0.0f;
-        if (this.driftDirection != 0) {
-            float baseRoll = 9.0f;
-            // Counter-steering deepens roll tilt up to 17.5 degrees!
-            float totalRoll = baseRoll + (counterAmount * 8.5f);
-            targetRoll = this.driftDirection * totalRoll; // Roll dip towards counter-steer side
-        }
-        this.rollAngle = Mth.lerp(0.35f, this.rollAngle, targetRoll);
+        this.prevPitchAngle = this.pitchAngle;
+        updateSuspensionPhysics(counterAmount);
 
         // === Steering / Yaw Turn ===
         if (this.driftDirection != 0 && Math.abs(this.currentSpeed) > 0.002f) {
@@ -918,5 +945,117 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
 
     public float getRollAngle() {
         return this.rollAngle;
+    }
+
+    public float getPitchAngle() {
+        return this.pitchAngle;
+    }
+
+    public float getSuspFL() { return this.suspFL; }
+    public float getSuspFR() { return this.suspFR; }
+    public float getSuspRL() { return this.suspRL; }
+    public float getSuspRR() { return this.suspRR; }
+
+    /**
+     * 車体ヒットボックスの底面を約0.05ブロック（0.8px）持ち上げ、腹下の擦りや引っかかりを防止
+     */
+    @Override
+    protected net.minecraft.world.phys.AABB makeBoundingBox() {
+        net.minecraft.world.phys.AABB box = super.makeBoundingBox();
+        double clearance = 0.05; // 腹下クリアランスリフト
+        return new net.minecraft.world.phys.AABB(box.minX, box.minY + clearance, box.minZ, box.maxX, box.maxY, box.maxZ);
+    }
+
+    /**
+     * 4点仮想サスペンション物理シミュレーション
+     * 4輪の地面高さからサス縮み量を算出し、路面起伏・片輪乗り上げ・旋回ロール・加減速ピッチを精密計算
+     */
+    private void updateSuspensionPhysics(float counterAmount) {
+        float yaw = this.getYRot();
+        double rad = Math.toRadians(yaw);
+        double fwdX = -Math.sin(rad);
+        double fwdZ = Math.cos(rad);
+        double rightX = -Math.cos(rad);
+        double rightZ = -Math.sin(rad);
+
+        double halfL = 0.20; // ホイールベース前後スパン
+        double halfW = 0.16; // トレッド幅左右スパン
+
+        double px = getX();
+        double py = getY();
+        double pz = getZ();
+
+        // 4輪位置の地面高さをサンプリング
+        double hFL = sampleGroundY(px + fwdX * halfL - rightX * halfW, py, pz + fwdZ * halfL - rightZ * halfW);
+        double hFR = sampleGroundY(px + fwdX * halfL + rightX * halfW, py, pz + fwdZ * halfL + rightZ * halfW);
+        double hRL = sampleGroundY(px - fwdX * halfL - rightX * halfW, py, pz - fwdZ * halfL - rightZ * halfW);
+        double hRR = sampleGroundY(px - fwdX * halfL + rightX * halfW, py, pz - fwdZ * halfL + rightZ * halfW);
+
+        // 各タイヤのサスペンション伸縮ストローク量 (clamp [-0.08, 0.08])
+        float targetSuspFL = (float) Mth.clamp(hFL - py, -0.08, 0.08);
+        float targetSuspFR = (float) Mth.clamp(hFR - py, -0.08, 0.08);
+        float targetSuspRL = (float) Mth.clamp(hRL - py, -0.08, 0.08);
+        float targetSuspRR = (float) Mth.clamp(hRR - py, -0.08, 0.08);
+
+        // スプリング・ダンパーによる追従
+        this.suspFL = Mth.lerp(0.40f, this.suspFL, targetSuspFL);
+        this.suspFR = Mth.lerp(0.40f, this.suspFR, targetSuspFR);
+        this.suspRL = Mth.lerp(0.40f, this.suspRL, targetSuspRL);
+        this.suspRR = Mth.lerp(0.40f, this.suspRR, targetSuspRR);
+
+        // 4輪中いずれかが接地していれば接地扱いとして段差走破性を支援
+        boolean anyWheelGrounded = (hFL >= py - 0.06 || hFR >= py - 0.06 || hRL >= py - 0.06 || hRR >= py - 0.06);
+        if (anyWheelGrounded) {
+            this.setOnGround(true);
+        }
+
+        // === 前後ピッチ角 (地面傾斜 + 加減速G) ===
+        double hFront = (hFL + hFR) * 0.5;
+        double hRear = (hRL + hRR) * 0.5;
+        double deltaPitch = hRear - hFront;
+        float groundPitch = (float) Math.toDegrees(Math.atan2(deltaPitch, halfL * 2.0));
+
+        // 急ブレーキ/後退でノーズダイブ(+), 前進加速でスクワット(-)
+        float accelPitch = 0.0f;
+        if (this.inputForward > 0.1f) {
+            accelPitch = -2.5f * this.inputForward;
+        } else if (this.inputForward < -0.1f || this.inputHandbrake) {
+            accelPitch = 4.0f;
+        }
+        float targetPitch = Mth.clamp(groundPitch + accelPitch, -25.0f, 25.0f);
+        this.pitchAngle = Mth.lerp(0.35f, this.pitchAngle, targetPitch);
+
+        // === 左右ロール角 (地面傾斜 + 旋回・ドリフト遠心力) ===
+        double hLeft = (hFL + hRL) * 0.5;
+        double hRight = (hFR + hRR) * 0.5;
+        double deltaRoll = hLeft - hRight;
+        float groundRoll = (float) Math.toDegrees(Math.atan2(deltaRoll, halfW * 2.0));
+
+        // 旋回・ドリフトによる遠心力ロール (外側サスが沈む)
+        float dynamicRoll = 0.0f;
+        if (this.driftDirection != 0) {
+            float baseRoll = 9.0f;
+            float totalRoll = baseRoll + (counterAmount * 8.5f);
+            dynamicRoll = this.driftDirection * totalRoll;
+        } else {
+            dynamicRoll = -this.steerAngle * (float)(this.currentSpeed * 3.5);
+        }
+        float targetRoll = Mth.clamp(groundRoll + dynamicRoll, -25.0f, 25.0f);
+        this.rollAngle = Mth.lerp(0.35f, this.rollAngle, targetRoll);
+    }
+
+    private double sampleGroundY(double x, double y, double z) {
+        net.minecraft.world.phys.Vec3 from = new net.minecraft.world.phys.Vec3(x, y + 0.25, z);
+        net.minecraft.world.phys.Vec3 to = new net.minecraft.world.phys.Vec3(x, y - 0.35, z);
+        net.minecraft.world.phys.BlockHitResult hit = level().clip(new net.minecraft.world.level.ClipContext(
+                from, to,
+                net.minecraft.world.level.ClipContext.Block.COLLIDER,
+                net.minecraft.world.level.ClipContext.Fluid.NONE,
+                this
+        ));
+        if (hit.getType() != net.minecraft.world.phys.HitResult.Type.MISS) {
+            return hit.getLocation().y;
+        }
+        return y - 0.35;
     }
 }
