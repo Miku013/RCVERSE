@@ -120,6 +120,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     private float suspFR = 0.0f;
     private float suspRL = 0.0f;
     private float suspRR = 0.0f;
+    private boolean wheelGrounded = false; // 仮想サスペンション（タイヤ）の接地判定
 
     public RcCarEntity(EntityType<?> entityType, Level level) {
         super(entityType, level);
@@ -488,7 +489,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                 if (this.inputSteer > 0.05f) {
                     this.driftDirection = -1; // A key: Drift Left
                     this.driftTicks = 0;
-                    if (this.onGround()) {
+                    if (this.onGround() || this.wheelGrounded) {
                         Vec3 cur = this.getDeltaMovement();
                         this.setDeltaMovement(new Vec3(cur.x, 0.24, cur.z)); // Hop jump!
                         this.setOnGround(false);
@@ -499,7 +500,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                 } else if (this.inputSteer < -0.05f) {
                     this.driftDirection = 1;  // D key: Drift Right
                     this.driftTicks = 0;
-                    if (this.onGround()) {
+                    if (this.onGround() || this.wheelGrounded) {
                         Vec3 cur = this.getDeltaMovement();
                         this.setDeltaMovement(new Vec3(cur.x, 0.24, cur.z)); // Hop jump!
                         this.setOnGround(false);
@@ -643,6 +644,12 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         this.move(MoverType.SELF, this.getDeltaMovement());
         Vec3 actualMoved = this.position().subtract(preMovePos);
 
+        // サスペンション底面クリアランスリフトによる onGround リセットを復元
+        // タイヤが接地している、または垂直衝突があった場合は接地状態を維持
+        if (this.wheelGrounded || this.verticalCollision) {
+            this.setOnGround(true);
+        }
+
         // 衝突検知 (予定移動量に対して実移動量が大幅に遮断された場合)
         double expectedH = Math.sqrt(motionX * motionX + motionZ * motionZ);
         double actualH = Math.sqrt(actualMoved.x * actualMoved.x + actualMoved.z * actualMoved.z);
@@ -665,7 +672,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         // ドリフト白煙エフェクト (クライアント側)
         // Drift smoke effect (when tires lose grip)
         // Drift particles & Mini-Turbo effects
-        if (this.level().isClientSide && this.onGround() && Math.abs(this.currentSpeed) > 0.025f) {
+        if (this.level().isClientSide && (this.onGround() || this.wheelGrounded) && Math.abs(this.currentSpeed) > 0.025f) {
             if (this.driftDirection != 0) {
                 spawnDriftParticles(this.driftTicks >= 14);
             }
@@ -955,6 +962,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     public float getSuspFR() { return this.suspFR; }
     public float getSuspRL() { return this.suspRL; }
     public float getSuspRR() { return this.suspRR; }
+    public boolean isWheelGrounded() { return this.wheelGrounded; }
 
     /**
      * 車体ヒットボックスの底面を約0.05ブロック（0.8px）持ち上げ、腹下の擦りや引っかかりを防止
@@ -1003,9 +1011,9 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         this.suspRL = Mth.lerp(0.40f, this.suspRL, targetSuspRL);
         this.suspRR = Mth.lerp(0.40f, this.suspRR, targetSuspRR);
 
-        // 4輪中いずれかが接地していれば接地扱いとして段差走破性を支援
-        boolean anyWheelGrounded = (hFL >= py - 0.06 || hFR >= py - 0.06 || hRL >= py - 0.06 || hRR >= py - 0.06);
-        if (anyWheelGrounded) {
+        // 4輪中いずれかが路面に接触・追従しているか (車体下約0.10ブロック以内に地面があればタイヤ接地)
+        this.wheelGrounded = (hFL >= py - 0.10 || hFR >= py - 0.10 || hRL >= py - 0.10 || hRR >= py - 0.10);
+        if (this.wheelGrounded) {
             this.setOnGround(true);
         }
 
