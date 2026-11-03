@@ -105,26 +105,48 @@ public class MiniaturePlacementBlockEntity extends BlockEntity implements GeoBlo
     public Float calculateAutoAlignYaw(int slotId, String miniatureId, @Nullable Float referenceYaw) {
         int curCol = slotId % MiniaturePlacementData.GRID_SIZE;
         int curRow = slotId / MiniaturePlacementData.GRID_SIZE;
+        int myGridX = (worldPosition != null ? worldPosition.getX() : 0) * MiniaturePlacementData.GRID_SIZE + curCol;
+        int myGridZ = (worldPosition != null ? worldPosition.getZ() : 0) * MiniaturePlacementData.GRID_SIZE + curRow;
 
-        // 同じブロック内の同種小物を距離順に収集
+        // 同一ブロックだけでなく、隣接周囲3x3ブロックも含めて同種小物を距離順に収集
         java.util.List<double[]> neighbors = new java.util.ArrayList<>();
-        for (MiniaturePlacementData other : slots.values()) {
-            if (other.getSlotId() == slotId) continue;
-            if (!other.getMiniatureId().equals(miniatureId)) continue;
 
-            int oCol = other.getSlotId() % MiniaturePlacementData.GRID_SIZE;
-            int oRow = other.getSlotId() / MiniaturePlacementData.GRID_SIZE;
-            double dx = oCol - curCol;
-            double dz = oRow - curRow;
-            double distSq = dx * dx + dz * dz;
+        for (int bdx = -1; bdx <= 1; bdx++) {
+            for (int bdz = -1; bdz <= 1; bdz++) {
+                BlockPos targetPos = (worldPosition != null) ? worldPosition.offset(bdx, 0, bdz) : null;
+                MiniaturePlacementBlockEntity targetEntity;
+                if (bdx == 0 && bdz == 0) {
+                    targetEntity = this;
+                } else if (level != null && targetPos != null && level.getBlockEntity(targetPos) instanceof MiniaturePlacementBlockEntity be) {
+                    targetEntity = be;
+                } else {
+                    continue;
+                }
 
-            // 探索範囲: 距離4マス以内 (1マス間隔や桂馬飛びも余裕でカバー)
-            if (distSq <= 16.0) {
-                neighbors.add(new double[]{dx, dz, distSq, other.getSlotId(), other.getYaw()});
+                for (MiniaturePlacementData other : targetEntity.getAllSlots()) {
+                    if (bdx == 0 && bdz == 0 && other.getSlotId() == slotId) continue;
+                    if (!other.getMiniatureId().equals(miniatureId)) continue;
+
+                    int oCol = other.getSlotId() % MiniaturePlacementData.GRID_SIZE;
+                    int oRow = other.getSlotId() / MiniaturePlacementData.GRID_SIZE;
+                    int targetBaseX = (targetPos != null ? targetPos.getX() : 0) * MiniaturePlacementData.GRID_SIZE;
+                    int targetBaseZ = (targetPos != null ? targetPos.getZ() : 0) * MiniaturePlacementData.GRID_SIZE;
+                    int otherGridX = targetBaseX + oCol;
+                    int otherGridZ = targetBaseZ + oRow;
+
+                    double dx = otherGridX - myGridX;
+                    double dz = otherGridZ - myGridZ;
+                    double distSq = dx * dx + dz * dz;
+
+                    // 探索範囲: 距離4マス以内 (グリッド単位で4マス = 0.8ブロック)
+                    if (distSq <= 16.0) {
+                        neighbors.add(new double[]{dx, dz, distSq, other.getSlotId(), other.getYaw()});
+                    }
+                }
             }
         }
 
-        // 仲間が2つ未満なら端っこ確定
+        // 仲間が2つ未満なら端っこ確定 (プレイヤーの設置角をそのまま100%維持)
         if (neighbors.size() < 2) {
             return null;
         }
@@ -185,24 +207,56 @@ public class MiniaturePlacementBlockEntity extends BlockEntity implements GeoBlo
     }
 
     /**
-     * 新しく小物が置かれた際、近隣の同種小物の角度も再計算して自然な曲線に更新
+     * 新しく小物が置かれた際、近隣（周囲3x3ブロックを含む）の同種小物の角度も再計算して自然な曲線に更新
      */
     private void updateNeighborAutoAlign(int placedSlotId, String miniatureId) {
         int curCol = placedSlotId % MiniaturePlacementData.GRID_SIZE;
         int curRow = placedSlotId / MiniaturePlacementData.GRID_SIZE;
+        int myGridX = (worldPosition != null ? worldPosition.getX() : 0) * MiniaturePlacementData.GRID_SIZE + curCol;
+        int myGridZ = (worldPosition != null ? worldPosition.getZ() : 0) * MiniaturePlacementData.GRID_SIZE + curRow;
 
-        for (MiniaturePlacementData other : slots.values()) {
-            if (other.getSlotId() == placedSlotId) continue;
-            if (!other.getMiniatureId().equals(miniatureId)) continue;
+        for (int bdx = -1; bdx <= 1; bdx++) {
+            for (int bdz = -1; bdz <= 1; bdz++) {
+                BlockPos targetPos = (worldPosition != null) ? worldPosition.offset(bdx, 0, bdz) : null;
+                MiniaturePlacementBlockEntity targetEntity;
+                if (bdx == 0 && bdz == 0) {
+                    targetEntity = this;
+                } else if (level != null && targetPos != null && level.getBlockEntity(targetPos) instanceof MiniaturePlacementBlockEntity be) {
+                    targetEntity = be;
+                } else {
+                    continue;
+                }
 
-            int oCol = other.getSlotId() % MiniaturePlacementData.GRID_SIZE;
-            int oRow = other.getSlotId() / MiniaturePlacementData.GRID_SIZE;
-            double distSq = (oCol - curCol) * (oCol - curCol) + (oRow - curRow) * (oRow - curRow);
+                boolean changed = false;
+                for (MiniaturePlacementData other : targetEntity.getAllSlots()) {
+                    if (bdx == 0 && bdz == 0 && other.getSlotId() == placedSlotId) continue;
+                    if (!other.getMiniatureId().equals(miniatureId)) continue;
 
-            if (distSq <= 16.0) { // 半径4マス以内
-                Float newYaw = calculateAutoAlignYaw(other.getSlotId(), miniatureId, other.getYaw());
-                if (newYaw != null) {
-                    other.setYaw(newYaw);
+                    int oCol = other.getSlotId() % MiniaturePlacementData.GRID_SIZE;
+                    int oRow = other.getSlotId() / MiniaturePlacementData.GRID_SIZE;
+                    int targetBaseX = (targetPos != null ? targetPos.getX() : 0) * MiniaturePlacementData.GRID_SIZE;
+                    int targetBaseZ = (targetPos != null ? targetPos.getZ() : 0) * MiniaturePlacementData.GRID_SIZE;
+                    int otherGridX = targetBaseX + oCol;
+                    int otherGridZ = targetBaseZ + oRow;
+
+                    double dx = otherGridX - myGridX;
+                    double dz = otherGridZ - myGridZ;
+                    double distSq = dx * dx + dz * dz;
+
+                    if (distSq <= 16.0) { // 半径4マス以内
+                        Float newYaw = targetEntity.calculateAutoAlignYaw(other.getSlotId(), miniatureId, other.getYaw());
+                        if (newYaw != null) {
+                            other.setYaw(newYaw);
+                            changed = true;
+                        }
+                    }
+                }
+
+                if (changed && targetEntity != this) {
+                    targetEntity.setChanged();
+                    if (level != null && !level.isClientSide && targetPos != null) {
+                        level.sendBlockUpdated(targetPos, targetEntity.getBlockState(), targetEntity.getBlockState(), 3);
+                    }
                 }
             }
         }
