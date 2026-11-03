@@ -1031,14 +1031,14 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         double deltaRoll = hLeft - hRight;
         float groundRoll = (float) Math.toDegrees(Math.atan2(deltaRoll, halfW * 2.0));
 
-        // 旋回・ドリフトによる遠心力ロール (外側サスが沈む)
+        // 旋回・ドリフトによる遠心力ロール (外側サスペンションが正しく沈み込むように符号を修正)
         float dynamicRoll = 0.0f;
         if (this.driftDirection != 0) {
             float baseRoll = 9.0f;
             float totalRoll = baseRoll + (counterAmount * 8.5f);
-            dynamicRoll = this.driftDirection * totalRoll;
+            dynamicRoll = -this.driftDirection * totalRoll; // 外側サス沈み込み
         } else {
-            dynamicRoll = -this.steerAngle * (float)(this.currentSpeed * 3.5);
+            dynamicRoll = this.steerAngle * (float)(this.currentSpeed * 3.5); // 外側サス沈み込み
         }
         float targetRoll = Mth.clamp(groundRoll + dynamicRoll, -25.0f, 25.0f);
         this.rollAngle = Mth.lerp(0.35f, this.rollAngle, targetRoll);
