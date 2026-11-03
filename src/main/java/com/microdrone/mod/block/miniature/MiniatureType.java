@@ -21,7 +21,8 @@ public class MiniatureType {
             ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, "textures/entity/traffic_cone.png"),
             MiniaturePlacementData.DEFAULT_CONE_SCALE, // 1/2サイズ (0.165f: 幅約2.6px、高さ約3.5px)
             Shapes.box(0.4, 0.0, 0.4, 0.6, 0.25, 0.6), // スロット中心基準の当たり判定
-            false
+            false,
+            0.0f
     ));
 
     public static final MiniatureType RACING_CURB = register(new MiniatureType(
@@ -30,7 +31,8 @@ public class MiniatureType {
             ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, "textures/entity/racing_curb.png"),
             0.24f, // 5x5マスで端が少し重なる幅 (約3.8px)
             Shapes.box(0.35, 0.0, 0.35, 0.65, 0.06, 0.65), // サスペンションが乗り上げられる薄いスロープ判定
-            true // 直線・カーブ自動角度追従
+            true, // 直線・カーブ自動角度追従
+            90.0f // 長さ16px(X軸)を進行方向に合わせる90度オフセット
     ));
 
     public static final MiniatureType CURB_STONE = register(new MiniatureType(
@@ -39,7 +41,8 @@ public class MiniatureType {
             ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, "textures/entity/curb.png"),
             0.22f, // 縦型縁石ブロック
             Shapes.box(0.35, 0.0, 0.35, 0.65, 0.15, 0.65),
-            true // 進行方向に合わせて自動接続
+            true, // 進行方向に合わせて自動接続
+            90.0f
     ));
 
     public static final MiniatureType GUARDRAIL = register(new MiniatureType(
@@ -48,7 +51,8 @@ public class MiniatureType {
             ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, "textures/entity/guardrail.png"),
             0.24f, // 1マス幅でレール同士が隙間なく連結するスケール
             Shapes.box(0.35, 0.0, 0.35, 0.65, 0.28, 0.65), // 車体がぶつかる壁判定
-            true // レール方向に自動追従
+            true, // レール方向に自動追従
+            90.0f
     ));
 
     public static final MiniatureType TIRE_BARRIER = register(new MiniatureType(
@@ -57,7 +61,8 @@ public class MiniatureType {
             ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, "textures/entity/tire.png"),
             0.20f, // 1マスに収まるタイヤ積み重ね
             Shapes.box(0.35, 0.0, 0.35, 0.65, 0.20, 0.65),
-            false
+            false,
+            0.0f
     ));
 
     private final String id;
@@ -66,18 +71,20 @@ public class MiniatureType {
     private final float defaultScale;
     private final VoxelShape baseCollisionShape;
     private final boolean autoAlign;
+    private final float yawOffset;
 
     public MiniatureType(String id, ResourceLocation modelLocation, ResourceLocation textureLocation, float defaultScale, VoxelShape baseCollisionShape) {
-        this(id, modelLocation, textureLocation, defaultScale, baseCollisionShape, false);
+        this(id, modelLocation, textureLocation, defaultScale, baseCollisionShape, false, 0.0f);
     }
 
-    public MiniatureType(String id, ResourceLocation modelLocation, ResourceLocation textureLocation, float defaultScale, VoxelShape baseCollisionShape, boolean autoAlign) {
+    public MiniatureType(String id, ResourceLocation modelLocation, ResourceLocation textureLocation, float defaultScale, VoxelShape baseCollisionShape, boolean autoAlign, float yawOffset) {
         this.id = id;
         this.modelLocation = modelLocation;
         this.textureLocation = textureLocation;
         this.defaultScale = defaultScale;
         this.baseCollisionShape = baseCollisionShape;
         this.autoAlign = autoAlign;
+        this.yawOffset = yawOffset;
     }
 
     public static MiniatureType register(MiniatureType type) {
@@ -112,6 +119,10 @@ public class MiniatureType {
 
     public boolean isAutoAlign() {
         return autoAlign;
+    }
+
+    public float getYawOffset() {
+        return yawOffset;
     }
 }
 

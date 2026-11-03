@@ -118,12 +118,16 @@ public class MiniaturePlacementBlockEntity extends BlockEntity implements GeoBlo
         // 距離が近い順にソート
         neighbors.sort(java.util.Comparator.comparingDouble(a -> a[2]));
 
+        MiniatureType type = MiniatureType.getById(miniatureId);
+        float offset = type != null ? type.getYawOffset() : 0.0f;
+
+        float finalYaw;
         if (neighbors.size() == 1) {
             // 仲間が1つの場合: その仲間との接続方向へ向ける
             double dx = neighbors.get(0)[0];
             double dz = neighbors.get(0)[1];
             double angleDeg = Math.toDegrees(Math.atan2(dz, dx));
-            return (float) -angleDeg;
+            finalYaw = (float) (-angleDeg + offset);
         } else {
             // 仲間が2つ以上の場合: 前後の2点からカーブ接線（平均進行ベクトル）を算出
             double dx1 = neighbors.get(0)[0];
@@ -134,15 +138,15 @@ public class MiniaturePlacementBlockEntity extends BlockEntity implements GeoBlo
             // 2つのベクトルが逆方向を向くように調整して滑らかな接線ベクトルを求める
             double dot = dx1 * dx2 + dz1 * dz2;
             if (dot > 0) {
-                // 同じ方向を向いている場合は外積や差分を考慮
                 dx2 = -dx2;
                 dz2 = -dz2;
             }
             double tangentX = dx1 - dx2;
             double tangentZ = dz1 - dz2;
             double angleDeg = Math.toDegrees(Math.atan2(tangentZ, tangentX));
-            return (float) -angleDeg;
+            finalYaw = (float) (-angleDeg + offset);
         }
+        return finalYaw;
     }
 
     /**

@@ -52,6 +52,14 @@ public class MiniaturePlacementBlockEntityRenderer extends GeoBlockRenderer<Mini
 
             genericModel.setMiniatureType(type);
 
+            // ガードレールのシームレス連結制御 (隣り合うレールの重複ポールを自動非表示)
+            if ("guardrail".equals(type.getId())) {
+                boolean hasRightNeighbor = checkHasGuardrailNeighbor(entity, slot, true);
+                genericModel.setGuardrailConnection(false, hasRightNeighbor);
+            } else {
+                genericModel.setGuardrailConnection(false, false);
+            }
+
             poseStack.pushPose();
 
             // スロット位置（X, Z）へ移動。Y=0.0f で地面に完全フラット接地
@@ -128,11 +136,46 @@ public class MiniaturePlacementBlockEntityRenderer extends GeoBlockRenderer<Mini
                 poseStack.scale(ghostScale, ghostScale, ghostScale);
 
                 // 半透明 RenderType でゴースト描画
+                genericModel.setGuardrailConnection(false, false);
                 RenderType ghostRenderType = RenderType.entityTranslucentCull(type.getTextureLocation());
                 defaultRender(poseStack, entity, bufferSource, ghostRenderType, null, 0, partialTick, packedLight);
 
                 poseStack.popPose();
             }
         }
+    }
+
+    /**
+     * 指定スロットのガードレールの右側（進行方向）に別のガードレールが連結しているか判定
+     */
+    private boolean checkHasGuardrailNeighbor(MiniaturePlacementBlockEntity entity, MiniaturePlacementData slot, boolean checkRight) {
+        int curCol = slot.getSlotId() % MiniaturePlacementData.GRID_SIZE;
+        int curRow = slot.getSlotId() / MiniaturePlacementData.GRID_SIZE;
+        double yawRad = Math.toRadians(slot.getYaw());
+
+        // モデルの右方向 (+X) ベクトル（ワールド空間）
+        double rightDirX = Math.cos(yawRad);
+        double rightDirZ = -Math.sin(yawRad);
+
+        for (MiniaturePlacementData other : entity.getAllSlots()) {
+            if (other.getSlotId() == slot.getSlotId()) continue;
+            if (!"guardrail".equals(other.getMiniatureId())) continue;
+
+            int oCol = other.getSlotId() % MiniaturePlacementData.GRID_SIZE;
+            int oRow = other.getSlotId() / MiniaturePlacementData.GRID_SIZE;
+            double dx = oCol - curCol;
+            double dz = oRow - curRow;
+            double distSq = dx * dx + dz * dz;
+
+            // 探索距離: 3マス以内
+            if (distSq <= 9.0) {
+                // 内積で右側にあるかチェック
+                double dot = dx * rightDirX + dz * rightDirZ;
+                if (checkRight && dot > 0.4) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }

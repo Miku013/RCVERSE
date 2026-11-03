@@ -102,12 +102,16 @@ public class MiniatureItem extends Item {
         if (type != null && type.isAutoAlign()) {
             Float autoYaw = placementBe.calculateAutoAlignYaw(slotId, this.miniatureId);
             if (autoYaw != null) {
+                com.microdrone.mod.MicroDroneMod.LOGGER.info("[ITEM_PLACE] AutoYaw applied: {} for slot {}", autoYaw, slotId);
                 return autoYaw;
             }
         }
 
         // 周囲に同種がない場合はプレイヤーの向き（45度スナップ）
         float yaw = player != null ? player.getYRot() : 0.0f;
-        return Math.round(yaw / 45.0f) * 45.0f;
+        float snapped = Math.round(yaw / 45.0f) * 45.0f;
+        com.microdrone.mod.MicroDroneMod.LOGGER.info("[ITEM_PLACE] Initial player yaw applied: {} for slot {}", snapped, slotId);
+        return snapped;
     }
 }
+
