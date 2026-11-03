@@ -52,10 +52,11 @@ public class MiniaturePlacementBlockEntityRenderer extends GeoBlockRenderer<Mini
 
             genericModel.setMiniatureType(type);
 
-            // ガードレールのシームレス連結制御 (隣り合うレールの重複ポールを自動非表示)
+            // ガードレールのシームレス連結制御 (両端のみポールを表示し、中間は美しいシームレスレールに)
             if ("guardrail".equals(type.getId())) {
+                boolean hasLeftNeighbor = checkHasGuardrailNeighbor(entity, slot, false);
                 boolean hasRightNeighbor = checkHasGuardrailNeighbor(entity, slot, true);
-                genericModel.setGuardrailConnection(false, hasRightNeighbor);
+                genericModel.setGuardrailConnection(hasLeftNeighbor, hasRightNeighbor);
             } else {
                 genericModel.setGuardrailConnection(false, false);
             }
@@ -146,29 +147,68 @@ public class MiniaturePlacementBlockEntityRenderer extends GeoBlockRenderer<Mini
     }
 
     /**
-     * 指定スロットのガードレールの進行方向（接続先）に別のガードレールが連結しているか判定
+     * 指定スロットのガードレールの長手方向（左端 post_left / 右端 post_right）に別のガードレールが接続しているか判定
+     * 同一ブロック内のスロットだけでなく、隣接ブロック（周囲3x3）に設置されたガードレールも包括的に検知。
+     *
+     * @param checkRight true の場合、右端 (post_right) 方向の隣接を判定。false の場合、左端 (post_left) 方向の隣接を判定。
      */
     private boolean checkHasGuardrailNeighbor(MiniaturePlacementBlockEntity entity, MiniaturePlacementData slot, boolean checkRight) {
-        int curCol = slot.getSlotId() % MiniaturePlacementData.GRID_SIZE;
-        int curRow = slot.getSlotId() / MiniaturePlacementData.GRID_SIZE;
-        double yawRad = Math.toRadians(slot.getYaw());
+        net.minecraft.world.level.Level level = entity.getLevel();
+        net.minecraft.core.BlockPos centerPos = entity.getBlockPos();
 
-        for (MiniaturePlacementData other : entity.getAllSlots()) {
-            if (other.getSlotId() == slot.getSlotId()) continue;
-            if (!"guardrail".equals(other.getMiniatureId())) continue;
+        double myWorldX = centerPos.getX() + slot.getXOffset();
+        double myWorldZ = centerPos.getZ() + slot.getZOffset();
 
-            int oCol = other.getSlotId() % MiniaturePlacementData.GRID_SIZE;
-            int oRow = other.getSlotId() / MiniaturePlacementData.GRID_SIZE;
-            double dx = oCol - curCol;
-            double dz = oRow - curRow;
-            double distSq = dx * dx + dz * dz;
+        // モデルの右方向単位ベクトル (Axis.YP.rotationDegrees(180f - yaw) に合致)
+        double rotRad = Math.toRadians(180.0 - slot.getYaw());
+        double rightDirX = Math.cos(rotRad);
+        double rightDirZ = -Math.sin(rotRad);
 
-            // 探索距離: 2.5マス以内
-            if (distSq <= 5.0) {
-                // 進行方向ベクトル (cos(yaw), sin(yaw)) との内積
-                double dot = dx * Math.cos(yawRad) + dz * Math.sin(yawRad);
-                if (checkRight && dot > 0.3) {
-                    return true;
+        // 法線（直交）方向単位ベクトル
+        double normalDirX = -rightDirZ;
+        double normalDirZ = rightDirX;
+
+        // 周囲3x3ブロック（同一ブロック含む）を走査
+        for (int bdx = -1; bdx <= 1; bdx++) {
+            for (int bdz = -1; bdz <= 1; bdz++) {
+                net.minecraft.core.BlockPos targetPos = centerPos.offset(bdx, 0, bdz);
+                MiniaturePlacementBlockEntity targetEntity;
+                if (bdx == 0 && bdz == 0) {
+                    targetEntity = entity;
+                } else if (level != null && level.getBlockEntity(targetPos) instanceof MiniaturePlacementBlockEntity be) {
+                    targetEntity = be;
+                } else {
+                    continue;
+                }
+
+                for (MiniaturePlacementData other : targetEntity.getAllSlots()) {
+                    if (bdx == 0 && bdz == 0 && other.getSlotId() == slot.getSlotId()) continue;
+                    if (!"guardrail".equals(other.getMiniatureId())) continue;
+
+                    double otherWorldX = targetPos.getX() + other.getXOffset();
+                    double otherWorldZ = targetPos.getZ() + other.getZOffset();
+
+                    double diffX = otherWorldX - myWorldX;
+                    double diffZ = otherWorldZ - myWorldZ;
+                    double distSq = diffX * diffX + diffZ * diffZ;
+
+                    // 探索距離: 最大1.35ブロック以内 (隣接スロット0.2m〜隣接ブロック1.0m、斜め1.35m)
+                    if (distSq > 0.01 && distSq <= 1.82) {
+                        // 右方向への射影（内積）
+                        double projRight = diffX * rightDirX + diffZ * rightDirZ;
+                        // 法線方向へのズレ
+                        double projNormal = Math.abs(diffX * normalDirX + diffZ * normalDirZ);
+
+                        // レールの長手方向軸から大きくズレていないか (0.40ブロック以内)
+                        if (projNormal < 0.40) {
+                            if (checkRight && projRight > 0.12) {
+                                return true;
+                            }
+                            if (!checkRight && projRight < -0.12) {
+                                return true;
+                            }
+                        }
+                    }
                 }
             }
         }

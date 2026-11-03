@@ -22,6 +22,8 @@ import software.bernie.geckolib.animation.PlayState;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -31,6 +33,7 @@ import java.util.Map;
  * 1ブロック内に複数の小物を管理・保存・同期するBlockEntity
  */
 public class MiniaturePlacementBlockEntity extends BlockEntity implements GeoBlockEntity {
+    private static final Logger LOGGER = LoggerFactory.getLogger(MiniaturePlacementBlockEntity.class);
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
     private final Map<Integer, MiniaturePlacementData> slots = new HashMap<>();
 
@@ -73,6 +76,8 @@ public class MiniaturePlacementBlockEntity extends BlockEntity implements GeoBlo
 
         MiniaturePlacementData data = new MiniaturePlacementData(slotId, miniatureId, yaw, scale);
         slots.put(slotId, data);
+
+        LOGGER.info("[MiniaturePlacement] Placed {} at pos {} slotId={} yaw={}", miniatureId, worldPosition, slotId, yaw);
 
         // autoAlign 有効時は周囲の仲間の角度も再計算して滑らかに連結
         if (type != null && type.isAutoAlign()) {
@@ -247,12 +252,13 @@ public class MiniaturePlacementBlockEntity extends BlockEntity implements GeoBlo
                 if (type != null) {
                     float cx = data.getXOffset() * 16.0f; // 0〜16ピクセル単位
                     float cz = data.getZOffset() * 16.0f;
-                    // 地面接地(Y=0.0)のコーン当たり判定: 幅約2.8px (半径1.4px)、高さ4px (Y=0.0〜4.0)
-                    VoxelShape coneBox = Block.box(
-                            Math.max(0, cx - 1.4), 0.0, Math.max(0, cz - 1.4),
-                            Math.min(16, cx + 1.4), 4.0, Math.min(16, cz + 1.4)
+                    double h = getMiniatureOutlineHeightPixels(type.getId());
+                    double halfW = getMiniatureRadiusPixels(type.getId());
+                    VoxelShape box = Block.box(
+                            Math.max(0, cx - halfW), 0.0, Math.max(0, cz - halfW),
+                            Math.min(16, cx + halfW), h, Math.min(16, cz + halfW)
                     );
-                    shape = Shapes.or(shape, coneBox);
+                    shape = Shapes.or(shape, box);
                 }
             }
             cachedOutlineShape = shape.optimize();
@@ -262,7 +268,9 @@ public class MiniaturePlacementBlockEntity extends BlockEntity implements GeoBlo
 
     /**
      * 物理衝突判定用（RCカー走行用）の形状を取得
-     * ベースプレートの物理厚みは完全ゼロ（段差なし）で、コーン部分のみ衝突判定を持つ
+     * 縁石(racing_curb)は高さ0.6px (約0.038m)。
+     * 車体の物理AABBが跳ね上がることなく、4点仮想サスペンションが綺麗に沈み込んで心地よいロールを実現。
+     * ガードレールやコーンは車体が飛び出さない壁として機能。
      */
     public VoxelShape getCollisionShape() {
         if (cachedCollisionShape == null) {
@@ -272,17 +280,40 @@ public class MiniaturePlacementBlockEntity extends BlockEntity implements GeoBlo
                 if (type != null) {
                     float cx = data.getXOffset() * 16.0f;
                     float cz = data.getZOffset() * 16.0f;
-                    // 地面接地(Y=0.0)のコーン物理当たり判定
-                    VoxelShape coneBox = Block.box(
-                            Math.max(0, cx - 1.4), 0.0, Math.max(0, cz - 1.4),
-                            Math.min(16, cx + 1.4), 4.0, Math.min(16, cz + 1.4)
+                    double h = getMiniatureCollisionHeightPixels(type.getId());
+                    double halfW = getMiniatureRadiusPixels(type.getId());
+                    VoxelShape box = Block.box(
+                            Math.max(0, cx - halfW), 0.0, Math.max(0, cz - halfW),
+                            Math.min(16, cx + halfW), h, Math.min(16, cz + halfW)
                     );
-                    shape = Shapes.or(shape, coneBox);
+                    shape = Shapes.or(shape, box);
                 }
             }
             cachedCollisionShape = shape.optimize();
         }
         return cachedCollisionShape;
+    }
+
+    private double getMiniatureOutlineHeightPixels(String id) {
+        if ("racing_curb".equals(id)) return 1.2; // プレイヤーが視線で選択しやすい高さ
+        if ("curb_stone".equals(id)) return 2.5;  // 縁石ガード壁
+        if ("guardrail".equals(id)) return 6.0;   // ガードレール壁
+        if ("tire_barrier".equals(id)) return 4.0;// タイヤバリア
+        return 4.0; // traffic_cone
+    }
+
+    private double getMiniatureCollisionHeightPixels(String id) {
+        if ("racing_curb".equals(id)) return 0.6; // 縁石は高さ0.6px (約0.038m): 車体AABB跳ね上がりゼロ＆サスが美しく沈む
+        if ("curb_stone".equals(id)) return 2.5;  // 縁石ガード壁
+        if ("guardrail".equals(id)) return 6.0;   // ガードレール壁
+        if ("tire_barrier".equals(id)) return 4.0;// タイヤバリア
+        return 4.0; // traffic_cone
+    }
+
+    private double getMiniatureRadiusPixels(String id) {
+        if ("racing_curb".equals(id)) return 1.6; // 縁石の幅
+        if ("guardrail".equals(id)) return 1.6;
+        return 1.4; // コーン
     }
 
     private void invalidateShape() {
