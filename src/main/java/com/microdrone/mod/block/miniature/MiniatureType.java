@@ -32,7 +32,7 @@ public class MiniatureType {
             0.24f, // 5x5マスで端が少し重なる幅 (約3.8px)
             Shapes.box(0.35, 0.0, 0.35, 0.65, 0.06, 0.65), // サスペンションが乗り上げられる薄いスロープ判定
             true, // 直線・カーブ自動角度追従
-            0.0f
+            90.0f // curb_stone と同方向に向けるための90度補正
     ));
 
     public static final MiniatureType CURB_STONE = register(new MiniatureType(

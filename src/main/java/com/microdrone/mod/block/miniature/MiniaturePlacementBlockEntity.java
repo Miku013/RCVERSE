@@ -107,7 +107,7 @@ public class MiniaturePlacementBlockEntity extends BlockEntity implements GeoBlo
 
             // 探索範囲: 距離4マス以内 (1マス間隔や桂馬飛びも余裕でカバー)
             if (distSq <= 16.0) {
-                neighbors.add(new double[]{dx, dz, distSq});
+                neighbors.add(new double[]{dx, dz, distSq, other.getSlotId()});
             }
         }
 
@@ -123,11 +123,22 @@ public class MiniaturePlacementBlockEntity extends BlockEntity implements GeoBlo
 
         float finalYaw;
         if (neighbors.size() == 1) {
-            // 仲間が1つの場合: その仲間との接続方向へ長さを揃える
+            // 仲間が1つの場合 (列の端っこ):
+            int neighborSlotId = (int) neighbors.get(0)[3];
+            MiniaturePlacementData neighborData = slots.get(neighborSlotId);
+
             double dx = neighbors.get(0)[0];
             double dz = neighbors.get(0)[1];
             double angleDeg = Math.toDegrees(Math.atan2(dz, dx));
             finalYaw = (float) (angleDeg + offset);
+
+            // もし隣の仲間がすでに確定した角度を持っている場合、その角度の流れに合わせる
+            if (neighborData != null) {
+                float nYaw = neighborData.getYaw();
+                float diff = finalYaw - nYaw;
+                while (diff > 90.0f) { finalYaw -= 180.0f; diff -= 180.0f; }
+                while (diff < -90.0f) { finalYaw += 180.0f; diff += 180.0f; }
+            }
         } else {
             // 仲間が2つ以上の場合: 前後の2点からカーブ接線（平均進行ベクトル）を算出
             double dx1 = neighbors.get(0)[0];
