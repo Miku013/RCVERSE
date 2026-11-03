@@ -21,6 +21,8 @@ import software.bernie.geckolib.animation.AnimationController;
 import software.bernie.geckolib.animation.PlayState;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
+import org.jetbrains.annotations.Nullable;
+
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -87,9 +89,15 @@ public class MiniaturePlacementBlockEntity extends BlockEntity implements GeoBlo
     }
 
     /**
-     * 周囲の同種小物を探索し、接続角度（Yaw）を自動算出
+     * 周囲の同種小物を探索し、中間ピースの接続角度（Yaw）を自動算出
+     * 仲間が2つ以上ある中間ピースのみ滑らかなカーブ接線を自動計算。
+     * 始まりと終わりの端っこピースは、設置時の向き（プレイヤーの指定角）をそのまま尊重。
      */
     public Float calculateAutoAlignYaw(int slotId, String miniatureId) {
+        return calculateAutoAlignYaw(slotId, miniatureId, null);
+    }
+
+    public Float calculateAutoAlignYaw(int slotId, String miniatureId, @Nullable Float referenceYaw) {
         int curCol = slotId % MiniaturePlacementData.GRID_SIZE;
         int curRow = slotId / MiniaturePlacementData.GRID_SIZE;
 
@@ -107,11 +115,13 @@ public class MiniaturePlacementBlockEntity extends BlockEntity implements GeoBlo
 
             // 探索範囲: 距離4マス以内 (1マス間隔や桂馬飛びも余裕でカバー)
             if (distSq <= 16.0) {
-                neighbors.add(new double[]{dx, dz, distSq, other.getSlotId()});
+                neighbors.add(new double[]{dx, dz, distSq, other.getSlotId(), other.getYaw()});
             }
         }
 
-        if (neighbors.isEmpty()) {
+        // 仲間が0または1個の場合 (始まり・終わりの端っこピース):
+        // 設置時の向き (プレイヤーの指定角) をそのまま100%尊重するため自動計算は行わない！
+        if (neighbors.size() < 2) {
             return null;
         }
 
@@ -121,44 +131,30 @@ public class MiniaturePlacementBlockEntity extends BlockEntity implements GeoBlo
         MiniatureType type = MiniatureType.getById(miniatureId);
         float offset = type != null ? type.getYawOffset() : 0.0f;
 
-        float finalYaw;
-        if (neighbors.size() == 1) {
-            // 仲間が1つの場合 (列の端っこ):
-            int neighborSlotId = (int) neighbors.get(0)[3];
-            MiniaturePlacementData neighborData = slots.get(neighborSlotId);
+        // 仲間が2つ以上の場合: 前後の2点からカーブ接線（平均進行ベクトル）を算出
+        double dx1 = neighbors.get(0)[0];
+        double dz1 = neighbors.get(0)[1];
+        double dx2 = neighbors.get(1)[0];
+        double dz2 = neighbors.get(1)[1];
 
-            double dx = neighbors.get(0)[0];
-            double dz = neighbors.get(0)[1];
-            double angleDeg = Math.toDegrees(Math.atan2(dz, dx));
-            finalYaw = (float) (angleDeg + offset);
+        // 2つの仲間を結ぶ線分（進行方向接線）
+        double tangentX = dx2 - dx1;
+        double tangentZ = dz2 - dz1;
 
-            // もし隣の仲間がすでに確定した角度を持っている場合、その角度の流れに合わせる
-            if (neighborData != null) {
-                float nYaw = neighborData.getYaw();
-                float diff = finalYaw - nYaw;
-                while (diff > 90.0f) { finalYaw -= 180.0f; diff -= 180.0f; }
-                while (diff < -90.0f) { finalYaw += 180.0f; diff += 180.0f; }
-            }
-        } else {
-            // 仲間が2つ以上の場合: 前後の2点からカーブ接線（平均進行ベクトル）を算出
-            double dx1 = neighbors.get(0)[0];
-            double dz1 = neighbors.get(0)[1];
-            double dx2 = neighbors.get(1)[0];
-            double dz2 = neighbors.get(1)[1];
-
-            // 2つの仲間を結ぶ線分（進行方向接線）
-            double tangentX = dx2 - dx1;
-            double tangentZ = dz2 - dz1;
-
-            // ほぼ同一直線上の逆向きでない場合のフォールバック
-            if (Math.abs(tangentX) < 0.001 && Math.abs(tangentZ) < 0.001) {
-                tangentX = dx1;
-                tangentZ = dz1;
-            }
-
-            double angleDeg = Math.toDegrees(Math.atan2(tangentZ, tangentX));
-            finalYaw = (float) (angleDeg + offset);
+        if (Math.abs(tangentX) < 0.001 && Math.abs(tangentZ) < 0.001) {
+            tangentX = dx1;
+            tangentZ = dz1;
         }
+
+        double angleDeg = Math.toDegrees(Math.atan2(tangentZ, tangentX));
+        float finalYaw = (float) (angleDeg + offset);
+
+        // 表裏の統一: 基準向き (手前の仲間のYawまたは設置時Yaw) に表裏を揃える
+        float baseYaw = referenceYaw != null ? referenceYaw : (float) neighbors.get(0)[4];
+        float diff = finalYaw - baseYaw;
+        while (diff > 90.0f) { finalYaw -= 180.0f; diff -= 180.0f; }
+        while (diff < -90.0f) { finalYaw += 180.0f; diff += 180.0f; }
+
         return finalYaw;
     }
 
@@ -177,8 +173,8 @@ public class MiniaturePlacementBlockEntity extends BlockEntity implements GeoBlo
             int oRow = other.getSlotId() / MiniaturePlacementData.GRID_SIZE;
             double distSq = (oCol - curCol) * (oCol - curCol) + (oRow - curRow) * (oRow - curRow);
 
-            if (distSq <= 9.0) { // 半径3マス以内
-                Float newYaw = calculateAutoAlignYaw(other.getSlotId(), miniatureId);
+            if (distSq <= 16.0) { // 半径4マス以内
+                Float newYaw = calculateAutoAlignYaw(other.getSlotId(), miniatureId, other.getYaw());
                 if (newYaw != null) {
                     other.setYaw(newYaw);
                 }
