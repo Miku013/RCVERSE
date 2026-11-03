@@ -40,6 +40,8 @@ public class MiniaturePlacementBlockEntityRenderer extends GeoBlockRenderer<Mini
         scaleModelForRender(this.scaleWidth, this.scaleHeight, poseStack, animatable, model, isReRender, partialTick, packedLight, packedOverlay);
     }
 
+    private static final int GUARDRAIL_POST_INTERVAL = 3; // 3ピースごとに中間支柱ポールを1本表示
+
     @Override
     public void render(MiniaturePlacementBlockEntity entity, float partialTick, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight, int packedOverlay) {
         this.animatable = entity;
@@ -52,11 +54,33 @@ public class MiniaturePlacementBlockEntityRenderer extends GeoBlockRenderer<Mini
 
             genericModel.setMiniatureType(type);
 
-            // ガードレールのシームレス連結制御 (両端のみポールを表示し、中間は美しいシームレスレールに)
+            // ガードレールのシームレス連結制御 (両端にポールを表示し、中間は一定間隔ごとに1本ポールを表示)
             if ("guardrail".equals(type.getId())) {
-                boolean hasLeftNeighbor = checkHasGuardrailNeighbor(entity, slot, false);
-                boolean hasRightNeighbor = checkHasGuardrailNeighbor(entity, slot, true);
-                genericModel.setGuardrailConnection(hasLeftNeighbor, hasRightNeighbor);
+                NeighborResult leftNeighbor = findGuardrailNeighborResult(entity, slot, false);
+                NeighborResult rightNeighbor = findGuardrailNeighborResult(entity, slot, true);
+                boolean hasLeft = leftNeighbor != null;
+                boolean hasRight = rightNeighbor != null;
+
+                if (!hasLeft && !hasRight) {
+                    // 単独配置: 両端にポールを表示 (自立)
+                    genericModel.setGuardrailConnection(false, false);
+                } else if (!hasLeft && hasRight) {
+                    // 左端ピース: 左ポールのみ表示
+                    genericModel.setGuardrailConnection(false, true);
+                } else if (hasLeft && !hasRight) {
+                    // 右端ピース: 右ポールのみ表示
+                    genericModel.setGuardrailConnection(true, false);
+                } else {
+                    // 中間ピース: 一定間隔 (3ピースごと) に右ポールを1本表示 (右端直前のピースは除外)
+                    int chainIndex = getGuardrailChainIndex(entity, slot);
+                    int remaining = getGuardrailRemainingSteps(entity, slot);
+
+                    if (chainIndex % GUARDRAIL_POST_INTERVAL == 0 && remaining >= 2) {
+                        genericModel.setGuardrailConnection(true, false); // 右ポール表示
+                    } else {
+                        genericModel.setGuardrailConnection(true, true);  // 両方非表示 (レールのみ)
+                    }
+                }
             } else {
                 genericModel.setGuardrailConnection(false, false);
             }
@@ -146,13 +170,14 @@ public class MiniaturePlacementBlockEntityRenderer extends GeoBlockRenderer<Mini
         }
     }
 
+    private record NeighborResult(MiniaturePlacementBlockEntity entity, MiniaturePlacementData slot) {}
+
     /**
-     * 指定スロットのガードレールの長手方向（左端 post_left / 右端 post_right）に別のガードレールが接続しているか判定
-     * 同一ブロック内のスロットだけでなく、隣接ブロック（周囲3x3）に設置されたガードレールも包括的に検知。
+     * 指定スロットのガードレールの長手方向（左端 post_left / 右端 post_right）に接続している別のガードレールを検索
      *
      * @param checkRight true の場合、右端 (post_right) 方向の隣接を判定。false の場合、左端 (post_left) 方向の隣接を判定。
      */
-    private boolean checkHasGuardrailNeighbor(MiniaturePlacementBlockEntity entity, MiniaturePlacementData slot, boolean checkRight) {
+    private NeighborResult findGuardrailNeighborResult(MiniaturePlacementBlockEntity entity, MiniaturePlacementData slot, boolean checkRight) {
         net.minecraft.world.level.Level level = entity.getLevel();
         net.minecraft.core.BlockPos centerPos = entity.getBlockPos();
 
@@ -167,6 +192,9 @@ public class MiniaturePlacementBlockEntityRenderer extends GeoBlockRenderer<Mini
         // 法線（直交）方向単位ベクトル
         double normalDirX = -rightDirZ;
         double normalDirZ = rightDirX;
+
+        NeighborResult bestMatch = null;
+        double minDistance = Double.MAX_VALUE;
 
         // 周囲3x3ブロック（同一ブロック含む）を走査
         for (int bdx = -1; bdx <= 1; bdx++) {
@@ -202,16 +230,64 @@ public class MiniaturePlacementBlockEntityRenderer extends GeoBlockRenderer<Mini
                         // レールの長手方向軸から大きくズレていないか (0.40ブロック以内)
                         if (projNormal < 0.40) {
                             if (checkRight && projRight > 0.12) {
-                                return true;
+                                if (distSq < minDistance) {
+                                    minDistance = distSq;
+                                    bestMatch = new NeighborResult(targetEntity, other);
+                                }
                             }
                             if (!checkRight && projRight < -0.12) {
-                                return true;
+                                if (distSq < minDistance) {
+                                    minDistance = distSq;
+                                    bestMatch = new NeighborResult(targetEntity, other);
+                                }
                             }
                         }
                     }
                 }
             }
         }
-        return false;
+        return bestMatch;
+    }
+
+    /**
+     * ガードレールチェーンの左端（始点）から現在のスロットまでのステップ数を取得
+     */
+    private int getGuardrailChainIndex(MiniaturePlacementBlockEntity entity, MiniaturePlacementData slot) {
+        int index = 0;
+        MiniaturePlacementData current = slot;
+        MiniaturePlacementBlockEntity currentEntity = entity;
+
+        // 左方向（手前）へ最大30ステップ遡る
+        while (index < 30) {
+            NeighborResult prev = findGuardrailNeighborResult(currentEntity, current, false);
+            if (prev == null) {
+                break; // 左端に到達
+            }
+            index++;
+            current = prev.slot();
+            currentEntity = prev.entity();
+        }
+        return index;
+    }
+
+    /**
+     * ガードレールチェーンの現在のスロットから右端（終点）までの残りステップ数を取得
+     */
+    private int getGuardrailRemainingSteps(MiniaturePlacementBlockEntity entity, MiniaturePlacementData slot) {
+        int remaining = 0;
+        MiniaturePlacementData current = slot;
+        MiniaturePlacementBlockEntity currentEntity = entity;
+
+        // 右方向（奥）へ最大30ステップ進む
+        while (remaining < 30) {
+            NeighborResult next = findGuardrailNeighborResult(currentEntity, current, true);
+            if (next == null) {
+                break; // 右端に到達
+            }
+            remaining++;
+            current = next.slot();
+            currentEntity = next.entity();
+        }
+        return remaining;
     }
 }
