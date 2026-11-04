@@ -732,18 +732,19 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                     default    -> 0.0;
                 };
 
-                // スロープの頂上付近 (progress >= 0.70) に到達したらジャンプ！
-                if (progress >= 0.70) {
+                // スロープの頂上付近 (progress >= 0.75) に到達したらジャンプ！
+                if (progress >= 0.75) {
                     this.jumpCooldown = 15; // 0.75秒クールダウン
                     this.setOnGround(false);
                     this.hasImpulse = true;
+                    this.pitchAngle = -10.0f; // 空中でのノーズアップ姿勢
 
                     boolean isBoost = slopeBlock.isBoost();
                     if (isBoost) {
                         // ブーストジャンプ台: 強制加速 + 大ジャンプ！
                         this.turboBoostTicks = 20;
                         this.currentSpeed = (float) Math.max(this.currentSpeed * 1.5, 0.48);
-                        double jumpY = 0.38 + (this.currentSpeed * 0.25);
+                        double jumpY = 0.32 + (this.currentSpeed * 0.22);
                         this.carVelocity = new Vec3(this.carVelocity.x * 1.3, jumpY, this.carVelocity.z * 1.3);
                         this.setDeltaMovement(new Vec3(this.getDeltaMovement().x, jumpY, this.getDeltaMovement().z));
 
@@ -752,7 +753,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                                 net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.6F);
                     } else {
                         // 通常ジャンプ台: 速度に応じた跳躍
-                        double jumpY = 0.22 + (this.currentSpeed * 0.40);
+                        double jumpY = 0.18 + (this.currentSpeed * 0.35);
                         this.carVelocity = new Vec3(this.carVelocity.x, jumpY, this.carVelocity.z);
                         this.setDeltaMovement(new Vec3(this.getDeltaMovement().x, jumpY, this.getDeltaMovement().z));
 
