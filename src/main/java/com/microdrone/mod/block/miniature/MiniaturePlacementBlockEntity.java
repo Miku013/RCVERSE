@@ -358,23 +358,25 @@ public class MiniaturePlacementBlockEntity extends BlockEntity implements GeoBlo
 
     private double getMiniatureOutlineHeightPixels(String id) {
         if ("racing_curb".equals(id)) return 1.2; // プレイヤーが視線で選択しやすい高さ
-        if ("curb_stone".equals(id)) return 2.5;  // 縁石ガード壁
-        if ("guardrail".equals(id)) return 6.0;   // ガードレール壁
-        if ("tire_barrier".equals(id)) return 4.0;// タイヤバリア
-        return 4.0; // traffic_cone
+        if ("curb_stone".equals(id)) return 14.0; // 縁石ガード壁
+        if ("guardrail".equals(id)) return 16.0;  // ガードレール壁 (1.0ブロック高)
+        if ("tire_barrier".equals(id)) return 16.0;// タイヤバリア (1.0ブロック高)
+        return 6.0; // traffic_cone
     }
 
     private double getMiniatureCollisionHeightPixels(String id) {
-        if ("racing_curb".equals(id)) return 0.6; // 縁石は高さ0.6px (約0.038m): 車体AABB跳ね上がりゼロ＆サスが美しく沈む
-        if ("curb_stone".equals(id)) return 2.5;  // 縁石ガード壁
-        if ("guardrail".equals(id)) return 6.0;   // ガードレール壁
-        if ("tire_barrier".equals(id)) return 4.0;// タイヤバリア
-        return 4.0; // traffic_cone
+        if ("racing_curb".equals(id)) return 0.6; // レーシング縁石は高さ0.6px (約0.038m): サスが美しく沈んで乗り上げ可能
+        if ("curb_stone".equals(id)) return 14.0; // 縁石ガード壁 (maxUpStep 9.6pxを確実に超えて激突停止)
+        if ("guardrail".equals(id)) return 16.0;  // ガードレール壁 (1.0ブロック高の鉄壁として激突停止)
+        if ("tire_barrier".equals(id)) return 16.0;// タイヤバリア壁 (1.0ブロック高で激突停止)
+        return 6.0; // traffic_cone
     }
 
     private double getMiniatureRadiusPixels(String id) {
-        if ("racing_curb".equals(id)) return 1.6; // 縁石の幅
-        if ("guardrail".equals(id)) return 1.6;
+        if ("racing_curb".equals(id)) return 1.6; // 縁石の幅 (3.2px)
+        if ("guardrail".equals(id)) return 1.6;   // ガードレール幅 (3.2px)
+        if ("curb_stone".equals(id)) return 1.6;  // カーブガード幅 (3.2px)
+        if ("tire_barrier".equals(id)) return 1.6;// タイヤバリア幅 (3.2px)
         return 1.4; // コーン
     }
 

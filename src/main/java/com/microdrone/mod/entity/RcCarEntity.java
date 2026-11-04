@@ -650,10 +650,19 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             this.setOnGround(true);
         }
 
-        // 衝突検知 (予定移動量に対して実移動量が大幅に遮断された場合)
+        // 衝突検知 (壁・障害物に激突して移動量が大幅に遮断された場合、マシンの速度を急減衰して確実にストップ)
         double expectedH = Math.sqrt(motionX * motionX + motionZ * motionZ);
         double actualH = Math.sqrt(actualMoved.x * actualMoved.x + actualMoved.z * actualMoved.z);
-        if (expectedH > 0.04 && actualH < expectedH * 0.45) {
+        if (this.horizontalCollision || (expectedH > 0.04 && actualH < expectedH * 0.40)) {
+            this.currentSpeed *= 0.20f; // ガツンと止まる
+            this.carVelocity = new Vec3(actualMoved.x, 0.0, actualMoved.z);
+
+            if (expectedH > 0.12 && this.level().isClientSide) {
+                this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                        net.minecraft.sounds.SoundEvents.ARMOR_EQUIP_GENERIC.value(),
+                        net.minecraft.sounds.SoundSource.PLAYERS, 0.8F, 1.4F);
+            }
+
             MicroDroneMod.LOGGER.debug("[COLLISION_DETECTED] Side: {}, VehicleUUID: {}, Pos: [{}, {}, {}], ExpectedSpeed: {}, ActualSpeed: {}, CurrentSpeed: {}",
                     this.level().isClientSide ? "CLIENT" : "SERVER", this.getUUID(),
                     String.format("%.2f", this.getX()), String.format("%.2f", this.getY()), String.format("%.2f", this.getZ()),
