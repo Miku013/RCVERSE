@@ -121,6 +121,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     private float suspRL = 0.0f;
     private float suspRR = 0.0f;
     private boolean wheelGrounded = false; // 仮想サスペンション（タイヤ）の接地判定
+    private int collisionCooldown = 0;    // 壁衝突SEの連打防止クールダウン (ticks)
 
     public RcCarEntity(EntityType<?> entityType, Level level) {
         super(entityType, level);
@@ -315,6 +316,10 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     @Override
     public void tick() {
         super.tick();
+
+        if (this.collisionCooldown > 0) {
+            this.collisionCooldown--;
+        }
 
         if (!this.level().isClientSide) {
             ServerPlayer pilot = this.pilotUUID != null ? (ServerPlayer) this.level().getPlayerByUUID(this.pilotUUID) : null;
@@ -653,14 +658,25 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         // 衝突検知 (壁・障害物に激突して移動量が大幅に遮断された場合、マシンの速度を急減衰して確実にストップ)
         double expectedH = Math.sqrt(motionX * motionX + motionZ * motionZ);
         double actualH = Math.sqrt(actualMoved.x * actualMoved.x + actualMoved.z * actualMoved.z);
-        if (this.horizontalCollision || (expectedH > 0.04 && actualH < expectedH * 0.40)) {
+        if (this.horizontalCollision || (expectedH > 0.03 && actualH < expectedH * 0.40)) {
             this.currentSpeed *= 0.20f; // ガツンと止まる
             this.carVelocity = new Vec3(actualMoved.x, 0.0, actualMoved.z);
 
-            if (expectedH > 0.12 && this.level().isClientSide) {
-                this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
-                        net.minecraft.sounds.SoundEvents.ARMOR_EQUIP_GENERIC.value(),
-                        net.minecraft.sounds.SoundSource.PLAYERS, 0.8F, 1.4F);
+            // 衝突SE再生 (低速でも確実に鳴り、連打防止クールダウン付き)
+            if (this.collisionCooldown <= 0 && expectedH > 0.02) {
+                this.collisionCooldown = 8; // 0.4秒間隔
+                float pitch = (float) (1.0f + Math.random() * 0.3f);
+                float volume = (float) Math.min(1.0, Math.max(0.5, expectedH * 4.0));
+
+                if (this.level().isClientSide) {
+                    this.level().playLocalSound(this.getX(), this.getY(), this.getZ(),
+                            net.minecraft.sounds.SoundEvents.SHIELD_BLOCK,
+                            net.minecraft.sounds.SoundSource.PLAYERS, volume, pitch, false);
+                } else {
+                    this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                            net.minecraft.sounds.SoundEvents.SHIELD_BLOCK,
+                            net.minecraft.sounds.SoundSource.PLAYERS, volume, pitch);
+                }
             }
 
             MicroDroneMod.LOGGER.debug("[COLLISION_DETECTED] Side: {}, VehicleUUID: {}, Pos: [{}, {}, {}], ExpectedSpeed: {}, ActualSpeed: {}, CurrentSpeed: {}",
