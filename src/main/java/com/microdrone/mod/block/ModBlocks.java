@@ -30,7 +30,8 @@ public class ModBlocks {
             () -> new com.microdrone.mod.block.miniature.MiniaturePlacementBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.COLOR_GRAY)
                     .strength(0.5f)
-                    .noOcclusion()));
+                    .noOcclusion()
+                    .lightLevel(state -> state.hasProperty(com.microdrone.mod.block.miniature.MiniaturePlacementBlock.LIT) && state.getValue(com.microdrone.mod.block.miniature.MiniaturePlacementBlock.LIT) ? 14 : 0)));
 
     public static void register(IEventBus eventBus) {
         BLOCKS.register(eventBus);

@@ -86,6 +86,7 @@ public class MiniaturePlacementBlockEntity extends BlockEntity implements GeoBlo
 
         invalidateShape();
         setChanged();
+        updateLightState();
 
         if (level != null && !level.isClientSide) {
             level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
@@ -278,11 +279,24 @@ public class MiniaturePlacementBlockEntity extends BlockEntity implements GeoBlo
         if (removed != null) {
             invalidateShape();
             setChanged();
+            updateLightState();
             if (level != null && !level.isClientSide) {
                 level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
             }
         }
         return removed;
+    }
+
+    /**
+     * チェックポイントプレート等の発光小物が存在する場合、ブロックの光源（LIT）状態を更新
+     */
+    private void updateLightState() {
+        if (level == null || level.isClientSide) return;
+        boolean hasLight = slots.values().stream().anyMatch(slot -> "checkpoint_plate".equals(slot.getMiniatureId()));
+        BlockState currentState = getBlockState();
+        if (currentState.hasProperty(MiniaturePlacementBlock.LIT) && currentState.getValue(MiniaturePlacementBlock.LIT) != hasLight) {
+            level.setBlock(worldPosition, currentState.setValue(MiniaturePlacementBlock.LIT, hasLight), 3);
+        }
     }
 
     /**
@@ -415,6 +429,7 @@ public class MiniaturePlacementBlockEntity extends BlockEntity implements GeoBlo
             }
         }
         invalidateShape();
+        updateLightState();
     }
 
     @Override
