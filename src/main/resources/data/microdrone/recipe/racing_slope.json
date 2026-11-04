@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "  I",
+    " SS",
+    "SSS"
+  ],
+  "key": {
+    "I": { "item": "minecraft:iron_ingot" },
+    "S": { "item": "minecraft:smooth_stone" }
+  },
+  "result": {
+    "id": "microdrone:racing_slope",
+    "count": 4
+  }
+}

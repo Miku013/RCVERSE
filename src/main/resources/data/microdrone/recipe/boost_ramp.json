@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " R ",
+    "RSR",
+    " G "
+  ],
+  "key": {
+    "R": { "item": "minecraft:redstone" },
+    "S": { "item": "microdrone:racing_slope" },
+    "G": { "item": "minecraft:glowstone_dust" }
+  },
+  "result": {
+    "id": "microdrone:boost_ramp",
+    "count": 1
+  }
+}

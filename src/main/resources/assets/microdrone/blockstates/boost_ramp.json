@@ -1,0 +1,18 @@
+{
+  "variants": {
+    "facing=south,shape=steep": { "model": "microdrone:block/boost_ramp_steep" },
+    "facing=west,shape=steep":  { "model": "microdrone:block/boost_ramp_steep", "y": 90 },
+    "facing=north,shape=steep": { "model": "microdrone:block/boost_ramp_steep", "y": 180 },
+    "facing=east,shape=steep":  { "model": "microdrone:block/boost_ramp_steep", "y": 270 },
+
+    "facing=south,shape=start": { "model": "microdrone:block/boost_ramp_start" },
+    "facing=west,shape=start":  { "model": "microdrone:block/boost_ramp_start", "y": 90 },
+    "facing=north,shape=start": { "model": "microdrone:block/boost_ramp_start", "y": 180 },
+    "facing=east,shape=start":  { "model": "microdrone:block/boost_ramp_start", "y": 270 },
+
+    "facing=south,shape=end":   { "model": "microdrone:block/boost_ramp_end" },
+    "facing=west,shape=end":    { "model": "microdrone:block/boost_ramp_end", "y": 90 },
+    "facing=north,shape=end":   { "model": "microdrone:block/boost_ramp_end", "y": 180 },
+    "facing=east,shape=end":    { "model": "microdrone:block/boost_ramp_end", "y": 270 }
+  }
+}

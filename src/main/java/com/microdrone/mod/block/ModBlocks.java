@@ -40,6 +40,21 @@ public class ModBlocks {
                     .strength(2.0f, 3.0f)
                     .noOcclusion()));
 
+    // レーシングスロープ（ハーフブロック式ジャンプ台）
+    public static final DeferredBlock<RacingSlopeBlock> RACING_SLOPE = BLOCKS.register("racing_slope",
+            () -> new RacingSlopeBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_BLACK)
+                    .strength(1.5f, 2.0f)
+                    .noOcclusion()));
+
+    // ブーストジャンプ台（加速＆自発光）
+    public static final DeferredBlock<RacingSlopeBlock> BOOST_RAMP = BLOCKS.register("boost_ramp",
+            () -> new RacingSlopeBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_ORANGE)
+                    .strength(1.5f, 2.0f)
+                    .lightLevel(state -> 12)
+                    .noOcclusion(), true));
+
     public static void register(IEventBus eventBus) {
         BLOCKS.register(eventBus);
     }

@@ -9,6 +9,7 @@ import com.microdrone.mod.item.ModItems;
 import com.microdrone.mod.network.DronePilotStatePayload;
 import com.microdrone.mod.sound.ModSounds;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -126,6 +127,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     private float suspRR = 0.0f;
     private boolean wheelGrounded = false; // 仮想サスペンション（タイヤ）の接地判定
     private int collisionCooldown = 0;    // 壁衝突SEの連打防止クールダウン (ticks)
+    private int jumpCooldown = 0;         // ジャンプ台連続発動防止クールダウン (ticks)
 
     // レース計測システム (Step 1)
     private int currentLap = 0;                  // 0 = 未スタート, 1 = 1周目...
@@ -342,6 +344,9 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         }
         if (this.checkpointCooldown > 0) {
             this.checkpointCooldown--;
+        }
+        if (this.jumpCooldown > 0) {
+            this.jumpCooldown--;
         }
 
         if (!this.level().isClientSide) {
@@ -704,6 +709,61 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             this.setOnGround(true);
         }
 
+        // === スロープジャンプ台の跳躍判定 ===
+        if (this.jumpCooldown <= 0 && this.currentSpeed > 0.05f) {
+            BlockPos checkPos = BlockPos.containing(this.getX(), this.getY(), this.getZ());
+            net.minecraft.world.level.block.state.BlockState slopeState = this.level().getBlockState(checkPos);
+            if (!(slopeState.getBlock() instanceof com.microdrone.mod.block.RacingSlopeBlock)) {
+                checkPos = checkPos.below();
+                slopeState = this.level().getBlockState(checkPos);
+            }
+
+            if (slopeState.getBlock() instanceof com.microdrone.mod.block.RacingSlopeBlock slopeBlock) {
+                Direction facing = slopeState.getValue(com.microdrone.mod.block.RacingSlopeBlock.FACING);
+                double relX = this.getX() - checkPos.getX();
+                double relZ = this.getZ() - checkPos.getZ();
+
+                // 登り方向の進行度 (0.0=手前, 1.0=奥/天端)
+                double progress = switch (facing) {
+                    case SOUTH -> relZ;
+                    case NORTH -> 1.0 - relZ;
+                    case EAST  -> relX;
+                    case WEST  -> 1.0 - relX;
+                    default    -> 0.0;
+                };
+
+                // スロープの頂上付近 (progress >= 0.70) に到達したらジャンプ！
+                if (progress >= 0.70) {
+                    this.jumpCooldown = 15; // 0.75秒クールダウン
+                    this.setOnGround(false);
+                    this.hasImpulse = true;
+
+                    boolean isBoost = slopeBlock.isBoost();
+                    if (isBoost) {
+                        // ブーストジャンプ台: 強制加速 + 大ジャンプ！
+                        this.turboBoostTicks = 20;
+                        this.currentSpeed = (float) Math.max(this.currentSpeed * 1.5, 0.48);
+                        double jumpY = 0.38 + (this.currentSpeed * 0.25);
+                        this.carVelocity = new Vec3(this.carVelocity.x * 1.3, jumpY, this.carVelocity.z * 1.3);
+                        this.setDeltaMovement(new Vec3(this.getDeltaMovement().x, jumpY, this.getDeltaMovement().z));
+
+                        this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                                net.minecraft.sounds.SoundEvents.FIREWORK_ROCKET_BLAST,
+                                net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.6F);
+                    } else {
+                        // 通常ジャンプ台: 速度に応じた跳躍
+                        double jumpY = 0.22 + (this.currentSpeed * 0.40);
+                        this.carVelocity = new Vec3(this.carVelocity.x, jumpY, this.carVelocity.z);
+                        this.setDeltaMovement(new Vec3(this.getDeltaMovement().x, jumpY, this.getDeltaMovement().z));
+
+                        this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                                net.minecraft.sounds.SoundEvents.ARMOR_EQUIP_ELYTRA.value(),
+                                net.minecraft.sounds.SoundSource.PLAYERS, 0.8F, 1.4F);
+                    }
+                }
+            }
+        }
+
         // 衝突検知 (高さ0.10m以上の壁・障害物に激突して移動量が大幅に遮断された場合のみ、マシンの速度を急減衰して確実にストップ)
         // ※ レーシング縁石(高さ0.019m〜0.038m)などの薄い段差への乗り上げは激突と判定せずスムーズに通過
         double expectedH = totalDistH;
@@ -1057,6 +1117,12 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         for (net.minecraft.world.phys.shapes.VoxelShape shape : collisions) {
             if (!shape.isEmpty()) {
                 for (net.minecraft.world.phys.AABB aabb : shape.toAabbs()) {
+                    // スロープブロック（ジャンプ台）への進入は壁激突と判定しない
+                    BlockPos bp = BlockPos.containing((aabb.minX + aabb.maxX) * 0.5, aabb.minY + 0.05, (aabb.minZ + aabb.maxZ) * 0.5);
+                    if (this.level().getBlockState(bp).getBlock() instanceof com.microdrone.mod.block.RacingSlopeBlock) {
+                        continue;
+                    }
+
                     // 高さ判定: レーシング縁石(高さ約0.019m〜0.038m)は除外、高さ0.10m以上の壁をブロック対象とする
                     if (aabb.maxY - this.getY() > 0.10) {
                         return true;
@@ -1196,6 +1262,20 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     }
 
     private double sampleGroundY(double x, double y, double z) {
+        // レーシングスロープ（斜面）の精密サンプリング
+        BlockPos pos = BlockPos.containing(x, y, z);
+        net.minecraft.world.level.block.state.BlockState st = level().getBlockState(pos);
+        if (!(st.getBlock() instanceof com.microdrone.mod.block.RacingSlopeBlock)) {
+            pos = pos.below();
+            st = level().getBlockState(pos);
+        }
+        if (st.getBlock() instanceof com.microdrone.mod.block.RacingSlopeBlock) {
+            double relX = x - pos.getX();
+            double relZ = z - pos.getZ();
+            double slopeH = com.microdrone.mod.block.RacingSlopeBlock.sampleSlopeHeight(st, relX, relZ);
+            return pos.getY() + slopeH;
+        }
+
         net.minecraft.world.phys.Vec3 from = new net.minecraft.world.phys.Vec3(x, y + 0.25, z);
         net.minecraft.world.phys.Vec3 to = new net.minecraft.world.phys.Vec3(x, y - 0.35, z);
         net.minecraft.world.phys.BlockHitResult hit = level().clip(new net.minecraft.world.level.ClipContext(

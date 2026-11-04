@@ -36,6 +36,8 @@ public class ModCreativeTabs {
                         output.accept(ModItems.GOAL_GATE.get());
                         output.accept(ModItems.CHECKPOINT_PLATE.get());
                         output.accept(ModItems.RACE_DISPLAY_ITEM.get());
+                        output.accept(ModItems.RACING_SLOPE_ITEM.get());
+                        output.accept(ModItems.BOOST_RAMP_ITEM.get());
                         output.accept(ModItems.MINIATURE_PLACEMENT_ITEM.get());
 
                         // バッテリー
