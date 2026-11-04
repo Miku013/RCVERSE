@@ -358,6 +358,7 @@ public class MiniaturePlacementBlockEntity extends BlockEntity implements GeoBlo
 
     private double getMiniatureOutlineHeightPixels(String id) {
         if ("goal_gate".equals(id)) return 16.0; // プレイヤーが視線で選択しやすい高さ
+        if ("checkpoint_plate".equals(id)) return 1.0; // 薄型プレートの選択枠
         if ("racing_curb".equals(id)) return 1.2; // プレイヤーが視線で選択しやすい高さ
         if ("curb_stone".equals(id)) return 14.0; // 縁石ガード壁
         if ("guardrail".equals(id)) return 16.0;  // ガードレール壁 (1.0ブロック高)
@@ -367,6 +368,7 @@ public class MiniaturePlacementBlockEntity extends BlockEntity implements GeoBlo
 
     private double getMiniatureCollisionHeightPixels(String id) {
         if ("goal_gate".equals(id)) return 0.0;   // ゴールゲート下はRCカーがくぐり抜け可能
+        if ("checkpoint_plate".equals(id)) return 0.0; // チェックポイントプレート上は完全すり抜け
         if ("racing_curb".equals(id)) return 0.3; // レーシング縁石は極薄0.3px (約0.019m): 物理的な引っ掛かりをゼロにしつつサスが美しく沈む
         if ("curb_stone".equals(id)) return 14.0; // 縁石ガード壁 (maxUpStep 9.6pxを確実に超えて激突停止)
         if ("guardrail".equals(id)) return 16.0;  // ガードレール壁 (1.0ブロック高の鉄壁として激突停止)
@@ -376,6 +378,7 @@ public class MiniaturePlacementBlockEntity extends BlockEntity implements GeoBlo
 
     private double getMiniatureRadiusPixels(String id) {
         if ("goal_gate".equals(id)) return 1.6;   // ゴールゲート幅 (3.2px)
+        if ("checkpoint_plate".equals(id)) return 1.6; // プレート幅 (3.2px)
         if ("racing_curb".equals(id)) return 1.6; // 縁石の幅 (3.2px)
         if ("guardrail".equals(id)) return 1.6;   // ガードレール幅 (3.2px)
         if ("curb_stone".equals(id)) return 1.6;  // カーブガード幅 (3.2px)

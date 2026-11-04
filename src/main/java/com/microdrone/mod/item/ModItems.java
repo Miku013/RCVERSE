@@ -61,7 +61,11 @@ public class ModItems {
     public static final DeferredHolder<Item, com.microdrone.mod.block.miniature.MiniatureItem> GOAL_GATE =
             ITEMS.register("goal_gate", () -> new com.microdrone.mod.block.miniature.MiniatureItem(new Item.Properties().stacksTo(64), "goal_gate"));
 
+    public static final DeferredHolder<Item, com.microdrone.mod.block.miniature.MiniatureItem> CHECKPOINT_PLATE =
+            ITEMS.register("checkpoint_plate", () -> new com.microdrone.mod.block.miniature.MiniatureItem(new Item.Properties().stacksTo(64), "checkpoint_plate"));
+
     public static Item getItemForMiniature(String id) {
+        if ("checkpoint_plate".equals(id)) return CHECKPOINT_PLATE.get();
         if ("goal_gate".equals(id)) return GOAL_GATE.get();
         if ("racing_curb".equals(id)) return RACING_CURB.get();
         if ("curb_stone".equals(id)) return CURB_STONE.get();

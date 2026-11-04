@@ -75,6 +75,16 @@ public class MiniatureType {
             0.0f
     ));
 
+    public static final MiniatureType CHECKPOINT_PLATE = register(new MiniatureType(
+            "checkpoint_plate",
+            ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, "geo/checkpoint_plate.geo.json"),
+            ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, "textures/entity/checkpoint_plate.png"),
+            0.20f, // 1スロット(3.2px)にぴったり収まるスケール
+            Shapes.empty(), // 車体が上を抵抗なく通過できる完全すり抜け判定
+            false,
+            0.0f
+    ));
+
     private final String id;
     private final ResourceLocation modelLocation;
     private final ResourceLocation textureLocation;

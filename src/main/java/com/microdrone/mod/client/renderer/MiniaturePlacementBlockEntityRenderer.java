@@ -122,8 +122,17 @@ public class MiniaturePlacementBlockEntityRenderer extends GeoBlockRenderer<Mini
             float scale = slot.getScale();
             poseStack.scale(scale, scale, scale);
 
+            int renderLight = packedLight;
+            RenderType customRenderType = null;
+
+            // チェックポイントプレート: 色付きガラス風半透明 ＆ 暗闇でも鮮やかに光り輝くフルブライト発光
+            if ("checkpoint_plate".equals(type.getId())) {
+                renderLight = net.minecraft.client.renderer.LightTexture.FULL_BRIGHT;
+                customRenderType = RenderType.entityTranslucent(type.getTextureLocation());
+            }
+
             // 通常描画
-            defaultRender(poseStack, entity, bufferSource, null, null, 0, partialTick, packedLight);
+            defaultRender(poseStack, entity, bufferSource, customRenderType, null, 0, partialTick, renderLight);
 
             poseStack.popPose();
         }

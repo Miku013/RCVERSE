@@ -34,6 +34,7 @@ public class ModCreativeTabs {
                         output.accept(ModItems.GUARDRAIL.get());
                         output.accept(ModItems.TIRE_BARRIER.get());
                         output.accept(ModItems.GOAL_GATE.get());
+                        output.accept(ModItems.CHECKPOINT_PLATE.get());
                         output.accept(ModItems.MINIATURE_PLACEMENT_ITEM.get());
 
                         // バッテリー

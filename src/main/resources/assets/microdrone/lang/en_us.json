@@ -12,6 +12,7 @@
   "item.microdrone.guardrail": "Guardrail",
   "item.microdrone.tire_barrier": "Tire Barrier",
   "item.microdrone.goal_gate": "Goal Gate",
+  "item.microdrone.checkpoint_plate": "Checkpoint Plate",
   "block.microdrone.miniature_placement": "Course Miniature Base",
   "item.microdrone.miniature_placement": "Course Miniature Base",
   "tooltip.microdrone.traffic_cone_desc": "Right-click to place in 5x5 grid (up to 25 items) / Bare-hand right-click to pick up / Sneak right-click to rotate",
