@@ -146,9 +146,17 @@ public class MiniaturePlacementBlockEntity extends BlockEntity implements GeoBlo
             }
         }
 
-        // 仲間が2つ未満なら端っこ確定 (プレイヤーの設置角をそのまま100%維持)
-        if (neighbors.size() < 2) {
+        // 仲間が0個なら完全な単独設置 (プレイヤーの設置角をそのまま使用)
+        if (neighbors.isEmpty()) {
             return null;
+        }
+
+        // 距離が近い順にソート
+        neighbors.sort(java.util.Comparator.comparingDouble(n -> n[2]));
+
+        // 仲間が1個だけの場合 (列の2個目、または端っこピース): 手前の仲間の向きを自動継承して直線を保つ
+        if (neighbors.size() == 1) {
+            return (float) neighbors.get(0)[4];
         }
 
         // 自分から見て最も反対側（内積が最も負）にある前後ペア (In, Out) を探索
@@ -177,9 +185,9 @@ public class MiniaturePlacementBlockEntity extends BlockEntity implements GeoBlo
         }
 
         // 反対側にある仲間ペアが見つからない場合 (片側にしか仲間がいない＝端っこピース):
-        // プレイヤーの設置角をそのまま100%維持！
+        // 手動回転指定 (referenceYaw) があればそれを尊重し、新規設置なら一番近い手前の仲間のYawを継承！
         if (bestA == null || bestB == null || minDot > -0.2) {
-            return null;
+            return referenceYaw != null ? referenceYaw : (float) neighbors.get(0)[4];
         }
 
         MiniatureType type = MiniatureType.getById(miniatureId);
