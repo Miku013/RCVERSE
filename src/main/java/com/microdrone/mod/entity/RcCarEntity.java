@@ -675,9 +675,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         }
         Vec3 actualMoved = this.position().subtract(preMovePos);
 
-        // サスペンション底面クリアランスリフトによる onGround リセットを復元
-        // タイヤが接地している、または垂直衝突があった場合は接地状態を維持
-        if (this.wheelGrounded || this.verticalCollision) {
+        // 地面に衝突した（着地した）場合は接地状態を維持
+        if (this.verticalCollision && motionY <= 0.0) {
             this.setOnGround(true);
         }
 
@@ -1082,16 +1081,6 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     public boolean isWheelGrounded() { return this.wheelGrounded; }
 
     /**
-     * 車体ヒットボックスの底面を約0.05ブロック（0.8px）持ち上げ、腹下の擦りや引っかかりを防止
-     */
-    @Override
-    protected net.minecraft.world.phys.AABB makeBoundingBox() {
-        net.minecraft.world.phys.AABB box = super.makeBoundingBox();
-        double clearance = 0.05; // 腹下クリアランスリフト
-        return new net.minecraft.world.phys.AABB(box.minX, box.minY + clearance, box.minZ, box.maxX, box.maxY, box.maxZ);
-    }
-
-    /**
      * 4点仮想サスペンション物理シミュレーション
      * 4輪の地面高さからサス縮み量を算出し、路面起伏・片輪乗り上げ・旋回ロール・加減速ピッチを精密計算
      */
@@ -1128,11 +1117,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         this.suspRL = Mth.lerp(0.40f, this.suspRL, targetSuspRL);
         this.suspRR = Mth.lerp(0.40f, this.suspRR, targetSuspRR);
 
-        // 4輪中いずれかが路面に接触・追従しているか (車体下約0.10ブロック以内に地面があればタイヤ接地)
-        this.wheelGrounded = (hFL >= py - 0.10 || hFR >= py - 0.10 || hRL >= py - 0.10 || hRR >= py - 0.10);
-        if (this.wheelGrounded) {
-            this.setOnGround(true);
-        }
+        // 4輪中いずれかが路面に接触・追従しているか (車体下約0.08ブロック以内に地面があればタイヤ接地・トラクション有効)
+        this.wheelGrounded = (hFL >= py - 0.08 || hFR >= py - 0.08 || hRL >= py - 0.08 || hRR >= py - 0.08);
 
         // === 前後ピッチ角 (地面傾斜 + 加減速G) ===
         double hFront = (hFL + hFR) * 0.5;
