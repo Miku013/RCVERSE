@@ -1293,6 +1293,20 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             }
         }
 
+        long now = System.currentTimeMillis();
+
+        // 不正防止: ゴールゲート通過によるラップ進行は、スタート/前周から10秒以上経過が必須
+        if (isGate && this.currentLap > 0) {
+            long lapTimeMs = now - this.lapStartTimeMs;
+            if (lapTimeMs < 10000L) {
+                if (pilot != null) {
+                    long remainSec = (10000L - lapTimeMs + 999) / 1000;
+                    pilot.displayClientMessage(Component.literal("§c§l[LAP INVALID] §e10秒未満のため無効 §7(あと " + remainSec + "秒)"), true);
+                }
+                return;
+            }
+        }
+
         this.lastCheckpointPos = pos;
         this.lastCheckpointSlot = slotId;
         this.checkpointCooldown = 30; // 1.5秒クールダウン
@@ -1306,8 +1320,6 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                 0.5f,
                 1.0f
         );
-
-        long now = System.currentTimeMillis();
 
         if (isGate) {
             if (this.currentLap == 0) {
