@@ -1,0 +1,12 @@
+{
+  "parent": "minecraft:block/cube",
+  "textures": {
+    "particle": "microdrone:block/race_display_side",
+    "north": "microdrone:block/race_display_front",
+    "south": "microdrone:block/race_display_side",
+    "east": "microdrone:block/race_display_side",
+    "west": "microdrone:block/race_display_side",
+    "up": "microdrone:block/race_display_side",
+    "down": "microdrone:block/race_display_side"
+  }
+}

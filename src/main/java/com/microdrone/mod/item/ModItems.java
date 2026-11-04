@@ -42,6 +42,10 @@ public class ModItems {
     public static final DeferredHolder<Item, BlockItem> TEST_PIVOT_ITEM =
             ITEMS.register("test_pivot", () -> new BlockItem(ModBlocks.TEST_PIVOT.get(), new Item.Properties()));
 
+    // レース電光掲示板 (BlockItem)
+    public static final DeferredHolder<Item, BlockItem> RACE_DISPLAY_ITEM =
+            ITEMS.register("race_display", () -> new BlockItem(ModBlocks.RACE_DISPLAY.get(), new Item.Properties()));
+
     // === コース小物・設備システム (Phase 1: カラーコーン ＆ Phase 2: 縁石・ガードレール・タイヤバリア) ===
     public static final DeferredHolder<Item, com.microdrone.mod.block.miniature.TrafficConeItem> TRAFFIC_CONE =
             ITEMS.register("traffic_cone", () -> new com.microdrone.mod.block.miniature.TrafficConeItem(new Item.Properties().stacksTo(64)));

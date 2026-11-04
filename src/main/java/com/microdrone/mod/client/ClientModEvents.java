@@ -56,6 +56,7 @@ public class ClientModEvents {
         event.registerBlockEntityRenderer(ModBlockEntities.DRONE_CHARGER_BE.get(), DroneChargerBlockEntityRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.TEST_PIVOT_BE.get(), TestPivotBlockEntityRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.MINIATURE_PLACEMENT_BE.get(), com.microdrone.mod.client.renderer.MiniaturePlacementBlockEntityRenderer::new);
+        event.registerBlockEntityRenderer(ModBlockEntities.RACE_DISPLAY_BE.get(), com.microdrone.mod.client.renderer.RaceDisplayBlockEntityRenderer::new);
     }
 
     private static void registerLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {

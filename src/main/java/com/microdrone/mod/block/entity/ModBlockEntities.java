@@ -24,6 +24,10 @@ public class ModBlockEntities {
             BLOCK_ENTITIES.register("miniature_placement",
                     () -> BlockEntityType.Builder.of(com.microdrone.mod.block.miniature.MiniaturePlacementBlockEntity::new, ModBlocks.MINIATURE_PLACEMENT.get()).build(null));
 
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<RaceDisplayBlockEntity>> RACE_DISPLAY_BE =
+            BLOCK_ENTITIES.register("race_display",
+                    () -> BlockEntityType.Builder.of(RaceDisplayBlockEntity::new, ModBlocks.RACE_DISPLAY.get()).build(null));
+
     public static void register(IEventBus eventBus) {
         BLOCK_ENTITIES.register(eventBus);
     }

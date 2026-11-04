@@ -1318,6 +1318,10 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                 if (pilot != null) {
                     pilot.displayClientMessage(Component.literal("§a§l[START!] §f§lRace Started! §7(LAP 1)"), true);
                 }
+                com.microdrone.mod.block.entity.RaceDisplayBlockEntity.broadcastRaceUpdate(
+                        this.level(), this.position(), 64.0,
+                        pilot != null ? pilot.getName().getString() : "---",
+                        1, 0, this.bestLapTimeMs, 0, 0, true);
             } else {
                 // 周回完了 (Finish Line)
                 long lapTimeMs = now - this.lapStartTimeMs;
@@ -1336,6 +1340,11 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                     pilot.displayClientMessage(Component.literal(msg), true);
                 }
 
+                com.microdrone.mod.block.entity.RaceDisplayBlockEntity.broadcastRaceUpdate(
+                        this.level(), this.position(), 64.0,
+                        pilot != null ? pilot.getName().getString() : "---",
+                        this.currentLap, lapTimeMs, this.bestLapTimeMs, 0, 0, true);
+
                 this.currentLap++;
                 this.lapStartTimeMs = now;
                 this.passedCheckpointsInLap = 0;
@@ -1351,11 +1360,19 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                             this.passedCheckpointsInLap, splitTimeStr, this.currentLap);
                     pilot.displayClientMessage(Component.literal(msg), true);
                 }
+                com.microdrone.mod.block.entity.RaceDisplayBlockEntity.broadcastRaceUpdate(
+                        this.level(), this.position(), 64.0,
+                        pilot != null ? pilot.getName().getString() : "---",
+                        this.currentLap, 0, this.bestLapTimeMs, splitTimeMs, this.passedCheckpointsInLap, true);
             } else {
                 // レース前テスト通過
                 if (pilot != null) {
                     pilot.displayClientMessage(Component.literal("§b§l[CHECKPOINT] §a§lPASS!"), true);
                 }
+                com.microdrone.mod.block.entity.RaceDisplayBlockEntity.broadcastRaceUpdate(
+                        this.level(), this.position(), 64.0,
+                        pilot != null ? pilot.getName().getString() : "---",
+                        0, 0, 0, 0, 1, false);
             }
         }
     }

@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "microdrone:block/race_display" },
+    "facing=east":  { "model": "microdrone:block/race_display", "y": 90 },
+    "facing=south": { "model": "microdrone:block/race_display", "y": 180 },
+    "facing=west":  { "model": "microdrone:block/race_display", "y": 270 }
+  }
+}

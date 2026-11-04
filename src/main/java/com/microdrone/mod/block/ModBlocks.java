@@ -33,6 +33,13 @@ public class ModBlocks {
                     .noOcclusion()
                     .lightLevel(state -> state.hasProperty(com.microdrone.mod.block.miniature.MiniaturePlacementBlock.LIT) && state.getValue(com.microdrone.mod.block.miniature.MiniaturePlacementBlock.LIT) ? 14 : 0)));
 
+    // レース電光掲示板（マルチブロック対応フルブロック）
+    public static final DeferredBlock<RaceDisplayBlock> RACE_DISPLAY = BLOCKS.register("race_display",
+            () -> new RaceDisplayBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_BLACK)
+                    .strength(2.0f, 3.0f)
+                    .noOcclusion()));
+
     public static void register(IEventBus eventBus) {
         BLOCKS.register(eventBus);
     }

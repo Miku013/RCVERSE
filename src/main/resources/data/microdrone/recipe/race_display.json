@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "III",
+    "GLG",
+    "IRI"
+  ],
+  "key": {
+    "I": { "item": "minecraft:iron_ingot" },
+    "G": { "item": "minecraft:glass_pane" },
+    "L": { "item": "microdrone:lcd_screen" },
+    "R": { "item": "minecraft:redstone" }
+  },
+  "result": {
+    "id": "microdrone:race_display",
+    "count": 1
+  }
+}
