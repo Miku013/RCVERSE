@@ -93,11 +93,11 @@ public class ModItems {
 
     public static final DeferredHolder<Item, DroneMotorItem> MOTOR_TIER_3 =
             ITEMS.register("motor_tier_3", () -> new DroneMotorItem(
-                    new Item.Properties().stacksTo(1), 3, 0.70, 0.09, 0.45, 0xFFFFB300, "High-Speed"));
+                    new Item.Properties().stacksTo(1), 3, 0.60, 0.075, 0.40, 0xFFFFB300, "High-Speed"));
 
     public static final DeferredHolder<Item, DroneMotorItem> MOTOR_TIER_4 =
             ITEMS.register("motor_tier_4", () -> new DroneMotorItem(
-                    new Item.Properties().stacksTo(1), 4, 0.95, 0.12, 0.60, 0xFFE53935, "Racing"));
+                    new Item.Properties().stacksTo(1), 4, 0.72, 0.095, 0.48, 0xFFE53935, "Racing"));
 
     // === ドローン本体製作用・中間素材パーツ ===
     public static final DeferredHolder<Item, DroneComponentItem> PROPELLER =
