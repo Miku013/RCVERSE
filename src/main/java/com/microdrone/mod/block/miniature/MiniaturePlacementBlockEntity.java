@@ -365,7 +365,7 @@ public class MiniaturePlacementBlockEntity extends BlockEntity implements GeoBlo
     }
 
     private double getMiniatureCollisionHeightPixels(String id) {
-        if ("racing_curb".equals(id)) return 0.6; // レーシング縁石は高さ0.6px (約0.038m): サスが美しく沈んで乗り上げ可能
+        if ("racing_curb".equals(id)) return 0.3; // レーシング縁石は極薄0.3px (約0.019m): 物理的な引っ掛かりをゼロにしつつサスが美しく沈む
         if ("curb_stone".equals(id)) return 14.0; // 縁石ガード壁 (maxUpStep 9.6pxを確実に超えて激突停止)
         if ("guardrail".equals(id)) return 16.0;  // ガードレール壁 (1.0ブロック高の鉄壁として激突停止)
         if ("tire_barrier".equals(id)) return 16.0;// タイヤバリア壁 (1.0ブロック高で激突停止)

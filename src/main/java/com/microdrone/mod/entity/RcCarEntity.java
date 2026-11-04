@@ -680,10 +680,14 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             this.setOnGround(true);
         }
 
-        // 衝突検知 (壁・障害物に激突して移動量が大幅に遮断された場合、マシンの速度を急減衰して確実にストップ)
+        // 衝突検知 (高さ0.10m以上の壁・障害物に激突して移動量が大幅に遮断された場合のみ、マシンの速度を急減衰して確実にストップ)
+        // ※ レーシング縁石(高さ0.019m〜0.038m)などの薄い段差への乗り上げは激突と判定せずスムーズに通過
         double expectedH = totalDistH;
         double actualH = Math.sqrt(actualMoved.x * actualMoved.x + actualMoved.z * actualMoved.z);
-        if (this.horizontalCollision || (expectedH > 0.03 && actualH < expectedH * 0.40)) {
+        boolean isBlocked = this.horizontalCollision || (expectedH > 0.03 && actualH < expectedH * 0.40);
+        boolean hitSolidWall = isBlocked && isObstacleInDirection(motionX, motionZ, 0.10);
+
+        if (hitSolidWall) {
             this.currentSpeed *= 0.15f; // ガツンと止まる
             this.carVelocity = new Vec3(actualMoved.x, 0.0, actualMoved.z);
 
@@ -1007,29 +1011,41 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     }
 
     /**
-     * ① 前方スキャン: マシンの前方に衝突する壁（ガードレール等）が存在するか事前検知
-     * レーシング縁石（高さ0.12m以下）は乗り越え可能なので壁と判定せず、走行を阻害しない。
+     * ① 移動方向障害物スキャン: 指定方向に衝突する壁（ガードレール等）が存在するか検知
+     * レーシング縁石（高さ0.10m以下）は乗り越え可能なので壁と判定せず、走行を阻害しない。
      */
-    private boolean isObstacleAhead(double checkDistance) {
-        float yawRad = this.getYRot() * Mth.DEG_TO_RAD;
-        double fwdX = -Mth.sin(yawRad);
-        double fwdZ = Mth.cos(yawRad);
+    private boolean isObstacleInDirection(double dirX, double dirZ, double checkDistance) {
+        double len = Math.sqrt(dirX * dirX + dirZ * dirZ);
+        double nx, nz;
+        if (len > 0.001) {
+            nx = dirX / len;
+            nz = dirZ / len;
+        } else {
+            float yawRad = this.getYRot() * Mth.DEG_TO_RAD;
+            nx = -Mth.sin(yawRad);
+            nz = Mth.cos(yawRad);
+        }
 
         net.minecraft.world.phys.AABB currentBox = this.getBoundingBox();
-        net.minecraft.world.phys.AABB checkAABB = currentBox.expandTowards(fwdX * checkDistance, 0.0, fwdZ * checkDistance);
+        net.minecraft.world.phys.AABB checkAABB = currentBox.expandTowards(nx * checkDistance, 0.0, nz * checkDistance);
 
         Iterable<net.minecraft.world.phys.shapes.VoxelShape> collisions = this.level().getBlockCollisions(this, checkAABB);
         for (net.minecraft.world.phys.shapes.VoxelShape shape : collisions) {
             if (!shape.isEmpty()) {
                 for (net.minecraft.world.phys.AABB aabb : shape.toAabbs()) {
-                    // 高さ判定: レーシング縁石(高さ約0.038m)は除外、高さ0.12m以上の壁をブロック対象とする
-                    if (aabb.maxY - this.getY() > 0.12) {
+                    // 高さ判定: レーシング縁石(高さ約0.019m〜0.038m)は除外、高さ0.10m以上の壁をブロック対象とする
+                    if (aabb.maxY - this.getY() > 0.10) {
                         return true;
                     }
                 }
             }
         }
         return false;
+    }
+
+    private boolean isObstacleAhead(double checkDistance) {
+        float yawRad = this.getYRot() * Mth.DEG_TO_RAD;
+        return isObstacleInDirection(-Mth.sin(yawRad), Mth.cos(yawRad), checkDistance);
     }
 
     /**
