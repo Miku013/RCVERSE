@@ -56,8 +56,8 @@ public class MiniaturePlacementBlockEntityRenderer extends GeoBlockRenderer<Mini
 
             // ガードレールのシームレス連結制御 (両端にポールを表示し、中間は一定間隔ごとに1本ポールを表示)
             if ("guardrail".equals(type.getId())) {
-                NeighborResult leftNeighbor = findGuardrailNeighborResult(entity, slot, false);
-                NeighborResult rightNeighbor = findGuardrailNeighborResult(entity, slot, true);
+                NeighborResult leftNeighbor = findMiniatureNeighborResult(entity, slot, "guardrail", false);
+                NeighborResult rightNeighbor = findMiniatureNeighborResult(entity, slot, "guardrail", true);
                 boolean hasLeft = leftNeighbor != null;
                 boolean hasRight = rightNeighbor != null;
 
@@ -72,8 +72,8 @@ public class MiniaturePlacementBlockEntityRenderer extends GeoBlockRenderer<Mini
                     genericModel.setGuardrailConnection(true, false);
                 } else {
                     // 中間ピース: 一定間隔 (3ピースごと) に右ポールを1本表示 (右端直前のピースは除外)
-                    int chainIndex = getGuardrailChainIndex(entity, slot);
-                    int remaining = getGuardrailRemainingSteps(entity, slot);
+                    int chainIndex = getMiniatureChainIndex(entity, slot, "guardrail");
+                    int remaining = getMiniatureRemainingSteps(entity, slot, "guardrail");
 
                     if (chainIndex % GUARDRAIL_POST_INTERVAL == 0 && remaining >= 2) {
                         genericModel.setGuardrailConnection(true, false); // 右ポール表示
@@ -81,8 +81,33 @@ public class MiniaturePlacementBlockEntityRenderer extends GeoBlockRenderer<Mini
                         genericModel.setGuardrailConnection(true, true);  // 両方非表示 (レールのみ)
                     }
                 }
+            } else if ("goal_gate".equals(type.getId())) {
+                // ゴールゲートのシームレス連結制御 (両端に柱を表示、中央ピースにのみワイドバナーを表示)
+                NeighborResult leftNeighbor = findMiniatureNeighborResult(entity, slot, "goal_gate", false);
+                NeighborResult rightNeighbor = findMiniatureNeighborResult(entity, slot, "goal_gate", true);
+                boolean hasLeft = leftNeighbor != null;
+                boolean hasRight = rightNeighbor != null;
+
+                int chainIndex = getMiniatureChainIndex(entity, slot, "goal_gate");
+                int remaining = getMiniatureRemainingSteps(entity, slot, "goal_gate");
+                int totalLength = chainIndex + remaining + 1;
+
+                // 柱の表示: 左端なら左柱のみ、右端なら右柱のみ、中間は柱非表示、単独なら両方表示
+                boolean hideLeft = hasLeft;
+                boolean hideRight = hasRight;
+
+                // バナー看板の表示: 全長の中央のピースでのみワイドバナーを表示
+                boolean showBanner;
+                if (totalLength == 1) {
+                    showBanner = true;
+                } else {
+                    showBanner = (chainIndex == totalLength / 2);
+                }
+
+                genericModel.setGoalGateConnection(hideLeft, hideRight, showBanner);
             } else {
                 genericModel.setGuardrailConnection(false, false);
+                genericModel.setGoalGateConnection(false, false, true);
             }
 
             poseStack.pushPose();
@@ -177,7 +202,7 @@ public class MiniaturePlacementBlockEntityRenderer extends GeoBlockRenderer<Mini
      *
      * @param checkRight true の場合、右端 (post_right) 方向の隣接を判定。false の場合、左端 (post_left) 方向の隣接を判定。
      */
-    private NeighborResult findGuardrailNeighborResult(MiniaturePlacementBlockEntity entity, MiniaturePlacementData slot, boolean checkRight) {
+    private NeighborResult findMiniatureNeighborResult(MiniaturePlacementBlockEntity entity, MiniaturePlacementData slot, String targetId, boolean checkRight) {
         net.minecraft.world.level.Level level = entity.getLevel();
         net.minecraft.core.BlockPos centerPos = entity.getBlockPos();
 
@@ -211,7 +236,7 @@ public class MiniaturePlacementBlockEntityRenderer extends GeoBlockRenderer<Mini
 
                 for (MiniaturePlacementData other : targetEntity.getAllSlots()) {
                     if (bdx == 0 && bdz == 0 && other.getSlotId() == slot.getSlotId()) continue;
-                    if (!"guardrail".equals(other.getMiniatureId())) continue;
+                    if (!targetId.equals(other.getMiniatureId())) continue;
 
                     double otherWorldX = targetPos.getX() + other.getXOffset();
                     double otherWorldZ = targetPos.getZ() + other.getZOffset();
@@ -250,16 +275,16 @@ public class MiniaturePlacementBlockEntityRenderer extends GeoBlockRenderer<Mini
     }
 
     /**
-     * ガードレールチェーンの左端（始点）から現在のスロットまでのステップ数を取得
+     * チェーンの左端（始点）から現在のスロットまでのステップ数を取得
      */
-    private int getGuardrailChainIndex(MiniaturePlacementBlockEntity entity, MiniaturePlacementData slot) {
+    private int getMiniatureChainIndex(MiniaturePlacementBlockEntity entity, MiniaturePlacementData slot, String targetId) {
         int index = 0;
         MiniaturePlacementData current = slot;
         MiniaturePlacementBlockEntity currentEntity = entity;
 
         // 左方向（手前）へ最大30ステップ遡る
         while (index < 30) {
-            NeighborResult prev = findGuardrailNeighborResult(currentEntity, current, false);
+            NeighborResult prev = findMiniatureNeighborResult(currentEntity, current, targetId, false);
             if (prev == null) {
                 break; // 左端に到達
             }
@@ -271,16 +296,16 @@ public class MiniaturePlacementBlockEntityRenderer extends GeoBlockRenderer<Mini
     }
 
     /**
-     * ガードレールチェーンの現在のスロットから右端（終点）までの残りステップ数を取得
+     * チェーンの現在のスロットから右端（終点）までの残りステップ数を取得
      */
-    private int getGuardrailRemainingSteps(MiniaturePlacementBlockEntity entity, MiniaturePlacementData slot) {
+    private int getMiniatureRemainingSteps(MiniaturePlacementBlockEntity entity, MiniaturePlacementData slot, String targetId) {
         int remaining = 0;
         MiniaturePlacementData current = slot;
         MiniaturePlacementBlockEntity currentEntity = entity;
 
         // 右方向（奥）へ最大30ステップ進む
         while (remaining < 30) {
-            NeighborResult next = findGuardrailNeighborResult(currentEntity, current, true);
+            NeighborResult next = findMiniatureNeighborResult(currentEntity, current, targetId, true);
             if (next == null) {
                 break; // 右端に到達
             }

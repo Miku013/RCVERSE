@@ -18,6 +18,9 @@ public class GenericMiniatureModel extends GeoModel<MiniaturePlacementBlockEntit
 
     private boolean hidePostLeft = false;
     private boolean hidePostRight = false;
+    private boolean hidePillarLeft = false;
+    private boolean hidePillarRight = false;
+    private boolean hideBanner = false;
 
     public void setMiniatureType(MiniatureType type) {
         if (type != null) {
@@ -44,6 +47,28 @@ public class GenericMiniatureModel extends GeoModel<MiniaturePlacementBlockEntit
         }
     }
 
+    public void setGoalGateConnection(boolean hideLeft, boolean hideRight, boolean showBanner) {
+        this.hidePillarLeft = hideLeft;
+        this.hidePillarRight = hideRight;
+        this.hideBanner = !showBanner;
+
+        try {
+            GeoBone pillarLeft = getAnimationProcessor().getBone("pillar_left");
+            if (pillarLeft != null) {
+                pillarLeft.setHidden(hideLeft);
+            }
+            GeoBone pillarRight = getAnimationProcessor().getBone("pillar_right");
+            if (pillarRight != null) {
+                pillarRight.setHidden(hideRight);
+            }
+            GeoBone banner = getAnimationProcessor().getBone("banner");
+            if (banner != null) {
+                banner.setHidden(!showBanner);
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
     @Override
     public void setCustomAnimations(MiniaturePlacementBlockEntity animatable, long instanceId, AnimationState<MiniaturePlacementBlockEntity> animationState) {
         super.setCustomAnimations(animatable, instanceId, animationState);
@@ -56,6 +81,21 @@ public class GenericMiniatureModel extends GeoModel<MiniaturePlacementBlockEntit
         GeoBone postRight = getAnimationProcessor().getBone("post_right");
         if (postRight != null) {
             postRight.setHidden(this.hidePostRight);
+        }
+
+        GeoBone pillarLeft = getAnimationProcessor().getBone("pillar_left");
+        if (pillarLeft != null) {
+            pillarLeft.setHidden(this.hidePillarLeft);
+        }
+
+        GeoBone pillarRight = getAnimationProcessor().getBone("pillar_right");
+        if (pillarRight != null) {
+            pillarRight.setHidden(this.hidePillarRight);
+        }
+
+        GeoBone banner = getAnimationProcessor().getBone("banner");
+        if (banner != null) {
+            banner.setHidden(this.hideBanner);
         }
     }
 

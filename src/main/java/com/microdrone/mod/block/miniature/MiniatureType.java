@@ -65,6 +65,16 @@ public class MiniatureType {
             0.0f
     ));
 
+    public static final MiniatureType GOAL_GATE = register(new MiniatureType(
+            "goal_gate",
+            ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, "geo/goal_gate.geo.json"),
+            ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, "textures/entity/goal_gate.png"),
+            0.20f, // 1スロット(3.2px)にモデル幅16ユニットがぴったり一致するスケール
+            Shapes.empty(), // 下をRCカーがくぐり抜けられる通過判定
+            true, // 横に並べた際に直線を綺麗に保つ自動角度調整
+            0.0f
+    ));
+
     private final String id;
     private final ResourceLocation modelLocation;
     private final ResourceLocation textureLocation;

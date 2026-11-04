@@ -11,6 +11,7 @@
   "item.microdrone.curb_stone": "縁石（カーブガード）",
   "item.microdrone.guardrail": "ガードレール",
   "item.microdrone.tire_barrier": "タイヤバリア",
+  "item.microdrone.goal_gate": "ゴールゲート",
   "block.microdrone.miniature_placement": "コース小物配置ベース",
   "item.microdrone.miniature_placement": "コース小物配置ベース",
   "tooltip.microdrone.traffic_cone_desc": "右クリックで配置（1ブロック内5×5グリッド・最大25個対応） / 素手右クリックで撤去 / スニーク右クリックで回転",
