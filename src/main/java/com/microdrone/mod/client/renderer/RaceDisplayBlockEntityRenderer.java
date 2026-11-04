@@ -142,3 +142,4 @@ public class RaceDisplayBlockEntityRenderer implements BlockEntityRenderer<RaceD
         return String.format("%02d'%02d\"%03d", minutes, seconds, millis);
     }
 }
+
