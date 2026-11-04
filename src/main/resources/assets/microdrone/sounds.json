@@ -5,6 +5,13 @@
     "sounds": [
       "microdrone:tank_cannon_fire"
     ]
+  },
+  "checkpoint_pass": {
+    "category": "player",
+    "subtitle": "subtitles.microdrone.checkpoint_pass",
+    "sounds": [
+      "microdrone:checkpoint_pass"
+    ]
   }
 }
 

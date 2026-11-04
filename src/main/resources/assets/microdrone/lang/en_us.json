@@ -112,5 +112,6 @@
   "entity.microdrone.rc_submarine": "Micro RC Submarine",
   "message.microdrone.sub_cam_fpv": "§c[RC Submarine] View: Underwater FPV View [Toggle: F5]",
   "message.microdrone.boat_pilot_start": "§a[RC Boat] Piloting started! (W/S: Forward/Reverse, A/D: Rudder, F5: Toggle View, Use Controller again to exit)",
-  "message.microdrone.submarine_pilot_start": "§a[RC Submarine] Piloting started! (W/S: Forward/Reverse, A/D: Turn, Space/Shift: Surface/Dive, F5: Toggle View, Use Controller again to exit)"
+  "message.microdrone.submarine_pilot_start": "§a[RC Submarine] Piloting started! (W/S: Forward/Reverse, A/D: Turn, Space/Shift: Surface/Dive, F5: Toggle View, Use Controller again to exit)",
+  "subtitles.microdrone.checkpoint_pass": "Checkpoint Passed"
 }

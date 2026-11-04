@@ -17,6 +17,10 @@ public class ModSounds {
             SOUND_EVENTS.register("tank_cannon_fire",
                     () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, "tank_cannon_fire")));
 
+    public static final DeferredHolder<SoundEvent, SoundEvent> CHECKPOINT_PASS =
+            SOUND_EVENTS.register("checkpoint_pass",
+                    () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, "checkpoint_pass")));
+
     public static void register(IEventBus eventBus) {
         SOUND_EVENTS.register(eventBus);
     }

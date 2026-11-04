@@ -1,10 +1,14 @@
 package com.microdrone.mod.entity;
 
 import com.microdrone.mod.MicroDroneMod;
+import com.microdrone.mod.block.miniature.MiniaturePlacementBlockEntity;
+import com.microdrone.mod.block.miniature.MiniaturePlacementData;
 import com.microdrone.mod.item.DroneBatteryItem;
 import com.microdrone.mod.item.DroneMotorItem;
 import com.microdrone.mod.item.ModItems;
 import com.microdrone.mod.network.DronePilotStatePayload;
+import com.microdrone.mod.sound.ModSounds;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -122,6 +126,15 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     private float suspRR = 0.0f;
     private boolean wheelGrounded = false; // 仮想サスペンション（タイヤ）の接地判定
     private int collisionCooldown = 0;    // 壁衝突SEの連打防止クールダウン (ticks)
+
+    // レース計測システム (Step 1)
+    private int currentLap = 0;                  // 0 = 未スタート, 1 = 1周目...
+    private long lapStartTimeMs = 0;             // 現ラップ開始時刻 (ms)
+    private long bestLapTimeMs = 0;              // 自己ベストラップタイム (ms)
+    private BlockPos lastCheckpointPos = null;   // 直前に通過したチェックポイント座標
+    private int lastCheckpointSlot = -1;         // 直前に通過したスロットID
+    private int checkpointCooldown = 0;          // 多重反応防止クールダウン (ticks)
+    private int passedCheckpointsInLap = 0;      // 現ラップ内の通過チェックポイント数
 
     public RcCarEntity(EntityType<?> entityType, Level level) {
         super(entityType, level);
@@ -309,6 +322,13 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             this.pilotUUID = null;
             this.inputForward = 0.0f;
             this.inputSteer = 0.0f;
+
+            // レースセッションリセット
+            this.currentLap = 0;
+            this.lapStartTimeMs = 0;
+            this.lastCheckpointPos = null;
+            this.lastCheckpointSlot = -1;
+            this.passedCheckpointsInLap = 0;
         }
     }
 
@@ -319,6 +339,9 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
 
         if (this.collisionCooldown > 0) {
             this.collisionCooldown--;
+        }
+        if (this.checkpointCooldown > 0) {
+            this.checkpointCooldown--;
         }
 
         if (!this.level().isClientSide) {
@@ -357,6 +380,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             // サーバー側物理処理
             long startNanos = System.nanoTime();
             tickCarPhysics();
+            checkCheckpointSensors(pilot);
             long elapsedUs = (System.nanoTime() - startNanos) / 1000;
             if (elapsedUs > 5000) {
                 MicroDroneMod.LOGGER.warn("[VEHICLE_TICK_TIME] SERVER car physics took {} us (>5ms) for {}", elapsedUs, this.getUUID());
@@ -1184,5 +1208,162 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             return hit.getLocation().y;
         }
         return y - 0.35;
+    }
+
+    // === レース計測・チェックポイント通過センシング (Step 1) ===
+    private void checkCheckpointSensors(ServerPlayer pilot) {
+        Vec3 pos = this.position();
+        BlockPos atPos = BlockPos.containing(pos.x, pos.y, pos.z);
+        BlockPos belowPos = atPos.below();
+
+        BlockPos[] checkPositions = new BlockPos[]{
+                atPos,
+                belowPos,
+                BlockPos.containing(pos.x, pos.y + 0.25, pos.z)
+        };
+
+        MiniaturePlacementBlockEntity targetBe = null;
+        BlockPos targetPos = null;
+
+        for (BlockPos cp : checkPositions) {
+            if (this.level().getBlockEntity(cp) instanceof MiniaturePlacementBlockEntity be) {
+                targetBe = be;
+                targetPos = cp;
+                break;
+            }
+        }
+
+        if (targetBe == null) {
+            // タイヤの接地範囲（四方0.25m）も走査
+            double[][] offsets = {
+                    {0.25, 0.0}, {-0.25, 0.0}, {0.0, 0.25}, {0.0, -0.25}
+            };
+            for (double[] off : offsets) {
+                BlockPos p = BlockPos.containing(pos.x + off[0], pos.y, pos.z + off[1]);
+                if (this.level().getBlockEntity(p) instanceof MiniaturePlacementBlockEntity be) {
+                    targetBe = be;
+                    targetPos = p;
+                    break;
+                }
+                BlockPos pb = p.below();
+                if (this.level().getBlockEntity(pb) instanceof MiniaturePlacementBlockEntity be) {
+                    targetBe = be;
+                    targetPos = pb;
+                    break;
+                }
+            }
+        }
+
+        if (targetBe != null && targetPos != null) {
+            double relX = pos.x - targetPos.getX();
+            double relZ = pos.z - targetPos.getZ();
+
+            for (MiniaturePlacementData slotData : targetBe.getAllSlots()) {
+                String id = slotData.getMiniatureId();
+                boolean isGate = "goal_gate".equals(id);
+                boolean isCheckpoint = "checkpoint_plate".equals(id);
+
+                if (!isGate && !isCheckpoint) continue;
+
+                float slotCenterX = MiniaturePlacementData.getSlotCenterX(slotData.getSlotId());
+                float slotCenterZ = MiniaturePlacementData.getSlotCenterZ(slotData.getSlotId());
+
+                double dx = relX - slotCenterX;
+                double dz = relZ - slotCenterZ;
+                double distSq = dx * dx + dz * dz;
+
+                // ゴールゲートは3スロット分のワイド設計なので判定半径0.5m、プレートは0.3m
+                double triggerRadius = isGate ? 0.50 : 0.30;
+                if (distSq <= triggerRadius * triggerRadius) {
+                    triggerSensorPass(targetPos, slotData.getSlotId(), isGate, pilot);
+                    break;
+                }
+            }
+        }
+    }
+
+    private void triggerSensorPass(BlockPos pos, int slotId, boolean isGate, ServerPlayer pilot) {
+        // クールダウン処理（同一スロットの連続反応防止 & チャタリング防止）
+        if (this.checkpointCooldown > 0) {
+            if (pos.equals(this.lastCheckpointPos) && slotId == this.lastCheckpointSlot) {
+                return;
+            }
+            if (this.checkpointCooldown > 20) {
+                return;
+            }
+        }
+
+        this.lastCheckpointPos = pos;
+        this.lastCheckpointSlot = slotId;
+        this.checkpointCooldown = 30; // 1.5秒クールダウン
+
+        // 音源再生 (ユーザー指定: 音量50% = 0.5f)
+        this.level().playSound(
+                null,
+                this.getX(), this.getY(), this.getZ(),
+                ModSounds.CHECKPOINT_PASS.get(),
+                SoundSource.PLAYERS,
+                0.5f,
+                1.0f
+        );
+
+        long now = System.currentTimeMillis();
+
+        if (isGate) {
+            if (this.currentLap == 0) {
+                // レース開始 (Start Line)
+                this.currentLap = 1;
+                this.lapStartTimeMs = now;
+                this.passedCheckpointsInLap = 0;
+                if (pilot != null) {
+                    pilot.displayClientMessage(Component.literal("§a§l[START!] §f§lRace Started! §7(LAP 1)"), true);
+                }
+            } else {
+                // 周回完了 (Finish Line)
+                long lapTimeMs = now - this.lapStartTimeMs;
+                boolean isNewRecord = (this.bestLapTimeMs == 0 || lapTimeMs < this.bestLapTimeMs);
+                if (isNewRecord) {
+                    this.bestLapTimeMs = lapTimeMs;
+                }
+
+                String lapTimeStr = formatRaceTime(lapTimeMs);
+                String bestTimeStr = formatRaceTime(this.bestLapTimeMs);
+
+                if (pilot != null) {
+                    String prefix = isNewRecord ? "§d§l★NEW RECORD! " : "";
+                    String msg = String.format("%s§6§l[LAP %d] §e§l%s §7(Best: %s)",
+                            prefix, this.currentLap, lapTimeStr, bestTimeStr);
+                    pilot.displayClientMessage(Component.literal(msg), true);
+                }
+
+                this.currentLap++;
+                this.lapStartTimeMs = now;
+                this.passedCheckpointsInLap = 0;
+            }
+        } else {
+            // チェックポイント通過
+            this.passedCheckpointsInLap++;
+            if (this.currentLap > 0) {
+                long splitTimeMs = now - this.lapStartTimeMs;
+                String splitTimeStr = formatRaceTime(splitTimeMs);
+                if (pilot != null) {
+                    String msg = String.format("§b§l[CP %d] §f§l%s §7(Lap %d)",
+                            this.passedCheckpointsInLap, splitTimeStr, this.currentLap);
+                    pilot.displayClientMessage(Component.literal(msg), true);
+                }
+            } else {
+                // レース前テスト通過
+                if (pilot != null) {
+                    pilot.displayClientMessage(Component.literal("§b§l[CHECKPOINT] §a§lPASS!"), true);
+                }
+            }
+        }
+    }
+
+    private String formatRaceTime(long ms) {
+        long minutes = (ms / 60000);
+        long seconds = (ms % 60000) / 1000;
+        long millis = ms % 1000;
+        return String.format("%02d'%02d\"%03d", minutes, seconds, millis);
     }
 }

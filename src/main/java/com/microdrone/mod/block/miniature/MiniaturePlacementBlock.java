@@ -36,6 +36,19 @@ public class MiniaturePlacementBlock extends BaseEntityBlock {
     }
 
     @Override
+    public int getLightEmission(BlockState state, BlockGetter level, BlockPos pos) {
+        BlockEntity be = level.getBlockEntity(pos);
+        if (be instanceof MiniaturePlacementBlockEntity placementBe) {
+            boolean hasLight = placementBe.getAllSlots().stream().anyMatch(slot -> "checkpoint_plate".equals(slot.getMiniatureId()));
+            if (hasLight) return 14;
+        }
+        if (state.hasProperty(LIT) && state.getValue(LIT)) {
+            return 14;
+        }
+        return 0;
+    }
+
+    @Override
     protected void createBlockStateDefinition(net.minecraft.world.level.block.state.StateDefinition.Builder<net.minecraft.world.level.block.Block, BlockState> builder) {
         builder.add(LIT);
     }
