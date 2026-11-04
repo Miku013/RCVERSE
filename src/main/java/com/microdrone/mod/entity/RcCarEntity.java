@@ -1034,34 +1034,35 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     }
 
     /**
-     * ④ クラッシュ火花パーティクル再生 (金属激突時のリアルなスパーク)
+     * ④ クラッシュ火花パーティクル再生 (王道アーケードレース風: 高速閃光スパーク FIREWORK ＋ 黄金色星型 CRIT)
      */
     private void spawnCollisionSparks(double impactSpeed) {
         float yawRad = this.getYRot() * Mth.DEG_TO_RAD;
         double frontX = -Mth.sin(yawRad) * 0.18;
         double frontZ = Mth.cos(yawRad) * 0.18;
         double y = this.getY() + 0.08;
-        int count = Math.min(10, (int) (impactSpeed * 60.0) + 4);
+        int count = Math.min(14, (int) (impactSpeed * 70.0) + 5);
 
         for (int i = 0; i < count; i++) {
-            double vx = (Math.random() - 0.5) * 0.22 - frontX * 0.4;
-            double vy = Math.random() * 0.16 + 0.05;
-            double vz = (Math.random() - 0.5) * 0.22 - frontZ * 0.4;
+            // 前方衝突面から四方へ勢いよく跳ね返る速度ベクトル
+            double vx = (Math.random() - 0.5) * 0.35 - frontX * 0.5;
+            double vy = Math.random() * 0.22 + 0.06;
+            double vz = (Math.random() - 0.5) * 0.35 - frontZ * 0.5;
 
-            // 鮮やかなクリティカル火花 (黄金色スパーク)
-            this.level().addParticle(ParticleTypes.CRIT,
-                    this.getX() + frontX + (Math.random() - 0.5) * 0.12,
+            // 高速で尾を引く閃光スパーク (花火パーティクル: シュパパッと鮮やかに散る)
+            this.level().addParticle(ParticleTypes.FIREWORK,
+                    this.getX() + frontX + (Math.random() - 0.5) * 0.10,
                     y,
-                    this.getZ() + frontZ + (Math.random() - 0.5) * 0.12,
+                    this.getZ() + frontZ + (Math.random() - 0.5) * 0.10,
                     vx, vy, vz);
 
-            // 弾け散る溶岩の火の粉 (バチッという火花)
+            // 黄金色の星型キラキラスパーク (アーケードゲーム特有の派手なヒット演出)
             if (i % 2 == 0) {
-                this.level().addParticle(ParticleTypes.LAVA,
-                        this.getX() + frontX + (Math.random() - 0.5) * 0.10,
-                        y,
-                        this.getZ() + frontZ + (Math.random() - 0.5) * 0.10,
-                        0, 0, 0);
+                this.level().addParticle(ParticleTypes.CRIT,
+                        this.getX() + frontX + (Math.random() - 0.5) * 0.12,
+                        y + 0.02,
+                        this.getZ() + frontZ + (Math.random() - 0.5) * 0.12,
+                        vx * 0.8, vy * 0.8, vz * 0.8);
             }
         }
     }
