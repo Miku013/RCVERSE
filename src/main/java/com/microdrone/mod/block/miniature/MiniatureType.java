@@ -29,7 +29,7 @@ public class MiniatureType {
             "racing_curb",
             ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, "geo/racing_curb.geo.json"),
             ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, "textures/entity/racing_curb.png"),
-            0.24f, // 1マス幅で連結する元のスケール (約3.84px)
+            0.20f, // 1スロット枠(3.2px)にピッタリ収まるコンパクトスケール
             Shapes.box(0.35, 0.0, 0.35, 0.65, 0.06, 0.65), // サスペンションが乗り上げられる薄いスロープ判定
             true, // 直線・カーブ自動角度追従
             0.0f // 進行方向に沿って赤白ストライプが交互に並ぶ基準角
