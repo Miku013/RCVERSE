@@ -723,8 +723,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                 double relX = this.getX() - checkPos.getX();
                 double relZ = this.getZ() - checkPos.getZ();
 
-                // 登り方向の進行度 (0.0=手前, 1.0=奥/天端)
-                double progress = switch (facing) {
+                // 登り方向の進行距離 (0.0m=手前, 0.58m=天端リップ)
+                double dist = switch (facing) {
                     case SOUTH -> relZ;
                     case NORTH -> 1.0 - relZ;
                     case EAST  -> relX;
@@ -732,12 +732,12 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                     default    -> 0.0;
                 };
 
-                // スロープの頂上付近 (progress >= 0.75) に到達したらジャンプ！
-                if (progress >= 0.75) {
+                // スロープの頂上付近 (dist >= 0.45) に到達したらジャンプ！
+                if (dist >= 0.45) {
                     this.jumpCooldown = 15; // 0.75秒クールダウン
                     this.setOnGround(false);
                     this.hasImpulse = true;
-                    this.pitchAngle = -10.0f; // 空中でのノーズアップ姿勢
+                    this.pitchAngle = -12.0f; // 空中でのノーズアップ姿勢
 
                     boolean isBoost = slopeBlock.isBoost();
                     if (isBoost) {

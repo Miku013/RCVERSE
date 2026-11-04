@@ -33,10 +33,11 @@ public class RacingSlopeBlock extends HorizontalDirectionalBlock {
     );
 
     public static final DirectionProperty FACING = HorizontalDirectionalBlock.FACING;
-    public static final double RAMP_MAX_HEIGHT = 0.18; // 先端の高さ (約2.9ピクセル = 18cm)
+    public static final double RAMP_MAX_HEIGHT = 0.24; // 先端の高さ (約3.8ピクセル = 24cm)
+    public static final double RAMP_LENGTH = 0.58;     // 板の水平長さ (約9.2ピクセル = 58cm)
 
-    // 視線選択用のアウトライン (高さ約3ピクセル)
-    private static final VoxelShape OUTLINE_SHAPE = Block.box(0, 0, 0, 16, 3.0, 16);
+    // 視線選択用のアウトライン (高さ約4ピクセル)
+    private static final VoxelShape OUTLINE_SHAPE = Block.box(0, 0, 0, 16, 4.0, 16);
     // 物理コライダー: RCカーのタイヤが角にぶつかって弾かれない極薄ベース (厚さ0.5px)
     private static final VoxelShape COLLISION_SHAPE = Block.box(0, 0, 0, 16, 0.5, 16);
 
@@ -84,22 +85,24 @@ public class RacingSlopeBlock extends HorizontalDirectionalBlock {
     }
 
     /**
-     * 車両サスペンション用: 1枚の斜め板上の高さを精密サンプリング (0.0m 〜 0.18m)
+     * 車両サスペンション用: 1枚の斜め板上の高さを精密サンプリング (0.0m 〜 0.24m)
      */
     public static double sampleSlopeHeight(BlockState state, double relX, double relZ) {
         Direction facing = state.getValue(FACING);
 
-        // 登り方向の進行度 (0.0=手前地面, 1.0=先端リップ)
-        double progress = switch (facing) {
+        // 登り方向の進行距離 (0.0m=手前地面 〜 0.58m=先端リップ)
+        double dist = switch (facing) {
             case SOUTH -> relZ;
             case NORTH -> 1.0 - relZ;
             case EAST  -> relX;
             case WEST  -> 1.0 - relX;
             default    -> 0.0;
         };
-        progress = Math.max(0.0, Math.min(1.0, progress));
 
-        // 1枚の直線板なので、完全な一次関数（滑らかさ100%）
+        if (dist <= 0.0) return 0.0;
+        if (dist >= RAMP_LENGTH) return RAMP_MAX_HEIGHT;
+
+        double progress = dist / RAMP_LENGTH;
         return progress * RAMP_MAX_HEIGHT;
     }
 

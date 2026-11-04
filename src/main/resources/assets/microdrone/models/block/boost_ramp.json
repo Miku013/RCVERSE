@@ -10,11 +10,11 @@
     {
       "name": "ramp_board",
       "from": [0, 0, 0],
-      "to": [16, 0.5, 16],
+      "to": [16, 0.5, 10],
       "rotation": {
         "origin": [8, 0, 0],
         "axis": "x",
-        "angle": -10.0
+        "angle": -22.5
       },
       "faces": {
         "north": { "texture": "#side", "cullface": "north" },
@@ -27,8 +27,8 @@
     },
     {
       "name": "side_left",
-      "from": [0, 0, 8],
-      "to": [0.6, 2.5, 16],
+      "from": [0, 0, 3],
+      "to": [0.6, 3.5, 9.2],
       "faces": {
         "north": { "texture": "#side" },
         "south": { "texture": "#side" },
@@ -40,8 +40,8 @@
     },
     {
       "name": "side_right",
-      "from": [15.4, 0, 8],
-      "to": [16, 2.5, 16],
+      "from": [15.4, 0, 3],
+      "to": [16, 3.5, 9.2],
       "faces": {
         "north": { "texture": "#side" },
         "south": { "texture": "#side" },
