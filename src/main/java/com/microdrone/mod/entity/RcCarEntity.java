@@ -454,6 +454,13 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         float targetSteer = this.inputSteer * 35.0f;
         this.steerAngle = Mth.lerp(0.40f, this.steerAngle, targetSteer);
 
+        // ③ 接触時の出力抑制 (壁・障害物に接触/密着している状態での前進アクセルを大幅カットし、ゴリ押し抜けを完全防止)
+        boolean wallAhead = this.horizontalCollision || (this.inputForward > 0.05f && isObstacleAhead(0.12));
+        if (wallAhead && this.inputForward > 0.05f) {
+            this.currentSpeed = Math.min(this.currentSpeed, 0.015f); // ほぼ停止速度に制限
+            accel *= 0.08; // 加速を90%以上カット
+        }
+
         // 前進 / 後退 / ESCブレーキ処理 (実機ホビーラジコンESC仕様: 前進中のS入力は急ブレーキ、停止後にバック)
         // Forward / Reverse / Brake processing with Mario Kart drift speed maintenance
         if (this.inputForward > 0.05f) {
@@ -645,8 +652,27 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         }
 
         Vec3 preMovePos = this.position();
-        this.setDeltaMovement(new Vec3(motionX, motionY, motionZ));
-        this.move(MoverType.SELF, this.getDeltaMovement());
+        double totalDistH = Math.sqrt(motionX * motionX + motionZ * motionZ);
+
+        // ② サブステップ分割 (CCD: 連続衝突判定)
+        // 1回の移動量がガードレールの厚み(0.2m)を飛び越えて壁抜けするトンネリング現象を完全防止
+        int numSteps = 1;
+        if (totalDistH > 0.04) {
+            numSteps = (int) Math.ceil(totalDistH / 0.04); // 1ステップ最大0.04m (約0.6px)
+            numSteps = Mth.clamp(numSteps, 1, 6);
+        }
+
+        double stepX = motionX / numSteps;
+        double stepY = motionY / numSteps;
+        double stepZ = motionZ / numSteps;
+
+        for (int i = 0; i < numSteps; i++) {
+            this.setDeltaMovement(new Vec3(stepX, stepY, stepZ));
+            this.move(MoverType.SELF, this.getDeltaMovement());
+            if (this.horizontalCollision) {
+                break; // 壁に接触した瞬間に残りのステップを即時遮断！
+            }
+        }
         Vec3 actualMoved = this.position().subtract(preMovePos);
 
         // サスペンション底面クリアランスリフトによる onGround リセットを復元
@@ -656,26 +682,32 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         }
 
         // 衝突検知 (壁・障害物に激突して移動量が大幅に遮断された場合、マシンの速度を急減衰して確実にストップ)
-        double expectedH = Math.sqrt(motionX * motionX + motionZ * motionZ);
+        double expectedH = totalDistH;
         double actualH = Math.sqrt(actualMoved.x * actualMoved.x + actualMoved.z * actualMoved.z);
         if (this.horizontalCollision || (expectedH > 0.03 && actualH < expectedH * 0.40)) {
-            this.currentSpeed *= 0.20f; // ガツンと止まる
+            this.currentSpeed *= 0.15f; // ガツンと止まる
             this.carVelocity = new Vec3(actualMoved.x, 0.0, actualMoved.z);
 
-            // 衝突SE再生 (低速でも確実に鳴り、連打防止クールダウン付き)
-            if (this.collisionCooldown <= 0 && expectedH > 0.02) {
-                this.collisionCooldown = 8; // 0.4秒間隔
-                float pitch = (float) (1.0f + Math.random() * 0.3f);
-                float volume = (float) Math.min(1.0, Math.max(0.5, expectedH * 4.0));
-
+            // 衝突SE & クラッシュ火花パーティクル再生
+            if (expectedH > 0.02) {
                 if (this.level().isClientSide) {
-                    this.level().playLocalSound(this.getX(), this.getY(), this.getZ(),
-                            net.minecraft.sounds.SoundEvents.SHIELD_BLOCK,
-                            net.minecraft.sounds.SoundSource.PLAYERS, volume, pitch, false);
-                } else {
-                    this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
-                            net.minecraft.sounds.SoundEvents.SHIELD_BLOCK,
-                            net.minecraft.sounds.SoundSource.PLAYERS, volume, pitch);
+                    spawnCollisionSparks(expectedH);
+                }
+
+                if (this.collisionCooldown <= 0) {
+                    this.collisionCooldown = 8; // 0.4秒間隔
+                    float pitch = (float) (1.0f + Math.random() * 0.3f);
+                    float volume = (float) Math.min(1.0, Math.max(0.5, expectedH * 4.0));
+
+                    if (this.level().isClientSide) {
+                        this.level().playLocalSound(this.getX(), this.getY(), this.getZ(),
+                                net.minecraft.sounds.SoundEvents.SHIELD_BLOCK,
+                                net.minecraft.sounds.SoundSource.PLAYERS, volume, pitch, false);
+                    } else {
+                        this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                                net.minecraft.sounds.SoundEvents.SHIELD_BLOCK,
+                                net.minecraft.sounds.SoundSource.PLAYERS, volume, pitch);
+                    }
                 }
             }
 
@@ -973,6 +1005,65 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         this.level().addParticle(ParticleTypes.FLAME,
                 this.getX() + backX, y, this.getZ() + backZ,
                 0, 0.01, 0);
+    }
+
+    /**
+     * ① 前方スキャン: マシンの前方に衝突する壁（ガードレール等）が存在するか事前検知
+     * レーシング縁石（高さ0.12m以下）は乗り越え可能なので壁と判定せず、走行を阻害しない。
+     */
+    private boolean isObstacleAhead(double checkDistance) {
+        float yawRad = this.getYRot() * Mth.DEG_TO_RAD;
+        double fwdX = -Mth.sin(yawRad);
+        double fwdZ = Mth.cos(yawRad);
+
+        net.minecraft.world.phys.AABB currentBox = this.getBoundingBox();
+        net.minecraft.world.phys.AABB checkAABB = currentBox.expandTowards(fwdX * checkDistance, 0.0, fwdZ * checkDistance);
+
+        Iterable<net.minecraft.world.phys.shapes.VoxelShape> collisions = this.level().getBlockCollisions(this, checkAABB);
+        for (net.minecraft.world.phys.shapes.VoxelShape shape : collisions) {
+            if (!shape.isEmpty()) {
+                for (net.minecraft.world.phys.AABB aabb : shape.toAabbs()) {
+                    // 高さ判定: レーシング縁石(高さ約0.038m)は除外、高さ0.12m以上の壁をブロック対象とする
+                    if (aabb.maxY - this.getY() > 0.12) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * ④ クラッシュ火花パーティクル再生 (金属激突時のリアルなスパーク)
+     */
+    private void spawnCollisionSparks(double impactSpeed) {
+        float yawRad = this.getYRot() * Mth.DEG_TO_RAD;
+        double frontX = -Mth.sin(yawRad) * 0.18;
+        double frontZ = Mth.cos(yawRad) * 0.18;
+        double y = this.getY() + 0.08;
+        int count = Math.min(10, (int) (impactSpeed * 60.0) + 4);
+
+        for (int i = 0; i < count; i++) {
+            double vx = (Math.random() - 0.5) * 0.22 - frontX * 0.4;
+            double vy = Math.random() * 0.16 + 0.05;
+            double vz = (Math.random() - 0.5) * 0.22 - frontZ * 0.4;
+
+            // 鮮やかなクリティカル火花 (黄金色スパーク)
+            this.level().addParticle(ParticleTypes.CRIT,
+                    this.getX() + frontX + (Math.random() - 0.5) * 0.12,
+                    y,
+                    this.getZ() + frontZ + (Math.random() - 0.5) * 0.12,
+                    vx, vy, vz);
+
+            // 弾け散る溶岩の火の粉 (バチッという火花)
+            if (i % 2 == 0) {
+                this.level().addParticle(ParticleTypes.LAVA,
+                        this.getX() + frontX + (Math.random() - 0.5) * 0.10,
+                        y,
+                        this.getZ() + frontZ + (Math.random() - 0.5) * 0.10,
+                        0, 0, 0);
+            }
+        }
     }
 
     public float getRollAngle() {
