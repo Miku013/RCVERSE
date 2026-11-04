@@ -370,3 +370,14 @@ Minecraft 1.21.1 (NeoForge) 向けの超リアル・高機能ラジコン MOD。
 - [x] チェックポイント通過SE (ModSounds.CHECKPOINT_PASS): 音量50%で再生。
 - [x] 通過センシング & ラップタイマー (Step 1): ゴールゲート通過で開始/ラップ更新、CP通過でスプリット表示。
 - [x] 電光掲示板マルチブロック (Step 2): RaceDisplayBlock / RaceDisplayBlockEntity / RaceDisplayBlockEntityRenderer 新設。横縦連結で自動巨大スクリーン化。自発光LEDネオン表示。RCカーからのリアルタイムテレメトリ送信。
+
+### L. キッカーランプ（斜め板ジャンプ台）の進捗 & 次回課題 (2026-11-05)
+- [x] **斜め板モデル (RacingSlopeBlock / boost_ramp)**:
+  - Minecraft公式のJSONモデル仕様 (-22.5度 傾斜) に準拠し、紫黒チェッカーのパースエラーを完全解消。
+  - 黒い走行板＋黄黒ストライプ/ネオンブルーのサイドプレートで1ブロック完結のキッカーランプモデルを配置完了。
+- [ ] **次回修正課題: マシンの埋まり込み解消 & スムーズ跳躍**:
+  - **現象**: 画像 media_1793809867896_d683120b.jpg の通り、斜め板のモデル内にRCカーが沈み込んでしまい、摩擦で綺麗にジャンプできない。
+  - **原因**: RacingSlopeBlock の COLLISION_SHAPE が極薄（0.5px）のため、Minecraft標準のエンティティ物理が車体を地面（Y=0）まで落としてしまっている（sampleGroundY はサス伸縮用で、車体AABB自体の押し上げを行っていない）。
+  - **次回対応方針**:
+    1. RacingSlopeBlock.getCollisionShape() に斜面追従用のVoxelShape（4〜8スライスの階段コライダー）を定義し、車輪・AABBが斜面の上を物理的に登れるようにする。
+    2. または RcCarEntity.java の移動処理で、スロープ上では sampleGroundY の平均値に合わせて車体中心Yを押し上げるステップアップ処理を適用する。
