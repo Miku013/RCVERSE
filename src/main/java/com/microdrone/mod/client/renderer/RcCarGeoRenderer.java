@@ -18,6 +18,13 @@ public class RcCarGeoRenderer extends GeoEntityRenderer<RcCarEntity> {
 
     @Override
     public void render(RcCarEntity entity, float entityYaw, float partialTick, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
+        // レスキュー点滅演出: 点滅タイマー作動中は2tickおきに描画をスキップして高速点滅
+        if (entity.getResyncBlinkTicks() > 0) {
+            if ((entity.getResyncBlinkTicks() / 2) % 2 == 0) {
+                return;
+            }
+        }
+
         poseStack.pushPose();
 
         // 1/5 スケールに縮小（手のひら・卓上マイクロRCカーサイズ）

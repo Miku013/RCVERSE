@@ -80,6 +80,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             SynchedEntityData.defineId(RcCarEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> DATA_CUSTOM_WEIGHT =
             SynchedEntityData.defineId(RcCarEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Integer> DATA_RESYNC_BLINK_TICKS =
+            SynchedEntityData.defineId(RcCarEntity.class, EntityDataSerializers.INT);
 
     // 操縦者UUID
     private UUID pilotUUID = null;
@@ -135,6 +137,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     private int collisionCooldown = 0;    // 壁衝突SEの連打防止クールダウン (ticks)
     private int jumpCooldown = 0;         // ジャンプ台連続発動防止クールダウン (ticks)
     private int jumpAirborneTicks = 0;    // ジャンプ空中飛行保護タイマー (地面吸着・水平化を防止)
+    private int resyncBlinkTicks = 0;     // レスキュー位置復帰点滅タイマー (ticks)
 
     // レース計測システム (Step 1)
     private int currentLap = 0;                  // 0 = 未スタート, 1 = 1周目...
@@ -166,10 +169,9 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
 
     /**
      * サーバーからの位置同期パケット受信時の処理。
-     * 自プレイヤー操縦中は、クライアント側の予測移動を100%優先し、
-     * 過去の遅延サーバー位置へのソフト引き寄せ（毎tick10%）を行わない。
-     * これにより、ジャンプ着地後の斜め引きずり・操作方向の歪みを完全に根絶。
-     * (4m以上の致命的な壁埋まり時のみスナップ補正)
+     * 通常走行時はクライアント予測移動を最優先して入力遅延・引きずりをゼロ化。
+     * 1.8mを超える異常乖離（壁抜け、スタック等）が発生した時のみ、
+     * 機体を一時的に点滅させてサーバー位置へ瞬間強制レスキュー復帰を行う。
      */
     @Override
     public void lerpTo(double x, double y, double z, float yRot, float xRot, int steps) {
@@ -179,19 +181,61 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             double dz = z - this.getZ();
             double distSq = dx * dx + dy * dy + dz * dz;
 
-            // 4m 超過の致命的な位置ズレ（壁埋まりなど）のみ即時スナップ補正
-            if (distSq > 16.0) {
-                MicroDroneMod.LOGGER.warn("[POSITION_CORRECTION] Reason: 4m_THRESHOLD_EXCEEDED, VehicleUUID: {}, ClientPos: [{}, {}, {}], ServerTargetPos: [{}, {}, {}], DeltaDist: {}m, CurrentSpeed: {}",
-                        this.getUUID(), String.format("%.2f", this.getX()), String.format("%.2f", this.getY()), String.format("%.2f", this.getZ()),
-                        String.format("%.2f", x), String.format("%.2f", y), String.format("%.2f", z),
-                        String.format("%.2f", Math.sqrt(distSq)), this.currentSpeed);
-                super.lerpTo(x, y, z, yRot, xRot, steps);
+            // 1.8m (distSq > 3.24) 超過の重大な位置ズレ発生時、かつ非点滅時にレスキュー復帰発動
+            if (distSq > 3.24 && this.resyncBlinkTicks <= 0) {
+                triggerRescueResync(x, y, z, yRot, Math.sqrt(distSq));
             }
             // 自プレイヤー操縦中はソフト引き寄せターゲットを設定しない
             this.hasServerTarget = false;
             return;
         }
         super.lerpTo(x, y, z, yRot, xRot, steps);
+    }
+
+    /**
+     * サーバーとクライアントの位置が大きく乖離した際の強制レスキュー同期＆点滅演出
+     */
+    public void triggerRescueResync(double serverX, double serverY, double serverZ, float serverYRot, double deltaDist) {
+        MicroDroneMod.LOGGER.warn("[RESCUE_RESYNC] Vehicle: {}, ClientPos: [{}, {}, {}] -> ServerPos: [{}, {}, {}], Delta: {}m",
+                this.getUUID(),
+                String.format("%.2f", this.getX()), String.format("%.2f", this.getY()), String.format("%.2f", this.getZ()),
+                String.format("%.2f", serverX), String.format("%.2f", serverY), String.format("%.2f", serverZ),
+                String.format("%.2f", deltaDist));
+
+        // 1. サーバー正規座標への瞬間スナップ
+        this.setPos(serverX, serverY, serverZ);
+        this.setYRot(serverYRot);
+        this.yRotO = serverYRot;
+        this.carVelocity = Vec3.ZERO;
+        this.setDeltaMovement(Vec3.ZERO);
+        this.currentSpeed = 0.0f;
+        this.pitchAngle = 0.0f;
+        this.rollAngle = 0.0f;
+        this.setOnGround(true);
+
+        // 2. 点滅タイマー発動 (20 ticks = 約1秒間高速点滅)
+        this.resyncBlinkTicks = 20;
+
+        // 3. レスキュー演出音
+        this.level().playSound(null, serverX, serverY, serverZ,
+                SoundEvents.CHORUS_FRUIT_TELEPORT, SoundSource.PLAYERS, 0.9F, 1.7F);
+
+        // 4. パーティクル演出
+        if (this.level().isClientSide) {
+            for (int i = 0; i < 8; i++) {
+                double ox = (this.random.nextDouble() - 0.5) * 0.4;
+                double oy = this.random.nextDouble() * 0.3;
+                double oz = (this.random.nextDouble() - 0.5) * 0.4;
+                this.level().addParticle(net.minecraft.core.particles.ParticleTypes.PORTAL,
+                        serverX + ox, serverY + oy, serverZ + oz,
+                        (this.random.nextDouble() - 0.5) * 0.2, 0.1, (this.random.nextDouble() - 0.5) * 0.2);
+            }
+
+            net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+            if (mc.player != null) {
+                mc.player.displayClientMessage(Component.literal("§e⚡ [位置同期レスキュー発動]"), true);
+            }
+        }
     }
 
     @Override
@@ -211,6 +255,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         builder.define(DATA_SUSP_RL, 0.0f);
         builder.define(DATA_SUSP_RR, 0.0f);
         builder.define(DATA_CUSTOM_WEIGHT, 1.10f);
+        builder.define(DATA_RESYNC_BLINK_TICKS, 0);
     }
 
     @Override
@@ -347,6 +392,9 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         }
         if (this.jumpAirborneTicks > 0) {
             this.jumpAirborneTicks--;
+        }
+        if (this.resyncBlinkTicks > 0) {
+            this.resyncBlinkTicks--;
         }
 
         if (!this.level().isClientSide) {
@@ -1013,6 +1061,13 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     public void setCustomWeight(float weightKg) {
         float clamped = Mth.clamp(weightKg, 0.50f, 2.50f);
         this.entityData.set(DATA_CUSTOM_WEIGHT, clamped);
+    }
+
+    public int getResyncBlinkTicks() {
+        if (this.level().isClientSide && this.locallyControlled) {
+            return this.resyncBlinkTicks;
+        }
+        return this.entityData.get(DATA_RESYNC_BLINK_TICKS);
     }
 
     public float getWheelRotation() {
