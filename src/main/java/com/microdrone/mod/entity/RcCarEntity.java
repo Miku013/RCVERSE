@@ -722,6 +722,15 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             this.setOnGround(true);
         }
 
+        // 移動後に斜面メッシュの上面へ完全吸着（板の下への潜り込みを100%防止）
+        if (this.onSlope) {
+            WheelRaycastHit curHit = sampleWheelGround(this.getX(), this.getY(), this.getZ());
+            if (curHit.onSlope && this.getY() < curHit.groundY) {
+                this.setPos(this.getX(), curHit.groundY, this.getZ());
+                this.setOnGround(true);
+            }
+        }
+
         // === スロープジャンプ台の跳躍判定 (レイキャスト先端リップ検知) ===
         if (this.jumpCooldown <= 0 && this.currentSpeed > 0.05f) {
             // 前輪位置または車体中心位置でスロープ先端リップを判定

@@ -153,6 +153,11 @@ public class RacingSlopeBlock extends HorizontalDirectionalBlock {
 
     @Override
     public VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+        // RCカーに対しては段階型（階段スライス）ヒットボックスをバイパス！
+        // RCカー独自の「レイキャスト × 三角形メッシュ衝突方式」に100%委ねることで、段差引っかかりと潜り込みを完全根絶
+        if (context instanceof net.minecraft.world.phys.shapes.EntityCollisionContext ecc && ecc.getEntity() instanceof com.microdrone.mod.entity.RcCarEntity) {
+            return Shapes.empty();
+        }
         return COLLISION_SHAPES.getOrDefault(state.getValue(FACING), OUTLINE_SHAPE);
     }
 
