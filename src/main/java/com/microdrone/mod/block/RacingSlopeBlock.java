@@ -53,10 +53,11 @@ public class RacingSlopeBlock extends HorizontalDirectionalBlock {
 
     private static VoxelShape buildRampCollisionShape(Direction facing) {
         VoxelShape shape = Shapes.empty();
-        int steps = 8;
+        int steps = 10;
         double maxDist = 9.2; // 0.58ブロック相当 (9.2px)
         double maxHeight = 3.8; // 0.24ブロック相当 (3.8px)
 
+        // 登り斜面スライス (0.0px 〜 9.2px)
         for (int i = 0; i < steps; i++) {
             double dStart = (i * maxDist) / steps;
             double dEnd = ((i + 1) * maxDist) / steps;
@@ -71,6 +72,17 @@ public class RacingSlopeBlock extends HorizontalDirectionalBlock {
             };
             shape = Shapes.or(shape, slice);
         }
+
+        // 先端リップの背後 (9.2px 〜 16.0px) の中空落とし込み防止台座 (高さ3.8px)
+        VoxelShape backPlate = switch (facing) {
+            case SOUTH -> Block.box(0, 0, maxDist, 16, maxHeight, 16);
+            case NORTH -> Block.box(0, 0, 0, 16, maxHeight, 16.0 - maxDist);
+            case EAST  -> Block.box(maxDist, 0, 0, 16, maxHeight, 16);
+            case WEST  -> Block.box(0, 0, 0, 16.0 - maxDist, maxHeight, 16);
+            default    -> Block.box(0, 0, 0, 16, maxHeight, 16);
+        };
+        shape = Shapes.or(shape, backPlate);
+
         return shape;
     }
 
@@ -118,25 +130,90 @@ public class RacingSlopeBlock extends HorizontalDirectionalBlock {
     }
 
     /**
-     * 車両サスペンション用: 1枚の斜め板上の高さを精密サンプリング (0.0m 〜 0.24m)
+     * 三角形メッシュ物理衝突結果
      */
-    public static double sampleSlopeHeight(BlockState state, double relX, double relZ) {
-        Direction facing = state.getValue(FACING);
+    public static class RampHitResult {
+        public final boolean hit;
+        public final double height;
+        public final net.minecraft.world.phys.Vec3 normal;
+        public final double progress; // 0.0=手前, 1.0=先端リップ
+        public final boolean isLip;   // 先端ジャンプ離陸ゾーン (progress >= 0.85)
+        public final boolean isBoost; // ブーストジャンプ台か
 
-        // 登り方向の進行距離 (0.0m=手前地面 〜 0.58m=先端リップ)
-        double dist = switch (facing) {
+        public RampHitResult(boolean hit, double height, net.minecraft.world.phys.Vec3 normal, double progress, boolean isLip, boolean isBoost) {
+            this.hit = hit;
+            this.height = height;
+            this.normal = normal;
+            this.progress = progress;
+            this.isLip = isLip;
+            this.isBoost = isBoost;
+        }
+
+        public static final RampHitResult MISS = new RampHitResult(false, 0.0, new net.minecraft.world.phys.Vec3(0, 1, 0), 0.0, false, false);
+    }
+
+    /**
+     * 三角形メッシュ衝突方式: タイヤ位置からのレイキャストで正確な路面高さと法線ベクトルを算出
+     */
+    public static RampHitResult raycastSlopeMesh(BlockState state, double relX, double relZ) {
+        Direction facing = state.getValue(FACING);
+        boolean isBoost = (state.getBlock() instanceof RacingSlopeBlock rsb) && rsb.isBoost();
+
+        // 登り方向 (localZ) と 幅方向 (localX) への変換
+        double localZ = switch (facing) {
             case SOUTH -> relZ;
             case NORTH -> 1.0 - relZ;
             case EAST  -> relX;
             case WEST  -> 1.0 - relX;
             default    -> 0.0;
         };
+        double localX = switch (facing) {
+            case SOUTH -> relX;
+            case NORTH -> 1.0 - relX;
+            case EAST  -> 1.0 - relZ;
+            case WEST  -> relZ;
+            default    -> 0.0;
+        };
 
-        if (dist <= 0.0) return 0.0;
-        if (dist >= RAMP_LENGTH) return RAMP_MAX_HEIGHT;
+        // 板のポリゴン境界内にあるかチェック (幅 0.0〜1.0, 進行方向 0.0〜1.0)
+        if (localX < 0.0 || localX > 1.0 || localZ < 0.0 || localZ > 1.0) {
+            return RampHitResult.MISS;
+        }
 
-        double progress = dist / RAMP_LENGTH;
-        return progress * RAMP_MAX_HEIGHT;
+        // 斜面の法線ベクトル (22.5度の垂直上向き)
+        double sinTheta = 0.3827; // sin(22.5°)
+        double cosTheta = 0.9239; // cos(22.5°)
+
+        net.minecraft.world.phys.Vec3 worldNormal = switch (facing) {
+            case SOUTH -> new net.minecraft.world.phys.Vec3(0.0, cosTheta, -sinTheta);
+            case NORTH -> new net.minecraft.world.phys.Vec3(0.0, cosTheta, sinTheta);
+            case EAST  -> new net.minecraft.world.phys.Vec3(-sinTheta, cosTheta, 0.0);
+            case WEST  -> new net.minecraft.world.phys.Vec3(sinTheta, cosTheta, 0.0);
+            default    -> new net.minecraft.world.phys.Vec3(0, 1, 0);
+        };
+
+        // 先端リップ以降 (localZ >= RAMP_LENGTH): 先端高さを維持して空中に飛び出させる
+        if (localZ >= RAMP_LENGTH) {
+            return new RampHitResult(true, RAMP_MAX_HEIGHT, worldNormal, 1.0, true, isBoost);
+        }
+
+        // 三角形メッシュの高さ関数 (完全な一次関数)
+        double progress = Math.max(0.0, localZ / RAMP_LENGTH);
+        double height = progress * RAMP_MAX_HEIGHT;
+        boolean isLip = progress >= 0.82; // 先端付近 (約0.48m以降)
+
+        return new RampHitResult(true, height, worldNormal, progress, isLip, isBoost);
+    }
+
+    /**
+     * 車両サスペンション用: 1枚の斜め板上の高さを精密サンプリング (0.0m 〜 0.24m)
+     */
+    public static double sampleSlopeHeight(BlockState state, double relX, double relZ) {
+        RampHitResult result = raycastSlopeMesh(state, relX, relZ);
+        if (result.hit) {
+            return result.height;
+        }
+        return 0.0;
     }
 
     @Override

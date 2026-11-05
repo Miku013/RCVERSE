@@ -126,6 +126,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     private float suspRL = 0.0f;
     private float suspRR = 0.0f;
     private boolean wheelGrounded = false; // 仮想サスペンション（タイヤ）の接地判定
+    private boolean onSlope = false;       // スロープ斜面走行中フラグ
+    private double slopeClimbDot = 0.0;    // スロープ登り方向と進行方向の内積
     private int collisionCooldown = 0;    // 壁衝突SEの連打防止クールダウン (ticks)
     private int jumpCooldown = 0;         // ジャンプ台連続発動防止クールダウン (ticks)
 
@@ -674,7 +676,13 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         double motionX = this.carVelocity.x;
         double motionZ = this.carVelocity.z;
         double motionY;
-        if (this.onGround() && this.getDeltaMovement().y <= 0.001) {
+
+        // 三角形メッシュ衝突方式: 斜面走行時は勾配(22.5°)に応じた垂直登坂速度を付与して段差衝突をゼロ化
+        if (this.onSlope && this.wheelGrounded && Math.abs(this.currentSpeed) > 0.005f) {
+            double climbVy = this.currentSpeed * 0.3827 * this.slopeClimbDot;
+            motionY = climbVy;
+            this.setOnGround(true);
+        } else if (this.onGround() && this.getDeltaMovement().y <= 0.001) {
             motionY = 0.0;
         } else {
             motionY = this.getDeltaMovement().y - 0.04; // Light gravity
@@ -699,7 +707,10 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             this.setDeltaMovement(new Vec3(stepX, stepY, stepZ));
             this.move(MoverType.SELF, this.getDeltaMovement());
             if (this.horizontalCollision) {
-                break; // 壁に接触した瞬間に残りのステップを即時遮断！
+                // スロープ斜面走行中は微小な階段スライスとの誤接触で前進を遮断しない
+                if (!this.onSlope) {
+                    break; // 壁に接触した瞬間に残りのステップを即時遮断！
+                }
             }
         }
         Vec3 actualMoved = this.position().subtract(preMovePos);
@@ -709,68 +720,54 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             this.setOnGround(true);
         }
 
-        // === スロープジャンプ台の跳躍判定 ===
+        // === スロープジャンプ台の跳躍判定 (レイキャスト先端リップ検知) ===
         if (this.jumpCooldown <= 0 && this.currentSpeed > 0.05f) {
-            BlockPos checkPos = BlockPos.containing(this.getX(), this.getY(), this.getZ());
-            net.minecraft.world.level.block.state.BlockState slopeState = this.level().getBlockState(checkPos);
-            if (!(slopeState.getBlock() instanceof com.microdrone.mod.block.RacingSlopeBlock)) {
-                checkPos = checkPos.below();
-                slopeState = this.level().getBlockState(checkPos);
-            }
+            // 前輪位置または車体中心位置でスロープ先端リップを判定
+            double frontX = this.getX() + driveX * 0.20;
+            double frontZ = this.getZ() + driveZ * 0.20;
+            WheelRaycastHit hitCenter = sampleWheelGround(this.getX(), this.getY(), this.getZ());
+            WheelRaycastHit hitFront = sampleWheelGround(frontX, this.getY(), frontZ);
 
-            if (slopeState.getBlock() instanceof com.microdrone.mod.block.RacingSlopeBlock slopeBlock) {
-                Direction facing = slopeState.getValue(com.microdrone.mod.block.RacingSlopeBlock.FACING);
-                double relX = this.getX() - checkPos.getX();
-                double relZ = this.getZ() - checkPos.getZ();
+            boolean isLipReached = (hitCenter.onSlope && hitCenter.isLip) || (hitFront.onSlope && hitFront.isLip);
+            boolean isClimbing = this.slopeClimbDot > 0.20; // 登坂方向に向かって前進している
 
-                // 登り方向の進行距離 (0.0m=手前, 0.58m=天端リップ)
-                double dist = switch (facing) {
-                    case SOUTH -> relZ;
-                    case NORTH -> 1.0 - relZ;
-                    case EAST  -> relX;
-                    case WEST  -> 1.0 - relX;
-                    default    -> 0.0;
-                };
+            if (isLipReached && isClimbing) {
+                boolean isBoost = hitCenter.isBoost || hitFront.isBoost;
+                this.jumpCooldown = 22; // 約1.1秒クールダウン
+                this.setOnGround(false);
+                this.hasImpulse = true;
+                this.pitchAngle = -14.0f; // 空中でのノーズアップ姿勢
+                this.setPos(this.getX(), this.getY() + 0.05, this.getZ()); // リップから少し浮かせる
 
-                // スロープの頂上付近 (dist >= 0.45) に到達したらジャンプ！
-                if (dist >= 0.45) {
-                    this.jumpCooldown = 20; // 1.0秒クールダウン
-                    this.setOnGround(false);
-                    this.hasImpulse = true;
-                    this.pitchAngle = -12.0f; // 空中でのノーズアップ姿勢
-                    this.setPos(this.getX(), this.getY() + 0.04, this.getZ()); // リップから少し浮かす
+                if (isBoost) {
+                    // ブーストジャンプ台: 強制ロケット加速 + 大ジャンプ！
+                    this.turboBoostTicks = 30;
+                    this.currentSpeed = (float) Math.max(this.currentSpeed * 1.6, 0.55);
+                    double jumpY = 0.42 + (this.currentSpeed * 0.28);
+                    this.carVelocity = new Vec3(this.carVelocity.x * 1.40, jumpY, this.carVelocity.z * 1.40);
+                    this.setDeltaMovement(this.carVelocity);
 
-                    boolean isBoost = slopeBlock.isBoost();
-                    if (isBoost) {
-                        // ブーストジャンプ台: 強制加速 + 大ジャンプ！
-                        this.turboBoostTicks = 25;
-                        this.currentSpeed = (float) Math.max(this.currentSpeed * 1.6, 0.52);
-                        double jumpY = 0.40 + (this.currentSpeed * 0.25);
-                        this.carVelocity = new Vec3(this.carVelocity.x * 1.35, jumpY, this.carVelocity.z * 1.35);
-                        this.setDeltaMovement(new Vec3(this.getDeltaMovement().x * 1.35, jumpY, this.getDeltaMovement().z * 1.35));
+                    this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                            net.minecraft.sounds.SoundEvents.FIREWORK_ROCKET_BLAST,
+                            net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.6F);
+                } else {
+                    // 通常ジャンプ台: 速度に応じた放物線跳躍
+                    double jumpY = 0.28 + (this.currentSpeed * 0.42);
+                    this.carVelocity = new Vec3(this.carVelocity.x * 1.15, jumpY, this.carVelocity.z * 1.15);
+                    this.setDeltaMovement(this.carVelocity);
 
-                        this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
-                                net.minecraft.sounds.SoundEvents.FIREWORK_ROCKET_BLAST,
-                                net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.6F);
-                    } else {
-                        // 通常ジャンプ台: 速度に応じた跳躍
-                        double jumpY = 0.25 + (this.currentSpeed * 0.45);
-                        this.carVelocity = new Vec3(this.carVelocity.x * 1.1, jumpY, this.carVelocity.z * 1.1);
-                        this.setDeltaMovement(new Vec3(this.getDeltaMovement().x * 1.1, jumpY, this.getDeltaMovement().z * 1.1));
-
-                        this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
-                                net.minecraft.sounds.SoundEvents.ARMOR_EQUIP_ELYTRA.value(),
-                                net.minecraft.sounds.SoundSource.PLAYERS, 0.8F, 1.4F);
-                    }
+                    this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                            net.minecraft.sounds.SoundEvents.ARMOR_EQUIP_ELYTRA.value(),
+                            net.minecraft.sounds.SoundSource.PLAYERS, 0.8F, 1.4F);
                 }
             }
         }
 
         // 衝突検知 (高さ0.10m以上の壁・障害物に激突して移動量が大幅に遮断された場合のみ、マシンの速度を急減衰して確実にストップ)
-        // ※ レーシング縁石(高さ0.019m〜0.038m)などの薄い段差への乗り上げは激突と判定せずスムーズに通過
+        // ※ レーシング縁石(高さ0.019m〜0.038m)やスロープ登坂時は激突と判定せずスムーズに通過
         double expectedH = totalDistH;
         double actualH = Math.sqrt(actualMoved.x * actualMoved.x + actualMoved.z * actualMoved.z);
-        boolean isBlocked = this.horizontalCollision || (expectedH > 0.03 && actualH < expectedH * 0.40);
+        boolean isBlocked = !this.onSlope && (this.horizontalCollision || (expectedH > 0.03 && actualH < expectedH * 0.40));
         boolean hitSolidWall = isBlocked && isObstacleInDirection(motionX, motionZ, 0.10);
 
         if (hitSolidWall) {
@@ -1189,8 +1186,35 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     public boolean isWheelGrounded() { return this.wheelGrounded; }
 
     /**
-     * 4点仮想サスペンション物理シミュレーション
-     * 4輪の地面高さからサス縮み量を算出し、路面起伏・片輪乗り上げ・旋回ロール・加減速ピッチを精密計算
+     * タイヤごとの接地・三角形メッシュ衝突判定結果
+     */
+    public static class WheelRaycastHit {
+        public final double groundY;
+        public final Vec3 normal;
+        public final boolean onSlope;
+        public final boolean isLip;
+        public final boolean isBoost;
+        public final double progress;
+        public final Direction slopeFacing;
+
+        public WheelRaycastHit(double groundY, Vec3 normal, boolean onSlope, boolean isLip, boolean isBoost, double progress, Direction slopeFacing) {
+            this.groundY = groundY;
+            this.normal = normal;
+            this.onSlope = onSlope;
+            this.isLip = isLip;
+            this.isBoost = isBoost;
+            this.progress = progress;
+            this.slopeFacing = slopeFacing;
+        }
+
+        public static final WheelRaycastHit FLAT(double y) {
+            return new WheelRaycastHit(y, new Vec3(0, 1, 0), false, false, false, 0.0, Direction.NORTH);
+        }
+    }
+
+    /**
+     * 4点仮想サスペンション物理シミュレーション (レイキャスト × 三角形メッシュ衝突方式)
+     * 4輪のメッシュ交差高さからサス伸縮、路面追従、登坂ピッチ・片輪ロール・車体吸着を精密計算
      */
     private void updateSuspensionPhysics(float counterAmount) {
         float yaw = this.getYRot();
@@ -1207,11 +1231,16 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         double py = getY();
         double pz = getZ();
 
-        // 4輪位置の地面高さをサンプリング
-        double hFL = sampleGroundY(px + fwdX * halfL - rightX * halfW, py, pz + fwdZ * halfL - rightZ * halfW);
-        double hFR = sampleGroundY(px + fwdX * halfL + rightX * halfW, py, pz + fwdZ * halfL + rightZ * halfW);
-        double hRL = sampleGroundY(px - fwdX * halfL - rightX * halfW, py, pz - fwdZ * halfL - rightZ * halfW);
-        double hRR = sampleGroundY(px - fwdX * halfL + rightX * halfW, py, pz - fwdZ * halfL + rightZ * halfW);
+        // 4輪位置の地面高さを三角形メッシュレイキャストで精密サンプリング
+        WheelRaycastHit hitFL = sampleWheelGround(px + fwdX * halfL - rightX * halfW, py, pz + fwdZ * halfL - rightZ * halfW);
+        WheelRaycastHit hitFR = sampleWheelGround(px + fwdX * halfL + rightX * halfW, py, pz + fwdZ * halfL + rightZ * halfW);
+        WheelRaycastHit hitRL = sampleWheelGround(px - fwdX * halfL - rightX * halfW, py, pz - fwdZ * halfL - rightZ * halfW);
+        WheelRaycastHit hitRR = sampleWheelGround(px - fwdX * halfL + rightX * halfW, py, pz - fwdZ * halfL + rightZ * halfW);
+
+        double hFL = hitFL.groundY;
+        double hFR = hitFR.groundY;
+        double hRL = hitRL.groundY;
+        double hRR = hitRR.groundY;
 
         // 各タイヤのサスペンション伸縮ストローク量 (clamp [-0.08, 0.08])
         float targetSuspFL = (float) Mth.clamp(hFL - py, -0.08, 0.08);
@@ -1225,18 +1254,45 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         this.suspRL = Mth.lerp(0.40f, this.suspRL, targetSuspRL);
         this.suspRR = Mth.lerp(0.40f, this.suspRR, targetSuspRR);
 
-        // 4輪中いずれかが路面に接触・追従しているか (車体下約0.08ブロック以内に地面があればタイヤ接地・トラクション有効)
+        // 4輪中いずれかが路面に接触・追従しているか
         this.wheelGrounded = (hFL >= py - 0.08 || hFR >= py - 0.08 || hRL >= py - 0.08 || hRR >= py - 0.08);
 
-        // スロープ（斜面）上での車体沈み込み防止: 車体底面が斜面より下にある場合は斜面表面へ滑らかにリフト
+        // 斜面判定＆登り方向ベクトルの内積計算
+        this.onSlope = hitFL.onSlope || hitFR.onSlope || hitRL.onSlope || hitRR.onSlope;
+        if (this.onSlope) {
+            // 最も支配的なスロープの向きを取得
+            Direction slopeDir = hitFL.onSlope ? hitFL.slopeFacing : (hitFR.onSlope ? hitFR.slopeFacing : (hitRL.onSlope ? hitRL.slopeFacing : hitRR.slopeFacing));
+            double slopeFwdX = switch (slopeDir) {
+                case EAST -> 1.0;
+                case WEST -> -1.0;
+                default -> 0.0;
+            };
+            double slopeFwdZ = switch (slopeDir) {
+                case SOUTH -> 1.0;
+                case NORTH -> -1.0;
+                default -> 0.0;
+            };
+            this.slopeClimbDot = (fwdX * slopeFwdX) + (fwdZ * slopeFwdZ);
+        } else {
+            this.slopeClimbDot = 0.0;
+        }
+
+        // スロープ（斜面）上での車体沈み込み防止: 車体底面を三角形メッシュ表面へ完全に吸着・リフト
         double avgGroundY = (hFL + hFR + hRL + hRR) * 0.25;
-        if (py < avgGroundY && (this.onGround() || this.wheelGrounded)) {
+        if (this.onSlope) {
+            // 斜面上では常に路面高さに車体を滑らかに密着・吸着させて沈み込みを100%遮断
+            if (py < avgGroundY || (py - avgGroundY < 0.08 && this.getDeltaMovement().y <= 0.02)) {
+                this.setPos(px, avgGroundY, pz);
+                py = avgGroundY;
+                this.setOnGround(true);
+            }
+        } else if (py < avgGroundY && (this.onGround() || this.wheelGrounded)) {
             double liftY = Math.min(avgGroundY, py + 0.10);
             this.setPos(px, liftY, pz);
             py = liftY;
         }
 
-        // === 前後ピッチ角 (地面傾斜 + 加減速G) ===
+        // === 前後ピッチ角 (路面傾斜 + 加減速G) ===
         double hFront = (hFL + hFR) * 0.5;
         double hRear = (hRL + hRR) * 0.5;
         double deltaPitch = hRear - hFront;
@@ -1249,30 +1305,32 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         } else if (this.inputForward < -0.1f || this.inputHandbrake) {
             accelPitch = 4.0f;
         }
-        float targetPitch = Mth.clamp(groundPitch + accelPitch, -25.0f, 25.0f);
+        float targetPitch = Mth.clamp(groundPitch + accelPitch, -28.0f, 28.0f);
         this.pitchAngle = Mth.lerp(0.35f, this.pitchAngle, targetPitch);
 
-        // === 左右ロール角 (地面傾斜 + 旋回・ドリフト遠心力) ===
+        // === 左右ロール角 (路面傾斜 + 旋回・ドリフト遠心力) ===
         double hLeft = (hFL + hRL) * 0.5;
         double hRight = (hFR + hRR) * 0.5;
         double deltaRoll = hLeft - hRight;
         float groundRoll = (float) Math.toDegrees(Math.atan2(deltaRoll, halfW * 2.0));
 
-        // 旋回・ドリフトによる遠心力ロール (外側サスペンションが正しく沈み込むように符号を修正)
+        // 旋回・ドリフトによる遠心力ロール (外側サスペンションが正しく沈み込む)
         float dynamicRoll = 0.0f;
         if (this.driftDirection != 0) {
             float baseRoll = 9.0f;
             float totalRoll = baseRoll + (counterAmount * 8.5f);
-            dynamicRoll = -this.driftDirection * totalRoll; // 外側サス沈み込み
+            dynamicRoll = -this.driftDirection * totalRoll;
         } else {
-            dynamicRoll = this.steerAngle * (float)(this.currentSpeed * 3.5); // 外側サス沈み込み
+            dynamicRoll = this.steerAngle * (float)(this.currentSpeed * 3.5);
         }
         float targetRoll = Mth.clamp(groundRoll + dynamicRoll, -25.0f, 25.0f);
         this.rollAngle = Mth.lerp(0.35f, this.rollAngle, targetRoll);
     }
 
-    private double sampleGroundY(double x, double y, double z) {
-        // レーシングスロープ（斜面）の精密サンプリング
+    /**
+     * タイヤ位置の地面高さ・三角形メッシュ衝突レイキャスト
+     */
+    public WheelRaycastHit sampleWheelGround(double x, double y, double z) {
         BlockPos pos = BlockPos.containing(x, y, z);
         net.minecraft.world.level.block.state.BlockState st = level().getBlockState(pos);
         if (!(st.getBlock() instanceof com.microdrone.mod.block.RacingSlopeBlock)) {
@@ -1282,8 +1340,12 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         if (st.getBlock() instanceof com.microdrone.mod.block.RacingSlopeBlock) {
             double relX = x - pos.getX();
             double relZ = z - pos.getZ();
-            double slopeH = com.microdrone.mod.block.RacingSlopeBlock.sampleSlopeHeight(st, relX, relZ);
-            return pos.getY() + slopeH;
+            com.microdrone.mod.block.RacingSlopeBlock.RampHitResult hit =
+                    com.microdrone.mod.block.RacingSlopeBlock.raycastSlopeMesh(st, relX, relZ);
+            if (hit.hit) {
+                Direction facing = st.getValue(com.microdrone.mod.block.RacingSlopeBlock.FACING);
+                return new WheelRaycastHit(pos.getY() + hit.height, hit.normal, true, hit.isLip, hit.isBoost, hit.progress, facing);
+            }
         }
 
         net.minecraft.world.phys.Vec3 from = new net.minecraft.world.phys.Vec3(x, y + 0.25, z);
@@ -1295,9 +1357,13 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                 this
         ));
         if (hit.getType() != net.minecraft.world.phys.HitResult.Type.MISS) {
-            return hit.getLocation().y;
+            return WheelRaycastHit.FLAT(hit.getLocation().y);
         }
-        return y - 0.35;
+        return WheelRaycastHit.FLAT(y - 0.35);
+    }
+
+    private double sampleGroundY(double x, double y, double z) {
+        return sampleWheelGround(x, y, z).groundY;
     }
 
     // === レース計測・チェックポイント通過センシング (Step 1) ===
