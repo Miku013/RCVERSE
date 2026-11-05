@@ -162,8 +162,10 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
 
     /**
      * サーバーからの位置同期パケット受信時の処理。
-     * 自プレイヤー操縦中は、サーバーからの遅延同期で画面がカクつくのを防ぐため、
-     * 大幅なズレ（壁埋まりなど）を除きクライアント側の予測移動を優先。
+     * 自プレイヤー操縦中は、クライアント側の予測移動を100%優先し、
+     * 過去の遅延サーバー位置へのソフト引き寄せ（毎tick10%）を行わない。
+     * これにより、ジャンプ着地後の斜め引きずり・操作方向の歪みを完全に根絶。
+     * (4m以上の致命的な壁埋まり時のみスナップ補正)
      */
     @Override
     public void lerpTo(double x, double y, double z, float yRot, float xRot, int steps) {
@@ -173,29 +175,16 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             double dz = z - this.getZ();
             double distSq = dx * dx + dy * dy + dz * dz;
 
-            // 4m 超過の致命的な位置ズレは即時スナップ補正
+            // 4m 超過の致命的な位置ズレ（壁埋まりなど）のみ即時スナップ補正
             if (distSq > 16.0) {
                 MicroDroneMod.LOGGER.warn("[POSITION_CORRECTION] Reason: 4m_THRESHOLD_EXCEEDED, VehicleUUID: {}, ClientPos: [{}, {}, {}], ServerTargetPos: [{}, {}, {}], DeltaDist: {}m, CurrentSpeed: {}",
                         this.getUUID(), String.format("%.2f", this.getX()), String.format("%.2f", this.getY()), String.format("%.2f", this.getZ()),
                         String.format("%.2f", x), String.format("%.2f", y), String.format("%.2f", z),
                         String.format("%.2f", Math.sqrt(distSq)), this.currentSpeed);
                 super.lerpTo(x, y, z, yRot, xRot, steps);
-                this.hasServerTarget = false;
-            } else {
-                // 0.05m 以上の微小〜中程度のズレは、毎Tick滑らかに引き寄せるためのターゲットとして保持 (ソフトLerp)
-                this.serverTargetX = x;
-                this.serverTargetY = y;
-                this.serverTargetZ = z;
-                this.serverTargetYRot = yRot;
-                this.hasServerTarget = true;
-
-                if (distSq > 0.25) {
-                    MicroDroneMod.LOGGER.debug("[POSITION_CORRECTION_DELTA] VehicleUUID: {}, DeltaDist: {}m, ClientPos: [{}, {}, {}], ServerTargetPos: [{}, {}, {}], Speed: {}",
-                            this.getUUID(), String.format("%.2f", Math.sqrt(distSq)),
-                            String.format("%.2f", this.getX()), String.format("%.2f", this.getY()), String.format("%.2f", this.getZ()),
-                            String.format("%.2f", x), String.format("%.2f", y), String.format("%.2f", z), this.currentSpeed);
-                }
             }
+            // 自プレイヤー操縦中はソフト引き寄せターゲットを設定しない
+            this.hasServerTarget = false;
             return;
         }
         super.lerpTo(x, y, z, yRot, xRot, steps);
@@ -414,38 +403,9 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         } else {
             // クライアント側処理
             if (this.locallyControlled) {
-                // ローカル操縦中はクライアント側でも即座に物理演算を行い、遅延ゼロ＆カクツキゼロを実現
+                // ローカル操縦中はクライアント側で即座に物理演算を行い、遅延ゼロ＆ダイレクトな操作感を実現
                 long startNanos = System.nanoTime();
                 tickCarPhysics();
-
-                // サーバー確定位置へのソフト補間（Smooth Damp / Exponential Smoothing）
-                // 操作の即応性（遅延ゼロ）を100%保ちつつ、ズレを自然にゼロへ収束させる
-                if (this.hasServerTarget) {
-                    double curX = this.getX();
-                    double curY = this.getY();
-                    double curZ = this.getZ();
-                    double dx = this.serverTargetX - curX;
-                    double dy = this.serverTargetY - curY;
-                    double dz = this.serverTargetZ - curZ;
-                    double distSq = dx * dx + dy * dy + dz * dz;
-
-                    if (distSq > 0.0025) { // 0.05m以上のズレがある場合
-                        // 水平方向は毎tick 10%ずつサーバー位置に滑らかに引き寄せる
-                        double smoothFactor = 0.10;
-                        double newX = curX + dx * smoothFactor;
-                        double newZ = curZ + dz * smoothFactor;
-
-                        // Y軸は段差・接地との競合を防ぐため、Yズレが大きい場合（0.15m以上）のみ緩やかに補正
-                        double newY = curY;
-                        if (Math.abs(dy) > 0.15) {
-                            newY = curY + dy * 0.08;
-                        }
-
-                        this.setPos(newX, newY, newZ);
-                    } else {
-                        this.hasServerTarget = false;
-                    }
-                }
 
                 long elapsedUs = (System.nanoTime() - startNanos) / 1000;
                 if (elapsedUs > 5000) {
