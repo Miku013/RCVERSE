@@ -1,3 +1,6 @@
 {
-  "parent": "microdrone:block/racing_slope"
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "microdrone:item/racing_slope"
+  }
 }

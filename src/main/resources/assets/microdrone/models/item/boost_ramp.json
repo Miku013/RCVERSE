@@ -1,3 +1,6 @@
 {
-  "parent": "microdrone:block/boost_ramp"
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "microdrone:item/boost_ramp"
+  }
 }
