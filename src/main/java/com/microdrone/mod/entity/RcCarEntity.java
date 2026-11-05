@@ -709,9 +709,9 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             float mass = this.getVehicleMass();
             // ハイブリッド重力: 基礎重力を 0.046 -> 0.064 に引き締め、重さに応じた落下力を強化
             double gravity = 0.064 + Math.max(0.0, (mass - 1.10f) * 0.025);
-            // 頂点を過ぎて下降中(Vy < 0)は重力を1.55倍にブースト！ふわふわ滞空せずキュッと素早く着地
+            // 頂点を過ぎて下降中(Vy < 0)は重力を1.80倍にブースト！ふわふわ滞空せずキュッと素早く着地
             if (this.getDeltaMovement().y < 0.0) {
-                gravity *= 1.55;
+                gravity *= 1.80;
             }
             motionY = this.getDeltaMovement().y - gravity;
         }
