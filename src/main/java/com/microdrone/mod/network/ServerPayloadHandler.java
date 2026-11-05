@@ -106,4 +106,15 @@ public class ServerPayloadHandler {
             }
         });
     }
+
+    public static void handleRcCarTuning(RcCarTuningPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (context.player() instanceof ServerPlayer player) {
+                Entity entity = player.level().getEntity(payload.carEntityId());
+                if (entity instanceof RcCarEntity car) {
+                    car.setCustomWeight(payload.weightKg());
+                }
+            }
+        });
+    }
 }

@@ -78,6 +78,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             SynchedEntityData.defineId(RcCarEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> DATA_SUSP_RR =
             SynchedEntityData.defineId(RcCarEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_CUSTOM_WEIGHT =
+            SynchedEntityData.defineId(RcCarEntity.class, EntityDataSerializers.FLOAT);
 
     // 操縦者UUID
     private UUID pilotUUID = null;
@@ -126,6 +128,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     private float suspRL = 0.0f;
     private float suspRR = 0.0f;
     private boolean wheelGrounded = false; // 仮想サスペンション（タイヤ）の接地判定
+    private boolean wasAirborneLastTick = false; // 前tick空中フラグ（着地衝撃ダンパー検知用）
     private boolean onSlope = false;       // スロープ斜面走行中フラグ
     private double slopeClimbDot = 0.0;    // スロープ登り方向と進行方向の内積
     private double slopeSinTheta = 0.0;    // スロープ斜面法線から算出した傾斜sin値 (1段目約0.38, 2段目約0.71)
@@ -206,6 +209,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         builder.define(DATA_SUSP_FR, 0.0f);
         builder.define(DATA_SUSP_RL, 0.0f);
         builder.define(DATA_SUSP_RR, 0.0f);
+        builder.define(DATA_CUSTOM_WEIGHT, 1.10f);
     }
 
     @Override
@@ -495,7 +499,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                     this.driftTicks = 0;
                     if (this.onGround() || this.wheelGrounded) {
                         Vec3 cur = this.getDeltaMovement();
-                        this.setDeltaMovement(new Vec3(cur.x, 0.24, cur.z)); // Hop jump!
+                        double hopY = 0.16 / Math.sqrt(Math.max(0.45, this.getVehicleMass() / 1.10f));
+                        this.setDeltaMovement(new Vec3(cur.x, hopY, cur.z)); // Hop jump!
                         this.setOnGround(false);
                         this.hasImpulse = true;
                         this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
@@ -506,7 +511,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                     this.driftTicks = 0;
                     if (this.onGround() || this.wheelGrounded) {
                         Vec3 cur = this.getDeltaMovement();
-                        this.setDeltaMovement(new Vec3(cur.x, 0.24, cur.z)); // Hop jump!
+                        double hopY = 0.16 / Math.sqrt(Math.max(0.45, this.getVehicleMass() / 1.10f));
+                        this.setDeltaMovement(new Vec3(cur.x, hopY, cur.z)); // Hop jump!
                         this.setOnGround(false);
                         this.hasImpulse = true;
                         this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
@@ -647,7 +653,10 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         } else if (this.onGround() && this.getDeltaMovement().y <= 0.001) {
             motionY = 0.0;
         } else {
-            motionY = this.getDeltaMovement().y - 0.04; // Light gravity
+            float mass = this.getVehicleMass();
+            // 基準重力 0.070 (約1.75G相当、ドロップアイテムの0.04から適正化し滞空時間を約0.5〜0.6秒へ凝縮)
+            double gravity = 0.070 + (mass - 1.10f) * 0.025;
+            motionY = this.getDeltaMovement().y - gravity;
         }
 
         Vec3 preMovePos = this.position();
@@ -704,27 +713,32 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
 
             if (isLipReached && isClimbing) {
                 boolean isBoost = hitCenter.isBoost || hitFront.isBoost;
-                this.jumpCooldown = 22; // 約1.1秒クールダウン
+                this.jumpCooldown = 20; // 約1.0秒クールダウン
                 this.setOnGround(false);
                 this.hasImpulse = true;
-                this.pitchAngle = -22.0f; // 45°キッカーからの豪快なノーズアップ空中姿勢
+                this.pitchAngle = -24.0f; // 45°キッカーからの豪快なノーズアップ空中姿勢
                 this.setPos(this.getX(), this.getY() + 0.06, this.getZ()); // リップから少し浮かせる
+
+                float mass = this.getVehicleMass();
+                double massRatio = Math.max(0.45, mass / 1.10f);
+                double massJumpFactor = 1.0 / Math.sqrt(massRatio); // 重いほど跳躍が低く鋭い
 
                 if (isBoost) {
                     // ブーストジャンプ台: 強制ロケット加速 + 大ジャンプ！
                     this.turboBoostTicks = 32;
                     this.currentSpeed = (float) Math.max(this.currentSpeed * 1.65, 0.58);
-                    double jumpY = 0.50 + (this.currentSpeed * 0.35);
-                    this.carVelocity = new Vec3(this.carVelocity.x * 1.45, jumpY, this.carVelocity.z * 1.45);
+                    double jumpY = (0.32 + (this.currentSpeed * 0.26)) * massJumpFactor;
+                    this.carVelocity = new Vec3(this.carVelocity.x * 1.40, jumpY, this.carVelocity.z * 1.40);
                     this.setDeltaMovement(this.carVelocity);
 
                     this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
                             net.minecraft.sounds.SoundEvents.FIREWORK_ROCKET_BLAST,
                             net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.6F);
                 } else {
-                    // 通常ジャンプ台: 速度に応じた放物線跳躍
-                    double jumpY = 0.36 + (this.currentSpeed * 0.48);
-                    this.carVelocity = new Vec3(this.carVelocity.x * 1.20, jumpY, this.carVelocity.z * 1.20);
+                    // 通常ジャンプ台: 車重と進入速度に応じた本物RCカーの鋭い放物線跳躍
+                    double jumpY = (0.22 + (this.currentSpeed * 0.24)) * massJumpFactor;
+                    double fwdBoost = 1.10 + (0.05 * (mass - 1.10f)); // 重いほど慣性で前方に突き抜ける
+                    this.carVelocity = new Vec3(this.carVelocity.x * fwdBoost, jumpY, this.carVelocity.z * fwdBoost);
                     this.setDeltaMovement(this.carVelocity);
 
                     this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
@@ -822,8 +836,17 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             return InteractionResult.PASS;
         }
 
+        ItemStack heldItem = player.getItemInHand(hand);
+
+        // プロポ所持 + スニーク右クリック: 車重＆物理チューニングGUI画面を開く
+        if (heldItem.getItem() instanceof com.microdrone.mod.item.DroneControllerItem && player.isShiftKeyDown()) {
+            if (this.level().isClientSide) {
+                com.microdrone.mod.client.gui.ClientGuiOpener.openRcCarTuningScreen(this);
+            }
+            return InteractionResult.sidedSuccess(this.level().isClientSide);
+        }
+
         if (!this.level().isClientSide) {
-            ItemStack heldItem = player.getItemInHand(hand);
 
             // 1. バッテリー装着
             if (heldItem.getItem() instanceof DroneBatteryItem batteryItem) {
@@ -968,6 +991,21 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         return (DroneMotorItem) ModItems.MOTOR_TIER_1.get();
     }
 
+    /**
+     * 車重 (kg) の取得 (アプローチ3: プロポGUIチューニング)
+     */
+    public float getVehicleMass() {
+        return this.entityData.get(DATA_CUSTOM_WEIGHT);
+    }
+
+    /**
+     * 車重 (kg) の設定 (0.50kg ~ 2.50kg)
+     */
+    public void setCustomWeight(float weightKg) {
+        float clamped = Mth.clamp(weightKg, 0.50f, 2.50f);
+        this.entityData.set(DATA_CUSTOM_WEIGHT, clamped);
+    }
+
     public float getWheelRotation() {
         return this.wheelRotation;
     }
@@ -997,6 +1035,9 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             updateMotorSyncData();
         }
         this.accumulatedDistance = compound.getDouble("BatteryAccumulatedDist");
+        if (compound.contains("CustomWeight", 99)) {
+            this.entityData.set(DATA_CUSTOM_WEIGHT, compound.getFloat("CustomWeight"));
+        }
     }
 
     @Override
@@ -1011,6 +1052,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             compound.put("InstalledMotor", this.installedMotor.save(this.registryAccess()));
         }
         compound.putDouble("BatteryAccumulatedDist", this.accumulatedDistance);
+        compound.putFloat("CustomWeight", this.entityData.get(DATA_CUSTOM_WEIGHT));
     }
 
     private void spawnDriftParticles(boolean turboReady) {
@@ -1228,6 +1270,25 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         // 4輪中いずれかが路面に接触・追従しているか
         this.wheelGrounded = (hFL >= py - 0.08 || hFR >= py - 0.08 || hRL >= py - 0.08 || hRR >= py - 0.08);
 
+        // 着地衝撃ダンパー: 空中から接地した瞬間に車重と落下速度に応じたサスペンション沈み込みを発生
+        boolean isGroundedNow = this.onGround() || this.wheelGrounded;
+        if (this.wasAirborneLastTick && isGroundedNow) {
+            float mass = this.getVehicleMass();
+            double impactSpeed = Math.abs(this.getDeltaMovement().y);
+            if (impactSpeed > 0.05) {
+                float impactCompress = (float) Math.min(0.08, impactSpeed * 0.45 * (mass / 1.10f));
+                this.suspFL = Math.min(0.08f, this.suspFL + impactCompress);
+                this.suspFR = Math.min(0.08f, this.suspFR + impactCompress);
+                this.suspRL = Math.min(0.08f, this.suspRL + impactCompress);
+                this.suspRR = Math.min(0.08f, this.suspRR + impactCompress);
+
+                float pitch = 1.30f - (mass * 0.25f);
+                this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                        SoundEvents.ARMOR_EQUIP_GENERIC.value(), SoundSource.PLAYERS, 0.7F, pitch);
+            }
+        }
+        this.wasAirborneLastTick = !isGroundedNow;
+
         // 斜面判定＆登り方向ベクトルの内積計算
         this.onSlope = hitFL.onSlope || hitFR.onSlope || hitRL.onSlope || hitRR.onSlope;
         if (this.onSlope) {
@@ -1269,21 +1330,29 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             py = liftY;
         }
 
-        // === 前後ピッチ角 (路面傾斜 + 加減速G) ===
-        double hFront = (hFL + hFR) * 0.5;
-        double hRear = (hRL + hRR) * 0.5;
-        double deltaPitch = hRear - hFront;
-        float groundPitch = (float) Math.toDegrees(Math.atan2(deltaPitch, halfL * 2.0));
+        // === 前後ピッチ角 (路面傾斜 + 加減速G / 空中放物線ノーズダイブ) ===
+        if (!this.onGround() && !this.wheelGrounded) {
+            // 空中姿勢: 速度ベクトル (Vy, Vh) に追従する自然な弾道ノーズダイブ
+            double vH = Math.sqrt(this.carVelocity.x * this.carVelocity.x + this.carVelocity.z * this.carVelocity.z);
+            float flightPitch = (float) -Math.toDegrees(Math.atan2(this.getDeltaMovement().y, Math.max(0.08, vH)));
+            flightPitch = Mth.clamp(flightPitch, -30.0f, 25.0f);
+            this.pitchAngle = Mth.lerp(0.20f, this.pitchAngle, flightPitch);
+        } else {
+            double hFront = (hFL + hFR) * 0.5;
+            double hRear = (hRL + hRR) * 0.5;
+            double deltaPitch = hRear - hFront;
+            float groundPitch = (float) Math.toDegrees(Math.atan2(deltaPitch, halfL * 2.0));
 
-        // 急ブレーキ/後退でノーズダイブ(+), 前進加速でスクワット(-)
-        float accelPitch = 0.0f;
-        if (this.inputForward > 0.1f) {
-            accelPitch = -2.5f * this.inputForward;
-        } else if (this.inputForward < -0.1f || this.inputHandbrake) {
-            accelPitch = 4.0f;
+            // 急ブレーキ/後退でノーズダイブ(+), 前進加速でスクワット(-)
+            float accelPitch = 0.0f;
+            if (this.inputForward > 0.1f) {
+                accelPitch = -2.5f * this.inputForward;
+            } else if (this.inputForward < -0.1f || this.inputHandbrake) {
+                accelPitch = 4.0f;
+            }
+            float targetPitch = Mth.clamp(groundPitch + accelPitch, -48.0f, 48.0f);
+            this.pitchAngle = Mth.lerp(0.35f, this.pitchAngle, targetPitch);
         }
-        float targetPitch = Mth.clamp(groundPitch + accelPitch, -48.0f, 48.0f);
-        this.pitchAngle = Mth.lerp(0.35f, this.pitchAngle, targetPitch);
 
         // === 左右ロール角 (路面傾斜 + 旋回・ドリフト遠心力) ===
         double hLeft = (hFL + hRL) * 0.5;

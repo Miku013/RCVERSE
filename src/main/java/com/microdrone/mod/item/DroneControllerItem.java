@@ -2,6 +2,7 @@ package com.microdrone.mod.item;
 
 import com.microdrone.mod.client.renderer.item.DroneControllerItemRenderer;
 import com.microdrone.mod.entity.DroneEntity;
+import com.microdrone.mod.entity.RcCarEntity;
 import com.microdrone.mod.entity.RcControllable;
 import com.microdrone.mod.entity.RcVehicleManager;
 import net.minecraft.world.entity.Entity;
@@ -46,6 +47,31 @@ public class DroneControllerItem extends Item implements GeoItem {
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack itemStack = player.getItemInHand(hand);
+
+        // スニーク+右クリック: 最寄りのRCカーの車重チューニング画面を開く (アプローチ3)
+        if (player.isShiftKeyDown()) {
+            if (level.isClientSide) {
+                AABB searchBox = player.getBoundingBox().inflate(32.0);
+                List<Entity> candidates = level.getEntities(player, searchBox, e -> e instanceof RcCarEntity);
+                RcCarEntity nearestCar = null;
+                double nearestDistSq = Double.MAX_VALUE;
+                for (Entity e : candidates) {
+                    if (e instanceof RcCarEntity car) {
+                        double d = player.distanceToSqr(car);
+                        if (d < nearestDistSq) {
+                            nearestDistSq = d;
+                            nearestCar = car;
+                        }
+                    }
+                }
+                if (nearestCar != null) {
+                    com.microdrone.mod.client.gui.ClientGuiOpener.openRcCarTuningScreen(nearestCar);
+                } else {
+                    player.displayClientMessage(Component.literal("§c周囲32m以内にRCカーが見つかりません"), true);
+                }
+            }
+            return InteractionResultHolder.sidedSuccess(itemStack, level.isClientSide);
+        }
 
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
             // 1. 自身が操縦中のRC機体（ドローンや車など）があれば即座に操縦終了

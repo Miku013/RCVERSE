@@ -29,6 +29,13 @@ public class ModNetworking {
                 ServerPayloadHandler::handlePlaneModeToggle
         );
 
+        // クライアント -> サーバー (RCカー車重チューニング)
+        registrar.playToServer(
+                RcCarTuningPayload.TYPE,
+                RcCarTuningPayload.STREAM_CODEC,
+                ServerPayloadHandler::handleRcCarTuning
+        );
+
         // サーバー -> クライアント (操縦状態通知)
         registrar.playToClient(
                 DronePilotStatePayload.TYPE,
