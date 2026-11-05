@@ -128,6 +128,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     private boolean wheelGrounded = false; // 仮想サスペンション（タイヤ）の接地判定
     private boolean onSlope = false;       // スロープ斜面走行中フラグ
     private double slopeClimbDot = 0.0;    // スロープ登り方向と進行方向の内積
+    private double slopeSinTheta = 0.0;    // スロープ斜面法線から算出した傾斜sin値 (1段目約0.38, 2段目約0.71)
     private int collisionCooldown = 0;    // 壁衝突SEの連打防止クールダウン (ticks)
     private int jumpCooldown = 0;         // ジャンプ台連続発動防止クールダウン (ticks)
 
@@ -677,9 +678,10 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         double motionZ = this.carVelocity.z;
         double motionY;
 
-        // 三角形メッシュ衝突方式: 斜面走行時は勾配(22.5°)に応じた垂直登坂速度を付与して段差衝突をゼロ化
+        // 三角形メッシュ衝突方式: 斜面走行時は法線傾斜(1段目22.5°/2段目45°)に応じた垂直登坂速度を付与して段差衝突をゼロ化
         if (this.onSlope && this.wheelGrounded && Math.abs(this.currentSpeed) > 0.005f) {
-            double climbVy = this.currentSpeed * 0.3827 * this.slopeClimbDot;
+            double sinSlope = Math.max(0.38, this.slopeSinTheta); // 1段目0.3827, 2段目0.7071
+            double climbVy = this.currentSpeed * sinSlope * this.slopeClimbDot;
             motionY = climbVy;
             this.setOnGround(true);
         } else if (this.onGround() && this.getDeltaMovement().y <= 0.001) {
@@ -736,15 +738,15 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                 this.jumpCooldown = 22; // 約1.1秒クールダウン
                 this.setOnGround(false);
                 this.hasImpulse = true;
-                this.pitchAngle = -14.0f; // 空中でのノーズアップ姿勢
-                this.setPos(this.getX(), this.getY() + 0.05, this.getZ()); // リップから少し浮かせる
+                this.pitchAngle = -22.0f; // 45°キッカーからの豪快なノーズアップ空中姿勢
+                this.setPos(this.getX(), this.getY() + 0.06, this.getZ()); // リップから少し浮かせる
 
                 if (isBoost) {
                     // ブーストジャンプ台: 強制ロケット加速 + 大ジャンプ！
-                    this.turboBoostTicks = 30;
-                    this.currentSpeed = (float) Math.max(this.currentSpeed * 1.6, 0.55);
-                    double jumpY = 0.42 + (this.currentSpeed * 0.28);
-                    this.carVelocity = new Vec3(this.carVelocity.x * 1.40, jumpY, this.carVelocity.z * 1.40);
+                    this.turboBoostTicks = 32;
+                    this.currentSpeed = (float) Math.max(this.currentSpeed * 1.65, 0.58);
+                    double jumpY = 0.50 + (this.currentSpeed * 0.35);
+                    this.carVelocity = new Vec3(this.carVelocity.x * 1.45, jumpY, this.carVelocity.z * 1.45);
                     this.setDeltaMovement(this.carVelocity);
 
                     this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
@@ -752,8 +754,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                             net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.6F);
                 } else {
                     // 通常ジャンプ台: 速度に応じた放物線跳躍
-                    double jumpY = 0.28 + (this.currentSpeed * 0.42);
-                    this.carVelocity = new Vec3(this.carVelocity.x * 1.15, jumpY, this.carVelocity.z * 1.15);
+                    double jumpY = 0.36 + (this.currentSpeed * 0.48);
+                    this.carVelocity = new Vec3(this.carVelocity.x * 1.20, jumpY, this.carVelocity.z * 1.20);
                     this.setDeltaMovement(this.carVelocity);
 
                     this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
@@ -1273,15 +1275,21 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                 default -> 0.0;
             };
             this.slopeClimbDot = (fwdX * slopeFwdX) + (fwdZ * slopeFwdZ);
+
+            // 4輪の接地法線から現在の傾斜サイン値 (1段目約0.38, 2段目約0.71) を動的算出
+            double avgNx = (hitFL.normal.x + hitFR.normal.x + hitRL.normal.x + hitRR.normal.x) * 0.25;
+            double avgNz = (hitFL.normal.z + hitFR.normal.z + hitRL.normal.z + hitRR.normal.z) * 0.25;
+            this.slopeSinTheta = Math.sqrt(avgNx * avgNx + avgNz * avgNz);
         } else {
             this.slopeClimbDot = 0.0;
+            this.slopeSinTheta = 0.0;
         }
 
         // スロープ（斜面）上での車体沈み込み防止: 車体底面を三角形メッシュ表面へ完全に吸着・リフト
         double avgGroundY = (hFL + hFR + hRL + hRR) * 0.25;
         if (this.onSlope) {
             // 斜面上では常に路面高さに車体を滑らかに密着・吸着させて沈み込みを100%遮断
-            if (py < avgGroundY || (py - avgGroundY < 0.08 && this.getDeltaMovement().y <= 0.02)) {
+            if (py < avgGroundY || (py - avgGroundY < 0.10 && this.getDeltaMovement().y <= 0.02)) {
                 this.setPos(px, avgGroundY, pz);
                 py = avgGroundY;
                 this.setOnGround(true);
@@ -1305,7 +1313,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         } else if (this.inputForward < -0.1f || this.inputHandbrake) {
             accelPitch = 4.0f;
         }
-        float targetPitch = Mth.clamp(groundPitch + accelPitch, -28.0f, 28.0f);
+        float targetPitch = Mth.clamp(groundPitch + accelPitch, -48.0f, 48.0f);
         this.pitchAngle = Mth.lerp(0.35f, this.pitchAngle, targetPitch);
 
         // === 左右ロール角 (路面傾斜 + 旋回・ドリフト遠心力) ===

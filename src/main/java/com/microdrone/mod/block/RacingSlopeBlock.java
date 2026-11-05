@@ -36,13 +36,20 @@ public class RacingSlopeBlock extends HorizontalDirectionalBlock {
     );
 
     public static final DirectionProperty FACING = HorizontalDirectionalBlock.FACING;
-    public static final double RAMP_MAX_HEIGHT = 0.24; // 先端の高さ (約3.8ピクセル = 24cm)
-    public static final double RAMP_LENGTH = 0.58;     // 板の水平長さ (約9.2ピクセル = 58cm)
 
-    // 視線選択用のアウトライン (高さ約4ピクセル)
-    private static final VoxelShape OUTLINE_SHAPE = Block.box(0, 0, 0, 16, 4.0, 16);
+    // 2段階カーブキッカーの寸法定数
+    public static final double STAGE1_END_Z = 0.59375;  // 1段目終点 (9.5ピクセル = 約0.59m)
+    public static final double STAGE1_HEIGHT = 0.2375;  // 1段目高さ (3.8ピクセル = 約0.24m, 22.5°)
+    public static final double STAGE2_END_Z = 0.95;     // 2段目先端リップ (15.2ピクセル = 0.95m)
+    public static final double STAGE2_HEIGHT = 0.60;    // 2段目先端高さ (9.6ピクセル = 0.60m, 45.0°)
 
-    // 向き別の斜面物理コライダー (8分割スライスで滑らかに車輪・AABBを支える)
+    public static final double RAMP_MAX_HEIGHT = STAGE2_HEIGHT;
+    public static final double RAMP_LENGTH = STAGE2_END_Z;
+
+    // 視線選択用のアウトライン (高さ約10ピクセル)
+    private static final VoxelShape OUTLINE_SHAPE = Block.box(0, 0, 0, 16, 10.0, 16);
+
+    // 向き別の2段階斜面物理コライダー (1段目6スライス + 2段目6スライス + 背面台座)
     private static final Map<Direction, VoxelShape> COLLISION_SHAPES = new EnumMap<>(Direction.class);
 
     static {
@@ -53,15 +60,18 @@ public class RacingSlopeBlock extends HorizontalDirectionalBlock {
 
     private static VoxelShape buildRampCollisionShape(Direction facing) {
         VoxelShape shape = Shapes.empty();
-        int steps = 10;
-        double maxDist = 9.2; // 0.58ブロック相当 (9.2px)
-        double maxHeight = 3.8; // 0.24ブロック相当 (3.8px)
 
-        // 登り斜面スライス (0.0px 〜 9.2px)
-        for (int i = 0; i < steps; i++) {
-            double dStart = (i * maxDist) / steps;
-            double dEnd = ((i + 1) * maxDist) / steps;
-            double h = Math.max(0.5, ((i + 1) * maxHeight) / steps);
+        double z1 = 9.5;  // 1段目終点px
+        double h1 = 3.8;  // 1段目高さpx
+        double z2 = 15.2; // 2段目終点px
+        double h2 = 9.6;  // 2段目高さpx
+
+        int steps1 = 6;
+        // 1段目: 緩傾斜スライス (0.0px 〜 9.5px, 高さ0.5px〜3.8px)
+        for (int i = 0; i < steps1; i++) {
+            double dStart = (i * z1) / steps1;
+            double dEnd = ((i + 1) * z1) / steps1;
+            double h = Math.max(0.5, ((i + 1) * h1) / steps1);
 
             VoxelShape slice = switch (facing) {
                 case SOUTH -> Block.box(0, 0, dStart, 16, h, dEnd);
@@ -73,13 +83,30 @@ public class RacingSlopeBlock extends HorizontalDirectionalBlock {
             shape = Shapes.or(shape, slice);
         }
 
-        // 先端リップの背後 (9.2px 〜 16.0px) の中空落とし込み防止台座 (高さ3.8px)
+        int steps2 = 6;
+        // 2段目: 急傾斜キッカースライス (9.5px 〜 15.2px, 高さ3.8px〜9.6px)
+        for (int i = 0; i < steps2; i++) {
+            double dStart = z1 + (i * (z2 - z1)) / steps2;
+            double dEnd = z1 + ((i + 1) * (z2 - z1)) / steps2;
+            double h = h1 + ((i + 1) * (h2 - h1)) / steps2;
+
+            VoxelShape slice = switch (facing) {
+                case SOUTH -> Block.box(0, 0, dStart, 16, h, dEnd);
+                case NORTH -> Block.box(0, 0, 16.0 - dEnd, 16, h, 16.0 - dStart);
+                case EAST  -> Block.box(dStart, 0, 0, dEnd, h, 16);
+                case WEST  -> Block.box(16.0 - dEnd, 0, 0, 16.0 - dStart, h, 16);
+                default    -> Block.box(0, 0, 0, 16, h, 16);
+            };
+            shape = Shapes.or(shape, slice);
+        }
+
+        // 先端リップ背後 (15.2px 〜 16.0px) の台座 (高さ9.6px)
         VoxelShape backPlate = switch (facing) {
-            case SOUTH -> Block.box(0, 0, maxDist, 16, maxHeight, 16);
-            case NORTH -> Block.box(0, 0, 0, 16, maxHeight, 16.0 - maxDist);
-            case EAST  -> Block.box(maxDist, 0, 0, 16, maxHeight, 16);
-            case WEST  -> Block.box(0, 0, 0, 16.0 - maxDist, maxHeight, 16);
-            default    -> Block.box(0, 0, 0, 16, maxHeight, 16);
+            case SOUTH -> Block.box(0, 0, z2, 16, h2, 16);
+            case NORTH -> Block.box(0, 0, 0, 16, h2, 16.0 - z2);
+            case EAST  -> Block.box(z2, 0, 0, 16, h2, 16);
+            case WEST  -> Block.box(0, 0, 0, 16.0 - z2, h2, 16);
+            default    -> Block.box(0, 0, 0, 16, h2, 16);
         };
         shape = Shapes.or(shape, backPlate);
 
@@ -153,7 +180,7 @@ public class RacingSlopeBlock extends HorizontalDirectionalBlock {
     }
 
     /**
-     * 三角形メッシュ衝突方式: タイヤ位置からのレイキャストで正確な路面高さと法線ベクトルを算出
+     * 三角形メッシュ衝突方式: タイヤ位置からのレイキャストで正確な路面高さと法線ベクトルを算出 (2段階カーブキッカー対応)
      */
     public static RampHitResult raycastSlopeMesh(BlockState state, double relX, double relZ) {
         Direction facing = state.getValue(FACING);
@@ -180,27 +207,59 @@ public class RacingSlopeBlock extends HorizontalDirectionalBlock {
             return RampHitResult.MISS;
         }
 
-        // 斜面の法線ベクトル (22.5度の垂直上向き)
-        double sinTheta = 0.3827; // sin(22.5°)
-        double cosTheta = 0.9239; // cos(22.5°)
+        double height;
+        net.minecraft.world.phys.Vec3 worldNormal;
+        double progress;
+        boolean isLip;
 
-        net.minecraft.world.phys.Vec3 worldNormal = switch (facing) {
-            case SOUTH -> new net.minecraft.world.phys.Vec3(0.0, cosTheta, -sinTheta);
-            case NORTH -> new net.minecraft.world.phys.Vec3(0.0, cosTheta, sinTheta);
-            case EAST  -> new net.minecraft.world.phys.Vec3(-sinTheta, cosTheta, 0.0);
-            case WEST  -> new net.minecraft.world.phys.Vec3(sinTheta, cosTheta, 0.0);
-            default    -> new net.minecraft.world.phys.Vec3(0, 1, 0);
-        };
+        if (localZ <= STAGE1_END_Z) {
+            // === 1段階目: 緩傾斜エントリー (0.0m 〜 0.59m, 傾斜22.5°) ===
+            double p1 = Math.max(0.0, localZ / STAGE1_END_Z);
+            height = p1 * STAGE1_HEIGHT;
+            progress = p1 * 0.5; // 前半 0.0 〜 0.5
+            isLip = false;
 
-        // 先端リップ以降 (localZ >= RAMP_LENGTH): 先端高さを維持して空中に飛び出させる
-        if (localZ >= RAMP_LENGTH) {
-            return new RampHitResult(true, RAMP_MAX_HEIGHT, worldNormal, 1.0, true, isBoost);
+            double sin1 = 0.3827; // sin(22.5°)
+            double cos1 = 0.9239; // cos(22.5°)
+            worldNormal = switch (facing) {
+                case SOUTH -> new net.minecraft.world.phys.Vec3(0.0, cos1, -sin1);
+                case NORTH -> new net.minecraft.world.phys.Vec3(0.0, cos1, sin1);
+                case EAST  -> new net.minecraft.world.phys.Vec3(-sin1, cos1, 0.0);
+                case WEST  -> new net.minecraft.world.phys.Vec3(sin1, cos1, 0.0);
+                default    -> new net.minecraft.world.phys.Vec3(0, 1, 0);
+            };
+        } else if (localZ <= STAGE2_END_Z) {
+            // === 2段階目: 急傾斜キッカーリップ (0.59m 〜 0.95m, 傾斜45.0°) ===
+            double p2 = (localZ - STAGE1_END_Z) / (STAGE2_END_Z - STAGE1_END_Z);
+            height = STAGE1_HEIGHT + p2 * (STAGE2_HEIGHT - STAGE1_HEIGHT);
+            progress = 0.5 + p2 * 0.5; // 後半 0.5 〜 1.0
+            isLip = (progress >= 0.85);
+
+            double sin2 = 0.7071; // sin(45.0°)
+            double cos2 = 0.7071; // cos(45.0°)
+            worldNormal = switch (facing) {
+                case SOUTH -> new net.minecraft.world.phys.Vec3(0.0, cos2, -sin2);
+                case NORTH -> new net.minecraft.world.phys.Vec3(0.0, cos2, sin2);
+                case EAST  -> new net.minecraft.world.phys.Vec3(-sin2, cos2, 0.0);
+                case WEST  -> new net.minecraft.world.phys.Vec3(sin2, cos2, 0.0);
+                default    -> new net.minecraft.world.phys.Vec3(0, 1, 0);
+            };
+        } else {
+            // === 先端リップ頂上台座 (0.95m 〜 1.0m) ===
+            height = STAGE2_HEIGHT;
+            progress = 1.0;
+            isLip = true;
+
+            double sin2 = 0.7071; // sin(45.0°)
+            double cos2 = 0.7071; // cos(45.0°)
+            worldNormal = switch (facing) {
+                case SOUTH -> new net.minecraft.world.phys.Vec3(0.0, cos2, -sin2);
+                case NORTH -> new net.minecraft.world.phys.Vec3(0.0, cos2, sin2);
+                case EAST  -> new net.minecraft.world.phys.Vec3(-sin2, cos2, 0.0);
+                case WEST  -> new net.minecraft.world.phys.Vec3(sin2, cos2, 0.0);
+                default    -> new net.minecraft.world.phys.Vec3(0, 1, 0);
+            };
         }
-
-        // 三角形メッシュの高さ関数 (完全な一次関数)
-        double progress = Math.max(0.0, localZ / RAMP_LENGTH);
-        double height = progress * RAMP_MAX_HEIGHT;
-        boolean isLip = progress >= 0.82; // 先端付近 (約0.48m以降)
 
         return new RampHitResult(true, height, worldNormal, progress, isLip, isBoost);
     }

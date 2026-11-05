@@ -1,54 +1,148 @@
 {
   "parent": "minecraft:block/block",
   "textures": {
-    "particle": "microdrone:block/racing_slope_side",
+    "particle": "microdrone:block/racing_slope_custom",
+    "custom": "microdrone:block/racing_slope_custom",
     "top": "microdrone:block/racing_slope_top",
     "side": "microdrone:block/racing_slope_side",
     "bottom": "microdrone:block/racing_slope_side"
   },
   "elements": [
     {
-      "name": "ramp_board",
+      "name": "left_rail",
       "from": [0, 0, 0],
-      "to": [16, 0.5, 10],
+      "to": [2, 1, 16],
+      "faces": {
+        "north": { "texture": "#custom", "cullface": "north" },
+        "south": { "texture": "#custom", "cullface": "south" },
+        "west":  { "texture": "#custom", "cullface": "west" },
+        "east":  { "texture": "#custom" },
+        "up":    { "texture": "#custom" },
+        "down":  { "texture": "#custom", "cullface": "down" }
+      }
+    },
+    {
+      "name": "right_rail",
+      "from": [14, 0, 0],
+      "to": [16, 1, 16],
+      "faces": {
+        "north": { "texture": "#custom", "cullface": "north" },
+        "south": { "texture": "#custom", "cullface": "south" },
+        "west":  { "texture": "#custom" },
+        "east":  { "texture": "#custom", "cullface": "east" },
+        "up":    { "texture": "#custom" },
+        "down":  { "texture": "#custom", "cullface": "down" }
+      }
+    },
+    {
+      "name": "left_post",
+      "from": [0, 0, 13],
+      "to": [2, 9, 16],
+      "faces": {
+        "north": { "texture": "#custom" },
+        "south": { "texture": "#custom", "cullface": "south" },
+        "west":  { "texture": "#custom", "cullface": "west" },
+        "east":  { "texture": "#custom" },
+        "up":    { "texture": "#custom" },
+        "down":  { "texture": "#custom", "cullface": "down" }
+      }
+    },
+    {
+      "name": "right_post",
+      "from": [14, 0, 13],
+      "to": [16, 9, 16],
+      "faces": {
+        "north": { "texture": "#custom" },
+        "south": { "texture": "#custom", "cullface": "south" },
+        "west":  { "texture": "#custom" },
+        "east":  { "texture": "#custom", "cullface": "east" },
+        "up":    { "texture": "#custom" },
+        "down":  { "texture": "#custom", "cullface": "down" }
+      }
+    },
+    {
+      "name": "crossbar",
+      "from": [2, 7, 13],
+      "to": [14, 9, 16],
+      "faces": {
+        "north": { "texture": "#custom" },
+        "south": { "texture": "#custom", "cullface": "south" },
+        "west":  { "texture": "#custom" },
+        "east":  { "texture": "#custom" },
+        "up":    { "texture": "#custom" },
+        "down":  { "texture": "#custom" }
+      }
+    },
+    {
+      "name": "handrail_left",
+      "from": [0, 3, 3],
+      "to": [2, 4, 15],
       "rotation": {
-        "origin": [8, 0, 0],
+        "origin": [1, 3, 3],
+        "axis": "x",
+        "angle": -45.0
+      },
+      "faces": {
+        "north": { "texture": "#custom" },
+        "south": { "texture": "#custom" },
+        "west":  { "texture": "#custom" },
+        "east":  { "texture": "#custom" },
+        "up":    { "texture": "#custom" },
+        "down":  { "texture": "#custom" }
+      }
+    },
+    {
+      "name": "handrail_right",
+      "from": [14, 3, 3],
+      "to": [16, 4, 15],
+      "rotation": {
+        "origin": [15, 3, 3],
+        "axis": "x",
+        "angle": -45.0
+      },
+      "faces": {
+        "north": { "texture": "#custom" },
+        "south": { "texture": "#custom" },
+        "west":  { "texture": "#custom" },
+        "east":  { "texture": "#custom" },
+        "up":    { "texture": "#custom" },
+        "down":  { "texture": "#custom" }
+      }
+    },
+    {
+      "name": "board_stage1",
+      "from": [2, 0, 0.5],
+      "to": [14, 1, 10.5],
+      "rotation": {
+        "origin": [8, 0, 0.5],
         "axis": "x",
         "angle": -22.5
       },
       "faces": {
-        "north": { "texture": "#side", "cullface": "north" },
-        "south": { "texture": "#side" },
-        "west":  { "texture": "#side" },
-        "east":  { "texture": "#side" },
-        "up":    { "texture": "#top" },
-        "down":  { "texture": "#bottom", "cullface": "down" }
+        "north": { "texture": "#custom" },
+        "south": { "texture": "#custom" },
+        "west":  { "texture": "#custom" },
+        "east":  { "texture": "#custom" },
+        "up":    { "texture": "#custom" },
+        "down":  { "texture": "#custom" }
       }
     },
     {
-      "name": "side_left",
-      "from": [0, 0, 3],
-      "to": [0.6, 3.5, 9.2],
+      "name": "board_stage2",
+      "from": [2, 3.8, 9.5],
+      "to": [14, 4.8, 17.5],
+      "rotation": {
+        "origin": [8, 3.8, 9.5],
+        "axis": "x",
+        "angle": -45.0
+      },
       "faces": {
-        "north": { "texture": "#side" },
-        "south": { "texture": "#side" },
-        "west":  { "texture": "#side", "cullface": "west" },
-        "east":  { "texture": "#side" },
-        "up":    { "texture": "#side" },
-        "down":  { "texture": "#bottom", "cullface": "down" }
-      }
-    },
-    {
-      "name": "side_right",
-      "from": [15.4, 0, 3],
-      "to": [16, 3.5, 9.2],
-      "faces": {
-        "north": { "texture": "#side" },
-        "south": { "texture": "#side" },
-        "west":  { "texture": "#side" },
-        "east":  { "texture": "#side", "cullface": "east" },
-        "up":    { "texture": "#side" },
-        "down":  { "texture": "#bottom", "cullface": "down" }
+        "north": { "texture": "#custom" },
+        "south": { "texture": "#custom" },
+        "west":  { "texture": "#custom" },
+        "east":  { "texture": "#custom" },
+        "up":    { "texture": "#custom" },
+        "down":  { "texture": "#custom" }
       }
     }
   ]
