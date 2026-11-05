@@ -10,10 +10,12 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
@@ -36,6 +38,8 @@ public class RacingSlopeBlock extends HorizontalDirectionalBlock {
     );
 
     public static final DirectionProperty FACING = HorizontalDirectionalBlock.FACING;
+    public static final BooleanProperty LEFT = BooleanProperty.create("left");
+    public static final BooleanProperty RIGHT = BooleanProperty.create("right");
 
     // 2段階カーブキッカーの寸法定数
     public static final double STAGE1_END_Z = 0.59375;  // 1段目終点 (9.5ピクセル = 約0.59m)
@@ -122,7 +126,10 @@ public class RacingSlopeBlock extends HorizontalDirectionalBlock {
     public RacingSlopeBlock(Properties properties, boolean isBoost) {
         super(properties);
         this.isBoost = isBoost;
-        this.registerDefaultState(this.stateDefinition.any().setValue(FACING, Direction.NORTH));
+        this.registerDefaultState(this.stateDefinition.any()
+                .setValue(FACING, Direction.NORTH)
+                .setValue(LEFT, true)
+                .setValue(RIGHT, true));
     }
 
     @Override
@@ -136,14 +143,45 @@ public class RacingSlopeBlock extends HorizontalDirectionalBlock {
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(FACING);
+        builder.add(FACING, LEFT, RIGHT);
     }
 
     @Nullable
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
-        // プレイヤーが向いている方向に登るように設置
-        return this.defaultBlockState().setValue(FACING, context.getHorizontalDirection());
+        Direction facing = context.getHorizontalDirection();
+        return updateRails(context.getLevel(), context.getClickedPos(), facing);
+    }
+
+    @Override
+    public BlockState updateShape(BlockState state, Direction direction, BlockState neighborState,
+                                  LevelAccessor level, BlockPos pos, BlockPos neighborPos) {
+        Direction facing = state.getValue(FACING);
+        return updateRails(level, pos, facing);
+    }
+
+    public BlockState updateRails(BlockGetter level, BlockPos pos, Direction facing) {
+        // モデル座標系（facing=SOUTHでZ+奥へ登る、X-が左レール、X+が右レール）
+        // facing = SOUTH のとき、モデルの左(X-)は WEST (facing.getClockWise())
+        // facing = SOUTH のとき、モデルの右(X+)は EAST (facing.getCounterClockWise())
+        Direction leftDir = facing.getClockWise();
+        Direction rightDir = facing.getCounterClockWise();
+
+        boolean connectLeft = isConnectingSlope(level, pos.relative(leftDir), facing);
+        boolean connectRight = isConnectingSlope(level, pos.relative(rightDir), facing);
+
+        return this.defaultBlockState()
+                .setValue(FACING, facing)
+                .setValue(LEFT, !connectLeft)
+                .setValue(RIGHT, !connectRight);
+    }
+
+    private boolean isConnectingSlope(BlockGetter level, BlockPos neighborPos, Direction myFacing) {
+        BlockState neighbor = level.getBlockState(neighborPos);
+        if (neighbor.getBlock() instanceof RacingSlopeBlock) {
+            return neighbor.getValue(FACING) == myFacing;
+        }
+        return false;
     }
 
     @Override

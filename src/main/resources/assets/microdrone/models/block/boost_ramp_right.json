@@ -1,0 +1,225 @@
+﻿{
+    "parent":  "minecraft:block/block",
+    "textures":  {
+                     "particle":  "microdrone:block/racing_slope_rail",
+                     "rail":  "microdrone:block/racing_slope_rail"
+                 },
+    "elements":  [
+                     {
+                         "name":  "right_post",
+                         "from":  [
+                                      14,
+                                      0,
+                                      13
+                                  ],
+                         "to":  [
+                                    16,
+                                    9,
+                                    16
+                                ],
+                         "faces":  {
+                                       "south":  {
+                                                     "uv":  [
+                                                                9,
+                                                                5,
+                                                                9.5,
+                                                                7.25
+                                                            ],
+                                                     "texture":  "#rail"
+                                                 },
+                                       "north":  {
+                                                     "uv":  [
+                                                                7.75,
+                                                                5,
+                                                                8.25,
+                                                                7.25
+                                                            ],
+                                                     "texture":  "#rail"
+                                                 },
+                                       "up":  {
+                                                  "uv":  [
+                                                             7.75,
+                                                             4.25,
+                                                             8.25,
+                                                             5
+                                                         ],
+                                                  "texture":  "#rail"
+                                              },
+                                       "west":  {
+                                                    "uv":  [
+                                                               7,
+                                                               5,
+                                                               7.75,
+                                                               7.25
+                                                           ],
+                                                    "texture":  "#rail"
+                                                },
+                                       "down":  {
+                                                    "uv":  [
+                                                               8.25,
+                                                               4.25,
+                                                               8.75,
+                                                               5
+                                                           ],
+                                                    "texture":  "#rail"
+                                                },
+                                       "east":  {
+                                                    "uv":  [
+                                                               8.25,
+                                                               5,
+                                                               9,
+                                                               7.25
+                                                           ],
+                                                    "texture":  "#rail"
+                                                }
+                                   }
+                     },
+                     {
+                         "name":  "right_rail",
+                         "from":  [
+                                      14,
+                                      0,
+                                      0
+                                  ],
+                         "to":  [
+                                    16,
+                                    1,
+                                    16
+                                ],
+                         "faces":  {
+                                       "south":  {
+                                                     "uv":  [
+                                                                8.5,
+                                                                4,
+                                                                9,
+                                                                4.25
+                                                            ],
+                                                     "texture":  "#rail"
+                                                 },
+                                       "north":  {
+                                                     "uv":  [
+                                                                4,
+                                                                4,
+                                                                4.5,
+                                                                4.25
+                                                            ],
+                                                     "texture":  "#rail"
+                                                 },
+                                       "up":  {
+                                                  "uv":  [
+                                                             4,
+                                                             0,
+                                                             4.5,
+                                                             4
+                                                         ],
+                                                  "texture":  "#rail"
+                                              },
+                                       "west":  {
+                                                    "uv":  [
+                                                               0,
+                                                               4,
+                                                               4,
+                                                               4.25
+                                                           ],
+                                                    "texture":  "#rail"
+                                                },
+                                       "down":  {
+                                                    "uv":  [
+                                                               4.5,
+                                                               0,
+                                                               5,
+                                                               4
+                                                           ],
+                                                    "texture":  "#rail"
+                                                },
+                                       "east":  {
+                                                    "uv":  [
+                                                               4.5,
+                                                               4,
+                                                               8.5,
+                                                               4.25
+                                                           ],
+                                                    "texture":  "#rail"
+                                                }
+                                   }
+                     },
+                     {
+                         "name":  "handrail_right",
+                         "from":  [
+                                      14,
+                                      3,
+                                      3
+                                  ],
+                         "to":  [
+                                    16,
+                                    4,
+                                    15
+                                ],
+                         "rotation":  {
+                                          "angle":  -45,
+                                          "axis":  "x",
+                                          "origin":  [
+                                                         15,
+                                                         3,
+                                                         3
+                                                     ]
+                                      },
+                         "faces":  {
+                                       "south":  {
+                                                     "uv":  [
+                                                                6.5,
+                                                                7.25,
+                                                                7,
+                                                                7.5
+                                                            ],
+                                                     "texture":  "#rail"
+                                                 },
+                                       "north":  {
+                                                     "uv":  [
+                                                                3,
+                                                                7.25,
+                                                                3.5,
+                                                                7.5
+                                                            ],
+                                                     "texture":  "#rail"
+                                                 },
+                                       "up":  {
+                                                  "uv":  [
+                                                             3,
+                                                             4.25,
+                                                             3.5,
+                                                             7.25
+                                                         ],
+                                                  "texture":  "#rail"
+                                              },
+                                       "west":  {
+                                                    "uv":  [
+                                                               0,
+                                                               7.25,
+                                                               3,
+                                                               7.5
+                                                           ],
+                                                    "texture":  "#rail"
+                                                },
+                                       "down":  {
+                                                    "uv":  [
+                                                               3.5,
+                                                               4.25,
+                                                               4,
+                                                               7.25
+                                                           ],
+                                                    "texture":  "#rail"
+                                                },
+                                       "east":  {
+                                                    "uv":  [
+                                                               3.5,
+                                                               7.25,
+                                                               6.5,
+                                                               7.5
+                                                           ],
+                                                    "texture":  "#rail"
+                                                }
+                                   }
+                     }
+                 ]
+}

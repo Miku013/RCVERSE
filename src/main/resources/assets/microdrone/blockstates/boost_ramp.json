@@ -1,8 +1,117 @@
-{
-  "variants": {
-    "facing=south": { "model": "microdrone:block/boost_ramp" },
-    "facing=west":  { "model": "microdrone:block/boost_ramp", "y": 90 },
-    "facing=north": { "model": "microdrone:block/boost_ramp", "y": 180 },
-    "facing=east":  { "model": "microdrone:block/boost_ramp", "y": 270 }
-  }
+﻿{
+    "multipart":  [
+                      {
+                          "when":  {
+                                       "facing":  "south"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/boost_ramp_base"
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "facing":  "west"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/boost_ramp_base",
+                                        "y":  90
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "facing":  "north"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/boost_ramp_base",
+                                        "y":  180
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "facing":  "east"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/boost_ramp_base",
+                                        "y":  270
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "left":  "true",
+                                       "facing":  "south"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/boost_ramp_left"
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "left":  "true",
+                                       "facing":  "west"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/boost_ramp_left",
+                                        "y":  90
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "left":  "true",
+                                       "facing":  "north"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/boost_ramp_left",
+                                        "y":  180
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "left":  "true",
+                                       "facing":  "east"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/boost_ramp_left",
+                                        "y":  270
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "right":  "true",
+                                       "facing":  "south"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/boost_ramp_right"
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "right":  "true",
+                                       "facing":  "west"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/boost_ramp_right",
+                                        "y":  90
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "right":  "true",
+                                       "facing":  "north"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/boost_ramp_right",
+                                        "y":  180
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "right":  "true",
+                                       "facing":  "east"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/boost_ramp_right",
+                                        "y":  270
+                                    }
+                      }
+                  ]
 }

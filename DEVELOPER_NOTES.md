@@ -451,3 +451,19 @@ Minecraft 1.21.1 (NeoForge) 向けの超リアル・高機能ラジコン MOD。
   - 20 ticks（約1秒間）の高速点滅演出（RcCarGeoRenderer で2tickおきの描画スキップ）。
   - レスキュー効果音（CHORUS_FRUIT_TELEPORT ピッチ1.7F）とポータルパーティクルを再生。
   - プレイヤーHUDに「⚡ [位置同期レスキュー発動]」を通知。
+
+## 2026-11-06: ジャンプ台・ダッシュパネルのフェンス方式（横連結マルチパート）対応
+- **概要**:
+  - ジャンプ台（acing_slope）およびダッシュパネル（oost_ramp）をフェンス方式化。
+  - スロープブロックを横に連結配置した際に、隣接する内側の手すり・レール（左右パーツ）が自動で非表示になり、シームレスなワイドジャンプ台（2連、3連など）として連結可能に。
+- **実装内容**:
+  1. **モデル分割**:
+     - acing_slope_base.json (スロープ中央本体: 2段階板 + 横梁、テクスチャ: acing_slope_base.png)
+     - acing_slope_left.json / acing_slope_right.json (左右のレール・支柱・斜め手すり、共通テクスチャ: acing_slope_rail.png)
+     - oost_ramp_base.json, oost_ramp_left.json, oost_ramp_right.json (ダッシュパネル側も同様に対応)
+  2. **ブロックステート (Multipart)**:
+     - acing_slope.json, oost_ramp.json を multipart 記法に更新。
+     - left=true, ight=true の各条件と acing 回転（y: 0, 90, 180, 270）を連動。
+  3. **ブロックロジック (RacingSlopeBlock.java)**:
+     - LEFT, RIGHT の BooleanProperty を追加。
+     - getStateForPlacement および updateShape により、左右に同じ向きのスロープブロックが隣接しているか判定し、隣接側のレールを自動非表示化。

@@ -1,8 +1,117 @@
-{
-  "variants": {
-    "facing=south": { "model": "microdrone:block/racing_slope" },
-    "facing=west":  { "model": "microdrone:block/racing_slope", "y": 90 },
-    "facing=north": { "model": "microdrone:block/racing_slope", "y": 180 },
-    "facing=east":  { "model": "microdrone:block/racing_slope", "y": 270 }
-  }
+﻿{
+    "multipart":  [
+                      {
+                          "when":  {
+                                       "facing":  "south"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/racing_slope_base"
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "facing":  "west"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/racing_slope_base",
+                                        "y":  90
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "facing":  "north"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/racing_slope_base",
+                                        "y":  180
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "facing":  "east"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/racing_slope_base",
+                                        "y":  270
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "left":  "true",
+                                       "facing":  "south"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/racing_slope_left"
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "left":  "true",
+                                       "facing":  "west"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/racing_slope_left",
+                                        "y":  90
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "left":  "true",
+                                       "facing":  "north"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/racing_slope_left",
+                                        "y":  180
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "left":  "true",
+                                       "facing":  "east"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/racing_slope_left",
+                                        "y":  270
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "right":  "true",
+                                       "facing":  "south"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/racing_slope_right"
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "right":  "true",
+                                       "facing":  "west"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/racing_slope_right",
+                                        "y":  90
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "right":  "true",
+                                       "facing":  "north"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/racing_slope_right",
+                                        "y":  180
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "right":  "true",
+                                       "facing":  "east"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/racing_slope_right",
+                                        "y":  270
+                                    }
+                      }
+                  ]
 }
