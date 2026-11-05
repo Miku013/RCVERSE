@@ -494,3 +494,10 @@ Minecraft 1.21.1 (NeoForge) 向けの超リアル・高機能ラジコン MOD。
 - バッテリーチャージャー (drone_charger.png) を新アイコン（青色電池ブロック）に更新。
 - ジャンプ台 (racing_slope.png) を新アイコン（緑枠・白矢印スロープ）に差し替え、models/item/racing_slope.json を item/generated に設定。
 - ダッシュパネル (boost_ramp.png) を新アイコン（オレンジ枠・黄二重矢印パネル）に差し替え、models/item/boost_ramp.json を item/generated に設定。
+
+## 2026-11-06: アイコンサイズ不一致の解消 ＆ コントローラー新アイコン差し替え
+- **原因と修正**:
+  - acing_slope と drone_charger のPNGがJPEGからの変換で Format24bppRgb（アルファなし）のままになっており、Minecraftの item/generated 処理時にアトラスUVスケーリングがバグってスロット外に巨大化・右下へはみ出していた問題を特定。
+  - 4つのアイコン（充電器、スロープ、ブースト、コントローラー）をすべて解像度 600x600・Format32bppArgb（透過アルファ付きPNG）に統一。
+  - 外枠の四隅（暗い角）を角丸透過（Alpha=0）にし、全アイコンに均等な透明マージンを設けることで、スロット枠内に美しく均一に収まるよう調整。
+  - コントローラー (drone_controller) のアイコンをアップロードされた新デザイン（青枠・カラー液晶プロポ）に差し替え、models/item/drone_controller.json を minecraft:item/generated に設定。
