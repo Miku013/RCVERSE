@@ -734,28 +734,29 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
 
                 // スロープの頂上付近 (dist >= 0.45) に到達したらジャンプ！
                 if (dist >= 0.45) {
-                    this.jumpCooldown = 15; // 0.75秒クールダウン
+                    this.jumpCooldown = 20; // 1.0秒クールダウン
                     this.setOnGround(false);
                     this.hasImpulse = true;
                     this.pitchAngle = -12.0f; // 空中でのノーズアップ姿勢
+                    this.setPos(this.getX(), this.getY() + 0.04, this.getZ()); // リップから少し浮かす
 
                     boolean isBoost = slopeBlock.isBoost();
                     if (isBoost) {
                         // ブーストジャンプ台: 強制加速 + 大ジャンプ！
-                        this.turboBoostTicks = 20;
-                        this.currentSpeed = (float) Math.max(this.currentSpeed * 1.5, 0.48);
-                        double jumpY = 0.32 + (this.currentSpeed * 0.22);
-                        this.carVelocity = new Vec3(this.carVelocity.x * 1.3, jumpY, this.carVelocity.z * 1.3);
-                        this.setDeltaMovement(new Vec3(this.getDeltaMovement().x, jumpY, this.getDeltaMovement().z));
+                        this.turboBoostTicks = 25;
+                        this.currentSpeed = (float) Math.max(this.currentSpeed * 1.6, 0.52);
+                        double jumpY = 0.40 + (this.currentSpeed * 0.25);
+                        this.carVelocity = new Vec3(this.carVelocity.x * 1.35, jumpY, this.carVelocity.z * 1.35);
+                        this.setDeltaMovement(new Vec3(this.getDeltaMovement().x * 1.35, jumpY, this.getDeltaMovement().z * 1.35));
 
                         this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
                                 net.minecraft.sounds.SoundEvents.FIREWORK_ROCKET_BLAST,
                                 net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.6F);
                     } else {
                         // 通常ジャンプ台: 速度に応じた跳躍
-                        double jumpY = 0.18 + (this.currentSpeed * 0.35);
-                        this.carVelocity = new Vec3(this.carVelocity.x, jumpY, this.carVelocity.z);
-                        this.setDeltaMovement(new Vec3(this.getDeltaMovement().x, jumpY, this.getDeltaMovement().z));
+                        double jumpY = 0.25 + (this.currentSpeed * 0.45);
+                        this.carVelocity = new Vec3(this.carVelocity.x * 1.1, jumpY, this.carVelocity.z * 1.1);
+                        this.setDeltaMovement(new Vec3(this.getDeltaMovement().x * 1.1, jumpY, this.getDeltaMovement().z * 1.1));
 
                         this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
                                 net.minecraft.sounds.SoundEvents.ARMOR_EQUIP_ELYTRA.value(),
@@ -1226,6 +1227,14 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
 
         // 4輪中いずれかが路面に接触・追従しているか (車体下約0.08ブロック以内に地面があればタイヤ接地・トラクション有効)
         this.wheelGrounded = (hFL >= py - 0.08 || hFR >= py - 0.08 || hRL >= py - 0.08 || hRR >= py - 0.08);
+
+        // スロープ（斜面）上での車体沈み込み防止: 車体底面が斜面より下にある場合は斜面表面へ滑らかにリフト
+        double avgGroundY = (hFL + hFR + hRL + hRR) * 0.25;
+        if (py < avgGroundY && (this.onGround() || this.wheelGrounded)) {
+            double liftY = Math.min(avgGroundY, py + 0.10);
+            this.setPos(px, liftY, pz);
+            py = liftY;
+        }
 
         // === 前後ピッチ角 (地面傾斜 + 加減速G) ===
         double hFront = (hFL + hFR) * 0.5;

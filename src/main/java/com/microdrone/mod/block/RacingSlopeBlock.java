@@ -16,10 +16,13 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 1枚の薄い板を斜めに傾けたキッカーランプ（ジャンプ台）
@@ -38,8 +41,38 @@ public class RacingSlopeBlock extends HorizontalDirectionalBlock {
 
     // 視線選択用のアウトライン (高さ約4ピクセル)
     private static final VoxelShape OUTLINE_SHAPE = Block.box(0, 0, 0, 16, 4.0, 16);
-    // 物理コライダー: RCカーのタイヤが角にぶつかって弾かれない極薄ベース (厚さ0.5px)
-    private static final VoxelShape COLLISION_SHAPE = Block.box(0, 0, 0, 16, 0.5, 16);
+
+    // 向き別の斜面物理コライダー (8分割スライスで滑らかに車輪・AABBを支える)
+    private static final Map<Direction, VoxelShape> COLLISION_SHAPES = new EnumMap<>(Direction.class);
+
+    static {
+        for (Direction dir : Direction.Plane.HORIZONTAL) {
+            COLLISION_SHAPES.put(dir, buildRampCollisionShape(dir));
+        }
+    }
+
+    private static VoxelShape buildRampCollisionShape(Direction facing) {
+        VoxelShape shape = Shapes.empty();
+        int steps = 8;
+        double maxDist = 9.2; // 0.58ブロック相当 (9.2px)
+        double maxHeight = 3.8; // 0.24ブロック相当 (3.8px)
+
+        for (int i = 0; i < steps; i++) {
+            double dStart = (i * maxDist) / steps;
+            double dEnd = ((i + 1) * maxDist) / steps;
+            double h = Math.max(0.5, ((i + 1) * maxHeight) / steps);
+
+            VoxelShape slice = switch (facing) {
+                case SOUTH -> Block.box(0, 0, dStart, 16, h, dEnd);
+                case NORTH -> Block.box(0, 0, 16.0 - dEnd, 16, h, 16.0 - dStart);
+                case EAST  -> Block.box(dStart, 0, 0, dEnd, h, 16);
+                case WEST  -> Block.box(16.0 - dEnd, 0, 0, 16.0 - dStart, h, 16);
+                default    -> Block.box(0, 0, 0, 16, h, 16);
+            };
+            shape = Shapes.or(shape, slice);
+        }
+        return shape;
+    }
 
     private final boolean isBoost;
 
@@ -81,7 +114,7 @@ public class RacingSlopeBlock extends HorizontalDirectionalBlock {
 
     @Override
     public VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-        return COLLISION_SHAPE;
+        return COLLISION_SHAPES.getOrDefault(state.getValue(FACING), OUTLINE_SHAPE);
     }
 
     /**
