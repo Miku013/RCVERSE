@@ -228,14 +228,17 @@ public class ClientDroneInputHandler {
 
     private static int missingTicks = 0;
     private static long lastClientTickTime = 0;
+    private static long lastWarnTime = 0;
 
     @SubscribeEvent
     public void onClientTick(ClientTickEvent.Pre event) {
         long now = System.currentTimeMillis();
+        // 通常の20TPS動作 (50ms) で毎ティック警告が出ないよう、150ms以上の深刻なフレームスタッター時かつ3秒に1回にスロットリング
         if (isPiloting && lastClientTickTime > 0) {
             long delta = now - lastClientTickTime;
-            if (delta > 50) {
-                MicroDroneMod.LOGGER.warn("[CLIENT_FRAME_TIME] Frame/Tick interval spike: {}ms (>50ms / <20fps) during RC piloting", delta);
+            if (delta > 150 && (now - lastWarnTime > 3000)) {
+                MicroDroneMod.LOGGER.warn("[CLIENT_FRAME_TIME] Severe tick interval spike: {}ms (>150ms / <7fps) during RC piloting", delta);
+                lastWarnTime = now;
             }
         }
         lastClientTickTime = now;
