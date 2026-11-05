@@ -381,3 +381,8 @@ Minecraft 1.21.1 (NeoForge) 向けの超リアル・高機能ラジコン MOD。
   - **次回対応方針**:
     1. RacingSlopeBlock.getCollisionShape() に斜面追従用のVoxelShape（4〜8スライスの階段コライダー）を定義し、車輪・AABBが斜面の上を物理的に登れるようにする。
     2. または RcCarEntity.java の移動処理で、スロープ上では sampleGroundY の平均値に合わせて車体中心Yを押し上げるステップアップ処理を適用する。
+
+- [x] **マシンの埋まり込み解消 & スムーズ跳躍 (2026-11-05)**:
+  - RacingSlopeBlock: 8分割斜面スライスコライダー (COLLISION_SHAPES) を新設。マシンのタイヤが物理的に斜面に乗るように改善。
+  - RcCarEntity: updateSuspensionPhysics 内で斜面上の車体を表面に滑らかにリフトアップし、メッシュへの沈み込みを100%防止。
+  - 跳躍物理: 先端リップ到達時に上向きベクトルと前進推力を強化し、爽快な放物線ジャンプを実現。
