@@ -778,26 +778,26 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                     // ブーストジャンプ台（ダッシュパネル）: 強制ロケット加速 + 空高く駆け上がる大ジャンプ！
                     this.turboBoostTicks = 35;
                     this.currentSpeed = (float) Math.max(this.currentSpeed * 1.65, 0.58);
-                    // ノーズアップ方向に空高く突き抜ける豪快な跳躍初速
-                    double jumpY = (0.52 + (this.currentSpeed * 0.42)) * massJumpFactor;
+                    // ノーズアップ方向に空高く突き抜ける豪快な跳躍初速 (上方向強化)
+                    double jumpY = (0.75 + (this.currentSpeed * 0.55)) * massJumpFactor;
                     this.carVelocity = new Vec3(this.carVelocity.x * 1.45, jumpY, this.carVelocity.z * 1.45);
                     this.setDeltaMovement(this.carVelocity);
-                    this.pitchAngle = -32.0f; // 豪快なノーズアップ空中姿勢
-                    this.jumpAirborneTicks = 16; // 16 ticks(約0.8秒)空中モードを完全維持！
-                    this.setPos(this.getX(), this.getY() + 0.12, this.getZ()); // リップから浮かせる
+                    this.pitchAngle = -34.0f; // 豪快なノーズアップ空中姿勢
+                    this.jumpAirborneTicks = 22; // 22 ticks(約1.1秒)空中モードを完全維持！
+                    this.setPos(this.getX(), this.getY() + 0.15, this.getZ()); // リップから浮かせる
 
                     this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
                             net.minecraft.sounds.SoundEvents.FIREWORK_ROCKET_BLAST,
                             net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.6F);
                 } else {
-                    // 通常ジャンプ台: 45°キッカーのノーズアップ方向へ豪快に駆け上がる放物線跳躍！
-                    double jumpY = (0.42 + (this.currentSpeed * 0.45)) * massJumpFactor;
+                    // 通常ジャンプ台: 45°キッカーのノーズアップ方向へ豪快に駆け上がる放物線跳躍！ (上方向強化)
+                    double jumpY = (0.60 + (this.currentSpeed * 0.55)) * massJumpFactor;
                     double fwdBoost = 1.15 + (0.05 * (mass - 1.10f)); // 慣性で前方に突き抜ける
                     this.carVelocity = new Vec3(this.carVelocity.x * fwdBoost, jumpY, this.carVelocity.z * fwdBoost);
                     this.setDeltaMovement(this.carVelocity);
-                    this.pitchAngle = -28.0f; // 45°キッカーからのノーズアップ空中姿勢
-                    this.jumpAirborneTicks = 14; // 14 ticks(約0.7秒)空中モードを完全維持！
-                    this.setPos(this.getX(), this.getY() + 0.10, this.getZ()); // リップから浮かせる
+                    this.pitchAngle = -30.0f; // 45°キッカーからのノーズアップ空中姿勢
+                    this.jumpAirborneTicks = 18; // 18 ticks(約0.9秒)空中モードを完全維持！
+                    this.setPos(this.getX(), this.getY() + 0.12, this.getZ()); // リップから浮かせる
 
                     this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
                             net.minecraft.sounds.SoundEvents.ARMOR_EQUIP_ELYTRA.value(),

@@ -2,7 +2,7 @@
     "parent":  "minecraft:block/block",
     "textures":  {
                      "particle":  "microdrone:block/racing_slope_rail",
-                     "custom":  "microdrone:block/racing_slope_rail"
+                     "rail":  "microdrone:block/racing_slope_rail"
                  },
     "elements":  [
                      {
@@ -25,7 +25,7 @@
                                                                 9.5,
                                                                 7.25
                                                             ],
-                                                     "texture":  "#custom"
+                                                     "texture":  "#rail"
                                                  },
                                        "north":  {
                                                      "uv":  [
@@ -34,7 +34,7 @@
                                                                 8.25,
                                                                 7.25
                                                             ],
-                                                     "texture":  "#custom"
+                                                     "texture":  "#rail"
                                                  },
                                        "up":  {
                                                   "uv":  [
@@ -43,7 +43,7 @@
                                                              8.25,
                                                              5
                                                          ],
-                                                  "texture":  "#custom"
+                                                  "texture":  "#rail"
                                               },
                                        "west":  {
                                                     "uv":  [
@@ -52,7 +52,7 @@
                                                                7.75,
                                                                7.25
                                                            ],
-                                                    "texture":  "#custom"
+                                                    "texture":  "#rail"
                                                 },
                                        "down":  {
                                                     "uv":  [
@@ -61,7 +61,7 @@
                                                                8.75,
                                                                5
                                                            ],
-                                                    "texture":  "#custom"
+                                                    "texture":  "#rail"
                                                 },
                                        "east":  {
                                                     "uv":  [
@@ -70,7 +70,7 @@
                                                                9,
                                                                7.25
                                                            ],
-                                                    "texture":  "#custom"
+                                                    "texture":  "#rail"
                                                 }
                                    }
                      },
@@ -94,7 +94,7 @@
                                                                 9,
                                                                 4.25
                                                             ],
-                                                     "texture":  "#custom"
+                                                     "texture":  "#rail"
                                                  },
                                        "north":  {
                                                      "uv":  [
@@ -103,7 +103,7 @@
                                                                 4.5,
                                                                 4.25
                                                             ],
-                                                     "texture":  "#custom"
+                                                     "texture":  "#rail"
                                                  },
                                        "up":  {
                                                   "uv":  [
@@ -112,7 +112,7 @@
                                                              4.5,
                                                              4
                                                          ],
-                                                  "texture":  "#custom"
+                                                  "texture":  "#rail"
                                               },
                                        "west":  {
                                                     "uv":  [
@@ -121,7 +121,7 @@
                                                                4,
                                                                4.25
                                                            ],
-                                                    "texture":  "#custom"
+                                                    "texture":  "#rail"
                                                 },
                                        "down":  {
                                                     "uv":  [
@@ -130,7 +130,7 @@
                                                                5,
                                                                4
                                                            ],
-                                                    "texture":  "#custom"
+                                                    "texture":  "#rail"
                                                 },
                                        "east":  {
                                                     "uv":  [
@@ -139,7 +139,7 @@
                                                                8.5,
                                                                4.25
                                                            ],
-                                                    "texture":  "#custom"
+                                                    "texture":  "#rail"
                                                 }
                                    }
                      },
@@ -160,8 +160,8 @@
                                           "axis":  "x",
                                           "origin":  [
                                                          15,
-                                                         3,
-                                                         3
+                                                         5,
+                                                         8
                                                      ]
                                       },
                          "faces":  {
@@ -172,7 +172,7 @@
                                                                 7,
                                                                 7.5
                                                             ],
-                                                     "texture":  "#custom"
+                                                     "texture":  "#rail"
                                                  },
                                        "north":  {
                                                      "uv":  [
@@ -181,7 +181,7 @@
                                                                 3.5,
                                                                 7.5
                                                             ],
-                                                     "texture":  "#custom"
+                                                     "texture":  "#rail"
                                                  },
                                        "up":  {
                                                   "uv":  [
@@ -190,7 +190,7 @@
                                                              3.5,
                                                              7.25
                                                          ],
-                                                  "texture":  "#custom"
+                                                  "texture":  "#rail"
                                               },
                                        "west":  {
                                                     "uv":  [
@@ -199,7 +199,7 @@
                                                                3,
                                                                7.5
                                                            ],
-                                                    "texture":  "#custom"
+                                                    "texture":  "#rail"
                                                 },
                                        "down":  {
                                                     "uv":  [
@@ -208,7 +208,7 @@
                                                                4,
                                                                7.25
                                                            ],
-                                                    "texture":  "#custom"
+                                                    "texture":  "#rail"
                                                 },
                                        "east":  {
                                                     "uv":  [
@@ -217,7 +217,7 @@
                                                                6.5,
                                                                7.5
                                                            ],
-                                                    "texture":  "#custom"
+                                                    "texture":  "#rail"
                                                 }
                                    }
                      }
