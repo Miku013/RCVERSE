@@ -30,3 +30,4 @@ public record RcCarTuningPayload(int carEntityId, float weightKg) implements Cus
         return TYPE;
     }
 }
+

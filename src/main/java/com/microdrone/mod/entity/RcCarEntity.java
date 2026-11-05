@@ -134,6 +134,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     private double slopeSinTheta = 0.0;    // スロープ斜面法線から算出した傾斜sin値 (1段目約0.38, 2段目約0.71)
     private int collisionCooldown = 0;    // 壁衝突SEの連打防止クールダウン (ticks)
     private int jumpCooldown = 0;         // ジャンプ台連続発動防止クールダウン (ticks)
+    private int jumpAirborneTicks = 0;    // ジャンプ空中飛行保護タイマー (地面吸着・水平化を防止)
 
     // レース計測システム (Step 1)
     private int currentLap = 0;                  // 0 = 未スタート, 1 = 1周目...
@@ -343,6 +344,9 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         }
         if (this.jumpCooldown > 0) {
             this.jumpCooldown--;
+        }
+        if (this.jumpAirborneTicks > 0) {
+            this.jumpAirborneTicks--;
         }
 
         if (!this.level().isClientSide) {
@@ -645,17 +649,17 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         double motionY;
 
         // 三角形メッシュ衝突方式: 斜面走行時は法線傾斜(1段目22.5°/2段目45°)に応じた垂直登坂速度を付与して段差衝突をゼロ化
-        if (this.onSlope && this.wheelGrounded && Math.abs(this.currentSpeed) > 0.005f) {
+        if (this.jumpAirborneTicks <= 0 && this.onSlope && this.wheelGrounded && Math.abs(this.currentSpeed) > 0.005f) {
             double sinSlope = Math.max(0.38, this.slopeSinTheta); // 1段目0.3827, 2段目0.7071
             double climbVy = this.currentSpeed * sinSlope * this.slopeClimbDot;
             motionY = climbVy;
             this.setOnGround(true);
-        } else if (this.onGround() && this.getDeltaMovement().y <= 0.001) {
+        } else if (this.jumpAirborneTicks <= 0 && this.onGround() && this.getDeltaMovement().y <= 0.001) {
             motionY = 0.0;
         } else {
             float mass = this.getVehicleMass();
-            // 基準重力 0.070 (約1.75G相当、ドロップアイテムの0.04から適正化し滞空時間を約0.5〜0.6秒へ凝縮)
-            double gravity = 0.070 + (mass - 1.10f) * 0.025;
+            // 自然で手応えのある放物線重力 (基準 0.046 blocks/tick^2)
+            double gravity = 0.046 + (mass - 1.10f) * 0.015;
             motionY = this.getDeltaMovement().y - gravity;
         }
 
@@ -686,13 +690,13 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         }
         Vec3 actualMoved = this.position().subtract(preMovePos);
 
-        // 地面に衝突した（着地した）場合は接地状態を維持
-        if (this.verticalCollision && motionY <= 0.0) {
+        // 地面に衝突した（着地した）場合は接地状態を維持 (ジャンプ飛行保護中はバイパス)
+        if (this.jumpAirborneTicks <= 0 && this.verticalCollision && motionY <= 0.0) {
             this.setOnGround(true);
         }
 
-        // 移動後に斜面メッシュの上面へ完全吸着（板の下への潜り込みを100%防止）
-        if (this.onSlope) {
+        // 移動後に斜面メッシュの上面へ完全吸着（板の下への潜り込みを100%防止、ジャンプ飛行中はバイパス）
+        if (this.jumpAirborneTicks <= 0 && this.onSlope) {
             WheelRaycastHit curHit = sampleWheelGround(this.getX(), this.getY(), this.getZ());
             if (curHit.onSlope && this.getY() < curHit.groundY) {
                 this.setPos(this.getX(), curHit.groundY, this.getZ());
@@ -713,33 +717,38 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
 
             if (isLipReached && isClimbing) {
                 boolean isBoost = hitCenter.isBoost || hitFront.isBoost;
-                this.jumpCooldown = 20; // 約1.0秒クールダウン
+                this.jumpCooldown = 22; // 約1.1秒クールダウン
                 this.setOnGround(false);
                 this.hasImpulse = true;
-                this.pitchAngle = -24.0f; // 45°キッカーからの豪快なノーズアップ空中姿勢
-                this.setPos(this.getX(), this.getY() + 0.06, this.getZ()); // リップから少し浮かせる
 
                 float mass = this.getVehicleMass();
                 double massRatio = Math.max(0.45, mass / 1.10f);
                 double massJumpFactor = 1.0 / Math.sqrt(massRatio); // 重いほど跳躍が低く鋭い
 
                 if (isBoost) {
-                    // ブーストジャンプ台: 強制ロケット加速 + 大ジャンプ！
-                    this.turboBoostTicks = 32;
+                    // ブーストジャンプ台（ダッシュパネル）: 強制ロケット加速 + 空高く駆け上がる大ジャンプ！
+                    this.turboBoostTicks = 35;
                     this.currentSpeed = (float) Math.max(this.currentSpeed * 1.65, 0.58);
-                    double jumpY = (0.32 + (this.currentSpeed * 0.26)) * massJumpFactor;
-                    this.carVelocity = new Vec3(this.carVelocity.x * 1.40, jumpY, this.carVelocity.z * 1.40);
+                    // ノーズアップ方向に空高く突き抜ける豪快な跳躍初速
+                    double jumpY = (0.52 + (this.currentSpeed * 0.42)) * massJumpFactor;
+                    this.carVelocity = new Vec3(this.carVelocity.x * 1.45, jumpY, this.carVelocity.z * 1.45);
                     this.setDeltaMovement(this.carVelocity);
+                    this.pitchAngle = -32.0f; // 豪快なノーズアップ空中姿勢
+                    this.jumpAirborneTicks = 16; // 16 ticks(約0.8秒)空中モードを完全維持！
+                    this.setPos(this.getX(), this.getY() + 0.12, this.getZ()); // リップから浮かせる
 
                     this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
                             net.minecraft.sounds.SoundEvents.FIREWORK_ROCKET_BLAST,
                             net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.6F);
                 } else {
-                    // 通常ジャンプ台: 車重と進入速度に応じた本物RCカーの鋭い放物線跳躍
-                    double jumpY = (0.22 + (this.currentSpeed * 0.24)) * massJumpFactor;
-                    double fwdBoost = 1.10 + (0.05 * (mass - 1.10f)); // 重いほど慣性で前方に突き抜ける
+                    // 通常ジャンプ台: 45°キッカーのノーズアップ方向へ豪快に駆け上がる放物線跳躍！
+                    double jumpY = (0.42 + (this.currentSpeed * 0.45)) * massJumpFactor;
+                    double fwdBoost = 1.15 + (0.05 * (mass - 1.10f)); // 慣性で前方に突き抜ける
                     this.carVelocity = new Vec3(this.carVelocity.x * fwdBoost, jumpY, this.carVelocity.z * fwdBoost);
                     this.setDeltaMovement(this.carVelocity);
+                    this.pitchAngle = -28.0f; // 45°キッカーからのノーズアップ空中姿勢
+                    this.jumpAirborneTicks = 14; // 14 ticks(約0.7秒)空中モードを完全維持！
+                    this.setPos(this.getX(), this.getY() + 0.10, this.getZ()); // リップから浮かせる
 
                     this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
                             net.minecraft.sounds.SoundEvents.ARMOR_EQUIP_ELYTRA.value(),
@@ -1267,11 +1276,19 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         this.suspRL = Mth.lerp(0.40f, this.suspRL, targetSuspRL);
         this.suspRR = Mth.lerp(0.40f, this.suspRR, targetSuspRR);
 
-        // 4輪中いずれかが路面に接触・追従しているか
-        this.wheelGrounded = (hFL >= py - 0.08 || hFR >= py - 0.08 || hRL >= py - 0.08 || hRR >= py - 0.08);
+        // ジャンプ台から飛び出した直後（空中飛行中）は、路面接地や斜面吸着を強制バイパス！
+        if (this.jumpAirborneTicks > 0) {
+            this.wheelGrounded = false;
+            this.onSlope = false;
+            this.setOnGround(false);
+        } else {
+            // 4輪中いずれかが路面に接触・追従しているか
+            this.wheelGrounded = (hFL >= py - 0.08 || hFR >= py - 0.08 || hRL >= py - 0.08 || hRR >= py - 0.08);
+            this.onSlope = hitFL.onSlope || hitFR.onSlope || hitRL.onSlope || hitRR.onSlope;
+        }
 
         // 着地衝撃ダンパー: 空中から接地した瞬間に車重と落下速度に応じたサスペンション沈み込みを発生
-        boolean isGroundedNow = this.onGround() || this.wheelGrounded;
+        boolean isGroundedNow = this.jumpAirborneTicks <= 0 && (this.onGround() || this.wheelGrounded);
         if (this.wasAirborneLastTick && isGroundedNow) {
             float mass = this.getVehicleMass();
             double impactSpeed = Math.abs(this.getDeltaMovement().y);
@@ -1290,7 +1307,6 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         this.wasAirborneLastTick = !isGroundedNow;
 
         // 斜面判定＆登り方向ベクトルの内積計算
-        this.onSlope = hitFL.onSlope || hitFR.onSlope || hitRL.onSlope || hitRR.onSlope;
         if (this.onSlope) {
             // 最も支配的なスロープの向きを取得
             Direction slopeDir = hitFL.onSlope ? hitFL.slopeFacing : (hitFR.onSlope ? hitFR.slopeFacing : (hitRL.onSlope ? hitRL.slopeFacing : hitRR.slopeFacing));
@@ -1315,28 +1331,43 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             this.slopeSinTheta = 0.0;
         }
 
-        // スロープ（斜面）上での車体沈み込み防止: 車体底面を三角形メッシュ表面へ完全に吸着・リフト
-        double avgGroundY = (hFL + hFR + hRL + hRR) * 0.25;
-        if (this.onSlope) {
-            // 斜面上では常に路面高さに車体を滑らかに密着・吸着させて沈み込みを100%遮断
-            if (py < avgGroundY || (py - avgGroundY < 0.10 && this.getDeltaMovement().y <= 0.02)) {
-                this.setPos(px, avgGroundY, pz);
-                py = avgGroundY;
-                this.setOnGround(true);
+        // スロープ（斜面）上での車体沈み込み防止: 車体底面を三角形メッシュ表面へ完全に吸着・リフト (空中飛行中はバイパス)
+        if (this.jumpAirborneTicks <= 0) {
+            double avgGroundY = (hFL + hFR + hRL + hRR) * 0.25;
+            if (this.onSlope) {
+                // 斜面上では常に路面高さに車体を滑らかに密着・吸着させて沈み込みを100%遮断
+                if (py < avgGroundY || (py - avgGroundY < 0.10 && this.getDeltaMovement().y <= 0.02)) {
+                    this.setPos(px, avgGroundY, pz);
+                    py = avgGroundY;
+                    this.setOnGround(true);
+                }
+            } else if (py < avgGroundY && (this.onGround() || this.wheelGrounded)) {
+                double liftY = Math.min(avgGroundY, py + 0.10);
+                this.setPos(px, liftY, pz);
+                py = liftY;
             }
-        } else if (py < avgGroundY && (this.onGround() || this.wheelGrounded)) {
-            double liftY = Math.min(avgGroundY, py + 0.10);
-            this.setPos(px, liftY, pz);
-            py = liftY;
         }
 
         // === 前後ピッチ角 (路面傾斜 + 加減速G / 空中放物線ノーズダイブ) ===
         if (!this.onGround() && !this.wheelGrounded) {
-            // 空中姿勢: 速度ベクトル (Vy, Vh) に追従する自然な弾道ノーズダイブ
+            double vY = this.getDeltaMovement().y;
             double vH = Math.sqrt(this.carVelocity.x * this.carVelocity.x + this.carVelocity.z * this.carVelocity.z);
-            float flightPitch = (float) -Math.toDegrees(Math.atan2(this.getDeltaMovement().y, Math.max(0.08, vH)));
-            flightPitch = Mth.clamp(flightPitch, -30.0f, 25.0f);
-            this.pitchAngle = Mth.lerp(0.20f, this.pitchAngle, flightPitch);
+            float targetFlightPitch;
+            if (vY > 0.08) {
+                // 上昇中: 飛び出し時のノーズアップ姿勢（-22°〜-34°）をしっかり維持！ノーズ方向に高さがぐんぐん上がる
+                float climbAngle = (float) -Math.toDegrees(Math.atan2(vY, Math.max(0.06, vH)));
+                targetFlightPitch = Mth.clamp(climbAngle, -34.0f, -20.0f);
+                this.pitchAngle = Mth.lerp(0.15f, this.pitchAngle, targetFlightPitch);
+            } else if (vY > -0.06) {
+                // 放物線の頂点付近: ノーズアップから水平（0°）へ滑らかに遷移
+                targetFlightPitch = 0.0f;
+                this.pitchAngle = Mth.lerp(0.18f, this.pitchAngle, targetFlightPitch);
+            } else {
+                // 下降中: 落下速度に応じたノーズダイブ（+15°〜+26°、前傾接地姿勢で地面へ吸い込まれる）
+                float diveAngle = (float) -Math.toDegrees(Math.atan2(vY, Math.max(0.06, vH)));
+                targetFlightPitch = Mth.clamp(diveAngle, 0.0f, 26.0f);
+                this.pitchAngle = Mth.lerp(0.20f, this.pitchAngle, targetFlightPitch);
+            }
         } else {
             double hFront = (hFL + hFR) * 0.5;
             double hRear = (hRL + hRR) * 0.5;
