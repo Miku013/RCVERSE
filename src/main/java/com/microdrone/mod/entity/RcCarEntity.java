@@ -181,8 +181,9 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             double dz = z - this.getZ();
             double distSq = dx * dx + dy * dy + dz * dz;
 
-            // 1.8m (distSq > 3.24) 超過の重大な位置ズレ発生時、かつ非点滅時にレスキュー復帰発動
-            if (distSq > 3.24 && this.resyncBlinkTicks <= 0) {
+            // 3.5m (distSq > 12.25) 超過の重大な位置ズレ発生時 (壁抜け・スタック等の真の事故)、かつ非点滅時にレスキュー復帰発動
+            // ※通常走行時の自然なネットワーク通信遅延 (1.5m〜2.0m) では誤作動しない安全な適正閾値
+            if (distSq > 12.25 && this.resyncBlinkTicks <= 0) {
                 triggerRescueResync(x, y, z, yRot, Math.sqrt(distSq));
             }
             // 自プレイヤー操縦中はソフト引き寄せターゲットを設定しない

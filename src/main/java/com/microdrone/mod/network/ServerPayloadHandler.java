@@ -39,6 +39,9 @@ public class ServerPayloadHandler {
                             car.inputForward = payload.forward();
                             car.inputSteer = payload.strafe();
                             car.inputHandbrake = (payload.vertical() > 0.5f); // スペースキーでハンドブレーキ
+                            // クライアントの正確な機首向き (Yaw) を完全同期！(進行方向のズレを根絶)
+                            car.setYRot(payload.yaw());
+                            car.yRotO = payload.yaw();
                         }
                     }
                 } else if (entity instanceof RcTankEntity tank) {
