@@ -50,17 +50,21 @@ public class TankConfig {
 
     private ResourceLocation parseResourceLocation(String locationStr, String fallbackPath) {
         if (locationStr == null || locationStr.isBlank()) {
-            return ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, fallbackPath);
+            return ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, fallbackPath.toLowerCase());
         }
+        // Minecraft の ResourceLocation 規約（完全小文字）に自動正規化
+        String cleanStr = locationStr.trim().toLowerCase();
         try {
-            if (locationStr.contains(":")) {
-                String[] parts = locationStr.split(":", 2);
+            if (cleanStr.contains(":")) {
+                String[] parts = cleanStr.split(":", 2);
                 return ResourceLocation.fromNamespaceAndPath(parts[0], parts[1]);
             } else {
-                return ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, locationStr);
+                return ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, cleanStr);
             }
         } catch (Exception e) {
-            return ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, fallbackPath);
+            MicroDroneMod.LOGGER.error("Invalid ResourceLocation: {}, fallback to {}", locationStr, fallbackPath, e);
+            return ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, fallbackPath.toLowerCase());
         }
     }
 }
+

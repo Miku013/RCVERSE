@@ -43,8 +43,13 @@ public class TankConfigManager {
                     try (FileReader reader = new FileReader(file)) {
                         TankConfig config = GSON.fromJson(reader, TankConfig.class);
                         if (config != null && config.id != null && !config.id.isBlank()) {
-                            CONFIGS.put(config.id.toLowerCase(), config);
-                            MicroDroneMod.LOGGER.info("Loaded RC Tank config: {} ({})", config.id, config.displayName);
+                            String key = config.id.toLowerCase();
+                            CONFIGS.put(key, config);
+                            // default.json の場合は "default" のキーとしても登録（通常設置時に即座に反映されるようにする）
+                            if ("default.json".equalsIgnoreCase(file.getName())) {
+                                CONFIGS.put("default", config);
+                            }
+                            MicroDroneMod.LOGGER.info("Loaded RC Tank config: {} ({}) from {}", key, config.displayName, file.getName());
                         }
                     } catch (Exception e) {
                         MicroDroneMod.LOGGER.error("Failed to parse RC Tank config from file: " + file.getName(), e);
@@ -78,13 +83,25 @@ public class TankConfigManager {
     }
 
     public static TankConfig getConfig(String variantId) {
-        if (variantId == null || variantId.isBlank()) {
-            return DEFAULT_CONFIG;
+        if (variantId == null || variantId.isBlank() || "default".equalsIgnoreCase(variantId)) {
+            return CONFIGS.getOrDefault("default", DEFAULT_CONFIG);
         }
-        return CONFIGS.getOrDefault(variantId.toLowerCase(), DEFAULT_CONFIG);
+        String cleanId = variantId.trim().toLowerCase();
+        if (CONFIGS.containsKey(cleanId)) {
+            return CONFIGS.get(cleanId);
+        }
+        // ドットやアンダースコアを除去した曖昧一致（例: "pzh_tank" と "pz.h_tank"）
+        String strippedId = cleanId.replaceAll("[._-]", "");
+        for (Map.Entry<String, TankConfig> entry : CONFIGS.entrySet()) {
+            if (entry.getKey().replaceAll("[._-]", "").equalsIgnoreCase(strippedId)) {
+                return entry.getValue();
+            }
+        }
+        return CONFIGS.getOrDefault("default", DEFAULT_CONFIG);
     }
 
     public static Map<String, TankConfig> getAllConfigs() {
         return Collections.unmodifiableMap(CONFIGS);
     }
 }
+
