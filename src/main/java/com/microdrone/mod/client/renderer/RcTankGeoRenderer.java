@@ -20,8 +20,10 @@ public class RcTankGeoRenderer extends GeoEntityRenderer<RcTankEntity> {
     public void render(RcTankEntity entity, float entityYaw, float partialTick, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
         poseStack.pushPose();
 
-        // 1/5 スケールに縮小（卓上マイクロRC戦車サイズ）
-        poseStack.scale(0.2F, 0.2F, 0.2F);
+        // 外部コンフィグによるスケール倍率の適用（基本 0.2F = 1/5 卓上サイズ）
+        float configScale = com.microdrone.mod.config.tank.TankConfigManager.getConfig(entity.getVariantId()).properties.scale;
+        float baseScale = 0.2F * Math.max(0.1F, configScale);
+        poseStack.scale(baseScale, baseScale, baseScale);
 
         float yaw = Mth.rotLerp(partialTick, entity.yRotO, entity.getYRot());
         // 車体の進行方向の回転（正面合わせ）

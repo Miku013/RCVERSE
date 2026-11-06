@@ -83,6 +83,10 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
     private static final EntityDataAccessor<Float> DATA_ROLL_ANGLE =
             SynchedEntityData.defineId(RcTankEntity.class, EntityDataSerializers.FLOAT);
 
+    // 機体バリアントID（外部コンフィグ用）
+    private static final EntityDataAccessor<String> DATA_VARIANT_ID =
+            SynchedEntityData.defineId(RcTankEntity.class, EntityDataSerializers.STRING);
+
     // 4点接地による車体傾斜角 (度)
     private float pitchAngle = 0.0f;
     public float prevPitchAngle = 0.0f;
@@ -169,6 +173,7 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
         builder.define(DATA_RELOAD_TICKS, 0);
         builder.define(DATA_PITCH_ANGLE, 0.0f);
         builder.define(DATA_ROLL_ANGLE, 0.0f);
+        builder.define(DATA_VARIANT_ID, "default");
     }
 
     // === Getter / Setter ===
@@ -191,6 +196,8 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
     public int getReloadTicks() { return entityData.get(DATA_RELOAD_TICKS); }
     public float getPitchAngle() { return this.pitchAngle; }
     public float getRollAngle() { return this.rollAngle; }
+    public String getVariantId() { return entityData.get(DATA_VARIANT_ID); }
+    public void setVariantId(String variantId) { entityData.set(DATA_VARIANT_ID, variantId != null ? variantId : "default"); }
 
     private void updateBatterySyncData() {
         if (!this.installedBattery.isEmpty() && this.installedBattery.getItem() instanceof DroneBatteryItem bat) {
@@ -287,10 +294,14 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
         boolean hasPower = hasBattery() && getBatteryRemaining() > 0;
         int tier = getMotorTier();
 
-        // 速度パラメータ（実機ラジコン戦車の重厚感を再現: 従来の約1/3に調整）
-        float maxSpeed = 0.06f + (tier * 0.012f);
-        float accel = 0.007f + (tier * 0.002f);
-        float pivotTurnSpeed = 1.2f + (tier * 0.18f); // 超信地旋回速度 (度/tick)
+        // 外部コンフィグから機体パラメータを取得
+        com.microdrone.mod.config.tank.TankConfig tankConfig = com.microdrone.mod.config.tank.TankConfigManager.getConfig(getVariantId());
+        com.microdrone.mod.config.tank.TankConfig.TankProperties props = tankConfig.properties;
+
+        // 速度パラメータ（実機ラジコン戦車の重厚感を再現 + コンフィグ倍率適用）
+        float maxSpeed = (0.06f + (tier * 0.012f)) * props.maxSpeedMultiplier;
+        float accel = (0.007f + (tier * 0.002f)) * props.accelMultiplier;
+        float pivotTurnSpeed = (1.2f + (tier * 0.18f)) * props.turnSpeedMultiplier; // 超信地旋回速度 (度/tick)
 
         float targetSpeed = 0.0f;
         if (hasPower) {
@@ -379,7 +390,7 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
             // === 主砲射撃 ===
             if (inputFire && fireCooldown == 0 && hasPower) {
                 fireCannon();
-                fireCooldown = 20; // 1秒間隔
+                fireCooldown = props.reloadTicks;
             }
         }
 
@@ -536,6 +547,17 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
         // 1. スニーク右クリック: 回収
         if (player.isShiftKeyDown() && !isPiloted()) {
             ItemStack dropStack = new ItemStack(ModItems.RC_TANK_ITEM.get());
+            if (!"default".equalsIgnoreCase(getVariantId())) {
+                net.minecraft.world.item.component.CustomData.update(
+                        net.minecraft.core.component.DataComponents.CUSTOM_DATA,
+                        dropStack,
+                        tag -> tag.putString("Variant", getVariantId())
+                );
+                var config = com.microdrone.mod.config.tank.TankConfigManager.getConfig(getVariantId());
+                if (config != null && config.displayName != null) {
+                    dropStack.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal(config.displayName));
+                }
+            }
             ItemEntity drop = new ItemEntity(level(), getX(), getY() + 0.2, getZ(), dropStack);
             level().addFreshEntity(drop);
 
@@ -670,6 +692,9 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
 
     @Override
     protected void readAdditionalSaveData(CompoundTag compound) {
+        if (compound.contains("VariantId", 8)) {
+            setVariantId(compound.getString("VariantId"));
+        }
         if (compound.contains("InstalledBattery", 10)) {
             this.installedBattery = ItemStack.parse(this.registryAccess(), compound.getCompound("InstalledBattery")).orElse(ItemStack.EMPTY);
             updateBatterySyncData();
@@ -685,6 +710,7 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
 
     @Override
     protected void addAdditionalSaveData(CompoundTag compound) {
+        compound.putString("VariantId", getVariantId());
         if (!this.installedBattery.isEmpty()) {
             compound.put("InstalledBattery", this.installedBattery.save(this.registryAccess()));
         }

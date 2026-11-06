@@ -30,6 +30,9 @@ public class MicroDroneMod {
         ModNetworking.register(modEventBus);
         com.microdrone.mod.sound.ModSounds.register(modEventBus);
 
+        // 外部コンフィグの初期化
+        com.microdrone.mod.config.tank.TankConfigManager.init();
+
         if (FMLEnvironment.dist.isClient()) {
             ClientModEvents.register(modEventBus);
         }
