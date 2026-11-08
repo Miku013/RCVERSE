@@ -64,28 +64,40 @@ public class RcCarGeoModel extends GeoModel<RcCarEntity> {
         if (wheelRL != null) wheelRL.setPosY(suspRL);
         if (wheelRR != null) wheelRR.setPosY(suspRR);
 
-        // 4. 4輪タイヤ回転 (車輪モデルの転がり軸 = ローカルY軸!)
-        // 左輪(FL, RL)は rotZ=90度、右輪(FR, RR)は rotZ=-90度 で横に倒れているため、
-        // 転がり回転は Y 軸回転で行う。X軸回転は0にリセットして横ブレを完全防止。
+        // 4. 4輪タイヤ回転
+        // モデルのボーン設計（Z軸横倒しモデリングか、直立モデリングか）を自動判別して適用
         float wheelRad = animatable.getWheelRotation() * Mth.DEG_TO_RAD;
         GeoBone wheelFL = this.getAnimationProcessor().getBone("wheel_fl");
         GeoBone wheelFR = this.getAnimationProcessor().getBone("wheel_fr");
 
-        if (wheelFL != null) {
-            wheelFL.setRotX(0.0f);
-            wheelFL.setRotY(-wheelRad);
-        }
-        if (wheelFR != null) {
-            wheelFR.setRotX(0.0f);
-            wheelFR.setRotY(wheelRad);
-        }
-        if (wheelRL != null) {
-            wheelRL.setRotX(0.0f);
-            wheelRL.setRotY(-wheelRad);
-        }
-        if (wheelRR != null) {
-            wheelRR.setRotX(0.0f);
-            wheelRR.setRotY(wheelRad);
+        applyWheelRoll(wheelFL, wheelRad, false); // 左前
+        applyWheelRoll(wheelFR, wheelRad, true);  // 右前
+        applyWheelRoll(wheelRL, wheelRad, false); // 左後
+        applyWheelRoll(wheelRR, wheelRad, true);  // 右後
+    }
+
+    /**
+     * タイヤの転がり回転を適用
+     * モデルのボーン設計（Z軸90度横倒しモデリングか、直立モデリングか）を初期Z回転角から自動判別
+     */
+    private void applyWheelRoll(GeoBone wheelBone, float wheelRad, boolean isRightSide) {
+        if (wheelBone == null) return;
+
+        float initialRotZ = (wheelBone.getInitialSnapshot() != null)
+                ? wheelBone.getInitialSnapshot().getRotZ()
+                : wheelBone.getRotZ();
+
+        boolean isLyingOnZ = Math.abs(initialRotZ) > (45.0f * Mth.DEG_TO_RAD);
+
+        if (isLyingOnZ) {
+            // Z軸に90度倒して作られている場合 (バギーモデルなど): 転がり軸はローカル Y 軸
+            wheelBone.setRotX(0.0f);
+            wheelBone.setRotY(isRightSide ? wheelRad : -wheelRad);
+        } else {
+            // 直立状態で作られている場合 (86モデルなど): 転がり軸はローカル X 軸
+            // 右輪 (-X側) は +X回転で前進、左輪 (+X側) は -X回転で前進
+            wheelBone.setRotY(0.0f);
+            wheelBone.setRotX(isRightSide ? wheelRad : -wheelRad);
         }
     }
 }
