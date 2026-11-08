@@ -44,8 +44,8 @@ public class ModularSlopeBlockEntityRenderer implements BlockEntityRenderer<Modu
         poseStack.translate(0.5, 0.0, 0.5);
         switch (facing) {
             case NORTH -> poseStack.mulPose(Axis.YP.rotationDegrees(180.0f));
-            case EAST  -> poseStack.mulPose(Axis.YP.rotationDegrees(270.0f));
-            case WEST  -> poseStack.mulPose(Axis.YP.rotationDegrees(90.0f));
+            case EAST  -> poseStack.mulPose(Axis.YP.rotationDegrees(90.0f));
+            case WEST  -> poseStack.mulPose(Axis.YP.rotationDegrees(270.0f));
             case SOUTH -> {} // 0度 (ローカルZ+方向が登り)
         }
         poseStack.translate(-0.5, 0.0, -0.5);
