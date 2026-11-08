@@ -1,18 +1,21 @@
 package com.microdrone.mod.client.controller;
 
 import com.microdrone.mod.MicroDroneMod;
-
+import com.microdrone.mod.client.ClientModEvents;
 import com.microdrone.mod.entity.RcCarEntity;
+import com.microdrone.mod.network.CarHeadlightTogglePayload;
 import com.microdrone.mod.network.DroneControlPayload;
 import net.minecraft.client.Camera;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.neoforged.neoforge.client.event.ViewportEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
+import org.lwjgl.glfw.GLFW;
 
 import java.lang.reflect.Method;
 
@@ -67,6 +70,30 @@ public class RcCarClientController implements RcVehicleClientController {
             Minecraft.getInstance().options.setCameraType(CameraType.FIRST_PERSON);
             MicroDroneMod.LOGGER.info("[CAMERA_SWITCH] Event: STOP_PILOTING, VehicleUUID: {}, FinalViewMode: GROUND, PlayerPos: [{}, {}, {}]",
                     vehicle != null ? vehicle.getUUID() : "null", String.format("%.2f", player.getX()), String.format("%.2f", player.getY()), String.format("%.2f", player.getZ()));
+        }
+    }
+
+    @Override
+    public void onKeyInput(int key, int action, Entity vehicle, LocalPlayer player) {
+        if (action == GLFW.GLFW_PRESS && vehicle instanceof RcCarEntity car) {
+            if (ClientModEvents.KEY_HEADLIGHT.matches(key, 0) || key == GLFW.GLFW_KEY_H) {
+                boolean newState = !car.isHeadlightOn();
+                car.setHeadlightOn(newState);
+
+                // サーバーへ通知
+                PacketDistributor.sendToServer(new CarHeadlightTogglePayload(car.getId()));
+
+                // アクションバー表示＆効果音
+                if (player != null) {
+                    if (newState) {
+                        player.displayClientMessage(Component.translatable("message.microdrone.headlight_on"), true);
+                        player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.6f, 1.4f);
+                    } else {
+                        player.displayClientMessage(Component.translatable("message.microdrone.headlight_off"), true);
+                        player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.6f, 0.9f);
+                    }
+                }
+            }
         }
     }
 

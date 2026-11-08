@@ -148,5 +148,9 @@
   "chat.microdrone.road_end_status_linked": "§a[道路生成] 接続先 始点マーカー: %s",
   "chat.microdrone.road_end_status_unlinked": "§c[道路生成] 始点マーカーと未接続です。始点側から再探索してください。",
   "chat.microdrone.road_generated": "§a[道路生成] 道路メッシュを確定生成しました！",
-  "chat.microdrone.road_deleted": "§e[道路生成] 道路メッシュを削除しました。"
+  "chat.microdrone.road_deleted": "§e[道路生成] 道路メッシュを削除しました。",
+  "key.categories.microdrone": "マイクロドローン / RC",
+  "key.microdrone.headlight": "RCカー ヘッドライト切替",
+  "message.microdrone.headlight_on": "§e[RC Headlight] §fヘッドライト: §a点灯 §7(リトラオープン)",
+  "message.microdrone.headlight_off": "§6[RC Headlight] §fヘッドライト: §7消灯 §8(リトラクローズ)"
 }

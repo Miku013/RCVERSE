@@ -164,4 +164,15 @@ public class ServerPayloadHandler {
             }
         });
     }
+
+    public static void handleCarHeadlightToggle(CarHeadlightTogglePayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (context.player() instanceof ServerPlayer player) {
+                Entity entity = player.level().getEntity(payload.carId());
+                if (entity instanceof RcCarEntity car && car.isPilotedBy(player)) {
+                    car.toggleHeadlight();
+                }
+            }
+        });
+    }
 }

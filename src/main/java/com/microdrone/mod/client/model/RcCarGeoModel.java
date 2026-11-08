@@ -74,6 +74,19 @@ public class RcCarGeoModel extends GeoModel<RcCarEntity> {
         applyWheelRoll(wheelFR, wheelRad, true);  // 右前
         applyWheelRoll(wheelRL, wheelRad, false); // 左後
         applyWheelRoll(wheelRR, wheelRad, true);  // 右後
+
+        // 5. リトラクタブルヘッドライト開閉アニメーション (0.0=閉 ~ 1.0=開)
+        float openProgress = animatable.getHeadlightProgress(animationState.getPartialTick());
+        float popupAngle = openProgress * (22.0f * Mth.DEG_TO_RAD);
+        GeoBone retractL = this.getAnimationProcessor().getBone("retractable_l");
+        GeoBone retractR = this.getAnimationProcessor().getBone("retractable_r");
+        GeoBone retractBoth = this.getAnimationProcessor().getBone("retractable_lights");
+        GeoBone retractSingle = this.getAnimationProcessor().getBone("retractable");
+
+        if (retractL != null) retractL.setRotX(popupAngle);
+        if (retractR != null) retractR.setRotX(popupAngle);
+        if (retractBoth != null) retractBoth.setRotX(popupAngle);
+        if (retractSingle != null) retractSingle.setRotX(popupAngle);
     }
 
     /**

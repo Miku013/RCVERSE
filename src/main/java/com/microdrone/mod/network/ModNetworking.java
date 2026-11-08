@@ -36,6 +36,13 @@ public class ModNetworking {
                 ServerPayloadHandler::handleRcCarTuning
         );
 
+        // クライアント -> サーバー (RCカーヘッドライト切替)
+        registrar.playToServer(
+                CarHeadlightTogglePayload.TYPE,
+                CarHeadlightTogglePayload.STREAM_CODEC,
+                ServerPayloadHandler::handleCarHeadlightToggle
+        );
+
         // クライアント -> サーバー (道路・ヘアピンカーブ設定同期)
         registrar.playToServer(
                 RoadConfigPayload.TYPE,

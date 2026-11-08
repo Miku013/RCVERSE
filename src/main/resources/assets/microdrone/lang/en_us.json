@@ -148,5 +148,9 @@
   "chat.microdrone.road_end_status_linked": "§a[Road Generator] Linked Start Marker: %s",
   "chat.microdrone.road_end_status_unlinked": "§c[Road Generator] Not linked with any Start Marker.",
   "chat.microdrone.road_generated": "§a[Road Generator] Road mesh generated successfully!",
-  "chat.microdrone.road_deleted": "§e[Road Generator] Road mesh deleted."
+  "chat.microdrone.road_deleted": "§e[Road Generator] Road mesh deleted.",
+  "key.categories.microdrone": "Micro Drone / RC",
+  "key.microdrone.headlight": "RC Car Toggle Headlight",
+  "message.microdrone.headlight_on": "§e[RC Headlight] §fHeadlights: §aON §7(Pop-up Open)",
+  "message.microdrone.headlight_off": "§6[RC Headlight] §fHeadlights: §7OFF §8(Pop-up Closed)"
 }

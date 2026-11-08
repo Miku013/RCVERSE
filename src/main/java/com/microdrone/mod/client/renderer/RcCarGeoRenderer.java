@@ -3,11 +3,17 @@ package com.microdrone.mod.client.renderer;
 import com.microdrone.mod.client.model.RcCarGeoModel;
 import com.microdrone.mod.entity.RcCarEntity;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
+import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.util.Mth;
+import software.bernie.geckolib.cache.object.GeoBone;
 import software.bernie.geckolib.renderer.GeoEntityRenderer;
+
+import java.util.Locale;
 
 public class RcCarGeoRenderer extends GeoEntityRenderer<RcCarEntity> {
 
@@ -50,5 +56,17 @@ public class RcCarGeoRenderer extends GeoEntityRenderer<RcCarEntity> {
         super.render(entity, entityYaw, partialTick, poseStack, bufferSource, packedLight);
 
         poseStack.popPose();
+    }
+
+    @Override
+    public void renderRecursively(PoseStack poseStack, RcCarEntity animatable, GeoBone bone, RenderType renderType, MultiBufferSource bufferSource, VertexConsumer buffer, boolean isReRender, float partialTick, int packedLight, int packedOverlay, int colour) {
+        if (animatable.isHeadlightOn()) {
+            String name = bone.getName().toLowerCase(Locale.ROOT);
+            // リトラクタブル、ヘッドライト、テールライト、各種ランプボーンをフルブライト発光
+            if (name.contains("retract") || name.contains("headlight") || name.contains("light") || name.contains("lamp") || name.contains("taillight")) {
+                packedLight = LightTexture.FULL_BRIGHT;
+            }
+        }
+        super.renderRecursively(poseStack, animatable, bone, renderType, bufferSource, buffer, isReRender, partialTick, packedLight, packedOverlay, colour);
     }
 }

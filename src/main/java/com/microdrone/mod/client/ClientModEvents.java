@@ -22,6 +22,10 @@ import com.microdrone.mod.client.renderer.item.DroneBatteryItemRenderer;
 import com.microdrone.mod.client.renderer.item.DroneControllerItemRenderer;
 import com.microdrone.mod.entity.ModEntities;
 import com.microdrone.mod.item.ModItems;
+import net.minecraft.client.KeyMapping;
+import com.mojang.blaze3d.platform.InputConstants;
+import org.lwjgl.glfw.GLFW;
+import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
@@ -30,10 +34,18 @@ import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsE
 
 public class ClientModEvents {
 
+    public static final KeyMapping KEY_HEADLIGHT = new KeyMapping(
+            "key.microdrone.headlight",
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_H,
+            "key.categories.microdrone"
+    );
+
     public static void register(IEventBus modEventBus) {
         modEventBus.addListener(ClientModEvents::registerRenderers);
         modEventBus.addListener(ClientModEvents::registerLayerDefinitions);
         modEventBus.addListener(ClientModEvents::registerClientExtensions);
+        modEventBus.addListener(ClientModEvents::registerKeyMappings);
 
         // クライアント側入力、カメラコントローラー、チャンクイベント、HUDオーバーレイ、サウンドマネージャーの登録
         ClientDroneInputHandler.register();
@@ -79,5 +91,9 @@ public class ClientModEvents {
                 return this.renderer;
             }
         }, ModItems.DRONE_CONTROLLER.get());
+    }
+
+    private static void registerKeyMappings(RegisterKeyMappingsEvent event) {
+        event.register(KEY_HEADLIGHT);
     }
 }

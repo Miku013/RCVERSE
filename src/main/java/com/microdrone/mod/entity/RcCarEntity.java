@@ -91,6 +91,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Float> DATA_LOOP_PROGRESS = SynchedEntityData.defineId(RcCarEntity.class,
             EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Boolean> DATA_HEADLIGHT = SynchedEntityData.defineId(RcCarEntity.class,
+            EntityDataSerializers.BOOLEAN);
 
     // 操縦者UUID
     private UUID pilotUUID = null;
@@ -150,6 +152,11 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     private int jumpPadPower = 0; // ジャンプパッドのパワー段階 (1:LOW, 2:MID, 3:HIGH)
     private boolean jumpPadExpelled = false; // 登り切った時の前方吐き出し実行済みフラグ
     private int resyncBlinkTicks = 0; // レスキュー位置復帰点滅タイマー (ticks)
+
+    // ヘッドライト・リトラクタブルシステム
+    private float prevHeadlightProgress = 0.0f;
+    private float headlightProgress = 0.0f; // 0.0f (閉) ~ 1.0f (全開)
+    private BlockPos lastHeadlightPos = null;
 
     // レース計測システム (Step 1)
     private int currentLap = 0; // 0 = 未スタート, 1 = 1周目...
@@ -345,6 +352,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         builder.define(DATA_VARIANT_ID, "default");
         builder.define(DATA_IN_LOOP, false);
         builder.define(DATA_LOOP_PROGRESS, 0.0f);
+        builder.define(DATA_HEADLIGHT, false);
     }
 
     @Override
@@ -418,6 +426,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
 
     @Override
     public void stopPiloting(ServerPlayer player) {
+        clearHeadlight();
         if (this.pilotUUID != null && this.pilotUUID.equals(player.getUUID())) {
             ServerLevel serverLevel = player.serverLevel();
 
@@ -508,7 +517,16 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             this.resyncBlinkTicks--;
         }
 
+        // リトラクタブルヘッドライトのスムーズ開閉アニメーション補間
+        this.prevHeadlightProgress = this.headlightProgress;
+        if (isHeadlightOn()) {
+            this.headlightProgress = Math.min(1.0f, this.headlightProgress + 0.20f);
+        } else {
+            this.headlightProgress = Math.max(0.0f, this.headlightProgress - 0.20f);
+        }
+
         if (!this.level().isClientSide) {
+            updateHeadlightLighting();
             if (this.clientSyncTimeout > 0) {
                 this.clientSyncTimeout--;
                 if (this.clientSyncTimeout == 0) {
@@ -1544,6 +1562,9 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         if (compound.contains("VariantId", 8)) {
             setVariantId(compound.getString("VariantId"));
         }
+        if (compound.contains("Headlight")) {
+            setHeadlightOn(compound.getBoolean("Headlight"));
+        }
     }
 
     @Override
@@ -1565,6 +1586,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         compound.putDouble("BatteryAccumulatedDist", this.accumulatedDistance);
         compound.putFloat("CustomWeight", this.entityData.get(DATA_CUSTOM_WEIGHT));
         compound.putString("VariantId", getVariantId());
+        compound.putBoolean("Headlight", isHeadlightOn());
     }
 
     private void spawnDriftParticles(boolean turboReady) {
@@ -2413,5 +2435,70 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             }
         }
         return null;
+    }
+
+    // === ヘッドライト・実光源システム ===
+    public boolean isHeadlightOn() {
+        return this.entityData.get(DATA_HEADLIGHT);
+    }
+
+    public void setHeadlightOn(boolean on) {
+        this.entityData.set(DATA_HEADLIGHT, on);
+        if (!on) {
+            clearHeadlight();
+        }
+    }
+
+    public void toggleHeadlight() {
+        setHeadlightOn(!isHeadlightOn());
+    }
+
+    public float getHeadlightProgress(float partialTick) {
+        return Mth.lerp(partialTick, this.prevHeadlightProgress, this.headlightProgress);
+    }
+
+    /**
+     * 車両の前方に実光源 (Blocks.LIGHT, level 15) を配置し、夜間を実際に照らす
+     */
+    private void updateHeadlightLighting() {
+        if (this.level().isClientSide) return;
+
+        if (!isHeadlightOn()) {
+            clearHeadlight();
+            return;
+        }
+
+        // 車両の前方約 1.8 ブロック、高さ +0.3 付近
+        Vec3 look = getLookAngle();
+        Vec3 lightVec = this.position().add(look.scale(1.8)).add(0, 0.3, 0);
+        BlockPos currentLightPos = BlockPos.containing(lightVec);
+
+        if (this.lastHeadlightPos != null && !this.lastHeadlightPos.equals(currentLightPos)) {
+            clearHeadlight();
+        }
+
+        if (this.level().getBlockState(currentLightPos).isAir()) {
+            this.level().setBlock(currentLightPos,
+                    net.minecraft.world.level.block.Blocks.LIGHT.defaultBlockState().setValue(
+                            net.minecraft.world.level.block.LightBlock.LEVEL, 15),
+                    3);
+            this.lastHeadlightPos = currentLightPos;
+        }
+    }
+
+    public void clearHeadlight() {
+        if (this.lastHeadlightPos != null && !this.level().isClientSide) {
+            net.minecraft.world.level.block.state.BlockState state = this.level().getBlockState(this.lastHeadlightPos);
+            if (state.is(net.minecraft.world.level.block.Blocks.LIGHT)) {
+                this.level().removeBlock(this.lastHeadlightPos, false);
+            }
+            this.lastHeadlightPos = null;
+        }
+    }
+
+    @Override
+    public void remove(RemovalReason reason) {
+        clearHeadlight();
+        super.remove(reason);
     }
 }
