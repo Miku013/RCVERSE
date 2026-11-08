@@ -999,7 +999,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
 
         // === 垂直打ち上げジャンプパッド (JumpPadBlock) の踏み込み検知 ===
         if (this.jumpCooldown <= 0) {
-            // 車体中心、前輪のいずれかがジャンプパッドの上に乗っているか検知
+            // 車体中心、前輪、後輪のいずれかがジャンプパッドの上に乗っているか検知
             BlockPos checkPos = BlockPos.containing(this.getX(), this.getY(), this.getZ());
             net.minecraft.world.level.block.state.BlockState padState = this.level().getBlockState(checkPos);
             if (!(padState.getBlock() instanceof com.microdrone.mod.block.JumpPadBlock)) {
@@ -1007,12 +1007,23 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             }
             if (!(padState.getBlock() instanceof com.microdrone.mod.block.JumpPadBlock)) {
                 double rad = this.getYRot() * Mth.DEG_TO_RAD;
+                // 前輪位置
                 double fx = this.getX() - Mth.sin((float) rad) * 0.22;
                 double fz = this.getZ() + Mth.cos((float) rad) * 0.22;
                 BlockPos frontCheck = BlockPos.containing(fx, this.getY(), fz);
                 padState = this.level().getBlockState(frontCheck);
                 if (!(padState.getBlock() instanceof com.microdrone.mod.block.JumpPadBlock)) {
                     padState = this.level().getBlockState(frontCheck.below());
+                }
+                // 後輪位置 (バック走行対応)
+                if (!(padState.getBlock() instanceof com.microdrone.mod.block.JumpPadBlock)) {
+                    double rx = this.getX() + Mth.sin((float) rad) * 0.22;
+                    double rz = this.getZ() - Mth.cos((float) rad) * 0.22;
+                    BlockPos rearCheck = BlockPos.containing(rx, this.getY(), rz);
+                    padState = this.level().getBlockState(rearCheck);
+                    if (!(padState.getBlock() instanceof com.microdrone.mod.block.JumpPadBlock)) {
+                        padState = this.level().getBlockState(rearCheck.below());
+                    }
                 }
             }
 
@@ -1021,15 +1032,15 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                         ? padState.getValue(com.microdrone.mod.block.JumpPadBlock.POWER)
                         : 2;
 
-                // 跳躍初速 (1:LOW 約3m, 2:MID 約6m, 3:HIGH 約10m)
+                // 跳躍初速 (1:LOW 約2.5~3m, 2:MID 約6m, 3:HIGH 約11m)
                 // ※ 車両質量による反発調整を加味
                 float mass = this.getVehicleMass();
                 double massBounce = 1.0 + Math.max(0.0, (mass - 1.10f) * 0.08);
-                double baseJumpY = power == 1 ? 0.65 : (power == 2 ? 0.96 : 1.32);
+                double baseJumpY = power == 1 ? 0.55 : (power == 2 ? 0.95 : 1.45);
                 double jumpY = baseJumpY * massBounce;
 
                 this.jumpCooldown = 20; // 連続発動防止クールダウン
-                this.jumpAirborneTicks = power == 1 ? 16 : (power == 2 ? 22 : 28); // 滞空保護時間
+                this.jumpAirborneTicks = power == 1 ? 14 : (power == 2 ? 22 : 32); // 滞空保護時間
 
                 // 水平方向の慣性を維持（走行中はそのまま前進ジャンプ、停止時はその場で垂直真上ジャンプ）
                 double currentH = Math.sqrt(this.carVelocity.x * this.carVelocity.x + this.carVelocity.z * this.carVelocity.z);
@@ -1057,7 +1068,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                 // サウンド演出 (ピストン射出音 + スライムバウンス)
                 this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
                         net.minecraft.sounds.SoundEvents.PISTON_EXTEND,
-                        net.minecraft.sounds.SoundSource.PLAYERS, 1.2F, 1.2F + power * 0.25F);
+                        net.minecraft.sounds.SoundSource.PLAYERS, 1.2F, 1.0F + power * 0.3F);
                 this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
                         net.minecraft.sounds.SoundEvents.SLIME_BLOCK_FALL,
                         net.minecraft.sounds.SoundSource.PLAYERS, 0.8F, 1.4F);
@@ -1068,7 +1079,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                             this.getX(), this.getY() + 0.1, this.getZ(), 8, 0.2, 0.05, 0.2, 0.05);
                     if (power == 3) {
                         serverLevel.sendParticles(net.minecraft.core.particles.ParticleTypes.FIREWORK,
-                                this.getX(), this.getY() + 0.1, this.getZ(), 5, 0.1, 0.1, 0.1, 0.05);
+                                this.getX(), this.getY() + 0.1, this.getZ(), 8, 0.15, 0.15, 0.15, 0.08);
                     }
                 }
             }
