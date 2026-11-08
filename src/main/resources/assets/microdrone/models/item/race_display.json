@@ -1,4 +1,6 @@
 {
-  "parent": "microdrone:block/race_display"
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "microdrone:item/race_display"
+  }
 }
-
