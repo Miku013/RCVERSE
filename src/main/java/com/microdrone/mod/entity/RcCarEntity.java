@@ -146,6 +146,9 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     private int collisionCooldown = 0; // 壁衝突SEの連打防止クールダウン (ticks)
     private int jumpCooldown = 0; // ジャンプ台連続発動防止クールダウン (ticks)
     private int jumpAirborneTicks = 0; // ジャンプ空中飛行保護タイマー (地面吸着・水平化を防止)
+    private int jumpPadLaunchTicks = 0; // ジャンプパッド上昇シーケンスタイマー (ticks)
+    private int jumpPadPower = 0; // ジャンプパッドのパワー段階 (1:LOW, 2:MID, 3:HIGH)
+    private boolean jumpPadExpelled = false; // 登り切った時の前方吐き出し実行済みフラグ
     private int resyncBlinkTicks = 0; // レスキュー位置復帰点滅タイマー (ticks)
 
     // レース計測システム (Step 1)
@@ -497,6 +500,9 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         }
         if (this.jumpAirborneTicks > 0) {
             this.jumpAirborneTicks--;
+        }
+        if (this.jumpPadLaunchTicks > 0) {
+            this.jumpPadLaunchTicks--;
         }
         if (this.resyncBlinkTicks > 0) {
             this.resyncBlinkTicks--;
@@ -865,6 +871,71 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         double motionZ = this.carVelocity.z;
         double motionY;
 
+        // === 垂直打ち上げジャンプパッド (JumpPadBlock) の踏み込み検知 ===
+        if (this.jumpCooldown <= 0) {
+            double rad = this.getYRot() * Mth.DEG_TO_RAD;
+            double fwdX = -Mth.sin((float) rad);
+            double fwdZ = Mth.cos((float) rad);
+
+            // 車体中心、先端バンパー、後輪のいずれかでジャンプパッドを先読み検知 (段差激突ゼロ！)
+            net.minecraft.world.level.block.state.BlockState padState = getPadStateAt(this.getX(), this.getY(), this.getZ());
+            if (padState == null) {
+                padState = getPadStateAt(this.getX() + fwdX * 0.35, this.getY(), this.getZ() + fwdZ * 0.35);
+            }
+            if (padState == null) {
+                padState = getPadStateAt(this.getX() - fwdX * 0.25, this.getY(), this.getZ() - fwdZ * 0.25);
+            }
+
+            if (padState != null) {
+                int power = padState.hasProperty(com.microdrone.mod.block.JumpPadBlock.POWER)
+                        ? padState.getValue(com.microdrone.mod.block.JumpPadBlock.POWER)
+                        : 2;
+
+                this.jumpCooldown = 25;
+                this.jumpPadPower = power;
+                this.jumpPadExpelled = false;
+
+                // 上昇タイマー: LOW=8, MID=13, HIGH=18 ticks
+                this.jumpPadLaunchTicks = power == 1 ? 8 : (power == 2 ? 13 : 18);
+                // 滞空保護時間: 上昇＋頂点射出後の放物線着地までカバー
+                this.jumpAirborneTicks = this.jumpPadLaunchTicks + 22;
+
+                // 上昇初速: スプリングのように垂直へ力強く一気に持ち上げる！
+                float mass = this.getVehicleMass();
+                double massBounce = 1.0 + Math.max(0.0, (mass - 1.10f) * 0.08);
+                double baseJumpY = power == 1 ? 0.54 : (power == 2 ? 0.86 : 1.28);
+                double jumpY = baseJumpY * massBounce;
+
+                // 上昇中の水平速度: 停止時は真上、走行中なら前進速度を少しマイルドに保って垂直リフト感を強調
+                double currentFwd = Math.max(0.0, this.currentSpeed);
+                double fwdInit = Math.min(currentFwd * 0.35, 0.12);
+                this.carVelocity = new Vec3(fwdX * fwdInit, jumpY, fwdZ * fwdInit);
+                motionX = this.carVelocity.x;
+                motionZ = this.carVelocity.z;
+                this.setDeltaMovement(this.carVelocity);
+                this.setOnGround(false);
+                this.wheelGrounded = false;
+                this.onSlope = false;
+                this.hasImpulse = true;
+                this.setPos(this.getX(), this.getY() + 0.08, this.getZ());
+                this.pitchAngle = -2.0f; // 水平〜わずかにノーズアップで美しくリフト
+
+                // サウンド演出 (ピストン射出音 + スライムバウンス)
+                this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                        net.minecraft.sounds.SoundEvents.PISTON_EXTEND,
+                        net.minecraft.sounds.SoundSource.PLAYERS, 1.2F, 1.0F + power * 0.3F);
+                this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                        net.minecraft.sounds.SoundEvents.SLIME_BLOCK_FALL,
+                        net.minecraft.sounds.SoundSource.PLAYERS, 0.8F, 1.4F);
+
+                // 発射パーティクル
+                if (!this.level().isClientSide && this.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+                    serverLevel.sendParticles(net.minecraft.core.particles.ParticleTypes.CLOUD,
+                            this.getX(), this.getY() + 0.1, this.getZ(), 8, 0.2, 0.05, 0.2, 0.05);
+                }
+            }
+        }
+
         // === 360°縦ループ（完全自由物理方式: スロープと同等の連続傾斜登坂・遠心力吸着） ===
         LoopSurfaceHit loopHit = sampleLoopSurface(this.position());
         this.onLoop = loopHit.onSurface;
@@ -935,6 +1006,60 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                 this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
                         SoundEvents.MINECART_RIDING, SoundSource.PLAYERS, 0.4F, 1.4F + (this.currentSpeed * 0.8F));
             }
+        } else if (this.jumpPadLaunchTicks > 0) {
+            // ジャンプパッド上昇シーケンス中: 軽やかな専用重力 (0.040) で滑らかに頂点まで登り切らせる
+            motionY = this.getDeltaMovement().y - 0.040;
+            this.setOnGround(false);
+
+            // 登り切った瞬間（頂点到達）判定:
+            // 上昇タイマー終了間近 (<= 1) または Y上昇速度が失速 (Vy <= 0.08) になった瞬間！
+            if ((this.jumpPadLaunchTicks <= 1 || motionY <= 0.08) && !this.jumpPadExpelled) {
+                this.jumpPadExpelled = true;
+
+                // ★ 登り切った瞬間の「前方に吐き出す（前方射出ブースト）」！！ ★
+                double rad = this.getYRot() * Mth.DEG_TO_RAD;
+                double fwdX = -Mth.sin((float) rad);
+                double fwdZ = Mth.cos((float) rad);
+
+                // 前方への吐き出し速度（LOW: 軽快に前進, MID: 爽快な前方射出, HIGH: ハイパージェット吐き出し）
+                double expelH = this.jumpPadPower == 1 ? 0.38 : (this.jumpPadPower == 2 ? 0.65 : 0.98);
+                expelH = Math.max(expelH, Math.abs(this.currentSpeed) * 1.30);
+                this.currentSpeed = (float) expelH;
+
+                // わずかな浮力と共に前方にシュッと射出！
+                double expelVy = this.jumpPadPower == 1 ? 0.10 : 0.14;
+                this.carVelocity = new Vec3(fwdX * expelH, expelVy, fwdZ * expelH);
+                motionX = this.carVelocity.x;
+                motionZ = this.carVelocity.z;
+                motionY = expelVy;
+                this.setDeltaMovement(this.carVelocity);
+                this.hasImpulse = true;
+
+                // 車体姿勢: 前方に飛び出すダイナミックなノーズダウン姿勢！
+                this.pitchAngle = 6.0f;
+
+                // サウンド演出: 空中で前方に吹き飛ぶ爽快なジェット風切り音＆ロケット音！
+                this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                        net.minecraft.sounds.SoundEvents.FIREWORK_ROCKET_SHOOT,
+                        net.minecraft.sounds.SoundSource.PLAYERS, 1.2F, 1.1F + this.jumpPadPower * 0.25F);
+                this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                        net.minecraft.sounds.SoundEvents.WIND_CHARGE_BURST.value(),
+                        net.minecraft.sounds.SoundSource.PLAYERS, 0.9F, 1.4F);
+
+                // パーティクル演出: 車体後方からブースト煙を噴出！
+                if (!this.level().isClientSide && this.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+                    double tailX = this.getX() - fwdX * 0.25;
+                    double tailZ = this.getZ() - fwdZ * 0.25;
+                    serverLevel.sendParticles(net.minecraft.core.particles.ParticleTypes.CLOUD,
+                            tailX, this.getY() + 0.1, tailZ, 10, 0.15, 0.08, 0.15, 0.06);
+                    serverLevel.sendParticles(net.minecraft.core.particles.ParticleTypes.CRIT,
+                            tailX, this.getY() + 0.1, tailZ, 8, 0.2, 0.1, 0.2, 0.08);
+                    if (this.jumpPadPower == 3) {
+                        serverLevel.sendParticles(net.minecraft.core.particles.ParticleTypes.ELECTRIC_SPARK,
+                                tailX, this.getY() + 0.1, tailZ, 12, 0.2, 0.1, 0.2, 0.1);
+                    }
+                }
+            }
         } else if (this.jumpAirborneTicks <= 0 && this.onSlope && this.wheelGrounded && Math.abs(this.currentSpeed) > 0.005f) {
             double sinSlope = this.slopeSinTheta; // 実際の路面傾斜サイン値を使用 (余分な急坂跳ね上げを撤廃)
             double climbVy = this.currentSpeed * sinSlope * this.slopeClimbDot;
@@ -993,94 +1118,6 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                 if (this.getY() < curHit.groundY || Math.abs(this.getY() - curHit.groundY) < 0.15) {
                     this.setPos(this.getX(), curHit.groundY, this.getZ());
                     this.setOnGround(true);
-                }
-            }
-        }
-
-        // === 垂直打ち上げジャンプパッド (JumpPadBlock) の踏み込み検知 ===
-        if (this.jumpCooldown <= 0) {
-            // 車体中心、前輪、後輪のいずれかがジャンプパッドの上に乗っているか検知
-            BlockPos checkPos = BlockPos.containing(this.getX(), this.getY(), this.getZ());
-            net.minecraft.world.level.block.state.BlockState padState = this.level().getBlockState(checkPos);
-            if (!(padState.getBlock() instanceof com.microdrone.mod.block.JumpPadBlock)) {
-                padState = this.level().getBlockState(checkPos.below());
-            }
-            if (!(padState.getBlock() instanceof com.microdrone.mod.block.JumpPadBlock)) {
-                double rad = this.getYRot() * Mth.DEG_TO_RAD;
-                // 前輪位置
-                double fx = this.getX() - Mth.sin((float) rad) * 0.22;
-                double fz = this.getZ() + Mth.cos((float) rad) * 0.22;
-                BlockPos frontCheck = BlockPos.containing(fx, this.getY(), fz);
-                padState = this.level().getBlockState(frontCheck);
-                if (!(padState.getBlock() instanceof com.microdrone.mod.block.JumpPadBlock)) {
-                    padState = this.level().getBlockState(frontCheck.below());
-                }
-                // 後輪位置 (バック走行対応)
-                if (!(padState.getBlock() instanceof com.microdrone.mod.block.JumpPadBlock)) {
-                    double rx = this.getX() + Mth.sin((float) rad) * 0.22;
-                    double rz = this.getZ() - Mth.cos((float) rad) * 0.22;
-                    BlockPos rearCheck = BlockPos.containing(rx, this.getY(), rz);
-                    padState = this.level().getBlockState(rearCheck);
-                    if (!(padState.getBlock() instanceof com.microdrone.mod.block.JumpPadBlock)) {
-                        padState = this.level().getBlockState(rearCheck.below());
-                    }
-                }
-            }
-
-            if (padState.getBlock() instanceof com.microdrone.mod.block.JumpPadBlock) {
-                int power = padState.hasProperty(com.microdrone.mod.block.JumpPadBlock.POWER)
-                        ? padState.getValue(com.microdrone.mod.block.JumpPadBlock.POWER)
-                        : 2;
-
-                // 跳躍初速 (1:LOW 約2.5~3m, 2:MID 約6m, 3:HIGH 約11m)
-                // ※ 車両質量による反発調整を加味
-                float mass = this.getVehicleMass();
-                double massBounce = 1.0 + Math.max(0.0, (mass - 1.10f) * 0.08);
-                double baseJumpY = power == 1 ? 0.55 : (power == 2 ? 0.95 : 1.45);
-                double jumpY = baseJumpY * massBounce;
-
-                this.jumpCooldown = 20; // 連続発動防止クールダウン
-                this.jumpAirborneTicks = power == 1 ? 14 : (power == 2 ? 22 : 32); // 滞空保護時間
-
-                // 水平方向の慣性を維持（走行中はそのまま前進ジャンプ、停止時はその場で垂直真上ジャンプ）
-                double currentH = Math.sqrt(this.carVelocity.x * this.carVelocity.x + this.carVelocity.z * this.carVelocity.z);
-                Vec3 curMotion = this.getDeltaMovement();
-                double outVx = curMotion.x;
-                double outVz = curMotion.z;
-                if (currentH < 0.02 && Math.abs(this.currentSpeed) < 0.02f) {
-                    outVx = 0.0;
-                    outVz = 0.0;
-                    this.carVelocity = new Vec3(0, jumpY, 0);
-                } else {
-                    this.carVelocity = new Vec3(outVx, jumpY, outVz);
-                }
-
-                this.setDeltaMovement(this.carVelocity);
-                this.setOnGround(false);
-                this.wheelGrounded = false;
-                this.onSlope = false;
-                this.hasImpulse = true;
-                this.setPos(this.getX(), this.getY() + 0.12, this.getZ()); // プレート上面からわずかに浮かせる
-
-                // 車体ピッチを水平に近付けて美しいジャンプフォームに
-                this.pitchAngle = Mth.lerp(0.5f, this.pitchAngle, 0.0f);
-
-                // サウンド演出 (ピストン射出音 + スライムバウンス)
-                this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
-                        net.minecraft.sounds.SoundEvents.PISTON_EXTEND,
-                        net.minecraft.sounds.SoundSource.PLAYERS, 1.2F, 1.0F + power * 0.3F);
-                this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
-                        net.minecraft.sounds.SoundEvents.SLIME_BLOCK_FALL,
-                        net.minecraft.sounds.SoundSource.PLAYERS, 0.8F, 1.4F);
-
-                // パーティクル演出
-                if (!this.level().isClientSide && this.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
-                    serverLevel.sendParticles(net.minecraft.core.particles.ParticleTypes.CLOUD,
-                            this.getX(), this.getY() + 0.1, this.getZ(), 8, 0.2, 0.05, 0.2, 0.05);
-                    if (power == 3) {
-                        serverLevel.sendParticles(net.minecraft.core.particles.ParticleTypes.FIREWORK,
-                                this.getX(), this.getY() + 0.1, this.getZ(), 8, 0.15, 0.15, 0.15, 0.08);
-                    }
                 }
             }
         }
@@ -2362,5 +2399,19 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         motion = motion.add(outwardNormal.scale(hit.distanceToRoad * 0.45));
 
         return motion;
+    }
+
+    /**
+     * 指定座標付近にあるジャンプパッドブロック（JumpPadBlock）を取得
+     */
+    private net.minecraft.world.level.block.state.BlockState getPadStateAt(double x, double y, double z) {
+        for (double dy : new double[]{ 0.1, -0.2, 0.0, -0.5 }) {
+            BlockPos pos = BlockPos.containing(x, y + dy, z);
+            net.minecraft.world.level.block.state.BlockState state = this.level().getBlockState(pos);
+            if (state.getBlock() instanceof com.microdrone.mod.block.JumpPadBlock) {
+                return state;
+            }
+        }
+        return null;
     }
 }

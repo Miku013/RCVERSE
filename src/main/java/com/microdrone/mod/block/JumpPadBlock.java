@@ -18,18 +18,19 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
  * RCカーが踏むと上空へ力強く打ち上がるジャンプパッド
  * 右クリックで跳躍パワーを3段階 (1:LOW, 2:MID, 3:HIGH) に切り替え可能
- * （※プレイヤーやMobの歩行を妨げないよう、生身のエンティティはジャンプしません）
+ * （※段差引っ掛かりゼロのShapes.emptyコライダー仕様。生身のエンティティはジャンプしません）
  */
 public class JumpPadBlock extends Block {
     public static final MapCodec<JumpPadBlock> CODEC = simpleCodec(JumpPadBlock::new);
     public static final IntegerProperty POWER = IntegerProperty.create("power", 1, 3);
 
-    // 高さ 2ドット (0.125m) の薄型プレート
+    // 高さ 2ドット (0.125m) の薄型プレート (視線選択用)
     protected static final VoxelShape SHAPE = Block.box(0.0D, 0.0D, 0.0D, 16.0D, 2.0D, 16.0D);
 
     public JumpPadBlock(Properties properties) {
@@ -54,7 +55,8 @@ public class JumpPadBlock extends Block {
 
     @Override
     public VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-        return SHAPE;
+        // 段差による車の引っ掛かり・急停止を完全防止するため、コライダーは空（通過可能）
+        return Shapes.empty();
     }
 
     @Override
