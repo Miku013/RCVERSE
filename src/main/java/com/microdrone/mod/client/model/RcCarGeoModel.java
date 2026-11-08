@@ -91,8 +91,17 @@ public class RcCarGeoModel extends GeoModel<RcCarEntity> {
         applyWheelRoll(wheelFR, wheelRad, true);  // 右前
         applyWheelRoll(wheelRL, wheelRad, false); // 左後
         applyWheelRoll(wheelRR, wheelRad, true);  // 右後
-        applyWheelRoll(wheelF, wheelRad, false);  // 自転車前輪
         applyWheelRoll(wheelR, wheelRad, false);  // 自転車後輪
+
+        // 自転車前輪 wheel_f (フォークのZ-90度と子のZ+90度が相殺されて直立しているため、ローカルX軸で縦回転)
+        if (wheelF != null) {
+            float initX = (wheelF.getInitialSnapshot() != null) ? wheelF.getInitialSnapshot().getRotX() : wheelF.getRotX();
+            float initY = (wheelF.getInitialSnapshot() != null) ? wheelF.getInitialSnapshot().getRotY() : wheelF.getRotY();
+            float initZ = (wheelF.getInitialSnapshot() != null) ? wheelF.getInitialSnapshot().getRotZ() : wheelF.getRotZ();
+            wheelF.setRotZ(initZ);
+            wheelF.setRotY(initY);
+            wheelF.setRotX(initX - wheelRad);
+        }
 
         // 自転車用クランク回転＆村人ペダリング連動
         GeoBone crank = this.getAnimationProcessor().getBone("crank");
