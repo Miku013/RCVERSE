@@ -79,18 +79,5 @@ public class ClientModEvents {
                 return this.renderer;
             }
         }, ModItems.DRONE_CONTROLLER.get());
-
-        // 4段階バッテリーの GeckoLib 3D アイテムレンダラー
-        event.registerItem(new IClientItemExtensions() {
-            private DroneBatteryItemRenderer renderer;
-
-            @Override
-            public BlockEntityWithoutLevelRenderer getCustomRenderer() {
-                if (this.renderer == null) {
-                    this.renderer = new DroneBatteryItemRenderer();
-                }
-                return this.renderer;
-            }
-        }, ModItems.BATTERY_TIER_1.get(), ModItems.BATTERY_TIER_2.get(), ModItems.BATTERY_TIER_3.get(), ModItems.BATTERY_TIER_4.get());
     }
 }
