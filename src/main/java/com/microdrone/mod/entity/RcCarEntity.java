@@ -1800,16 +1800,21 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         double deltaRoll = hLeft - hRight;
         float groundRoll = (float) Math.toDegrees(Math.atan2(deltaRoll, halfW * 2.0));
 
+        // 車体コンフィグからロール倍率と最大ロール角を取得
+        var carConfig = com.microdrone.mod.config.car.CarConfigManager.getConfig(getVariantId());
+        float rollMult = (carConfig != null) ? carConfig.properties.rollMultiplier : 1.0f;
+        float maxRoll = (carConfig != null) ? carConfig.properties.maxRollAngle : 48.0f;
+
         // 旋回・ドリフトによる遠心力ロール (外側サスペンションが正しく沈み込む)
         float dynamicRoll = 0.0f;
         if (this.driftDirection != 0) {
             float baseRoll = 9.0f;
             float totalRoll = baseRoll + (counterAmount * 8.5f);
-            dynamicRoll = -this.driftDirection * totalRoll;
+            dynamicRoll = -this.driftDirection * totalRoll * rollMult;
         } else {
-            dynamicRoll = this.steerAngle * (float) (this.currentSpeed * 3.5);
+            dynamicRoll = this.steerAngle * (float) (this.currentSpeed * 3.5) * rollMult;
         }
-        float targetRoll = Mth.clamp(groundRoll + dynamicRoll, -48.0f, 48.0f);
+        float targetRoll = Mth.clamp(groundRoll + dynamicRoll, -maxRoll, maxRoll);
         this.rollAngle = Mth.lerp(0.35f, this.rollAngle, targetRoll);
     }
 

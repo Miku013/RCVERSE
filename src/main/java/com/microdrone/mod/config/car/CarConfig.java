@@ -25,6 +25,8 @@ public class CarConfig {
         public float gripMultiplier = 1.0f;
         public float scale = 1.0f;
         public boolean invertSteer = false;
+        public float rollMultiplier = 1.0f; // 旋回・遠心ロールの強度倍率 (0.0=ロール無効/水平, 0.25=リアルな浅い傾き, 1.0=標準バギー)
+        public float maxRollAngle = 48.0f;  // 最大ロール角 (度)
     }
 
     public ResourceLocation getModelResource() {
