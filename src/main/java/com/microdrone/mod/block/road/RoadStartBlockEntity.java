@@ -65,6 +65,7 @@ public class RoadStartBlockEntity extends BlockEntity {
 
     /**
      * 周囲から最も近い RoadEndBlock を探索して自動リンク
+     * ※既に他の有効な始点マーカーとペアになっている終点は検索から除外されます。
      */
     public boolean autoFindNearestEndBlock(int radius) {
         if (level == null) return false;
@@ -77,6 +78,19 @@ public class RoadStartBlockEntity extends BlockEntity {
                     BlockPos p = worldPosition.offset(dx, dy, dz);
                     if (p.equals(worldPosition)) continue;
                     if (level.getBlockState(p).getBlock() instanceof RoadEndBlock) {
+                        // 既に他の有効な始点マーカーとペアリングされている場合は除外
+                        if (level.getBlockEntity(p) instanceof RoadEndBlockEntity endBe) {
+                            BlockPos otherStartPos = endBe.getLinkedStartPos();
+                            if (otherStartPos != null && !otherStartPos.equals(worldPosition)) {
+                                if (level.getBlockEntity(otherStartPos) instanceof RoadStartBlockEntity otherStart) {
+                                    if (p.equals(otherStart.getLinkedEndPos())) {
+                                        // 既に有効なペアが成立しているためスキップ
+                                        continue;
+                                    }
+                                }
+                            }
+                        }
+
                         double dSq = worldPosition.distSqr(p);
                         if (dSq < bestDistSq) {
                             bestDistSq = dSq;
