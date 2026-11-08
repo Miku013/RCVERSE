@@ -50,6 +50,21 @@ public class RcCarGeoModel extends GeoModel<RcCarEntity> {
         if (steerFL != null) steerFL.setRotY(steerRad);
         if (steerFR != null) steerFR.setRotY(steerRad);
 
+        // 自転車 / バイク用ハンドル・フォークステアリング
+        GeoBone forkHandle = this.getAnimationProcessor().getBone("fork_and_handle");
+        if (forkHandle == null) forkHandle = this.getAnimationProcessor().getBone("handle");
+        if (forkHandle != null) {
+            float initRotZ = (forkHandle.getInitialSnapshot() != null) ? forkHandle.getInitialSnapshot().getRotZ() : forkHandle.getRotZ();
+            float initRotX = (forkHandle.getInitialSnapshot() != null) ? forkHandle.getInitialSnapshot().getRotX() : forkHandle.getRotX();
+            float initRotY = (forkHandle.getInitialSnapshot() != null) ? forkHandle.getInitialSnapshot().getRotY() : forkHandle.getRotY();
+            if (Math.abs(initRotZ + (90.0f * Mth.DEG_TO_RAD)) < 0.25f) {
+                // Z軸が-90度のモデリング: ワールドY軸旋回はローカルX軸
+                forkHandle.setRotX(initRotX - steerRad);
+            } else {
+                forkHandle.setRotY(initRotY + steerRad);
+            }
+        }
+
         // 2. 4輪サスペンションのストローク（タイヤ上下可動）
         // 車体全体のピッチ・ロール姿勢は RcCarGeoRenderer (poseStack) 側で一元管理。
         // ここではタイヤがフェンダー内へ出入りする微小ストロークを適用
@@ -64,16 +79,52 @@ public class RcCarGeoModel extends GeoModel<RcCarEntity> {
         if (wheelRL != null) wheelRL.setPosY(suspRL);
         if (wheelRR != null) wheelRR.setPosY(suspRR);
 
-        // 4. 4輪タイヤ回転
+        // 4. タイヤ回転
         // モデルのボーン設計（Z軸横倒しモデリングか、直立モデリングか）を自動判別して適用
         float wheelRad = animatable.getWheelRotation() * Mth.DEG_TO_RAD;
         GeoBone wheelFL = this.getAnimationProcessor().getBone("wheel_fl");
         GeoBone wheelFR = this.getAnimationProcessor().getBone("wheel_fr");
+        GeoBone wheelF = this.getAnimationProcessor().getBone("wheel_f");
+        GeoBone wheelR = this.getAnimationProcessor().getBone("wheel_r");
 
         applyWheelRoll(wheelFL, wheelRad, false); // 左前
         applyWheelRoll(wheelFR, wheelRad, true);  // 右前
         applyWheelRoll(wheelRL, wheelRad, false); // 左後
         applyWheelRoll(wheelRR, wheelRad, true);  // 右後
+        applyWheelRoll(wheelF, wheelRad, false);  // 自転車前輪
+        applyWheelRoll(wheelR, wheelRad, false);  // 自転車後輪
+
+        // 自転車用クランク回転＆村人ペダリング連動
+        GeoBone crank = this.getAnimationProcessor().getBone("crank");
+        if (crank != null) {
+            float initCrankX = (crank.getInitialSnapshot() != null) ? crank.getInitialSnapshot().getRotX() : crank.getRotX();
+            float crankRad = wheelRad * 0.75f;
+            crank.setRotX(initCrankX - crankRad);
+
+            // 村人の足（太もも・すね）の上下ペダリングアニメーション
+            float pedalSwing = Mth.sin(crankRad) * (14.0f * Mth.DEG_TO_RAD);
+            GeoBone legR = this.getAnimationProcessor().getBone("leg_r");
+            GeoBone legL = this.getAnimationProcessor().getBone("leg_l");
+            GeoBone shinR = this.getAnimationProcessor().getBone("shin_r");
+            GeoBone shinL = this.getAnimationProcessor().getBone("shin_l");
+
+            if (legR != null) {
+                float init = (legR.getInitialSnapshot() != null) ? legR.getInitialSnapshot().getRotX() : legR.getRotX();
+                legR.setRotX(init + pedalSwing);
+            }
+            if (legL != null) {
+                float init = (legL.getInitialSnapshot() != null) ? legL.getInitialSnapshot().getRotX() : legL.getRotX();
+                legL.setRotX(init - pedalSwing);
+            }
+            if (shinR != null) {
+                float init = (shinR.getInitialSnapshot() != null) ? shinR.getInitialSnapshot().getRotX() : shinR.getRotX();
+                shinR.setRotX(init - pedalSwing * 0.5f);
+            }
+            if (shinL != null) {
+                float init = (shinL.getInitialSnapshot() != null) ? shinL.getInitialSnapshot().getRotX() : shinL.getRotX();
+                shinL.setRotX(init + pedalSwing * 0.5f);
+            }
+        }
 
         // 5. リトラクタブルヘッドライト開閉アニメーション (0.0=閉 ~ 1.0=開)
         CarConfig carCfg = CarConfigManager.getConfig(animatable.getVariantId());
