@@ -36,6 +36,14 @@ public class ModBlockEntities {
             BLOCK_ENTITIES.register("modular_slope",
                     () -> BlockEntityType.Builder.of(ModularSlopeBlockEntity::new, ModBlocks.MODULAR_SLOPE.get()).build(null));
 
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<com.microdrone.mod.block.road.RoadStartBlockEntity>> ROAD_START_BE =
+            BLOCK_ENTITIES.register("road_start",
+                    () -> BlockEntityType.Builder.of(com.microdrone.mod.block.road.RoadStartBlockEntity::new, ModBlocks.ROAD_START.get()).build(null));
+
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<com.microdrone.mod.block.road.RoadEndBlockEntity>> ROAD_END_BE =
+            BLOCK_ENTITIES.register("road_end",
+                    () -> BlockEntityType.Builder.of(com.microdrone.mod.block.road.RoadEndBlockEntity::new, ModBlocks.ROAD_END.get()).build(null));
+
     public static void register(IEventBus eventBus) {
         BLOCK_ENTITIES.register(eventBus);
     }

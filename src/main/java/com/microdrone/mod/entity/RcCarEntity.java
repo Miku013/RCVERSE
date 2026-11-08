@@ -1809,7 +1809,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         } else {
             dynamicRoll = this.steerAngle * (float) (this.currentSpeed * 3.5);
         }
-        float targetRoll = Mth.clamp(groundRoll + dynamicRoll, -25.0f, 25.0f);
+        float targetRoll = Mth.clamp(groundRoll + dynamicRoll, -48.0f, 48.0f);
         this.rollAngle = Mth.lerp(0.35f, this.rollAngle, targetRoll);
     }
 
@@ -1817,6 +1817,14 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
      * タイヤ位置の地面高さ・三角形メッシュ衝突レイキャスト
      */
     public WheelRaycastHit sampleWheelGround(double x, double y, double z) {
+        // ① スプライン道路・ヘアピンカーブのメッシュ判定 (最優先)
+        com.microdrone.mod.block.road.RoadSplineGenerator.RoadHitResult roadHit =
+                com.microdrone.mod.block.road.RoadSplineManager.sampleRoad(level(), x, y, z);
+        if (roadHit.hit) {
+            Direction approxFacing = Direction.getNearest(roadHit.tangent.x, 0.0, roadHit.tangent.z);
+            return new WheelRaycastHit(roadHit.groundY, roadHit.normal, true, false, false, roadHit.progress, approxFacing);
+        }
+
         BlockPos pos = BlockPos.containing(x, y, z);
         net.minecraft.world.level.block.state.BlockState st = level().getBlockState(pos);
         if (!(st.getBlock() instanceof com.microdrone.mod.block.RacingSlopeBlock)

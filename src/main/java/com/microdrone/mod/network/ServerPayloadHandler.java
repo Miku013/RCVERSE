@@ -131,4 +131,37 @@ public class ServerPayloadHandler {
             }
         });
     }
+
+    public static void handleRoadConfig(RoadConfigPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (context.player() instanceof ServerPlayer player) {
+                if (player.level().getBlockEntity(payload.startPos()) instanceof com.microdrone.mod.block.road.RoadStartBlockEntity startBe) {
+                    var data = startBe.getSplineData();
+                    data.setRoadWidth(payload.roadWidth());
+                    data.setMaxBankAngle(payload.maxBankAngle());
+                    data.setTurnDirection(payload.turnDirection());
+                    data.setControlPointDistance(payload.controlPointDistance());
+                    data.setSegments(payload.segments());
+                    data.setPreview(payload.isPreview());
+                    data.setGenerated(payload.isGenerated());
+
+                    if (payload.action() == 1) { // 終点再探索
+                        startBe.autoFindNearestEndBlock(32);
+                    } else if (payload.action() == 2) { // 確定生成
+                        data.setGenerated(true);
+                        data.setPreview(false);
+                        player.displayClientMessage(net.minecraft.network.chat.Component.translatable("chat.microdrone.road_generated"), true);
+                    } else if (payload.action() == 3) { // 道路削除
+                        data.setGenerated(false);
+                        data.setPreview(true);
+                        player.displayClientMessage(net.minecraft.network.chat.Component.translatable("chat.microdrone.road_deleted"), true);
+                    }
+
+                    startBe.setChanged();
+                    com.microdrone.mod.block.road.RoadSplineManager.registerRoad(player.level(), startBe);
+                    player.level().sendBlockUpdated(payload.startPos(), startBe.getBlockState(), startBe.getBlockState(), 3);
+                }
+            }
+        });
+    }
 }

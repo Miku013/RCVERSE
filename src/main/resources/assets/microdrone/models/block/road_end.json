@@ -1,0 +1,64 @@
+{
+    "ambientocclusion": false,
+    "textures": {
+        "particle": "minecraft:block/cyan_concrete",
+        "base": "minecraft:block/gray_concrete",
+        "top": "minecraft:block/light_blue_concrete",
+        "accent": "minecraft:block/diamond_block"
+    },
+    "elements": [
+        {
+            "name": "base",
+            "from": [ 0.0, 0.0, 0.0 ],
+            "to": [ 16.0, 6.0, 16.0 ],
+            "faces": {
+                "up":    { "uv": [ 0, 0, 16, 16 ], "texture": "#base" },
+                "down":  { "uv": [ 0, 0, 16, 16 ], "texture": "#base" },
+                "north": { "uv": [ 0, 10, 16, 16 ], "texture": "#base" },
+                "south": { "uv": [ 0, 10, 16, 16 ], "texture": "#base" },
+                "east":  { "uv": [ 0, 10, 16, 16 ], "texture": "#base" },
+                "west":  { "uv": [ 0, 10, 16, 16 ], "texture": "#base" }
+            }
+        },
+        {
+            "name": "gate_left",
+            "from": [ 2.0, 6.0, 2.0 ],
+            "to": [ 5.0, 12.0, 5.0 ],
+            "faces": {
+                "up":    { "uv": [ 0, 0, 3, 3 ], "texture": "#accent" },
+                "down":  { "uv": [ 0, 0, 3, 3 ], "texture": "#accent" },
+                "north": { "uv": [ 0, 0, 3, 6 ], "texture": "#top" },
+                "south": { "uv": [ 0, 0, 3, 6 ], "texture": "#top" },
+                "east":  { "uv": [ 0, 0, 3, 6 ], "texture": "#top" },
+                "west":  { "uv": [ 0, 0, 3, 6 ], "texture": "#top" }
+            }
+        },
+        {
+            "name": "gate_right",
+            "from": [ 11.0, 6.0, 2.0 ],
+            "to": [ 14.0, 12.0, 5.0 ],
+            "faces": {
+                "up":    { "uv": [ 0, 0, 3, 3 ], "texture": "#accent" },
+                "down":  { "uv": [ 0, 0, 3, 3 ], "texture": "#accent" },
+                "north": { "uv": [ 0, 0, 3, 6 ], "texture": "#top" },
+                "south": { "uv": [ 0, 0, 3, 6 ], "texture": "#top" },
+                "east":  { "uv": [ 0, 0, 3, 6 ], "texture": "#top" },
+                "west":  { "uv": [ 0, 0, 3, 6 ], "texture": "#top" }
+            }
+        },
+        {
+            "name": "gate_bar",
+            "from": [ 2.0, 10.0, 2.0 ],
+            "to": [ 14.0, 12.0, 5.0 ],
+            "faces": {
+                "up":    { "uv": [ 0, 0, 12, 3 ], "texture": "#accent" },
+                "down":  { "uv": [ 0, 0, 12, 3 ], "texture": "#accent" },
+                "north": { "uv": [ 0, 0, 12, 2 ], "texture": "#accent" },
+                "south": { "uv": [ 0, 0, 12, 2 ], "texture": "#accent" },
+                "east":  { "uv": [ 0, 0, 3, 2 ],  "texture": "#accent" },
+                "west":  { "uv": [ 0, 0, 3, 2 ],  "texture": "#accent" }
+            }
+        }
+    ]
+}
+

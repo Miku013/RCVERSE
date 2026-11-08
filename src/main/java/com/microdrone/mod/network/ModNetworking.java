@@ -36,6 +36,13 @@ public class ModNetworking {
                 ServerPayloadHandler::handleRcCarTuning
         );
 
+        // クライアント -> サーバー (道路・ヘアピンカーブ設定同期)
+        registrar.playToServer(
+                RoadConfigPayload.TYPE,
+                RoadConfigPayload.STREAM_CODEC,
+                ServerPayloadHandler::handleRoadConfig
+        );
+
         // サーバー -> クライアント (操縦状態通知)
         registrar.playToClient(
                 DronePilotStatePayload.TYPE,

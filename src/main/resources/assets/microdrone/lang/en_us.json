@@ -130,5 +130,17 @@
   "message.microdrone.submarine_pilot_start": "§a[RC Submarine] Piloting started! (W/S: Forward/Reverse, A/D: Turn, Space/Shift: Surface/Dive, F5: Toggle View, Use Controller again to exit)",
   "subtitles.microdrone.checkpoint_pass": "Checkpoint Passed",
   "block.microdrone.vertical_loop": "360° Vertical Loop Track",
-  "item.microdrone.vertical_loop": "360° Vertical Loop Track"
+  "item.microdrone.vertical_loop": "360° Vertical Loop Track",
+  "block.microdrone.road_start": "Road Start Marker",
+  "item.microdrone.road_start": "Road Start Marker",
+  "tooltip.microdrone.road_start_desc": "Right-click to open config GUI. Links with End Marker to generate smooth hairpin curves.",
+  "block.microdrone.road_end": "Road End Marker",
+  "item.microdrone.road_end": "Road End Marker",
+  "tooltip.microdrone.road_end_desc": "Road generation end point. Right-click to check link status with Start Marker.",
+  "gui.microdrone.road_config.title": "Spline Road & Hairpin Curve Settings",
+  "chat.microdrone.road_linked_auto": "§a[Road Generator] Automatically linked with End Marker (%s)!",
+  "chat.microdrone.road_end_status_linked": "§a[Road Generator] Linked Start Marker: %s",
+  "chat.microdrone.road_end_status_unlinked": "§c[Road Generator] Not linked with any Start Marker.",
+  "chat.microdrone.road_generated": "§a[Road Generator] Road mesh generated successfully!",
+  "chat.microdrone.road_deleted": "§e[Road Generator] Road mesh deleted."
 }

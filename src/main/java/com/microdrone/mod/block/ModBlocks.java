@@ -79,6 +79,22 @@ public class ModBlocks {
                     .lightLevel(state -> 4)
                     .noOcclusion()));
 
+    // 道路・ヘアピンカーブ生成 始点ブロック
+    public static final DeferredBlock<com.microdrone.mod.block.road.RoadStartBlock> ROAD_START = BLOCKS.register("road_start",
+            () -> new com.microdrone.mod.block.road.RoadStartBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_YELLOW)
+                    .strength(1.5f, 2.0f)
+                    .lightLevel(state -> 3)
+                    .noOcclusion()));
+
+    // 道路・ヘアピンカーブ生成 終点ブロック
+    public static final DeferredBlock<com.microdrone.mod.block.road.RoadEndBlock> ROAD_END = BLOCKS.register("road_end",
+            () -> new com.microdrone.mod.block.road.RoadEndBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_LIGHT_BLUE)
+                    .strength(1.5f, 2.0f)
+                    .lightLevel(state -> 3)
+                    .noOcclusion()));
+
     public static void register(IEventBus eventBus) {
         BLOCKS.register(eventBus);
     }
