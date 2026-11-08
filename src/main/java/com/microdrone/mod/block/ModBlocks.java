@@ -95,6 +95,14 @@ public class ModBlocks {
                     .lightLevel(state -> 3)
                     .noOcclusion()));
 
+    // 垂直打ち上げジャンプパッド（3段階パワー調整可能）
+    public static final DeferredBlock<JumpPadBlock> JUMP_PAD = BLOCKS.register("jump_pad",
+            () -> new JumpPadBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_YELLOW)
+                    .strength(1.5f, 2.0f)
+                    .lightLevel(state -> state.hasProperty(JumpPadBlock.POWER) ? (state.getValue(JumpPadBlock.POWER) == 1 ? 5 : (state.getValue(JumpPadBlock.POWER) == 2 ? 8 : 12)) : 8)
+                    .noOcclusion()));
+
     public static void register(IEventBus eventBus) {
         BLOCKS.register(eventBus);
     }

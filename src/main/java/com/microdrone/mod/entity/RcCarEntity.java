@@ -997,6 +997,83 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             }
         }
 
+        // === 垂直打ち上げジャンプパッド (JumpPadBlock) の踏み込み検知 ===
+        if (this.jumpCooldown <= 0) {
+            // 車体中心、前輪のいずれかがジャンプパッドの上に乗っているか検知
+            BlockPos checkPos = BlockPos.containing(this.getX(), this.getY(), this.getZ());
+            net.minecraft.world.level.block.state.BlockState padState = this.level().getBlockState(checkPos);
+            if (!(padState.getBlock() instanceof com.microdrone.mod.block.JumpPadBlock)) {
+                padState = this.level().getBlockState(checkPos.below());
+            }
+            if (!(padState.getBlock() instanceof com.microdrone.mod.block.JumpPadBlock)) {
+                double rad = this.getYRot() * Mth.DEG_TO_RAD;
+                double fx = this.getX() - Mth.sin((float) rad) * 0.22;
+                double fz = this.getZ() + Mth.cos((float) rad) * 0.22;
+                BlockPos frontCheck = BlockPos.containing(fx, this.getY(), fz);
+                padState = this.level().getBlockState(frontCheck);
+                if (!(padState.getBlock() instanceof com.microdrone.mod.block.JumpPadBlock)) {
+                    padState = this.level().getBlockState(frontCheck.below());
+                }
+            }
+
+            if (padState.getBlock() instanceof com.microdrone.mod.block.JumpPadBlock) {
+                int power = padState.hasProperty(com.microdrone.mod.block.JumpPadBlock.POWER)
+                        ? padState.getValue(com.microdrone.mod.block.JumpPadBlock.POWER)
+                        : 2;
+
+                // 跳躍初速 (1:LOW 約3m, 2:MID 約6m, 3:HIGH 約10m)
+                // ※ 車両質量による反発調整を加味
+                float mass = this.getVehicleMass();
+                double massBounce = 1.0 + Math.max(0.0, (mass - 1.10f) * 0.08);
+                double baseJumpY = power == 1 ? 0.65 : (power == 2 ? 0.96 : 1.32);
+                double jumpY = baseJumpY * massBounce;
+
+                this.jumpCooldown = 20; // 連続発動防止クールダウン
+                this.jumpAirborneTicks = power == 1 ? 16 : (power == 2 ? 22 : 28); // 滞空保護時間
+
+                // 水平方向の慣性を維持（走行中はそのまま前進ジャンプ、停止時はその場で垂直真上ジャンプ）
+                double currentH = Math.sqrt(this.carVelocity.x * this.carVelocity.x + this.carVelocity.z * this.carVelocity.z);
+                Vec3 curMotion = this.getDeltaMovement();
+                double outVx = curMotion.x;
+                double outVz = curMotion.z;
+                if (currentH < 0.02 && Math.abs(this.currentSpeed) < 0.02f) {
+                    outVx = 0.0;
+                    outVz = 0.0;
+                    this.carVelocity = new Vec3(0, jumpY, 0);
+                } else {
+                    this.carVelocity = new Vec3(outVx, jumpY, outVz);
+                }
+
+                this.setDeltaMovement(this.carVelocity);
+                this.setOnGround(false);
+                this.wheelGrounded = false;
+                this.onSlope = false;
+                this.hasImpulse = true;
+                this.setPos(this.getX(), this.getY() + 0.12, this.getZ()); // プレート上面からわずかに浮かせる
+
+                // 車体ピッチを水平に近付けて美しいジャンプフォームに
+                this.pitchAngle = Mth.lerp(0.5f, this.pitchAngle, 0.0f);
+
+                // サウンド演出 (ピストン射出音 + スライムバウンス)
+                this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                        net.minecraft.sounds.SoundEvents.PISTON_EXTEND,
+                        net.minecraft.sounds.SoundSource.PLAYERS, 1.2F, 1.2F + power * 0.25F);
+                this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                        net.minecraft.sounds.SoundEvents.SLIME_BLOCK_FALL,
+                        net.minecraft.sounds.SoundSource.PLAYERS, 0.8F, 1.4F);
+
+                // パーティクル演出
+                if (!this.level().isClientSide && this.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+                    serverLevel.sendParticles(net.minecraft.core.particles.ParticleTypes.CLOUD,
+                            this.getX(), this.getY() + 0.1, this.getZ(), 8, 0.2, 0.05, 0.2, 0.05);
+                    if (power == 3) {
+                        serverLevel.sendParticles(net.minecraft.core.particles.ParticleTypes.FIREWORK,
+                                this.getX(), this.getY() + 0.1, this.getZ(), 5, 0.1, 0.1, 0.1, 0.05);
+                    }
+                }
+            }
+        }
+
         // === スロープジャンプ台の跳躍判定 (レイキャスト先端リップ検知) ===
         if (this.jumpCooldown <= 0 && this.currentSpeed > 0.05f) {
             // 前輪位置または車体中心位置でスロープ先端リップを判定

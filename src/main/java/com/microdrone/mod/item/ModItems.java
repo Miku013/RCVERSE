@@ -74,6 +74,10 @@ public class ModItems {
     public static final DeferredHolder<Item, BlockItem> VERTICAL_LOOP_ITEM =
             ITEMS.register("vertical_loop", () -> new BlockItem(ModBlocks.VERTICAL_LOOP.get(), new Item.Properties()));
 
+    // 垂直打ち上げジャンプパッド (BlockItem)
+    public static final DeferredHolder<Item, BlockItem> JUMP_PAD_ITEM =
+            ITEMS.register("jump_pad", () -> new BlockItem(ModBlocks.JUMP_PAD.get(), new Item.Properties()));
+
     // === コース小物・設備システム (Phase 1: カラーコーン ＆ Phase 2: 縁石・ガードレール・タイヤバリア) ===
     public static final DeferredHolder<Item, com.microdrone.mod.block.miniature.TrafficConeItem> TRAFFIC_CONE =
             ITEMS.register("traffic_cone", () -> new com.microdrone.mod.block.miniature.TrafficConeItem(new Item.Properties().stacksTo(64)));

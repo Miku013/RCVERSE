@@ -1,0 +1,24 @@
+{
+  "parent": "block/block",
+  "ambientocclusion": true,
+  "textures": {
+    "particle": "microdrone:block/jump_pad_top_low",
+    "base": "microdrone:block/jump_pad_base",
+    "top": "microdrone:block/jump_pad_top_low"
+  },
+  "elements": [
+    {
+      "name": "plate",
+      "from": [ 0.0, 0.0, 0.0 ],
+      "to": [ 16.0, 2.0, 16.0 ],
+      "faces": {
+        "up":    { "uv": [ 0, 0, 16, 16 ], "texture": "#top" },
+        "down":  { "uv": [ 0, 0, 16, 16 ], "texture": "#base", "cullface": "down" },
+        "north": { "uv": [ 0, 14, 16, 16 ], "texture": "#base" },
+        "south": { "uv": [ 0, 14, 16, 16 ], "texture": "#base" },
+        "west":  { "uv": [ 0, 14, 16, 16 ], "texture": "#base" },
+        "east":  { "uv": [ 0, 14, 16, 16 ], "texture": "#base" }
+      }
+    }
+  ]
+}
