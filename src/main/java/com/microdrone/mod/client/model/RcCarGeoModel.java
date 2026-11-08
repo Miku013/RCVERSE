@@ -107,11 +107,16 @@ public class RcCarGeoModel extends GeoModel<RcCarEntity> {
         GeoBone crank = this.getAnimationProcessor().getBone("crank");
         if (crank != null) {
             float initCrankX = (crank.getInitialSnapshot() != null) ? crank.getInitialSnapshot().getRotX() : crank.getRotX();
-            float crankRad = wheelRad * 0.75f;
+            // クランクの回転（車輪と1:1でテンポ良く回転）
+            float crankRad = wheelRad * 1.0f;
             crank.setRotX(initCrankX - crankRad);
 
-            // 村人の足（太もも・すね）の上下ペダリングアニメーション
-            float pedalSwing = Mth.sin(crankRad) * (14.0f * Mth.DEG_TO_RAD);
+            // 車両コンフィグからの足の動き倍率
+            CarConfig currentCarCfg = CarConfigManager.getConfig(animatable.getVariantId());
+            float swingMult = (currentCarCfg != null && currentCarCfg.properties != null) ? currentCarCfg.properties.pedalSwingMultiplier : 1.0f;
+
+            // 村人の足（太もも・すね）のダイナミック上下ペダリング (14度 -> 30度へ大幅拡大)
+            float pedalSwing = Mth.sin(crankRad) * (30.0f * Mth.DEG_TO_RAD) * swingMult;
             GeoBone legR = this.getAnimationProcessor().getBone("leg_r");
             GeoBone legL = this.getAnimationProcessor().getBone("leg_l");
             GeoBone shinR = this.getAnimationProcessor().getBone("shin_r");
@@ -127,11 +132,29 @@ public class RcCarGeoModel extends GeoModel<RcCarEntity> {
             }
             if (shinR != null) {
                 float init = (shinR.getInitialSnapshot() != null) ? shinR.getInitialSnapshot().getRotX() : shinR.getRotX();
-                shinR.setRotX(init - pedalSwing * 0.5f);
+                // 膝の曲げ伸ばしを深く連動
+                shinR.setRotX(init - pedalSwing * 0.85f);
             }
             if (shinL != null) {
                 float init = (shinL.getInitialSnapshot() != null) ? shinL.getInitialSnapshot().getRotX() : shinL.getRotX();
-                shinL.setRotX(init + pedalSwing * 0.5f);
+                shinL.setRotX(init + pedalSwing * 0.85f);
+            }
+
+            // 一生懸命漕ぐ村人の上半身・頭のボビング＆体重移動アクション
+            GeoBone vBody = this.getAnimationProcessor().getBone("villager_body");
+            GeoBone vHead = this.getAnimationProcessor().getBone("villager_head");
+            if (vBody != null) {
+                float initZ = (vBody.getInitialSnapshot() != null) ? vBody.getInitialSnapshot().getRotZ() : vBody.getRotZ();
+                float initX = (vBody.getInitialSnapshot() != null) ? vBody.getInitialSnapshot().getRotX() : vBody.getRotX();
+                // 踏み込み時の左右への体重移動ロール
+                vBody.setRotZ(initZ + Mth.sin(crankRad) * (3.8f * Mth.DEG_TO_RAD) * swingMult);
+                // 踏み込み時のグッと前に沈み込むピッチ運動
+                vBody.setRotX(initX + Math.abs(Mth.sin(crankRad)) * (3.2f * Mth.DEG_TO_RAD) * swingMult);
+            }
+            if (vHead != null) {
+                float initX = (vHead.getInitialSnapshot() != null) ? vHead.getInitialSnapshot().getRotX() : vHead.getRotX();
+                // 体の動きに合わせた頭の上下ボビング
+                vHead.setRotX(initX - Math.abs(Mth.sin(crankRad)) * (2.8f * Mth.DEG_TO_RAD) * swingMult);
             }
         }
 
