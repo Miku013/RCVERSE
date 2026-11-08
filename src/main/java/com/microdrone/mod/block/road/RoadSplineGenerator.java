@@ -51,14 +51,15 @@ public class RoadSplineGenerator {
         List<SplineSample> samples = new ArrayList<>();
         int segments = Math.max(8, data.getSegments());
 
-        // 始点 P0 と 終点 P3 (マーカー上面高さ基準: Y + 1.0)
-        Vec3 p0 = new Vec3(startPos.getX() + 0.5, startPos.getY() + 1.0, startPos.getZ() + 0.5);
-        Vec3 p3 = new Vec3(endPos.getX() + 0.5, endPos.getY() + 1.0, endPos.getZ() + 0.5);
-
         // 進入方向単位ベクトル T0
         Vec3 t0 = getDirectionVec(startFacing);
         // 退出方向単位ベクトル T3 (終点から道路が抜けていく向き)
         Vec3 t3 = getDirectionVec(endFacing);
+
+        // 始点 P0 と 終点 P3 (マーカー上面高さ基準: Y + 1.0)
+        // ブロック境界 (1マス全体) を完全にカバーするように、始点は進入側手前へ -0.5m、終点は退出側先へ +0.5m オフセット
+        Vec3 p0 = new Vec3(startPos.getX() + 0.5, startPos.getY() + 1.0, startPos.getZ() + 0.5).subtract(t0.scale(0.5));
+        Vec3 p3 = new Vec3(endPos.getX() + 0.5, endPos.getY() + 1.0, endPos.getZ() + 0.5).add(t3.scale(0.5));
 
         // 制御点距離
         double d = data.getControlPointDistance();
