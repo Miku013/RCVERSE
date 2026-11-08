@@ -30,8 +30,13 @@ public class MicroDroneMod {
         ModNetworking.register(modEventBus);
         com.microdrone.mod.sound.ModSounds.register(modEventBus);
 
-        // 外部コンフィグの初期化
+        // 外部コンフィグの初期化（戦車・車・ドローン・飛行機・ボート・潜水艦）
         com.microdrone.mod.config.tank.TankConfigManager.init();
+        com.microdrone.mod.config.car.CarConfigManager.init();
+        com.microdrone.mod.config.drone.DroneConfigManager.init();
+        com.microdrone.mod.config.plane.PlaneConfigManager.init();
+        com.microdrone.mod.config.boat.BoatConfigManager.init();
+        com.microdrone.mod.config.submarine.SubmarineConfigManager.init();
 
         if (FMLEnvironment.dist.isClient()) {
             ClientModEvents.register(modEventBus);

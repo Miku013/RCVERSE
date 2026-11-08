@@ -37,6 +37,17 @@ public class RcPlaneItem extends Item {
 
         RcPlaneEntity plane = ModEntities.RC_PLANE.get().create(serverLevel);
         if (plane != null) {
+            // アイテムのカスタムデータや金床カスタム名からバリアントIDを適用
+            var customData = itemStack.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA);
+            if (customData != null && customData.contains("Variant")) {
+                plane.setVariantId(customData.copyTag().getString("Variant"));
+            } else if (itemStack.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME)) {
+                String customName = itemStack.getHoverName().getString().trim().toLowerCase();
+                if (com.microdrone.mod.config.plane.PlaneConfigManager.getAllConfigs().containsKey(customName)) {
+                    plane.setVariantId(customName);
+                }
+            }
+
             plane.moveTo(x, y, z, context.getRotation(), 0.0F);
             serverLevel.addFreshEntity(plane);
             level.gameEvent(context.getPlayer(), GameEvent.ENTITY_PLACE, spawnPos);

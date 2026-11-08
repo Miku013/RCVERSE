@@ -28,6 +28,14 @@ public class ModBlockEntities {
             BLOCK_ENTITIES.register("race_display",
                     () -> BlockEntityType.Builder.of(RaceDisplayBlockEntity::new, ModBlocks.RACE_DISPLAY.get()).build(null));
 
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<VerticalLoopBlockEntity>> VERTICAL_LOOP_BE =
+            BLOCK_ENTITIES.register("vertical_loop",
+                    () -> BlockEntityType.Builder.of(VerticalLoopBlockEntity::new, ModBlocks.VERTICAL_LOOP.get()).build(null));
+
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ModularSlopeBlockEntity>> MODULAR_SLOPE_BE =
+            BLOCK_ENTITIES.register("modular_slope",
+                    () -> BlockEntityType.Builder.of(ModularSlopeBlockEntity::new, ModBlocks.MODULAR_SLOPE.get()).build(null));
+
     public static void register(IEventBus eventBus) {
         BLOCK_ENTITIES.register(eventBus);
     }

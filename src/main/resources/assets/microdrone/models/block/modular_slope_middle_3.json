@@ -1,0 +1,38 @@
+{
+  "ambientocclusion": false,
+  "textures": {
+    "road": "microdrone:block/modular_slope_road",
+    "curb": "microdrone:block/modular_slope_curb",
+    "side": "microdrone:block/modular_slope_side",
+    "particle": "microdrone:block/modular_slope_road"
+  },
+  "elements": [
+    {
+      "name": "road_surface_slope",
+      "from": [ 0.0, 5.35, 0.0 ],
+      "to": [ 16.0, 6.35, 14.0 ],
+      "rotation": { "origin": [ 8.0, 5.35, 0.0 ], "axis": "x", "angle": -22.5 },
+      "faces": {
+        "up": { "uv": [ 0, 0, 16, 13 ], "texture": "#road" },
+        "down": { "uv": [ 0, 0, 16, 13 ], "texture": "#side" },
+        "north": { "uv": [ 0, 0, 16, 1 ], "texture": "#road" },
+        "south": { "uv": [ 0, 0, 16, 1 ], "texture": "#road" },
+        "east": { "uv": [ 0, 0, 13, 1 ], "texture": "#side" },
+        "west": { "uv": [ 0, 0, 13, 1 ], "texture": "#side" }
+      }
+    },
+    {
+      "name": "road_surface_ext",
+      "from": [ 0.0, 9.7, 12.5 ],
+      "to": [ 16.0, 10.7, 16.5 ],
+      "faces": {
+        "up": { "uv": [ 0, 12, 16, 16 ], "texture": "#road" },
+        "down": { "uv": [ 0, 12, 16, 16 ], "texture": "#side" },
+        "north": { "uv": [ 0, 0, 16, 1 ], "texture": "#road" },
+        "south": { "uv": [ 0, 0, 16, 1 ], "texture": "#road" },
+        "east": { "uv": [ 12, 0, 16, 1 ], "texture": "#side" },
+        "west": { "uv": [ 12, 0, 16, 1 ], "texture": "#side" }
+      }
+    }
+  ]
+}

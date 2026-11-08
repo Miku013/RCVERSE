@@ -27,6 +27,11 @@ public class DroneGeoRenderer extends GeoEntityRenderer<DroneEntity> {
     public void render(DroneEntity entity, float entityYaw, float partialTick, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
         poseStack.pushPose();
 
+        float configScale = com.microdrone.mod.config.drone.DroneConfigManager.getConfig(entity.getVariantId()).properties.scale;
+        if (configScale != 1.0f) {
+            poseStack.scale(configScale, configScale, configScale);
+        }
+
         float yaw = Mth.rotLerp(partialTick, entity.yRotO, entity.getYRot());
 
         // 移動速度に応じた傾き（ピッチ・ロール）の算出

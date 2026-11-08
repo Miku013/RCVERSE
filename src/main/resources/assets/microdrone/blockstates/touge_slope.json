@@ -1,0 +1,254 @@
+{
+    "multipart":  [
+                      {
+                          "when":  {
+                                       "segment":  "lower",
+                                       "facing":  "north"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/touge_slope_lower",
+                                        "y":  180
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "facing":  "north",
+                                       "left":  "true",
+                                       "segment":  "lower"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/touge_slope_left_lower",
+                                        "y":  180
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "facing":  "north",
+                                       "right":  "true",
+                                       "segment":  "lower"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/touge_slope_right_lower",
+                                        "y":  180
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "segment":  "lower",
+                                       "facing":  "south"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/touge_slope_lower"
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "facing":  "south",
+                                       "left":  "true",
+                                       "segment":  "lower"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/touge_slope_left_lower"
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "facing":  "south",
+                                       "right":  "true",
+                                       "segment":  "lower"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/touge_slope_right_lower"
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "segment":  "lower",
+                                       "facing":  "west"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/touge_slope_lower",
+                                        "y":  90
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "facing":  "west",
+                                       "left":  "true",
+                                       "segment":  "lower"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/touge_slope_left_lower",
+                                        "y":  90
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "facing":  "west",
+                                       "right":  "true",
+                                       "segment":  "lower"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/touge_slope_right_lower",
+                                        "y":  90
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "segment":  "lower",
+                                       "facing":  "east"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/touge_slope_lower",
+                                        "y":  270
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "facing":  "east",
+                                       "left":  "true",
+                                       "segment":  "lower"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/touge_slope_left_lower",
+                                        "y":  270
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "facing":  "east",
+                                       "right":  "true",
+                                       "segment":  "lower"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/touge_slope_right_lower",
+                                        "y":  270
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "segment":  "upper",
+                                       "facing":  "north"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/touge_slope_upper",
+                                        "y":  180
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "facing":  "north",
+                                       "left":  "true",
+                                       "segment":  "upper"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/touge_slope_left_upper",
+                                        "y":  180
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "facing":  "north",
+                                       "right":  "true",
+                                       "segment":  "upper"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/touge_slope_right_upper",
+                                        "y":  180
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "segment":  "upper",
+                                       "facing":  "south"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/touge_slope_upper"
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "facing":  "south",
+                                       "left":  "true",
+                                       "segment":  "upper"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/touge_slope_left_upper"
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "facing":  "south",
+                                       "right":  "true",
+                                       "segment":  "upper"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/touge_slope_right_upper"
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "segment":  "upper",
+                                       "facing":  "west"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/touge_slope_upper",
+                                        "y":  90
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "facing":  "west",
+                                       "left":  "true",
+                                       "segment":  "upper"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/touge_slope_left_upper",
+                                        "y":  90
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "facing":  "west",
+                                       "right":  "true",
+                                       "segment":  "upper"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/touge_slope_right_upper",
+                                        "y":  90
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "segment":  "upper",
+                                       "facing":  "east"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/touge_slope_upper",
+                                        "y":  270
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "facing":  "east",
+                                       "left":  "true",
+                                       "segment":  "upper"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/touge_slope_left_upper",
+                                        "y":  270
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "facing":  "east",
+                                       "right":  "true",
+                                       "segment":  "upper"
+                                   },
+                          "apply":  {
+                                        "model":  "microdrone:block/touge_slope_right_upper",
+                                        "y":  270
+                                    }
+                      }
+                  ]
+}

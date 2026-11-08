@@ -1,0 +1,9 @@
+{
+  "variants": {
+    "facing=north": { "model": "microdrone:block/vertical_loop" },
+    "facing=east":  { "model": "microdrone:block/vertical_loop", "y": 90 },
+    "facing=south": { "model": "microdrone:block/vertical_loop", "y": 180 },
+    "facing=west":  { "model": "microdrone:block/vertical_loop", "y": 270 }
+  }
+}
+

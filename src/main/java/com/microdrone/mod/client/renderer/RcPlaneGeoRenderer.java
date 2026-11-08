@@ -20,8 +20,9 @@ public class RcPlaneGeoRenderer extends GeoEntityRenderer<RcPlaneEntity> {
     public void render(RcPlaneEntity entity, float entityYaw, float partialTick, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
         poseStack.pushPose();
 
-        // RCプレーンスケール（1/4スケール、模型飛行機サイズ）
-        poseStack.scale(0.25F, 0.25F, 0.25F);
+        // RCプレーンスケール（1/4スケール、模型飛行機サイズ）+ 外部コンフィグ倍率適用
+        float configScale = com.microdrone.mod.config.plane.PlaneConfigManager.getConfig(entity.getVariantId()).properties.scale;
+        poseStack.scale(0.25F * configScale, 0.25F * configScale, 0.25F * configScale);
 
         float yaw = Mth.rotLerp(partialTick, entity.yRotO, entity.getYRot());
         float pitch = Mth.rotLerp(partialTick, entity.prevPitchAngle, entity.getPitchAngle());

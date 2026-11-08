@@ -65,14 +65,19 @@ public class RcTankGeoModel extends GeoModel<RcTankEntity> {
         if (wheelsR != null) { wheelsR.setRotX(0.0f); wheelsR.setRotY(rightRad); }
 
         // 2. 砲塔旋回（モデル側で180度回転させた初期基準 rotation: [0, 180, 0] を反映）
-        float turretYawRad = animatable.getTurretYaw() * Mth.DEG_TO_RAD;
+        TankConfig config = TankConfigManager.getConfig(animatable.getVariantId());
+        boolean invertPitch = config != null && config.properties != null && config.properties.invertCannonPitch;
+        boolean invertYaw = config != null && config.properties != null && config.properties.invertTurretYaw;
+
+        float turretYawDeg = animatable.getTurretYaw() * (invertYaw ? -1.0f : 1.0f);
+        float turretYawRad = turretYawDeg * Mth.DEG_TO_RAD;
         GeoBone turret = this.getAnimationProcessor().getBone("turret");
         if (turret != null) {
             turret.setRotY((float) Math.PI - turretYawRad);
         }
 
-        // 3. 砲身仰俯角（砲塔が180度回転したためピッチ軸の符号を適合）
-        float pitchDeg = animatable.getCannonPitch();
+        // 3. 砲身仰俯角（設定により上下方向の反転が可能）
+        float pitchDeg = animatable.getCannonPitch() * (invertPitch ? -1.0f : 1.0f);
         GeoBone cannon = this.getAnimationProcessor().getBone("cannon");
         if (cannon != null) {
             cannon.setRotX(pitchDeg * Mth.DEG_TO_RAD);

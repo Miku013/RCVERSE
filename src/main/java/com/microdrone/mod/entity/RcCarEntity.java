@@ -1,7 +1,10 @@
 package com.microdrone.mod.entity;
 
 import com.microdrone.mod.MicroDroneMod;
+import com.microdrone.mod.block.ModBlocks;
+import com.microdrone.mod.block.VerticalLoopBlock;
 import com.microdrone.mod.block.miniature.MiniaturePlacementBlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
 import com.microdrone.mod.block.miniature.MiniaturePlacementData;
 import com.microdrone.mod.item.DroneBatteryItem;
 import com.microdrone.mod.item.DroneMotorItem;
@@ -47,45 +50,51 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     private final AnimatableInstanceCache geoCache = GeckoLibUtil.createInstanceCache(this);
 
     // === 同期用 EntityData ===
-    private static final EntityDataAccessor<Boolean> DATA_HAS_BATTERY =
-            SynchedEntityData.defineId(RcCarEntity.class, EntityDataSerializers.BOOLEAN);
-    private static final EntityDataAccessor<Integer> DATA_BATTERY_REMAINING =
-            SynchedEntityData.defineId(RcCarEntity.class, EntityDataSerializers.INT);
-    private static final EntityDataAccessor<Integer> DATA_BATTERY_MAX =
-            SynchedEntityData.defineId(RcCarEntity.class, EntityDataSerializers.INT);
-    private static final EntityDataAccessor<ItemStack> DATA_INSTALLED_BATTERY =
-            SynchedEntityData.defineId(RcCarEntity.class, EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<Boolean> DATA_HAS_BATTERY = SynchedEntityData.defineId(RcCarEntity.class,
+            EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Integer> DATA_BATTERY_REMAINING = SynchedEntityData
+            .defineId(RcCarEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> DATA_BATTERY_MAX = SynchedEntityData.defineId(RcCarEntity.class,
+            EntityDataSerializers.INT);
+    private static final EntityDataAccessor<ItemStack> DATA_INSTALLED_BATTERY = SynchedEntityData
+            .defineId(RcCarEntity.class, EntityDataSerializers.ITEM_STACK);
 
-    private static final EntityDataAccessor<Integer> DATA_MOTOR_TIER =
-            SynchedEntityData.defineId(RcCarEntity.class, EntityDataSerializers.INT);
-    private static final EntityDataAccessor<ItemStack> DATA_INSTALLED_MOTOR =
-            SynchedEntityData.defineId(RcCarEntity.class, EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<Integer> DATA_MOTOR_TIER = SynchedEntityData.defineId(RcCarEntity.class,
+            EntityDataSerializers.INT);
+    private static final EntityDataAccessor<ItemStack> DATA_INSTALLED_MOTOR = SynchedEntityData
+            .defineId(RcCarEntity.class, EntityDataSerializers.ITEM_STACK);
 
     // 車輪回転角 & ステアリング操舵角（クライアント描画用）
-    private static final EntityDataAccessor<Float> DATA_WHEEL_ROTATION =
-            SynchedEntityData.defineId(RcCarEntity.class, EntityDataSerializers.FLOAT);
-    private static final EntityDataAccessor<Float> DATA_STEER_ANGLE =
-            SynchedEntityData.defineId(RcCarEntity.class, EntityDataSerializers.FLOAT);
-    private static final EntityDataAccessor<Float> DATA_ROLL_ANGLE =
-            SynchedEntityData.defineId(RcCarEntity.class, EntityDataSerializers.FLOAT);
-    private static final EntityDataAccessor<Float> DATA_PITCH_ANGLE =
-            SynchedEntityData.defineId(RcCarEntity.class, EntityDataSerializers.FLOAT);
-    private static final EntityDataAccessor<Float> DATA_SUSP_FL =
-            SynchedEntityData.defineId(RcCarEntity.class, EntityDataSerializers.FLOAT);
-    private static final EntityDataAccessor<Float> DATA_SUSP_FR =
-            SynchedEntityData.defineId(RcCarEntity.class, EntityDataSerializers.FLOAT);
-    private static final EntityDataAccessor<Float> DATA_SUSP_RL =
-            SynchedEntityData.defineId(RcCarEntity.class, EntityDataSerializers.FLOAT);
-    private static final EntityDataAccessor<Float> DATA_SUSP_RR =
-            SynchedEntityData.defineId(RcCarEntity.class, EntityDataSerializers.FLOAT);
-    private static final EntityDataAccessor<Float> DATA_CUSTOM_WEIGHT =
-            SynchedEntityData.defineId(RcCarEntity.class, EntityDataSerializers.FLOAT);
-    private static final EntityDataAccessor<Integer> DATA_RESYNC_BLINK_TICKS =
-            SynchedEntityData.defineId(RcCarEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Float> DATA_WHEEL_ROTATION = SynchedEntityData.defineId(RcCarEntity.class,
+            EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_STEER_ANGLE = SynchedEntityData.defineId(RcCarEntity.class,
+            EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_ROLL_ANGLE = SynchedEntityData.defineId(RcCarEntity.class,
+            EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_PITCH_ANGLE = SynchedEntityData.defineId(RcCarEntity.class,
+            EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_SUSP_FL = SynchedEntityData.defineId(RcCarEntity.class,
+            EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_SUSP_FR = SynchedEntityData.defineId(RcCarEntity.class,
+            EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_SUSP_RL = SynchedEntityData.defineId(RcCarEntity.class,
+            EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_SUSP_RR = SynchedEntityData.defineId(RcCarEntity.class,
+            EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_CUSTOM_WEIGHT = SynchedEntityData.defineId(RcCarEntity.class,
+            EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Integer> DATA_RESYNC_BLINK_TICKS = SynchedEntityData
+            .defineId(RcCarEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<String> DATA_VARIANT_ID = SynchedEntityData.defineId(RcCarEntity.class,
+            EntityDataSerializers.STRING);
+    private static final EntityDataAccessor<Boolean> DATA_IN_LOOP = SynchedEntityData.defineId(RcCarEntity.class,
+            EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Float> DATA_LOOP_PROGRESS = SynchedEntityData.defineId(RcCarEntity.class,
+            EntityDataSerializers.FLOAT);
 
     // 操縦者UUID
     private UUID pilotUUID = null;
-    private double startX, startY, startZ;
+    private double startX = Double.NaN, startY = Double.NaN, startZ = Double.NaN;
     private UUID dummyEntityUUID = null;
     private RcPilotDummyEntity dummyEntityRef = null;
     private ChunkPos lastChunkPos = null;
@@ -96,8 +105,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     private double accumulatedDistance = 0.0;
 
     // 操作入力（サーバー/クライアント共用）
-    public float inputForward = 0.0f;  // 前進(+1.0) / 後退(-1.0)
-    public float inputSteer = 0.0f;    // 左ステアリング(-1.0) / 右ステアリング(+1.0)
+    public float inputForward = 0.0f; // 前進(+1.0) / 後退(-1.0)
+    public float inputSteer = 0.0f; // 左ステアリング(-1.0) / 右ステアリング(+1.0)
 
     // 内部物理パラメータ
     private float currentSpeed = 0.0f;
@@ -115,14 +124,14 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     // ドリフト走行パラメータ
     // Mario Kart Drift System
     public boolean inputHandbrake = false; // Space key: Drift button
-    private Vec3 carVelocity = Vec3.ZERO;  // Inertial movement vector
-    private int driftDirection = 0;        // 0: normal, -1: drift left, +1: drift right
-    private int driftTicks = 0;            // Drift duration ticks
-    private int turboBoostTicks = 0;       // Mini-turbo boost remaining ticks
-    private float rollAngle = 0.0f;        // Body roll tilt angle (degrees)
-    public float prevRollAngle = 0.0f;     // Previous tick roll for smooth lerp
-    private float pitchAngle = 0.0f;       // Body pitch tilt angle (degrees)
-    public float prevPitchAngle = 0.0f;    // Previous tick pitch for smooth lerp
+    private Vec3 carVelocity = Vec3.ZERO; // Inertial movement vector
+    private int driftDirection = 0; // 0: normal, -1: drift left, +1: drift right
+    private int driftTicks = 0; // Drift duration ticks
+    private int turboBoostTicks = 0; // Mini-turbo boost remaining ticks
+    private float rollAngle = 0.0f; // Body roll tilt angle (degrees)
+    public float prevRollAngle = 0.0f; // Previous tick roll for smooth lerp
+    private float pitchAngle = 0.0f; // Body pitch tilt angle (degrees)
+    public float prevPitchAngle = 0.0f; // Previous tick pitch for smooth lerp
 
     // 4輪サスペンションのストローク伸縮量 (ブロック単位, 正=縮み, 負=伸び)
     private float suspFL = 0.0f;
@@ -131,27 +140,84 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     private float suspRR = 0.0f;
     private boolean wheelGrounded = false; // 仮想サスペンション（タイヤ）の接地判定
     private boolean wasAirborneLastTick = false; // 前tick空中フラグ（着地衝撃ダンパー検知用）
-    private boolean onSlope = false;       // スロープ斜面走行中フラグ
-    private double slopeClimbDot = 0.0;    // スロープ登り方向と進行方向の内積
-    private double slopeSinTheta = 0.0;    // スロープ斜面法線から算出した傾斜sin値 (1段目約0.38, 2段目約0.71)
-    private int collisionCooldown = 0;    // 壁衝突SEの連打防止クールダウン (ticks)
-    private int jumpCooldown = 0;         // ジャンプ台連続発動防止クールダウン (ticks)
-    private int jumpAirborneTicks = 0;    // ジャンプ空中飛行保護タイマー (地面吸着・水平化を防止)
-    private int resyncBlinkTicks = 0;     // レスキュー位置復帰点滅タイマー (ticks)
+    private boolean onSlope = false; // スロープ斜面走行中フラグ
+    private double slopeClimbDot = 0.0; // スロープ登り方向と進行方向の内積
+    private double slopeSinTheta = 0.0; // スロープ斜面法線から算出した傾斜sin値 (1段目約0.38, 2段目約0.71)
+    private int collisionCooldown = 0; // 壁衝突SEの連打防止クールダウン (ticks)
+    private int jumpCooldown = 0; // ジャンプ台連続発動防止クールダウン (ticks)
+    private int jumpAirborneTicks = 0; // ジャンプ空中飛行保護タイマー (地面吸着・水平化を防止)
+    private int resyncBlinkTicks = 0; // レスキュー位置復帰点滅タイマー (ticks)
 
     // レース計測システム (Step 1)
-    private int currentLap = 0;                  // 0 = 未スタート, 1 = 1周目...
-    private long lapStartTimeMs = 0;             // 現ラップ開始時刻 (ms)
-    private long bestLapTimeMs = 0;              // 自己ベストラップタイム (ms)
-    private BlockPos lastCheckpointPos = null;   // 直前に通過したチェックポイント座標
-    private int lastCheckpointSlot = -1;         // 直前に通過したスロットID
-    private int checkpointCooldown = 0;          // 多重反応防止クールダウン (ticks)
-    private int passedCheckpointsInLap = 0;      // 現ラップ内の通過チェックポイント数
+    private int currentLap = 0; // 0 = 未スタート, 1 = 1周目...
+    private long lapStartTimeMs = 0; // 現ラップ開始時刻 (ms)
+    private long bestLapTimeMs = 0; // 自己ベストラップタイム (ms)
+    private BlockPos lastCheckpointPos = null; // 直前に通過したチェックポイント座標
+    private int lastCheckpointSlot = -1; // 直前に通過したスロットID
+    private int checkpointCooldown = 0; // 多重反応防止クールダウン (ticks)
+    private int passedCheckpointsInLap = 0; // 現ラップ内の通過チェックポイント数
+
+    // クライアント主導位置同期（ステップ2）
+    private boolean clientSyncActive = false;
+    private int clientSyncTimeout = 0;
+
+    // 360°縦ループ（Loop-the-Loop）完全自由物理ステート
+    private boolean onLoop = false;
+    private boolean inLoop = false;
+    private float loopProgress = 0.0f; // 進行角度 (0.0f 〜 360.0f 度)
+    private float loopAngle = 0.0f;
+    private BlockPos loopBlockPos = null;
+    private Direction loopFacing = Direction.NORTH;
+
+    public boolean isInLoop() {
+        return this.inLoop;
+    }
+
+    public float getLoopProgress() {
+        return this.loopProgress;
+    }
+
+    public float getCurrentSpeed() {
+        return this.currentSpeed;
+    }
+
+    /**
+     * クライアント主導位置同期 (ステップ2: サーバー追従)
+     * 操縦者クライアントが手元で計算した正規の位置・速度・Yawを受け取り、サーバー側の車両を追従させる。
+     */
+    public void applyClientPositionSync(double cx, double cy, double cz, float speed, float yaw) {
+        if (this.level().isClientSide) return;
+
+        // サーバー側の現在位置との距離
+        double dx = cx - this.getX();
+        double dy = cy - this.getY();
+        double dz = cz - this.getZ();
+        double movedDist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+        // マルチプレイ不正対策（簡易バリデーション）:
+        // 1 Tickの移動距離が「最大許容速度(約1.5ブロック) × 2.0」を大幅に超える異常ワープでなければ承認
+        if (movedDist <= 3.0 || !this.clientSyncActive) {
+            this.setPos(cx, cy, cz);
+            this.setYRot(yaw);
+            this.yRotO = yaw;
+            this.currentSpeed = speed;
+
+            float yawRad = yaw * Mth.DEG_TO_RAD;
+            double driveX = -Mth.sin(yawRad);
+            double driveZ = Mth.cos(yawRad);
+            this.carVelocity = new Vec3(driveX * speed, this.getDeltaMovement().y, driveZ * speed);
+
+            this.clientSyncActive = true;
+            this.clientSyncTimeout = 5; // 5 Tick以上パケットが届かなければ自律物理へ安全フォールバック
+        } else {
+            MicroDroneMod.LOGGER.warn("[CLIENT_SYNC_REJECTED] Vehicle: {}, MovedDist: {}m exceeds limit!", this.getUUID(), String.format("%.2f", movedDist));
+        }
+    }
 
     public RcCarEntity(EntityType<?> entityType, Level level) {
         super(entityType, level);
         this.blocksBuilding = true;
-        
+
     }
 
     public void setLocallyControlled(boolean locallyControlled) {
@@ -180,11 +246,23 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             double dy = y - this.getY();
             double dz = z - this.getZ();
             double distSq = dx * dx + dy * dy + dz * dz;
+            double deltaDist = Math.sqrt(distSq);
+
+            // ズレが0.3m(30cm)を超えた場合、または20tick(1秒)毎に同期ズレ量を詳細ロギング
+            if (deltaDist > 0.30 || this.tickCount % 20 == 0) {
+                MicroDroneMod.LOGGER.info(
+                        "[SYNC_DELTA] Tick: {}, DeltaDist: {}m, ClientPos: [{}, {}, {}], ServerPos: [{}, {}, {}], ClientYaw: {}, ServerYaw: {}, Grounded: {}, Drift: {}",
+                        this.tickCount, String.format("%.3f", deltaDist),
+                        String.format("%.3f", this.getX()), String.format("%.3f", this.getY()), String.format("%.3f", this.getZ()),
+                        String.format("%.3f", x), String.format("%.3f", y), String.format("%.3f", z),
+                        String.format("%.2f", this.getYRot()), String.format("%.2f", yRot),
+                        (this.onGround() || this.wheelGrounded), this.driftDirection);
+            }
 
             // 3.5m (distSq > 12.25) 超過の重大な位置ズレ発生時 (壁抜け・スタック等の真の事故)、かつ非点滅時にレスキュー復帰発動
             // ※通常走行時の自然なネットワーク通信遅延 (1.5m〜2.0m) では誤作動しない安全な適正閾値
             if (distSq > 12.25 && this.resyncBlinkTicks <= 0) {
-                triggerRescueResync(x, y, z, yRot, Math.sqrt(distSq));
+                triggerRescueResync(x, y, z, yRot, deltaDist, "EXCESSIVE_DISTANCE_DESYNC (>3.5m)");
             }
             // 自プレイヤー操縦中はソフト引き寄せターゲットを設定しない
             this.hasServerTarget = false;
@@ -196,12 +274,16 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     /**
      * サーバーとクライアントの位置が大きく乖離した際の強制レスキュー同期＆点滅演出
      */
-    public void triggerRescueResync(double serverX, double serverY, double serverZ, float serverYRot, double deltaDist) {
-        MicroDroneMod.LOGGER.warn("[RESCUE_RESYNC] Vehicle: {}, ClientPos: [{}, {}, {}] -> ServerPos: [{}, {}, {}], Delta: {}m",
-                this.getUUID(),
-                String.format("%.2f", this.getX()), String.format("%.2f", this.getY()), String.format("%.2f", this.getZ()),
-                String.format("%.2f", serverX), String.format("%.2f", serverY), String.format("%.2f", serverZ),
-                String.format("%.2f", deltaDist));
+    public void triggerRescueResync(double serverX, double serverY, double serverZ, float serverYRot,
+            double deltaDist, String reason) {
+        MicroDroneMod.LOGGER.warn(
+                "[RESCUE_RESYNC] Reason: {}, Vehicle: {}, ClientPos: [{}, {}, {}] -> ServerPos: [{}, {}, {}], Delta: {}m, Grounded: {}, Chunk: [{}, {}]",
+                reason, this.getUUID(),
+                String.format("%.3f", this.getX()), String.format("%.3f", this.getY()),
+                String.format("%.3f", this.getZ()),
+                String.format("%.3f", serverX), String.format("%.3f", serverY), String.format("%.3f", serverZ),
+                String.format("%.3f", deltaDist), (this.onGround() || this.wheelGrounded),
+                this.chunkPosition().x, this.chunkPosition().z);
 
         // 1. サーバー正規座標への瞬間スナップ
         this.setPos(serverX, serverY, serverZ);
@@ -257,6 +339,9 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         builder.define(DATA_SUSP_RR, 0.0f);
         builder.define(DATA_CUSTOM_WEIGHT, 1.10f);
         builder.define(DATA_RESYNC_BLINK_TICKS, 0);
+        builder.define(DATA_VARIANT_ID, "default");
+        builder.define(DATA_IN_LOOP, false);
+        builder.define(DATA_LOOP_PROGRESS, 0.0f);
     }
 
     @Override
@@ -318,7 +403,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
 
         RcVehicleManager.registerPiloting(player.getUUID(), this);
 
-        PacketDistributor.sendToPlayer(player, new DronePilotStatePayload(this.getId(), true, this.startX, this.startY, this.startZ));
+        PacketDistributor.sendToPlayer(player,
+                new DronePilotStatePayload(this.getId(), true, this.startX, this.startY, this.startZ));
         player.sendSystemMessage(Component.translatable("message.microdrone.pilot_start"));
 
         this.lastChunkPos = new ChunkPos(this.blockPosition());
@@ -346,25 +432,43 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             }
             if (targetDummyUUID != null) {
                 Entity dummy = serverLevel.getEntity(targetDummyUUID);
-                if (dummy != null) dummy.discard();
+                if (dummy != null)
+                    dummy.discard();
             }
 
             player.setCamera(player);
             player.setInvisible(false);
-            player.teleportTo(this.startX, this.startY, this.startZ);
+
+            boolean hasValidStartPos = !Double.isNaN(this.startX) &&
+                    !(Math.abs(this.startX) < 0.001 && Math.abs(this.startY) < 0.001 && Math.abs(this.startZ) < 0.001);
+            if (hasValidStartPos) {
+                player.teleportTo(this.startX, this.startY, this.startZ);
+            } else {
+                MicroDroneMod.LOGGER.warn("[SERVER] [RC_CAR] Invalid or origin start position ({}, {}, {}) on stopPiloting. Retaining player position at {}",
+                        this.startX, this.startY, this.startZ, player.position());
+            }
 
             if (targetDummyUUID != null) {
                 Entity dummyRetry = serverLevel.getEntity(targetDummyUUID);
-                if (dummyRetry != null) dummyRetry.discard();
+                if (dummyRetry != null)
+                    dummyRetry.discard();
             }
 
-            PacketDistributor.sendToPlayer(player, new DronePilotStatePayload(this.getId(), false, this.startX, this.startY, this.startZ));
+            double sendX = hasValidStartPos ? this.startX : player.getX();
+            double sendY = hasValidStartPos ? this.startY : player.getY();
+            double sendZ = hasValidStartPos ? this.startZ : player.getZ();
+
+            PacketDistributor.sendToPlayer(player,
+                    new DronePilotStatePayload(this.getId(), false, sendX, sendY, sendZ));
             player.sendSystemMessage(Component.translatable("message.microdrone.pilot_stop"));
 
             com.microdrone.mod.chunk.DroneChunkManager.releaseDroneChunks(player, this);
 
             RcVehicleManager.unregisterPiloting(player.getUUID());
             this.pilotUUID = null;
+            this.startX = Double.NaN;
+            this.startY = Double.NaN;
+            this.startZ = Double.NaN;
             this.inputForward = 0.0f;
             this.inputSteer = 0.0f;
 
@@ -399,7 +503,15 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         }
 
         if (!this.level().isClientSide) {
-            ServerPlayer pilot = this.pilotUUID != null ? (ServerPlayer) this.level().getPlayerByUUID(this.pilotUUID) : null;
+            if (this.clientSyncTimeout > 0) {
+                this.clientSyncTimeout--;
+                if (this.clientSyncTimeout == 0) {
+                    this.clientSyncActive = false;
+                }
+            }
+
+            ServerPlayer pilot = this.pilotUUID != null ? (ServerPlayer) this.level().getPlayerByUUID(this.pilotUUID)
+                    : null;
 
             if (pilot != null) {
                 // 電波距離監視 (250m)
@@ -420,7 +532,9 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
 
                 // Battery empty failsafe (checked every server tick)
                 if (!this.hasBattery() || this.getBatteryRemaining() <= 0) {
-                    MicroDroneMod.LOGGER.warn("[SERVER] [BATTERY_EMPTY_FAILSAFE] Car {} ran out of battery. Stopping piloting.", this.getUUID());
+                    MicroDroneMod.LOGGER.warn(
+                            "[SERVER] [BATTERY_EMPTY_FAILSAFE] Car {} ran out of battery. Stopping piloting.",
+                            this.getUUID());
                     pilot.sendSystemMessage(Component.translatable("message.microdrone.battery_empty_failsafe"));
                     this.inputForward = 0.0f;
                     this.inputSteer = 0.0f;
@@ -428,7 +542,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                     return;
                 }
 
-// プレイヤーは立ち位置に静止
+                // プレイヤーは立ち位置に静止
             }
 
             // サーバー側物理処理
@@ -437,15 +551,20 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             checkCheckpointSensors(pilot);
             long elapsedUs = (System.nanoTime() - startNanos) / 1000;
             if (elapsedUs > 5000) {
-                MicroDroneMod.LOGGER.warn("[VEHICLE_TICK_TIME] SERVER car physics took {} us (>5ms) for {}", elapsedUs, this.getUUID());
+                MicroDroneMod.LOGGER.warn("[VEHICLE_TICK_TIME] SERVER car physics took {} us (>5ms) for {}", elapsedUs,
+                        this.getUUID());
             }
 
             if (this.tickCount % 20 == 0 && this.isPiloted()) {
-                MicroDroneMod.LOGGER.debug("[SERVER_POSITION] VehicleUUID: {}, Tick: {}, Pos: [{}, {}, {}], Speed: {}, Velocity: [{}, {}]",
-                        this.getUUID(), this.tickCount,
-                        String.format("%.2f", this.getX()), String.format("%.2f", this.getY()), String.format("%.2f", this.getZ()),
-                        String.format("%.2f", this.currentSpeed),
-                        String.format("%.2f", this.carVelocity.x), String.format("%.2f", this.carVelocity.z));
+                MicroDroneMod.LOGGER.info(
+                        "[SYNC_TRACK_SERVER] Tick: {}, Pos: [{}, {}, {}], Vel: [{}, {}, {}], Speed: {}, Yaw: {}, Pitch: {}, Grounded: {}, Chunk: [{}, {}]",
+                        this.tickCount,
+                        String.format("%.3f", this.getX()), String.format("%.3f", this.getY()), String.format("%.3f", this.getZ()),
+                        String.format("%.3f", this.carVelocity.x), String.format("%.3f", this.getDeltaMovement().y), String.format("%.3f", this.carVelocity.z),
+                        String.format("%.3f", this.currentSpeed),
+                        String.format("%.2f", this.getYRot()), String.format("%.2f", this.pitchAngle),
+                        (this.onGround() || this.wheelGrounded),
+                        this.chunkPosition().x, this.chunkPosition().z);
             }
 
             // クライアント同期用角度・サスペンション
@@ -457,6 +576,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             this.entityData.set(DATA_SUSP_FR, this.suspFR);
             this.entityData.set(DATA_SUSP_RL, this.suspRL);
             this.entityData.set(DATA_SUSP_RR, this.suspRR);
+            this.entityData.set(DATA_IN_LOOP, this.inLoop);
+            this.entityData.set(DATA_LOOP_PROGRESS, this.loopProgress);
         } else {
             // クライアント側処理
             if (this.locallyControlled) {
@@ -466,15 +587,21 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
 
                 long elapsedUs = (System.nanoTime() - startNanos) / 1000;
                 if (elapsedUs > 5000) {
-                    MicroDroneMod.LOGGER.warn("[VEHICLE_TICK_TIME] CLIENT car physics took {} us (>5ms) for {}", elapsedUs, this.getUUID());
+                    MicroDroneMod.LOGGER.warn("[VEHICLE_TICK_TIME] CLIENT car physics took {} us (>5ms) for {}",
+                            elapsedUs, this.getUUID());
                 }
 
                 if (this.tickCount % 20 == 0) {
-                    MicroDroneMod.LOGGER.debug("[CLIENT_POSITION] VehicleUUID: {}, Tick: {}, Pos: [{}, {}, {}], Speed: {}, Velocity: [{}, {}]",
-                            this.getUUID(), this.tickCount,
-                            String.format("%.2f", this.getX()), String.format("%.2f", this.getY()), String.format("%.2f", this.getZ()),
-                            String.format("%.2f", this.currentSpeed),
-                            String.format("%.2f", this.carVelocity.x), String.format("%.2f", this.carVelocity.z));
+                    MicroDroneMod.LOGGER.info(
+                            "[SYNC_TRACK_CLIENT] Tick: {}, Pos: [{}, {}, {}], Vel: [{}, {}, {}], Speed: {}, Yaw: {}, Pitch: {}, Grounded: {}, Chunk: [{}, {}], DriftDir: {}",
+                            this.tickCount,
+                            String.format("%.3f", this.getX()), String.format("%.3f", this.getY()), String.format("%.3f", this.getZ()),
+                            String.format("%.3f", this.carVelocity.x), String.format("%.3f", this.getDeltaMovement().y), String.format("%.3f", this.carVelocity.z),
+                            String.format("%.3f", this.currentSpeed),
+                            String.format("%.2f", this.getYRot()), String.format("%.2f", this.pitchAngle),
+                            (this.onGround() || this.wheelGrounded),
+                            this.chunkPosition().x, this.chunkPosition().z,
+                            this.driftDirection);
                 }
             } else {
                 // 他プレイヤーが操縦中または放置中はサーバー同期値を使用
@@ -486,25 +613,32 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                 this.suspFR = this.entityData.get(DATA_SUSP_FR);
                 this.suspRL = this.entityData.get(DATA_SUSP_RL);
                 this.suspRR = this.entityData.get(DATA_SUSP_RR);
+                this.inLoop = this.entityData.get(DATA_IN_LOOP);
+                this.loopProgress = this.entityData.get(DATA_LOOP_PROGRESS);
             }
         }
     }
 
     private void tickCarPhysics() {
         DroneMotorItem motor = getActiveMotorItem();
-        // 車用に速度を 1/4 に調整 (blocks/tick)
-        // Tier 1 (0.35) -> 0.19 blocks/tick (約 3.8 m/s = 14 km/h)
-        // Tier 4 (0.95) -> 0.52 blocks/tick (約 10.4 m/s = 38 km/h)
-        double maxSpeed = motor.getMaxHorizontalSpeed() * 0.55;
-        double accel = 0.025 + (motor.getTier() * 0.008); // 速度に合わせた滑らかで扱いやすい加速
+        com.microdrone.mod.config.car.CarConfig carConfig = com.microdrone.mod.config.car.CarConfigManager
+                .getConfig(getVariantId());
+        com.microdrone.mod.config.car.CarConfig.CarProperties props = carConfig.properties;
+
+        // 車用に速度を 1/4 に調整 (blocks/tick) + 外部コンフィグ倍率適用
+        double maxSpeed = motor.getMaxHorizontalSpeed() * 0.55 * props.maxSpeedMultiplier;
+        double accel = (0.025 + (motor.getTier() * 0.008)) * props.accelMultiplier; // 速度に合わせた滑らかで扱いやすい加速
         double friction = 0.90; // 地面摩擦減速
 
         // ステアリング操舵 (最大35度)
-        float targetSteer = this.inputSteer * 35.0f;
+        float steerMult = (props.invertSteer ? -1.0f : 1.0f) * props.turnSpeedMultiplier;
+        float targetSteer = this.inputSteer * 35.0f * steerMult;
         this.steerAngle = Mth.lerp(0.40f, this.steerAngle, targetSteer);
 
         // ③ 接触時の出力抑制 (壁・障害物に接触/密着している状態での前進アクセルを大幅カットし、ゴリ押し抜けを完全防止)
-        boolean wallAhead = this.horizontalCollision || (this.inputForward > 0.05f && isObstacleAhead(0.12));
+        // ※ スロープ斜面走行中や縦ループ走行中・突入時は段差との誤接触を防ぐため除外
+        boolean wallAhead = !this.onSlope && !this.onLoop && !this.inLoop
+                && (this.horizontalCollision || (this.inputForward > 0.05f && isObstacleAhead(0.12)));
         if (wallAhead && this.inputForward > 0.05f) {
             this.currentSpeed = Math.min(this.currentSpeed, 0.015f); // ほぼ停止速度に制限
             accel *= 0.08; // 加速を90%以上カット
@@ -515,7 +649,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         if (this.inputForward > 0.05f) {
             if (this.currentSpeed < -0.01f) {
                 this.currentSpeed += (float) (accel * 2.5f);
-                if (this.currentSpeed > 0.0f) this.currentSpeed = 0.0f;
+                if (this.currentSpeed > 0.0f)
+                    this.currentSpeed = 0.0f;
             } else {
                 float forwardAccel = (float) (accel * this.inputForward);
                 if (this.driftDirection != 0) {
@@ -526,7 +661,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         } else if (this.inputForward < -0.05f) {
             if (this.currentSpeed > 0.01f) {
                 this.currentSpeed -= (float) (accel * 2.5f);
-                if (this.currentSpeed < 0.0f) this.currentSpeed = 0.0f;
+                if (this.currentSpeed < 0.0f)
+                    this.currentSpeed = 0.0f;
             } else {
                 this.currentSpeed += (float) (accel * this.inputForward * 0.65f);
             }
@@ -560,7 +696,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                                 SoundEvents.ARMOR_EQUIP_LEATHER.value(), SoundSource.PLAYERS, 12.0F, 1.8F);
                     }
                 } else if (this.inputSteer < -0.05f) {
-                    this.driftDirection = 1;  // D key: Drift Right
+                    this.driftDirection = 1; // D key: Drift Right
                     this.driftTicks = 0;
                     if (this.onGround() || this.wheelGrounded) {
                         Vec3 cur = this.getDeltaMovement();
@@ -605,25 +741,30 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         float inSteerAmount = 0.0f; // 0.0 (none) to 1.0 (full in-steer)
 
         if (this.driftDirection == -1) {
-            // Left Drift: D key (<0) is Counter-Steer to Right! A key (>0) is In-Steer to Left
+            // Left Drift: D key (<0) is Counter-Steer to Right! A key (>0) is In-Steer to
+            // Left
             if (this.inputSteer < -0.05f) {
                 counterAmount = -this.inputSteer; // D key = Counter-steer
             } else if (this.inputSteer > 0.05f) {
-                inSteerAmount = this.inputSteer;  // A key = In-steer
+                inSteerAmount = this.inputSteer; // A key = In-steer
             }
         } else if (this.driftDirection == 1) {
-            // Right Drift: A key (>0) is Counter-Steer to Left! D key (<0) is In-Steer to Right
+            // Right Drift: A key (>0) is Counter-Steer to Left! D key (<0) is In-Steer to
+            // Right
             if (this.inputSteer > 0.05f) {
-                counterAmount = this.inputSteer;  // A key = Counter-steer
+                counterAmount = this.inputSteer; // A key = Counter-steer
             } else if (this.inputSteer < -0.05f) {
                 inSteerAmount = -this.inputSteer; // D key = In-steer
             }
         }
 
         // 4点サスペンション物理とピッチ・ロール姿勢角の計算 (サスペンションシステム)
+        // ※ 360°縦ループ走行中はループ専用のピッチ・ロール・吸着物理が担当するため完全スキップ！
         this.prevRollAngle = this.rollAngle;
         this.prevPitchAngle = this.pitchAngle;
-        updateSuspensionPhysics(counterAmount);
+        if (!this.onLoop && !this.inLoop) {
+            updateSuspensionPhysics(counterAmount);
+        }
 
         // === Steering / Yaw Turn ===
         if (this.driftDirection != 0 && Math.abs(this.currentSpeed) > 0.002f) {
@@ -644,7 +785,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             }
         }
 
-        // === Inertial drift movement vector synthesis (Power slide along counter-steer) ===
+        // === Inertial drift movement vector synthesis (Power slide along
+        // counter-steer) ===
         float yawRad = this.getYRot() * Mth.DEG_TO_RAD;
         double driveX = -Mth.sin(yawRad);
         double driveZ = Mth.cos(yawRad);
@@ -655,14 +797,18 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
 
         if (this.driftDirection != 0) {
             // Slide direction vector in the counter-steer direction:
-            // Left Drift (driftDirection == -1): Counter is Right -> slide direction is Right Vector (rightX, rightZ)
-            // Right Drift (driftDirection == 1): Counter is Left -> slide direction is Left Vector (-rightX, -rightZ)
+            // Left Drift (driftDirection == -1): Counter is Right -> slide direction is
+            // Right Vector (rightX, rightZ)
+            // Right Drift (driftDirection == 1): Counter is Left -> slide direction is Left
+            // Vector (-rightX, -rightZ)
             double counterSlideX = -rightX * this.driftDirection;
             double counterSlideZ = -rightZ * this.driftDirection;
 
-            // When counter-steering, the car strongly slides in the counter-steered direction!
+            // When counter-steering, the car strongly slides in the counter-steered
+            // direction!
             // Neutral: drive 0.60, slide 0.55
-            // Full Counter: drive 0.25, slide 1.05 -> Power slide laterally in counter-steer direction!
+            // Full Counter: drive 0.25, slide 1.05 -> Power slide laterally in
+            // counter-steer direction!
             // Full In-steer: drive 0.90, slide 0.20 -> Drives forward into turn
             double driveWeight = 0.60 - (counterAmount * 0.35) + (inSteerAmount * 0.30);
             double slideWeight = 0.55 + (counterAmount * 0.50) - (inSteerAmount * 0.35);
@@ -679,8 +825,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             this.carVelocity = new Vec3(
                     Mth.lerp(0.22, this.carVelocity.x, combinedX),
                     0,
-                    Mth.lerp(0.22, this.carVelocity.z, combinedZ)
-            );
+                    Mth.lerp(0.22, this.carVelocity.z, combinedZ));
         } else {
             if (Math.abs(this.currentSpeed) < 0.001f) {
                 this.carVelocity = Vec3.ZERO;
@@ -688,22 +833,114 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                 this.carVelocity = new Vec3(
                         Mth.lerp(0.55, this.carVelocity.x, driveX * this.currentSpeed),
                         0,
-                        Mth.lerp(0.55, this.carVelocity.z, driveZ * this.currentSpeed)
-                );
+                        Mth.lerp(0.55, this.carVelocity.z, driveZ * this.currentSpeed));
             }
+        }
+
+        // === クライアント主導位置同期（ステップ2: サーバー側処理） ===
+        // 操縦者クライアントが存在し、位置同期パケットを受信中の場合:
+        // 車両の座標・姿勢はクライアントで確定・スナップ済みのため、
+        // サーバー側での重複move(二重前進)や重複壁衝突(誤スタック)をスキップ
+        if (!this.level().isClientSide && this.clientSyncActive) {
+            // タイヤ回転の積算
+            this.wheelRotation += (this.currentSpeed * 144.0f);
+
+            // バッテリー消費のみ確実に実行
+            if (!this.installedBattery.isEmpty()) {
+                double moveDist = Math.abs(this.currentSpeed);
+                this.accumulatedDistance += moveDist;
+                if (this.accumulatedDistance >= 1.0) {
+                    int drain = (int) this.accumulatedDistance;
+                    this.accumulatedDistance -= drain;
+                    if (this.installedBattery.getItem() instanceof DroneBatteryItem batteryItem) {
+                        batteryItem.consumeFlightDistance(this.installedBattery, drain);
+                        updateBatterySyncData();
+                    }
+                }
+            }
+            return;
         }
 
         double motionX = this.carVelocity.x;
         double motionZ = this.carVelocity.z;
         double motionY;
 
-        // 三角形メッシュ衝突方式: 斜面走行時は法線傾斜(1段目22.5°/2段目45°)に応じた垂直登坂速度を付与して段差衝突をゼロ化
-        if (this.jumpAirborneTicks <= 0 && this.onSlope && this.wheelGrounded && Math.abs(this.currentSpeed) > 0.005f) {
-            double sinSlope = Math.max(0.38, this.slopeSinTheta); // 1段目0.3827, 2段目0.7071
+        // === 360°縦ループ（完全自由物理方式: スロープと同等の連続傾斜登坂・遠心力吸着） ===
+        LoopSurfaceHit loopHit = sampleLoopSurface(this.position());
+        this.onLoop = loopHit.onSurface;
+        if (this.onLoop) {
+            this.loopAngle = loopHit.angle;
+            this.inLoop = true;
+            this.loopProgress = loopHit.angle;
+            this.loopBlockPos = loopHit.blockPos;
+            this.loopFacing = loopHit.facing;
+
+            // 遠心力加速度 a_c = V^2 / R (R = 1.9375m)
+            double vSq = this.currentSpeed * this.currentSpeed;
+            double centAccel = vSq / 1.9375;
+
+            // 垂直〜天井区間 (50°〜310°) で遠心力が極端に不足した場合（ほぼ停止状態）のみ吸着を解除して自由落下へ
+            if (loopHit.angle >= 50.0f && loopHit.angle <= 310.0f && centAccel < 0.005) {
+                this.onLoop = false;
+                this.inLoop = false;
+                this.setOnGround(false);
+                this.wheelGrounded = false;
+                MicroDroneMod.LOGGER.warn("[LOOP_STALL] Vehicle lost centrifugal adhesion! Angle: {} deg, Speed: {}",
+                        String.format("%.1f", loopHit.angle), String.format("%.3f", this.currentSpeed));
+            }
+        } else {
+            this.inLoop = false;
+            // ループ脱出時のピッチ角正常化 (-360° -> 0°)
+            if (this.pitchAngle < -180.0f) {
+                this.pitchAngle += 360.0f;
+                this.prevPitchAngle = this.pitchAngle;
+            }
+        }
+
+        if (this.onLoop) {
+            // ループ登坂中のトラクション補正 (登り坂での自然な減速とアクセル全開での登坂維持)
+            double rad = Math.toRadians(loopHit.angle);
+            double slopeFactor = Math.sin(rad); // 0°で0, 90°で+1(登坂抵抗), 180°で0, 270°で-1(下り加速)
+            if (slopeFactor > 0) {
+                // 登り坂: 重力による軽い減速。ただしアクセルオン時はモータートルクで相殺
+                double drag = slopeFactor * (this.inputForward > 0.05f ? 0.001 : 0.006);
+                this.currentSpeed = (float) Math.max(0.08, this.currentSpeed - drag);
+            } else if (slopeFactor < 0) {
+                // 下り坂: 重力によるジェットコースター加速！
+                this.currentSpeed = (float) Math.min(maxSpeed * 1.25, this.currentSpeed - slopeFactor * 0.005);
+            }
+
+            // ループ傾斜角 (0°〜360°) に応じた前進・垂直・横移動ベクトル (完全自由移動)
+            Vec3 loopMotion = getLoopTangentialMotion(loopHit, this.currentSpeed, this.inputSteer);
+            motionX = loopMotion.x;
+            motionY = loopMotion.y;
+            motionZ = loopMotion.z;
+            this.setOnGround(true);
+            this.wheelGrounded = true;
+
+            // ピッチ角追従 (-phi で360度宙返り)
+            float targetPitch = -loopHit.angle;
+            if (this.pitchAngle < -300.0f && targetPitch > -60.0f) {
+                // 360°から0°への通過時のみ、逆回転を防ぐためprevPitchAngleをスナップ
+                this.prevPitchAngle = targetPitch;
+            }
+            this.pitchAngle = targetPitch;
+            this.setXRot(this.pitchAngle);
+
+            // ロール角 (ステアリング遠心バンク)
+            this.rollAngle = Mth.lerp(0.30f, this.rollAngle, -this.inputSteer * 14.0f);
+
+            // 走行SE
+            if (this.tickCount % 4 == 0) {
+                this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                        SoundEvents.MINECART_RIDING, SoundSource.PLAYERS, 0.4F, 1.4F + (this.currentSpeed * 0.8F));
+            }
+        } else if (this.jumpAirborneTicks <= 0 && this.onSlope && this.wheelGrounded && Math.abs(this.currentSpeed) > 0.005f) {
+            double sinSlope = this.slopeSinTheta; // 実際の路面傾斜サイン値を使用 (余分な急坂跳ね上げを撤廃)
             double climbVy = this.currentSpeed * sinSlope * this.slopeClimbDot;
             motionY = climbVy;
             this.setOnGround(true);
-        } else if (this.jumpAirborneTicks <= 0 && this.onGround() && this.getDeltaMovement().y <= 0.001) {
+        } else if (this.jumpAirborneTicks <= 0 && this.wheelGrounded && this.getDeltaMovement().y <= 0.001) {
             motionY = 0.0;
         } else {
             float mass = this.getVehicleMass();
@@ -714,6 +951,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                 gravity *= 1.80;
             }
             motionY = this.getDeltaMovement().y - gravity;
+            this.setOnGround(false);
         }
 
         Vec3 preMovePos = this.position();
@@ -735,8 +973,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             this.setDeltaMovement(new Vec3(stepX, stepY, stepZ));
             this.move(MoverType.SELF, this.getDeltaMovement());
             if (this.horizontalCollision) {
-                // スロープ斜面走行中は微小な階段スライスとの誤接触で前進を遮断しない
-                if (!this.onSlope) {
+                // スロープ斜面走行中および縦ループ走行中は微小なメッシュ分割との誤接触で前進を遮断しない
+                if (!this.onSlope && !this.onLoop) {
                     break; // 壁に接触した瞬間に残りのステップを即時遮断！
                 }
             }
@@ -748,12 +986,14 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             this.setOnGround(true);
         }
 
-        // 移動後に斜面メッシュの上面へ完全吸着（板の下への潜り込みを100%防止、ジャンプ飛行中はバイパス）
-        if (this.jumpAirborneTicks <= 0 && this.onSlope) {
+        // 移動後に斜面メッシュの上面へ完全吸着（板の下への潜り込み・浮き上がり跳ねを100%防止、ジャンプ飛行中・縦ループ中はバイパス）
+        if (this.jumpAirborneTicks <= 0 && this.onSlope && !this.onLoop) {
             WheelRaycastHit curHit = sampleWheelGround(this.getX(), this.getY(), this.getZ());
-            if (curHit.onSlope && this.getY() < curHit.groundY) {
-                this.setPos(this.getX(), curHit.groundY, this.getZ());
-                this.setOnGround(true);
+            if (curHit.onSlope) {
+                if (this.getY() < curHit.groundY || Math.abs(this.getY() - curHit.groundY) < 0.15) {
+                    this.setPos(this.getX(), curHit.groundY, this.getZ());
+                    this.setOnGround(true);
+                }
             }
         }
 
@@ -770,43 +1010,67 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
 
             if (isLipReached && isClimbing) {
                 boolean isBoost = hitCenter.isBoost || hitFront.isBoost;
-                this.jumpCooldown = 22; // 約1.1秒クールダウン
-                this.setOnGround(false);
-                this.hasImpulse = true;
+                boolean isModularSlope = (this.level()
+                        .getBlockState(BlockPos.containing(this.getX(), this.getY(), this.getZ()))
+                        .getBlock() instanceof com.microdrone.mod.block.ModularSlopeBlock) ||
+                        (this.level().getBlockState(BlockPos.containing(this.getX(), this.getY() - 0.5, this.getZ()))
+                                .getBlock() instanceof com.microdrone.mod.block.ModularSlopeBlock);
 
-                float mass = this.getVehicleMass();
-                // 車重による打ち上げ初速の低下を完全撤廃！重いマシンでもしっかり高く打ち上がる
-                double massBounce = 1.0 + Math.max(0.0, (mass - 1.10f) * 0.08); // 重いほどサス反発で力強く弾き出される
-
-                if (isBoost) {
-                    // ブーストジャンプ台（ダッシュパネル）: 強制ロケット加速 + 空高く駆け上がる大ジャンプ！
-                    this.turboBoostTicks = 35;
-                    this.currentSpeed = (float) Math.max(this.currentSpeed * 1.65, 0.58);
-                    // 強化された重力に合わせて初速を0.92+へ底上げ
-                    double jumpY = (0.92 + (this.currentSpeed * 0.65)) * massBounce;
-                    this.carVelocity = new Vec3(this.carVelocity.x * 1.45, jumpY, this.carVelocity.z * 1.45);
-                    this.setDeltaMovement(this.carVelocity);
-                    this.pitchAngle = -34.0f; // 豪快なノーズアップ空中姿勢
-                    this.jumpAirborneTicks = 18; // 空中モード維持
-                    this.setPos(this.getX(), this.getY() + 0.15, this.getZ()); // リップから浮かせる
-
-                    this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
-                            net.minecraft.sounds.SoundEvents.FIREWORK_ROCKET_BLAST,
-                            net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.6F);
+                // スロープ坂の低速走行時(<= 0.18f)はジャンプせずスムーズに平地へ乗り移る
+                if (isModularSlope && this.currentSpeed <= 0.18f) {
+                    // 低速時はジャンプをスキップしてスムーズな乗り移りに任せる
                 } else {
-                    // 通常ジャンプ台: 45°キッカーのノーズアップ方向へ豪快に駆け上がる放物線跳躍！
-                    // 強化された重力に合わせて初速を0.76+へ底上げ
-                    double jumpY = (0.76 + (this.currentSpeed * 0.60)) * massBounce;
-                    double fwdBoost = 1.15 + (0.05 * (mass - 1.10f)); // 慣性で前方に突き抜ける
-                    this.carVelocity = new Vec3(this.carVelocity.x * fwdBoost, jumpY, this.carVelocity.z * fwdBoost);
-                    this.setDeltaMovement(this.carVelocity);
-                    this.pitchAngle = -30.0f; // 45°キッカーからのノーズアップ空中姿勢
-                    this.jumpAirborneTicks = 15; // 空中モード維持
-                    this.setPos(this.getX(), this.getY() + 0.12, this.getZ()); // リップから浮かせる
+                    this.jumpCooldown = 22; // 約1.1秒クールダウン
+                    this.setOnGround(false);
+                    this.hasImpulse = true;
 
-                    this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
-                            net.minecraft.sounds.SoundEvents.ARMOR_EQUIP_ELYTRA.value(),
-                            net.minecraft.sounds.SoundSource.PLAYERS, 0.8F, 1.4F);
+                    float mass = this.getVehicleMass();
+                    double massBounce = 1.0 + Math.max(0.0, (mass - 1.10f) * 0.08); // 重いほどサス反発で力強く弾き出される
+
+                    // ブーストジャンプ台（ダッシュパネル）: 進入時にロケット加速発動！
+                    if (isBoost) {
+                        this.turboBoostTicks = 35;
+                        this.currentSpeed = (float) Math.max(this.currentSpeed * 1.65, 0.62);
+                    }
+
+                    // === 全ジャンプ台・スロープ共通: 速度と斜面角度に応じた自然な物理射出 ===
+                    // 斜面の法線ベクトルから角度(sinθ, cosθ)を精密計算
+                    Vec3 normal = hitCenter.onSlope ? hitCenter.normal : hitFront.normal;
+                    double sinTheta = Math.sqrt(normal.x * normal.x + normal.z * normal.z);
+                    double cosTheta = Math.max(0.1, normal.y);
+                    if (sinTheta < 0.1) sinTheta = 0.7071; // ジャンプ台標準は45° (sin45°)
+
+                    // 登坂速度 V を斜面角度に沿って水平推進力・垂直打ち上げ初速へ完全分解射出！
+                    double speed = this.currentSpeed;
+                    double launchMult = isBoost ? 1.45 : 1.30;
+                    double jumpY = speed * sinTheta * launchMult * massBounce; // 斜面角度と速度に応じた上向き射出初速
+                    double fwdSpeed = speed * cosTheta * (isBoost ? 1.25 : 1.05); // 斜面角度と速度に応じた水平推進力
+
+                    double rad = this.getYRot() * Mth.DEG_TO_RAD;
+                    double outX = -Mth.sin((float) rad) * fwdSpeed;
+                    double outZ = Mth.cos((float) rad) * fwdSpeed;
+
+                    this.carVelocity = new Vec3(outX, jumpY, outZ);
+                    this.setDeltaMovement(this.carVelocity);
+
+                    // 車体の空中姿勢: 飛び出した斜面の角度そのままにノーズアップ！
+                    float slopePitchDeg = (float) Math.toDegrees(Math.asin(Mth.clamp(sinTheta, 0.0, 1.0)));
+                    this.pitchAngle = -slopePitchDeg;
+
+                    // 速度に応じた滞空保護時間 (大ジャンプほど長く、低速なら短く自然に着地)
+                    this.jumpAirborneTicks = (int) Mth.clamp(Math.round(jumpY * 26.0), 8, 20);
+                    this.setPos(this.getX(), this.getY() + 0.10, this.getZ()); // 先端からわずかに浮かせる
+
+                    // サウンド演出
+                    if (isBoost) {
+                        this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                                net.minecraft.sounds.SoundEvents.FIREWORK_ROCKET_BLAST,
+                                net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.6F);
+                    } else if (speed > 0.15f) {
+                        this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                                net.minecraft.sounds.SoundEvents.ARMOR_EQUIP_ELYTRA.value(),
+                                net.minecraft.sounds.SoundSource.PLAYERS, 0.8F, 1.4F);
+                    }
                 }
             }
         }
@@ -815,7 +1079,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         // ※ レーシング縁石(高さ0.019m〜0.038m)やスロープ登坂時は激突と判定せずスムーズに通過
         double expectedH = totalDistH;
         double actualH = Math.sqrt(actualMoved.x * actualMoved.x + actualMoved.z * actualMoved.z);
-        boolean isBlocked = !this.onSlope && (this.horizontalCollision || (expectedH > 0.03 && actualH < expectedH * 0.40));
+        boolean isBlocked = !this.onSlope
+                && (this.horizontalCollision || (expectedH > 0.03 && actualH < expectedH * 0.40));
         boolean hitSolidWall = isBlocked && isObstacleInDirection(motionX, motionZ, 0.10);
 
         if (hitSolidWall) {
@@ -845,11 +1110,16 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                 }
             }
 
-            MicroDroneMod.LOGGER.debug("[COLLISION_DETECTED] Side: {}, VehicleUUID: {}, Pos: [{}, {}, {}], ExpectedSpeed: {}, ActualSpeed: {}, CurrentSpeed: {}",
-                    this.level().isClientSide ? "CLIENT" : "SERVER", this.getUUID(),
-                    String.format("%.2f", this.getX()), String.format("%.2f", this.getY()), String.format("%.2f", this.getZ()),
+            MicroDroneMod.LOGGER.info(
+                    "[COLLISION_DETECTED] Side: {}, Tick: {}, Pos: [{}, {}, {}], Vel: [{}, {}, {}], ExpectedSpeed: {}, ActualSpeed: {}, CurrentSpeed: {}, Grounded: {}, Chunk: [{}, {}]",
+                    this.level().isClientSide ? "CLIENT" : "SERVER", this.tickCount,
+                    String.format("%.3f", this.getX()), String.format("%.3f", this.getY()),
+                    String.format("%.3f", this.getZ()),
+                    String.format("%.3f", this.carVelocity.x), String.format("%.3f", this.getDeltaMovement().y), String.format("%.3f", this.carVelocity.z),
                     String.format("%.3f", expectedH), String.format("%.3f", actualH),
-                    String.format("%.3f", this.currentSpeed));
+                    String.format("%.3f", this.currentSpeed),
+                    (this.onGround() || this.wheelGrounded),
+                    this.chunkPosition().x, this.chunkPosition().z);
         }
 
         // 接地摩擦
@@ -863,7 +1133,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         // ドリフト白煙エフェクト (クライアント側)
         // Drift smoke effect (when tires lose grip)
         // Drift particles & Mini-Turbo effects
-        if (this.level().isClientSide && (this.onGround() || this.wheelGrounded) && Math.abs(this.currentSpeed) > 0.025f) {
+        if (this.level().isClientSide && (this.onGround() || this.wheelGrounded)
+                && Math.abs(this.currentSpeed) > 0.025f) {
             if (this.driftDirection != 0) {
                 spawnDriftParticles(this.driftTicks >= 14);
             }
@@ -933,13 +1204,15 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                 updateMotorSyncData();
                 if (!oldMotor.isEmpty()) {
                     if (!player.getInventory().add(oldMotor)) {
-                        this.level().addFreshEntity(new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(), oldMotor));
+                        this.level().addFreshEntity(
+                                new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(), oldMotor));
                     }
                 }
                 this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
                         SoundEvents.ANVIL_USE, SoundSource.PLAYERS, 0.6F, 1.4F);
                 player.sendSystemMessage(Component.translatable("message.microdrone.motor_installed",
-                        motorItem.getTier(), motorItem.getTierName(), String.format("%.1f", motorItem.getDisplaySpeedMps())));
+                        motorItem.getTier(), motorItem.getTierName(),
+                        String.format("%.1f", motorItem.getDisplaySpeedMps())));
                 return InteractionResult.SUCCESS;
             }
 
@@ -960,7 +1233,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             if (player.isShiftKeyDown()) {
                 if (!this.installedBattery.isEmpty()) {
                     if (!player.getInventory().add(this.installedBattery)) {
-                        this.level().addFreshEntity(new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(), this.installedBattery));
+                        this.level().addFreshEntity(new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(),
+                                this.installedBattery));
                     }
                     this.installedBattery = ItemStack.EMPTY;
                     updateBatterySyncData();
@@ -979,16 +1253,29 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
 
     private void dropVehicle(Player player) {
         if (!this.level().isClientSide) {
-            ItemEntity item = new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(),
-                    new ItemStack(ModItems.RC_CAR_ITEM.get()));
+            ItemStack dropStack = new ItemStack(ModItems.RC_CAR_ITEM.get());
+            if (!"default".equalsIgnoreCase(getVariantId())) {
+                net.minecraft.world.item.component.CustomData.update(
+                        net.minecraft.core.component.DataComponents.CUSTOM_DATA,
+                        dropStack,
+                        tag -> tag.putString("Variant", getVariantId()));
+                var config = com.microdrone.mod.config.car.CarConfigManager.getConfig(getVariantId());
+                if (config != null && config.displayName != null) {
+                    dropStack.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+                            Component.literal(config.displayName));
+                }
+            }
+            ItemEntity item = new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(), dropStack);
             this.level().addFreshEntity(item);
 
             if (!this.installedBattery.isEmpty()) {
-                this.level().addFreshEntity(new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(), this.installedBattery));
+                this.level().addFreshEntity(
+                        new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(), this.installedBattery));
                 this.installedBattery = ItemStack.EMPTY;
             }
             if (!this.installedMotor.isEmpty()) {
-                this.level().addFreshEntity(new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(), this.installedMotor));
+                this.level().addFreshEntity(
+                        new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(), this.installedMotor));
                 this.installedMotor = ItemStack.EMPTY;
             }
             this.discard();
@@ -997,11 +1284,13 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
 
     @Override
     public boolean hurt(DamageSource source, float amount) {
-        if (this.isInvulnerableTo(source)) return false;
+        if (this.isInvulnerableTo(source))
+            return false;
         if (!this.level().isClientSide && !this.isRemoved()) {
             if (this.pilotUUID != null && this.level() instanceof ServerLevel sl) {
                 ServerPlayer p = (ServerPlayer) sl.getPlayerByUUID(this.pilotUUID);
-                if (p != null) this.stopPiloting(p);
+                if (p != null)
+                    this.stopPiloting(p);
             }
             this.dropVehicle(null);
             return true;
@@ -1076,6 +1365,14 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         return this.entityData.get(DATA_RESYNC_BLINK_TICKS);
     }
 
+    public String getVariantId() {
+        return this.entityData.get(DATA_VARIANT_ID);
+    }
+
+    public void setVariantId(String variantId) {
+        this.entityData.set(DATA_VARIANT_ID, (variantId != null && !variantId.isBlank()) ? variantId : "default");
+    }
+
     public float getWheelRotation() {
         return this.wheelRotation;
     }
@@ -1096,17 +1393,31 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         if (compound.hasUUID("PilotUUID")) {
             this.pilotUUID = compound.getUUID("PilotUUID");
         }
+        if (compound.contains("StartX", 6)) {
+            this.startX = compound.getDouble("StartX");
+            this.startY = compound.getDouble("StartY");
+            this.startZ = compound.getDouble("StartZ");
+        } else {
+            this.startX = Double.NaN;
+            this.startY = Double.NaN;
+            this.startZ = Double.NaN;
+        }
         if (compound.contains("InstalledBattery", 10)) {
-            this.installedBattery = ItemStack.parse(this.registryAccess(), compound.getCompound("InstalledBattery")).orElse(ItemStack.EMPTY);
+            this.installedBattery = ItemStack.parse(this.registryAccess(), compound.getCompound("InstalledBattery"))
+                    .orElse(ItemStack.EMPTY);
             updateBatterySyncData();
         }
         if (compound.contains("InstalledMotor", 10)) {
-            this.installedMotor = ItemStack.parse(this.registryAccess(), compound.getCompound("InstalledMotor")).orElse(ItemStack.EMPTY);
+            this.installedMotor = ItemStack.parse(this.registryAccess(), compound.getCompound("InstalledMotor"))
+                    .orElse(ItemStack.EMPTY);
             updateMotorSyncData();
         }
         this.accumulatedDistance = compound.getDouble("BatteryAccumulatedDist");
         if (compound.contains("CustomWeight", 99)) {
             this.entityData.set(DATA_CUSTOM_WEIGHT, compound.getFloat("CustomWeight"));
+        }
+        if (compound.contains("VariantId", 8)) {
+            setVariantId(compound.getString("VariantId"));
         }
     }
 
@@ -1114,6 +1425,11 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     protected void addAdditionalSaveData(CompoundTag compound) {
         if (this.pilotUUID != null) {
             compound.putUUID("PilotUUID", this.pilotUUID);
+        }
+        if (!Double.isNaN(this.startX)) {
+            compound.putDouble("StartX", this.startX);
+            compound.putDouble("StartY", this.startY);
+            compound.putDouble("StartZ", this.startZ);
         }
         if (!this.installedBattery.isEmpty()) {
             compound.put("InstalledBattery", this.installedBattery.save(this.registryAccess()));
@@ -1123,6 +1439,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         }
         compound.putDouble("BatteryAccumulatedDist", this.accumulatedDistance);
         compound.putFloat("CustomWeight", this.entityData.get(DATA_CUSTOM_WEIGHT));
+        compound.putString("VariantId", getVariantId());
     }
 
     private void spawnDriftParticles(boolean turboReady) {
@@ -1195,18 +1512,27 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         net.minecraft.world.phys.AABB currentBox = this.getBoundingBox();
         net.minecraft.world.phys.AABB checkAABB = currentBox.expandTowards(nx * checkDistance, 0.0, nz * checkDistance);
 
-        Iterable<net.minecraft.world.phys.shapes.VoxelShape> collisions = this.level().getBlockCollisions(this, checkAABB);
+        Iterable<net.minecraft.world.phys.shapes.VoxelShape> collisions = this.level().getBlockCollisions(this,
+                checkAABB);
         for (net.minecraft.world.phys.shapes.VoxelShape shape : collisions) {
             if (!shape.isEmpty()) {
                 for (net.minecraft.world.phys.AABB aabb : shape.toAabbs()) {
-                    // スロープブロック（ジャンプ台）への進入は壁激突と判定しない
-                    BlockPos bp = BlockPos.containing((aabb.minX + aabb.maxX) * 0.5, aabb.minY + 0.05, (aabb.minZ + aabb.maxZ) * 0.5);
-                    if (this.level().getBlockState(bp).getBlock() instanceof com.microdrone.mod.block.RacingSlopeBlock) {
+                    // スロープブロック（ジャンプ台・モジュラースロープ）への進入は壁激突と判定しない
+                    BlockPos bp = BlockPos.containing((aabb.minX + aabb.maxX) * 0.5, aabb.minY + 0.05,
+                            (aabb.minZ + aabb.maxZ) * 0.5);
+                    if (this.level().getBlockState(bp).getBlock() instanceof com.microdrone.mod.block.RacingSlopeBlock
+                            ||
+                            this.level().getBlockState(bp)
+                                    .getBlock() instanceof com.microdrone.mod.block.ModularSlopeBlock
+                            ||
+                            this.level().getBlockState(bp)
+                                    .getBlock() instanceof com.microdrone.mod.block.TougeSlopeBlock) {
                         continue;
                     }
 
-                    // 高さ判定: レーシング縁石(高さ約0.019m〜0.038m)は除外、高さ0.10m以上の壁をブロック対象とする
-                    if (aabb.maxY - this.getY() > 0.10) {
+                    // 高さ判定: レーシング縁石(約0.03m)除外。スロープ走行中は登りきり段差(0.25m)を考慮して0.35m以上を壁とみなす
+                    double wallThreshold = this.onSlope ? 0.35 : 0.10;
+                    if (aabb.maxY - this.getY() > wallThreshold) {
                         return true;
                     }
                 }
@@ -1262,11 +1588,25 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         return this.pitchAngle;
     }
 
-    public float getSuspFL() { return this.suspFL; }
-    public float getSuspFR() { return this.suspFR; }
-    public float getSuspRL() { return this.suspRL; }
-    public float getSuspRR() { return this.suspRR; }
-    public boolean isWheelGrounded() { return this.wheelGrounded; }
+    public float getSuspFL() {
+        return this.suspFL;
+    }
+
+    public float getSuspFR() {
+        return this.suspFR;
+    }
+
+    public float getSuspRL() {
+        return this.suspRL;
+    }
+
+    public float getSuspRR() {
+        return this.suspRR;
+    }
+
+    public boolean isWheelGrounded() {
+        return this.wheelGrounded;
+    }
 
     /**
      * タイヤごとの接地・三角形メッシュ衝突判定結果
@@ -1280,7 +1620,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         public final double progress;
         public final Direction slopeFacing;
 
-        public WheelRaycastHit(double groundY, Vec3 normal, boolean onSlope, boolean isLip, boolean isBoost, double progress, Direction slopeFacing) {
+        public WheelRaycastHit(double groundY, Vec3 normal, boolean onSlope, boolean isLip, boolean isBoost,
+                double progress, Direction slopeFacing) {
             this.groundY = groundY;
             this.normal = normal;
             this.onSlope = onSlope;
@@ -1315,10 +1656,14 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         double pz = getZ();
 
         // 4輪位置の地面高さを三角形メッシュレイキャストで精密サンプリング
-        WheelRaycastHit hitFL = sampleWheelGround(px + fwdX * halfL - rightX * halfW, py, pz + fwdZ * halfL - rightZ * halfW);
-        WheelRaycastHit hitFR = sampleWheelGround(px + fwdX * halfL + rightX * halfW, py, pz + fwdZ * halfL + rightZ * halfW);
-        WheelRaycastHit hitRL = sampleWheelGround(px - fwdX * halfL - rightX * halfW, py, pz - fwdZ * halfL - rightZ * halfW);
-        WheelRaycastHit hitRR = sampleWheelGround(px - fwdX * halfL + rightX * halfW, py, pz - fwdZ * halfL + rightZ * halfW);
+        WheelRaycastHit hitFL = sampleWheelGround(px + fwdX * halfL - rightX * halfW, py,
+                pz + fwdZ * halfL - rightZ * halfW);
+        WheelRaycastHit hitFR = sampleWheelGround(px + fwdX * halfL + rightX * halfW, py,
+                pz + fwdZ * halfL + rightZ * halfW);
+        WheelRaycastHit hitRL = sampleWheelGround(px - fwdX * halfL - rightX * halfW, py,
+                pz - fwdZ * halfL - rightZ * halfW);
+        WheelRaycastHit hitRR = sampleWheelGround(px - fwdX * halfL + rightX * halfW, py,
+                pz - fwdZ * halfL + rightZ * halfW);
 
         double hFL = hitFL.groundY;
         double hFR = hitFR.groundY;
@@ -1346,6 +1691,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             // 4輪中いずれかが路面に接触・追従しているか
             this.wheelGrounded = (hFL >= py - 0.08 || hFR >= py - 0.08 || hRL >= py - 0.08 || hRR >= py - 0.08);
             this.onSlope = hitFL.onSlope || hitFR.onSlope || hitRL.onSlope || hitRR.onSlope;
+            this.setOnGround(this.wheelGrounded);
         }
 
         // 着地衝撃ダンパー: 空中から接地した瞬間に車重と落下速度に応じたサスペンション沈み込みを発生
@@ -1370,7 +1716,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         // 斜面判定＆登り方向ベクトルの内積計算
         if (this.onSlope) {
             // 最も支配的なスロープの向きを取得
-            Direction slopeDir = hitFL.onSlope ? hitFL.slopeFacing : (hitFR.onSlope ? hitFR.slopeFacing : (hitRL.onSlope ? hitRL.slopeFacing : hitRR.slopeFacing));
+            Direction slopeDir = hitFL.onSlope ? hitFL.slopeFacing
+                    : (hitFR.onSlope ? hitFR.slopeFacing : (hitRL.onSlope ? hitRL.slopeFacing : hitRR.slopeFacing));
             double slopeFwdX = switch (slopeDir) {
                 case EAST -> 1.0;
                 case WEST -> -1.0;
@@ -1396,16 +1743,17 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         if (this.jumpAirborneTicks <= 0) {
             double avgGroundY = (hFL + hFR + hRL + hRR) * 0.25;
             if (this.onSlope) {
-                // 斜面上では常に路面高さに車体を滑らかに密着・吸着させて沈み込みを100%遮断
-                if (py < avgGroundY || (py - avgGroundY < 0.10 && this.getDeltaMovement().y <= 0.02)) {
+                // 斜面上では常に路面高さに車体を滑らかに密着・吸着させて沈み込み・跳ね上がりを100%遮断
+                if (py < avgGroundY || Math.abs(py - avgGroundY) < 0.20) {
                     this.setPos(px, avgGroundY, pz);
                     py = avgGroundY;
                     this.setOnGround(true);
                 }
             } else if (py < avgGroundY && (this.onGround() || this.wheelGrounded)) {
-                double liftY = Math.min(avgGroundY, py + 0.10);
+                double liftY = Math.min(avgGroundY, py + 0.25);
                 this.setPos(px, liftY, pz);
                 py = liftY;
+                this.setOnGround(true);
             }
         }
 
@@ -1459,7 +1807,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             float totalRoll = baseRoll + (counterAmount * 8.5f);
             dynamicRoll = -this.driftDirection * totalRoll;
         } else {
-            dynamicRoll = this.steerAngle * (float)(this.currentSpeed * 3.5);
+            dynamicRoll = this.steerAngle * (float) (this.currentSpeed * 3.5);
         }
         float targetRoll = Mth.clamp(groundRoll + dynamicRoll, -25.0f, 25.0f);
         this.rollAngle = Mth.lerp(0.35f, this.rollAngle, targetRoll);
@@ -1471,33 +1819,55 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     public WheelRaycastHit sampleWheelGround(double x, double y, double z) {
         BlockPos pos = BlockPos.containing(x, y, z);
         net.minecraft.world.level.block.state.BlockState st = level().getBlockState(pos);
-        if (!(st.getBlock() instanceof com.microdrone.mod.block.RacingSlopeBlock)) {
+        if (!(st.getBlock() instanceof com.microdrone.mod.block.RacingSlopeBlock)
+                && !(st.getBlock() instanceof com.microdrone.mod.block.ModularSlopeBlock)
+                && !(st.getBlock() instanceof com.microdrone.mod.block.TougeSlopeBlock)) {
             pos = pos.below();
             st = level().getBlockState(pos);
         }
         if (st.getBlock() instanceof com.microdrone.mod.block.RacingSlopeBlock) {
             double relX = x - pos.getX();
             double relZ = z - pos.getZ();
-            com.microdrone.mod.block.RacingSlopeBlock.RampHitResult hit =
-                    com.microdrone.mod.block.RacingSlopeBlock.raycastSlopeMesh(st, relX, relZ);
+            com.microdrone.mod.block.RacingSlopeBlock.RampHitResult hit = com.microdrone.mod.block.RacingSlopeBlock
+                    .raycastSlopeMesh(st, relX, relZ);
             if (hit.hit) {
                 Direction facing = st.getValue(com.microdrone.mod.block.RacingSlopeBlock.FACING);
-                return new WheelRaycastHit(pos.getY() + hit.height, hit.normal, true, hit.isLip, hit.isBoost, hit.progress, facing);
+                return new WheelRaycastHit(pos.getY() + hit.height + 0.20, hit.normal, true, hit.isLip, hit.isBoost,
+                        hit.progress, facing);
+            }
+        } else if (st.getBlock() instanceof com.microdrone.mod.block.ModularSlopeBlock) {
+            double relX = x - pos.getX();
+            double relZ = z - pos.getZ();
+            com.microdrone.mod.block.RacingSlopeBlock.RampHitResult hit = com.microdrone.mod.block.ModularSlopeBlock
+                    .raycastSlopeMesh(level(), pos, st, relX, relZ);
+            if (hit.hit) {
+                Direction facing = st.getValue(com.microdrone.mod.block.ModularSlopeBlock.FACING);
+                return new WheelRaycastHit(pos.getY() + hit.height, hit.normal, true, hit.isLip, false, hit.progress,
+                        facing);
+            }
+        } else if (st.getBlock() instanceof com.microdrone.mod.block.TougeSlopeBlock) {
+            double relX = x - pos.getX();
+            double relZ = z - pos.getZ();
+            com.microdrone.mod.block.RacingSlopeBlock.RampHitResult hit = com.microdrone.mod.block.TougeSlopeBlock
+                    .raycastSlopeMesh(st, relX, relZ);
+            if (hit.hit) {
+                Direction facing = st.getValue(com.microdrone.mod.block.TougeSlopeBlock.FACING);
+                return new WheelRaycastHit(pos.getY() + hit.height, hit.normal, true, hit.isLip, false, hit.progress,
+                        facing);
             }
         }
 
         net.minecraft.world.phys.Vec3 from = new net.minecraft.world.phys.Vec3(x, y + 0.25, z);
-        net.minecraft.world.phys.Vec3 to = new net.minecraft.world.phys.Vec3(x, y - 0.35, z);
+        net.minecraft.world.phys.Vec3 to = new net.minecraft.world.phys.Vec3(x, y - 1.25, z);
         net.minecraft.world.phys.BlockHitResult hit = level().clip(new net.minecraft.world.level.ClipContext(
                 from, to,
                 net.minecraft.world.level.ClipContext.Block.COLLIDER,
                 net.minecraft.world.level.ClipContext.Fluid.NONE,
-                this
-        ));
+                this));
         if (hit.getType() != net.minecraft.world.phys.HitResult.Type.MISS) {
             return WheelRaycastHit.FLAT(hit.getLocation().y);
         }
-        return WheelRaycastHit.FLAT(y - 0.35);
+        return new WheelRaycastHit(y - 2.0, new net.minecraft.world.phys.Vec3(0, 1, 0), false, false, false, 0.0, Direction.UP);
     }
 
     private double sampleGroundY(double x, double y, double z) {
@@ -1510,7 +1880,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         BlockPos atPos = BlockPos.containing(pos.x, pos.y, pos.z);
         BlockPos belowPos = atPos.below();
 
-        BlockPos[] checkPositions = new BlockPos[]{
+        BlockPos[] checkPositions = new BlockPos[] {
                 atPos,
                 belowPos,
                 BlockPos.containing(pos.x, pos.y + 0.25, pos.z)
@@ -1530,7 +1900,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         if (targetBe == null) {
             // タイヤの接地範囲（四方0.25m）も走査
             double[][] offsets = {
-                    {0.25, 0.0}, {-0.25, 0.0}, {0.0, 0.25}, {0.0, -0.25}
+                    { 0.25, 0.0 }, { -0.25, 0.0 }, { 0.0, 0.25 }, { 0.0, -0.25 }
             };
             for (double[] off : offsets) {
                 BlockPos p = BlockPos.containing(pos.x + off[0], pos.y, pos.z + off[1]);
@@ -1557,7 +1927,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                 boolean isGate = "goal_gate".equals(id);
                 boolean isCheckpoint = "checkpoint_plate".equals(id);
 
-                if (!isGate && !isCheckpoint) continue;
+                if (!isGate && !isCheckpoint)
+                    continue;
 
                 float slotCenterX = MiniaturePlacementData.getSlotCenterX(slotData.getSlotId());
                 float slotCenterZ = MiniaturePlacementData.getSlotCenterZ(slotData.getSlotId());
@@ -1595,7 +1966,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             if (lapTimeMs < 10000L) {
                 if (pilot != null) {
                     long remainSec = (10000L - lapTimeMs + 999) / 1000;
-                    pilot.displayClientMessage(Component.literal("§c§l[LAP INVALID] §e10秒未満のため無効 §7(あと " + remainSec + "秒)"), true);
+                    pilot.displayClientMessage(
+                            Component.literal("§c§l[LAP INVALID] §e10秒未満のため無効 §7(あと " + remainSec + "秒)"), true);
                 }
                 return;
             }
@@ -1612,8 +1984,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                 ModSounds.CHECKPOINT_PASS.get(),
                 SoundSource.PLAYERS,
                 0.5f,
-                1.0f
-        );
+                1.0f);
 
         if (isGate) {
             if (this.currentLap == 0) {
@@ -1688,5 +2059,207 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         long seconds = (ms % 60000) / 1000;
         long millis = ms % 1000;
         return String.format("%02d'%02d\"%03d", minutes, seconds, millis);
+    }
+
+    // ==========================================
+    // 360°縦ループ（Loop-the-Loop）完全自由物理システム
+    // ==========================================
+
+    public static class LoopSurfaceHit {
+        public final boolean onSurface;
+        public final float angle; // 0°〜360°
+        public final BlockPos blockPos;
+        public final Direction facing;
+        public final double distanceToRoad;
+        public final double lateralOffset; // 中心からの左右ズレ
+
+        public LoopSurfaceHit(boolean onSurface, float angle, BlockPos blockPos, Direction facing, double distanceToRoad, double lateralOffset) {
+            this.onSurface = onSurface;
+            this.angle = angle;
+            this.blockPos = blockPos;
+            this.facing = facing;
+            this.distanceToRoad = distanceToRoad;
+            this.lateralOffset = lateralOffset;
+        }
+
+        public static final LoopSurfaceHit NONE = new LoopSurfaceHit(false, 0, null, Direction.NORTH, 999, 0);
+    }
+
+    /**
+     * ブロックのFACINGに応じたループの前進進行方向ベクトル（手前進入プレートから奥脱出プレートへ抜けるワールド方向）
+     * GeckoLibのGeoBlockRendererはNORTHで回転0度（無回転）のため、モデルのローカル+Z方向はfacing.getOpposite()に一致
+     */
+    private Vec3 getLoopForward(Direction facing) {
+        Direction moveDir = facing.getOpposite();
+        return switch (moveDir) {
+            case NORTH -> new Vec3(0, 0, -1);
+            case SOUTH -> new Vec3(0, 0, 1);
+            case WEST  -> new Vec3(-1, 0, 0);
+            case EAST  -> new Vec3(1, 0, 0);
+            default    -> new Vec3(0, 0, 1);
+        };
+    }
+
+    /**
+     * ループの右方向ベクトル（車首前進方向に対する右側ベクトル）
+     */
+    private Vec3 getLoopRight(Direction facing) {
+        Direction moveDir = facing.getOpposite();
+        return switch (moveDir) {
+            case SOUTH -> new Vec3(1, 0, 0);  // 南向きの右は東 (+X)
+            case NORTH -> new Vec3(-1, 0, 0); // 北向きの右は西 (-X)
+            case EAST  -> new Vec3(0, 0, 1);  // 東向きの右は南 (+Z)
+            case WEST  -> new Vec3(0, 0, -1); // 西向きの右は北 (-Z)
+            default    -> new Vec3(1, 0, 0);
+        };
+    }
+
+    /**
+     * 車両進行方向の基準Yaw角
+     */
+    private float getLoopYaw(Direction facing) {
+        return facing.getOpposite().toYRot();
+    }
+
+    /**
+     * 車両位置から360°縦ループの内面路面との接触・傾斜角をサンプリング (完全自由物理判定)
+     */
+    private LoopSurfaceHit sampleLoopSurface(Vec3 pos) {
+        if (Math.abs(this.currentSpeed) < 0.05f) return LoopSurfaceHit.NONE;
+
+        // 走行中のループブロックがある場合は最優先でチェック
+        if (this.loopBlockPos != null) {
+            LoopSurfaceHit hit = checkLoopBlock(pos, this.loopBlockPos);
+            if (hit.onSurface) {
+                return hit;
+            }
+        }
+
+        BlockPos carPos = BlockPos.containing(pos);
+        // 車両がループ上部（高さ最大約4m）にいる際も確実に検出するため、dy は -4 〜 +1 を探索
+        for (int dy = -4; dy <= 1; dy++) {
+            for (int dx = -2; dx <= 2; dx++) {
+                for (int dz = -2; dz <= 2; dz++) {
+                    BlockPos checkPos = carPos.offset(dx, dy, dz);
+                    if (this.loopBlockPos != null && checkPos.equals(this.loopBlockPos)) {
+                        continue;
+                    }
+                    LoopSurfaceHit hit = checkLoopBlock(pos, checkPos);
+                    if (hit.onSurface) {
+                        return hit;
+                    }
+                }
+            }
+        }
+        return LoopSurfaceHit.NONE;
+    }
+
+    /**
+     * 指定ブロック位置の縦ループブロックに対する路面判定
+     */
+    private LoopSurfaceHit checkLoopBlock(Vec3 pos, BlockPos checkPos) {
+        BlockState state = this.level().getBlockState(checkPos);
+        if (!state.is(ModBlocks.VERTICAL_LOOP.get())) {
+            return LoopSurfaceHit.NONE;
+        }
+
+        Direction facing = state.getValue(VerticalLoopBlock.FACING);
+        Vec3 fwd = getLoopForward(facing);
+        Vec3 right = getLoopRight(facing);
+        Vec3 bCenter = new Vec3(checkPos.getX() + 0.5, checkPos.getY(), checkPos.getZ() + 0.5);
+
+        Vec3 diff = pos.subtract(bCenter);
+        double locZ = diff.x * fwd.x + diff.z * fwd.z;
+        double locX = diff.x * right.x + diff.z * right.z;
+        double locY = pos.y - checkPos.getY();
+
+        // シリンダー中心 (ピボット Y=31px -> 1.9375m, Z=0.0m)
+        double cy = 1.9375;
+        double cz = 0.0;
+        double dyCenter = locY - cy;
+        double dzCenter = locZ - cz;
+        double r = Math.sqrt(dyCenter * dyCenter + dzCenter * dzCenter);
+
+        // 角度 phi (0°〜360°)
+        // 手前側(進入プレート側: dzCenter=-1.9375)が登り壁(90°)、奥側(dzCenter=+1.9375)が下り壁(270°)
+        // 底面進入: locY=0, locZ=0 -> atan2(0, 1.9375) = 0°
+        // 90°垂直登り壁(手前): locY=1.9375, locZ=-1.9375 -> atan2(1.9375, 0) = 90°
+        // 180°天井: locY=3.875, locZ=0 -> atan2(0, -1.9375) = 180°
+        // 270°垂直下り壁(奥): locY=1.9375, locZ=+1.9375 -> atan2(-1.9375, 0) = 270°
+        float phi = (float) Math.toDegrees(Math.atan2(-dzCenter, -dyCenter));
+        if (phi < 0.0f) phi += 360.0f;
+
+        // 新モデル（32px幅 = 2.0m）のスクリュー中心線:
+        // 進入プレート（0°）: X = +24px = +1.500m
+        // 脱出プレート（360°）: X = -8.5px = -0.531m (全周で -2.03125m スライド)
+        double roadCenterX = 1.500 - (phi / 360.0) * 2.03125;
+        double lateral = locX - roadCenterX;
+
+        // 道幅判定: 幅 2.0m (左右 ±1.0m)。ステアリング旋回・端寄せ突入の余裕を大きく取り ±1.50m に拡張
+        boolean withinWidth = (Math.abs(lateral) <= 1.50);
+
+        // 半径判定: R = 1.9375m に対し、路面接触許容範囲 (±0.75m)
+        double R = 1.9375;
+        double distToRoad = R - r;
+        boolean nearSurface = (Math.abs(distToRoad) <= 0.75);
+
+        // 車の進行向きとの整合性 (逆走突入防止)
+        float yawRad = (float) -Math.toRadians(this.getYRot());
+        Vec3 carDir = new Vec3(Mth.sin(yawRad), 0, Mth.cos(yawRad));
+        if (phi < 45.0f) {
+            // 進入プレート側: 手前登り壁(-fwd)へ向かって正しく前進突入しているかを判定
+            if (carDir.dot(fwd.scale(-1)) < 0.15) return LoopSurfaceHit.NONE;
+        } else if (phi > 315.0f) {
+            // 脱出プレート側: 奥(+fwd)へ向かって前進脱出しているかを判定
+            if (carDir.dot(fwd) < 0.15) return LoopSurfaceHit.NONE;
+        }
+
+        if (withinWidth && nearSurface) {
+            return new LoopSurfaceHit(true, phi, checkPos, facing, distToRoad, lateral);
+        }
+        return LoopSurfaceHit.NONE;
+    }
+
+    /**
+     * 縦ループ内での連続傾斜・接線前進・ステアリング横移動ベクトル (完全自由移動)
+     */
+    private Vec3 getLoopTangentialMotion(LoopSurfaceHit hit, float speed, float steerInput) {
+        Vec3 fwd = getLoopForward(hit.facing);
+        Vec3 right = getLoopRight(hit.facing);
+
+        double rad = Math.toRadians(hit.angle);
+        // 接線前進ベクトル
+        // 周長 L = 2 * PI * 1.9375 = 12.1737m
+        // 1周あたりの横スライド量 = -2.03125m
+        // vx = -2.03125 / 12.1737 = -0.16685
+        // 進入プレートから手前登り壁(90°)を駆け上がり、天井(180°)を経て奥下り壁(270°)へ下る
+        double vz = -Math.cos(rad);
+        double vy = Math.sin(rad);
+        double vx = -(2.03125 / 12.1737); // スクリュー進行
+
+        Vec3 tangent = fwd.scale(vz).add(0, vy, 0).add(right.scale(vx)).normalize();
+
+        // 基本前進速度
+        Vec3 motion = tangent.scale(speed);
+
+        // 自由ステアリング操舵 (A/Dキーによる横レーンチェンジ)
+        if (Math.abs(steerInput) > 0.05f) {
+            // Aキー(左: +steerInput) でマイナス側、Dキー(右: -steerInput) でプラス側
+            motion = motion.add(right.scale(-steerInput * 0.024f * (Math.abs(speed) / 0.25f)));
+        }
+
+        // 路面法線方向のサスペンション吸着・密着補正 (路面への密着を維持)
+        // 中心から外側（路面）に向かう単位法線ベクトル:
+        // 底面(0°): -Y (地面へ押し付け)
+        // 手前上り壁(90°): -fwd (手前の壁面へ押し付け)
+        // 天井(180°): +Y (天井へ押し付け)
+        // 奥下り壁(270°): +fwd (奥の壁面へ押し付け)
+        double ny = -Math.cos(rad);
+        double nz = -Math.sin(rad);
+        Vec3 outwardNormal = fwd.scale(nz).add(0, ny, 0).normalize();
+        // 車が路面より内側(r < R -> distToRoad > 0)にある場合、外側(路面)へ押し付けて密着を維持！
+        motion = motion.add(outwardNormal.scale(hit.distanceToRoad * 0.45));
+
+        return motion;
     }
 }

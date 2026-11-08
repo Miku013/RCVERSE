@@ -1,0 +1,8 @@
+{
+    "variants": {
+        "facing=north": { "model": "microdrone:block/modular_slope_single", "y": 180 },
+        "facing=south": { "model": "microdrone:block/modular_slope_single" },
+        "facing=west":  { "model": "microdrone:block/modular_slope_single", "y": 90 },
+        "facing=east":  { "model": "microdrone:block/modular_slope_single", "y": 270 }
+    }
+}

@@ -20,8 +20,9 @@ public class RcSubmarineGeoRenderer extends GeoEntityRenderer<RcSubmarineEntity>
     public void render(RcSubmarineEntity entity, float entityYaw, float partialTick, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
         poseStack.pushPose();
 
-        // 1/4模型サイズ
-        poseStack.scale(0.25F, 0.25F, 0.25F);
+        // 1/4模型サイズ + 外部コンフィグ倍率適用
+        float configScale = com.microdrone.mod.config.submarine.SubmarineConfigManager.getConfig(entity.getVariantId()).properties.scale;
+        poseStack.scale(0.25F * configScale, 0.25F * configScale, 0.25F * configScale);
 
         float yaw = Mth.rotLerp(partialTick, entity.yRotO, entity.getYRot());
         float pitch = Mth.rotLerp(partialTick, entity.prevPitchAngle, entity.getPitchAngle());

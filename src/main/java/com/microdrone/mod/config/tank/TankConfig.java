@@ -25,6 +25,8 @@ public class TankConfig {
         public int reloadTicks = 20;
         public float cannonPower = 1.0f;
         public float scale = 1.0f;
+        public boolean invertCannonPitch = false;
+        public boolean invertTurretYaw = false;
     }
 
     public ResourceLocation getModelResource() {

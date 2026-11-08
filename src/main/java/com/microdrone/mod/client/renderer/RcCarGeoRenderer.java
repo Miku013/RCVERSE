@@ -27,8 +27,9 @@ public class RcCarGeoRenderer extends GeoEntityRenderer<RcCarEntity> {
 
         poseStack.pushPose();
 
-        // 1/5 スケールに縮小（手のひら・卓上マイクロRCカーサイズ）
-        poseStack.scale(0.2F, 0.2F, 0.2F);
+        // 1/5 スケールに縮小（手のひら・卓上マイクロRCカーサイズ）+ 外部コンフィグ倍率適用
+        float configScale = com.microdrone.mod.config.car.CarConfigManager.getConfig(entity.getVariantId()).properties.scale;
+        poseStack.scale(0.2F * configScale, 0.2F * configScale, 0.2F * configScale);
 
         float yaw = Mth.rotLerp(partialTick, entity.yRotO, entity.getYRot());
         // 車体の進行方向の回転（正面合わせ）

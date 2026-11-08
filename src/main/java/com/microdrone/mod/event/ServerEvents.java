@@ -16,7 +16,7 @@ import net.neoforged.neoforge.event.level.LevelEvent;
 public class ServerEvents {
 
     /**
-     * プレイヤーがログアウト・切断した際、操縦中ドローンのチャンクを安全に解放
+     * プレイヤーがログアウト・切断した際、操縦中RC機体（ドローン、カー、ボート等）の操縦を終了し、安全に位置を復元
      */
     @SubscribeEvent
     public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
@@ -24,12 +24,26 @@ public class ServerEvents {
             MicroDroneMod.LOGGER.info("[SERVER] [PLAYER_LOGOUT] Player: {} ({}), Pos: [{}, {}, {}]",
                     player.getName().getString(), player.getUUID(),
                     String.format("%.2f", player.getX()), String.format("%.2f", player.getY()), String.format("%.2f", player.getZ()));
+
+            // 1. RcVehicleManagerに登録されている操縦機体の停止
+            com.microdrone.mod.entity.RcControllable activeVehicle = com.microdrone.mod.entity.RcVehicleManager.getByPilot(player.getUUID());
+            if (activeVehicle != null) {
+                MicroDroneMod.LOGGER.info("[SERVER] [PLAYER_LOGOUT_CLEANUP] Stopping active RC vehicle {} piloted by {}",
+                        activeVehicle, player.getName().getString());
+                activeVehicle.stopPiloting(player);
+            }
+
+            // 2. レベル内の全エンティティのフェイルセーフ走査（ドローンおよびその他RC機体）
             ServerLevel level = player.serverLevel();
             for (net.minecraft.world.entity.Entity entity : level.getAllEntities()) {
                 if (entity instanceof DroneEntity drone && drone.isPilotedBy(player)) {
                     MicroDroneMod.LOGGER.info("[SERVER] [PLAYER_LOGOUT_CLEANUP] Stopping drone {} piloted by {}",
                             drone.getUUID(), player.getName().getString());
                     drone.stopPiloting(player);
+                } else if (entity instanceof com.microdrone.mod.entity.RcControllable rc && player.getUUID().equals(rc.getPilotUUID())) {
+                    MicroDroneMod.LOGGER.info("[SERVER] [PLAYER_LOGOUT_CLEANUP] Stopping RC vehicle {} piloted by {}",
+                            entity.getUUID(), player.getName().getString());
+                    rc.stopPiloting(player);
                 }
             }
         }

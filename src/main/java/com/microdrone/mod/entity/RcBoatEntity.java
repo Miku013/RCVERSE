@@ -71,10 +71,12 @@ public class RcBoatEntity extends Entity implements GeoEntity, RcControllable {
             SynchedEntityData.defineId(RcBoatEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> DATA_PITCH_ANGLE =
             SynchedEntityData.defineId(RcBoatEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<String> DATA_VARIANT_ID =
+            SynchedEntityData.defineId(RcBoatEntity.class, EntityDataSerializers.STRING);
 
     // 操縦者UUID
     private UUID pilotUUID = null;
-    private double startX, startY, startZ;
+    private double startX = Double.NaN, startY = Double.NaN, startZ = Double.NaN;
     private UUID dummyEntityUUID = null;
     private RcPilotDummyEntity dummyEntityRef = null;
     private ChunkPos lastChunkPos = null;
@@ -133,11 +135,14 @@ public class RcBoatEntity extends Entity implements GeoEntity, RcControllable {
         builder.define(DATA_RUDDER_ANGLE, 0.0f);
         builder.define(DATA_ROLL_ANGLE, 0.0f);
         builder.define(DATA_PITCH_ANGLE, 0.0f);
+        builder.define(DATA_VARIANT_ID, "default");
     }
 
     public boolean hasBattery() { return this.entityData.get(DATA_HAS_BATTERY); }
     public int getBatteryRemaining() { return this.entityData.get(DATA_BATTERY_REMAINING); }
     public int getBatteryMax() { return this.entityData.get(DATA_BATTERY_MAX); }
+    public String getVariantId() { return this.entityData.get(DATA_VARIANT_ID); }
+    public void setVariantId(String variantId) { this.entityData.set(DATA_VARIANT_ID, (variantId != null && !variantId.isBlank()) ? variantId : "default"); }
     public int getMotorTier() { return this.entityData.get(DATA_MOTOR_TIER); }
     public ItemStack getInstalledBattery() { return this.entityData.get(DATA_INSTALLED_BATTERY); }
     public ItemStack getInstalledMotor() { return this.entityData.get(DATA_INSTALLED_MOTOR); }
@@ -217,14 +222,28 @@ public class RcBoatEntity extends Entity implements GeoEntity, RcControllable {
 
             player.setCamera(player);
             player.setInvisible(false);
-            player.teleportTo(serverLevel, this.startX, this.startY, this.startZ, player.getYRot(), player.getXRot());
+
+            boolean hasValidStartPos = !Double.isNaN(this.startX) &&
+                    !(Math.abs(this.startX) < 0.001 && Math.abs(this.startY) < 0.001 && Math.abs(this.startZ) < 0.001);
+            if (hasValidStartPos) {
+                player.teleportTo(serverLevel, this.startX, this.startY, this.startZ, player.getYRot(), player.getXRot());
+            } else {
+                MicroDroneMod.LOGGER.warn("[SERVER] [RC_BOAT] Invalid start position on stopPiloting. Retaining player position at {}", player.position());
+            }
 
             RcVehicleManager.unregisterPiloting(player.getUUID());
             this.pilotUUID = null;
             this.inputForward = 0.0f;
             this.inputSteer = 0.0f;
 
-            PacketDistributor.sendToPlayer(player, new com.microdrone.mod.network.DronePilotStatePayload(this.getId(), false, 0, 0, 0));
+            double sendX = hasValidStartPos ? this.startX : player.getX();
+            double sendY = hasValidStartPos ? this.startY : player.getY();
+            double sendZ = hasValidStartPos ? this.startZ : player.getZ();
+            this.startX = Double.NaN;
+            this.startY = Double.NaN;
+            this.startZ = Double.NaN;
+
+            PacketDistributor.sendToPlayer(player, new com.microdrone.mod.network.DronePilotStatePayload(this.getId(), false, sendX, sendY, sendZ));
             player.sendSystemMessage(Component.translatable("message.microdrone.pilot_stop"));
         }
     }
@@ -476,6 +495,17 @@ public class RcBoatEntity extends Entity implements GeoEntity, RcControllable {
             // スニーク右クリックでアイテム回収
             if (player.isShiftKeyDown() && !isPiloted()) {
                 ItemStack drop = new ItemStack(com.microdrone.mod.item.ModItems.RC_BOAT_ITEM.get());
+                if (!"default".equalsIgnoreCase(getVariantId())) {
+                    net.minecraft.world.item.component.CustomData.update(
+                            net.minecraft.core.component.DataComponents.CUSTOM_DATA,
+                            drop,
+                            tag -> tag.putString("Variant", getVariantId())
+                    );
+                    var config = com.microdrone.mod.config.boat.BoatConfigManager.getConfig(getVariantId());
+                    if (config != null && config.displayName != null) {
+                        drop.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, net.minecraft.network.chat.Component.literal(config.displayName));
+                    }
+                }
                 if (!player.getInventory().add(drop)) player.drop(drop, false);
                 if (!this.installedBattery.isEmpty()) player.drop(this.installedBattery, false);
                 if (!this.installedMotor.isEmpty()) player.drop(this.installedMotor, false);
@@ -493,6 +523,17 @@ public class RcBoatEntity extends Entity implements GeoEntity, RcControllable {
             if (source.getEntity() instanceof Player player) {
                 if (!player.getAbilities().instabuild) {
                     ItemStack drop = new ItemStack(com.microdrone.mod.item.ModItems.RC_BOAT_ITEM.get());
+                if (!"default".equalsIgnoreCase(getVariantId())) {
+                    net.minecraft.world.item.component.CustomData.update(
+                            net.minecraft.core.component.DataComponents.CUSTOM_DATA,
+                            drop,
+                            tag -> tag.putString("Variant", getVariantId())
+                    );
+                    var config = com.microdrone.mod.config.boat.BoatConfigManager.getConfig(getVariantId());
+                    if (config != null && config.displayName != null) {
+                        drop.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, net.minecraft.network.chat.Component.literal(config.displayName));
+                    }
+                }
                     this.spawnAtLocation(drop);
                     if (!this.installedBattery.isEmpty()) this.spawnAtLocation(this.installedBattery);
                     if (!this.installedMotor.isEmpty()) this.spawnAtLocation(this.installedMotor);
@@ -509,6 +550,18 @@ public class RcBoatEntity extends Entity implements GeoEntity, RcControllable {
 
     @Override
     protected void readAdditionalSaveData(CompoundTag compound) {
+        if (compound.hasUUID("PilotUUID")) {
+            this.pilotUUID = compound.getUUID("PilotUUID");
+        }
+        if (compound.contains("StartX", 6)) {
+            this.startX = compound.getDouble("StartX");
+            this.startY = compound.getDouble("StartY");
+            this.startZ = compound.getDouble("StartZ");
+        } else {
+            this.startX = Double.NaN;
+            this.startY = Double.NaN;
+            this.startZ = Double.NaN;
+        }
         if (compound.contains("InstalledBattery")) {
             this.installedBattery = ItemStack.parseOptional(this.registryAccess(), compound.getCompound("InstalledBattery"));
             updateBatterySyncData();
@@ -524,6 +577,14 @@ public class RcBoatEntity extends Entity implements GeoEntity, RcControllable {
 
     @Override
     protected void addAdditionalSaveData(CompoundTag compound) {
+        if (this.pilotUUID != null) {
+            compound.putUUID("PilotUUID", this.pilotUUID);
+        }
+        if (!Double.isNaN(this.startX)) {
+            compound.putDouble("StartX", this.startX);
+            compound.putDouble("StartY", this.startY);
+            compound.putDouble("StartZ", this.startZ);
+        }
         if (!this.installedBattery.isEmpty()) {
             compound.put("InstalledBattery", this.installedBattery.save(this.registryAccess()));
         }

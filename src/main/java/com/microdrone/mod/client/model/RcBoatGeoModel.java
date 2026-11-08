@@ -1,6 +1,8 @@
 package com.microdrone.mod.client.model;
 
 import com.microdrone.mod.MicroDroneMod;
+import com.microdrone.mod.config.boat.BoatConfig;
+import com.microdrone.mod.config.boat.BoatConfigManager;
 import com.microdrone.mod.entity.RcBoatEntity;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
@@ -9,26 +11,29 @@ import software.bernie.geckolib.cache.object.GeoBone;
 import software.bernie.geckolib.model.GeoModel;
 
 public class RcBoatGeoModel extends GeoModel<RcBoatEntity> {
-    private static final ResourceLocation MODEL_RESOURCE =
+    private static final ResourceLocation DEFAULT_MODEL =
             ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, "geo/rc_boat.geo.json");
-    private static final ResourceLocation TEXTURE_RESOURCE =
+    private static final ResourceLocation DEFAULT_TEXTURE =
             ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, "textures/entity/rc_boat.png");
-    private static final ResourceLocation ANIMATION_RESOURCE =
+    private static final ResourceLocation DEFAULT_ANIMATION =
             ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, "animations/rc_boat.animation.json");
 
     @Override
     public ResourceLocation getModelResource(RcBoatEntity animatable) {
-        return MODEL_RESOURCE;
+        BoatConfig config = BoatConfigManager.getConfig(animatable.getVariantId());
+        return config != null ? config.getModelResource() : DEFAULT_MODEL;
     }
 
     @Override
     public ResourceLocation getTextureResource(RcBoatEntity animatable) {
-        return TEXTURE_RESOURCE;
+        BoatConfig config = BoatConfigManager.getConfig(animatable.getVariantId());
+        return config != null ? config.getTextureResource() : DEFAULT_TEXTURE;
     }
 
     @Override
     public ResourceLocation getAnimationResource(RcBoatEntity animatable) {
-        return ANIMATION_RESOURCE;
+        BoatConfig config = BoatConfigManager.getConfig(animatable.getVariantId());
+        return config != null ? config.getAnimationResource() : DEFAULT_ANIMATION;
     }
 
     @Override

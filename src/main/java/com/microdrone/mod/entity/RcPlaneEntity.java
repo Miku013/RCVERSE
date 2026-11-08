@@ -77,6 +77,8 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
             SynchedEntityData.defineId(RcPlaneEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> DATA_PROP_ROT =
             SynchedEntityData.defineId(RcPlaneEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<String> DATA_VARIANT_ID =
+            SynchedEntityData.defineId(RcPlaneEntity.class, EntityDataSerializers.STRING);
     private static final EntityDataAccessor<Integer> DATA_FLIGHT_MODE =
             SynchedEntityData.defineId(RcPlaneEntity.class, EntityDataSerializers.INT);
 
@@ -167,6 +169,7 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
         builder.define(DATA_RUDDER_INPUT, 0.0f);
         builder.define(DATA_PROP_ROT, 0.0f);
         builder.define(DATA_FLIGHT_MODE, 0);
+        builder.define(DATA_VARIANT_ID, "default");
     }
 
     public boolean hasBattery() { return entityData.get(DATA_HAS_BATTERY); }
@@ -185,6 +188,14 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
     public float getRudderInput() { return entityData.get(DATA_RUDDER_INPUT); }
     public float getPropRotation() { return this.propRotation; }
     public int getFlightMode() { return entityData.get(DATA_FLIGHT_MODE); }
+
+    public String getVariantId() {
+        return this.entityData.get(DATA_VARIANT_ID);
+    }
+
+    public void setVariantId(String variantId) {
+        this.entityData.set(DATA_VARIANT_ID, (variantId != null && !variantId.isBlank()) ? variantId : "default");
+    }
 
     public void setFlightMode(int mode) {
         this.flightMode = mode;
@@ -519,6 +530,17 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
         // 1. スニーク右クリック: 機体回収
         if (player.isShiftKeyDown() && held.isEmpty()) {
             ItemStack dropStack = new ItemStack(ModItems.RC_PLANE_ITEM.get());
+            if (!"default".equalsIgnoreCase(getVariantId())) {
+                net.minecraft.world.item.component.CustomData.update(
+                        net.minecraft.core.component.DataComponents.CUSTOM_DATA,
+                        dropStack,
+                        tag -> tag.putString("Variant", getVariantId())
+                );
+                var config = com.microdrone.mod.config.plane.PlaneConfigManager.getConfig(getVariantId());
+                if (config != null && config.displayName != null) {
+                    dropStack.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, net.minecraft.network.chat.Component.literal(config.displayName));
+                }
+            }
             if (!player.getInventory().add(dropStack)) {
                 level().addFreshEntity(new ItemEntity(level(), getX(), getY(), getZ(), dropStack));
             }

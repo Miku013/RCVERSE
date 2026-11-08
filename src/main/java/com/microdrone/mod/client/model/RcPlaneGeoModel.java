@@ -1,6 +1,8 @@
 package com.microdrone.mod.client.model;
 
 import com.microdrone.mod.MicroDroneMod;
+import com.microdrone.mod.config.plane.PlaneConfig;
+import com.microdrone.mod.config.plane.PlaneConfigManager;
 import com.microdrone.mod.entity.RcPlaneEntity;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
@@ -9,26 +11,29 @@ import software.bernie.geckolib.cache.object.GeoBone;
 import software.bernie.geckolib.model.GeoModel;
 
 public class RcPlaneGeoModel extends GeoModel<RcPlaneEntity> {
-    private static final ResourceLocation MODEL_RESOURCE =
+    private static final ResourceLocation DEFAULT_MODEL =
             ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, "geo/rc_plane.geo.json");
-    private static final ResourceLocation TEXTURE_RESOURCE =
+    private static final ResourceLocation DEFAULT_TEXTURE =
             ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, "textures/entity/rc_plane.png");
-    private static final ResourceLocation ANIMATION_RESOURCE =
+    private static final ResourceLocation DEFAULT_ANIMATION =
             ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, "animations/rc_plane.animation.json");
 
     @Override
     public ResourceLocation getModelResource(RcPlaneEntity animatable) {
-        return MODEL_RESOURCE;
+        PlaneConfig config = PlaneConfigManager.getConfig(animatable.getVariantId());
+        return config != null ? config.getModelResource() : DEFAULT_MODEL;
     }
 
     @Override
     public ResourceLocation getTextureResource(RcPlaneEntity animatable) {
-        return TEXTURE_RESOURCE;
+        PlaneConfig config = PlaneConfigManager.getConfig(animatable.getVariantId());
+        return config != null ? config.getTextureResource() : DEFAULT_TEXTURE;
     }
 
     @Override
     public ResourceLocation getAnimationResource(RcPlaneEntity animatable) {
-        return ANIMATION_RESOURCE;
+        PlaneConfig config = PlaneConfigManager.getConfig(animatable.getVariantId());
+        return config != null ? config.getAnimationResource() : DEFAULT_ANIMATION;
     }
 
     @Override

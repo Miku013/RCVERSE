@@ -57,6 +57,8 @@ public class ClientModEvents {
         event.registerBlockEntityRenderer(ModBlockEntities.TEST_PIVOT_BE.get(), TestPivotBlockEntityRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.MINIATURE_PLACEMENT_BE.get(), com.microdrone.mod.client.renderer.MiniaturePlacementBlockEntityRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.RACE_DISPLAY_BE.get(), com.microdrone.mod.client.renderer.RaceDisplayBlockEntityRenderer::new);
+        event.registerBlockEntityRenderer(ModBlockEntities.VERTICAL_LOOP_BE.get(), com.microdrone.mod.client.renderer.VerticalLoopBlockEntityRenderer::new);
+        event.registerBlockEntityRenderer(ModBlockEntities.MODULAR_SLOPE_BE.get(), com.microdrone.mod.client.renderer.ModularSlopeBlockEntityRenderer::new);
     }
 
     private static void registerLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {

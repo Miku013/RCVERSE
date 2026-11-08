@@ -16,9 +16,15 @@
   "block.microdrone.race_display": "レース電光掲示板",
   "item.microdrone.race_display": "レース電光掲示板",
   "tooltip.microdrone.race_display_desc": "並べて設置すると自動で巨大スクリーン化する電光掲示板。RCカーのラップタイムや順位をリアルタイム表示。",
-  "block.microdrone.racing_slope": "レーシングスロープ",
-  "item.microdrone.racing_slope": "レーシングスロープ",
-  "tooltip.microdrone.racing_slope_desc": "前後に繋げると傾斜が自動で緩やかになり、重ねると高く積めるハーフブロック式スロープ。飛び出すと大ジャンプ！",
+  "block.microdrone.racing_slope": "レーシングスロープ（ジャンプ台）",
+  "item.microdrone.racing_slope": "レーシングスロープ（ジャンプ台）",
+  "tooltip.microdrone.racing_slope_desc": "飛び出すと上空へ大ジャンプするキッカーランプ。",
+  "block.microdrone.modular_slope": "モジュラースロープ坂",
+  "item.microdrone.modular_slope": "モジュラースロープ坂",
+  "tooltip.microdrone.modular_slope_desc": "前後に繋げるほど自動で長く緩やかになる坂道ブロック。段差なくスムーズに登坂できます。",
+  "block.microdrone.touge_slope": "峠スロープ坂",
+  "item.microdrone.touge_slope": "峠スロープ坂",
+  "tooltip.microdrone.touge_slope_desc": "階段状に連続配置してどこまでも滑らかに伸ばせる峠道スロープ。段差ゼロの2:1勾配でダウンヒルやドリフトに最適。",
   "block.microdrone.boost_ramp": "ブーストジャンプ台",
   "item.microdrone.boost_ramp": "ブーストジャンプ台",
   "tooltip.microdrone.boost_ramp_desc": "踏むと加速して猛スピードで上空へ跳躍するブーストジャンプ台。ネオン発光。",
@@ -122,5 +128,7 @@
   "message.microdrone.sub_cam_fpv": "§c[RC潜水艇] 視点: 水中探査FPV視点 [F5キーで切替]",
   "message.microdrone.boat_pilot_start": "§a[RCボート] 操縦開始！(W/S: 前進/後退, A/D: ラダー操舵, F5: 視点切替, コントローラー再使用: 終了)",
   "message.microdrone.submarine_pilot_start": "§a[RC潜水艇] 操縦開始！(W/S: 前後進, A/D: 旋回舵, Space/Shift: 浮上/潜航, F5: 視点切替, コントローラー再使用: 終了)",
-  "subtitles.microdrone.checkpoint_pass": "チェックポイント通過"
+  "subtitles.microdrone.checkpoint_pass": "チェックポイント通過",
+  "block.microdrone.vertical_loop": "360°縦ループコース",
+  "item.microdrone.vertical_loop": "360°縦ループコース"
 }

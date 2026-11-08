@@ -94,6 +94,8 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable {
             SynchedEntityData.defineId(DroneEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<ItemStack> DATA_INSTALLED_MOTOR =
             SynchedEntityData.defineId(DroneEntity.class, EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<String> DATA_VARIANT_ID =
+            SynchedEntityData.defineId(DroneEntity.class, EntityDataSerializers.STRING);
 
     // 装着中のバッテリー
     private ItemStack installedBattery = ItemStack.EMPTY;
@@ -112,9 +114,9 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable {
 
     // パターンA: 操縦開始時のプレイヤー初期位置（終了時テレポート復元用）
     private ResourceKey<Level> startDimension = null;
-    private double startX = 0;
-    private double startY = 0;
-    private double startZ = 0;
+    private double startX = Double.NaN;
+    private double startY = Double.NaN;
+    private double startZ = Double.NaN;
     private float startYaw = 0;
     private float startPitch = 0;
     private ChunkPos startChunkPos = null;
@@ -150,6 +152,7 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable {
         builder.define(DATA_INSTALLED_BATTERY, ItemStack.EMPTY);
         builder.define(DATA_MOTOR_TIER, 1);
         builder.define(DATA_INSTALLED_MOTOR, ItemStack.EMPTY);
+        builder.define(DATA_VARIANT_ID, "default");
     }
 
     // === バッテリー関連 ===
@@ -163,6 +166,14 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable {
 
     public int getBatteryMax() {
         return this.entityData.get(DATA_BATTERY_MAX);
+    }
+
+    public String getVariantId() {
+        return this.entityData.get(DATA_VARIANT_ID);
+    }
+
+    public void setVariantId(String variantId) {
+        this.entityData.set(DATA_VARIANT_ID, (variantId != null && !variantId.isBlank()) ? variantId : "default");
     }
 
     public float getBatteryPercentage() {
@@ -225,15 +236,18 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable {
     }
 
     public double getCurrentMaxSpeed() {
-        return getActiveMotorItem().getMaxHorizontalSpeed();
+        var config = com.microdrone.mod.config.drone.DroneConfigManager.getConfig(getVariantId());
+        return getActiveMotorItem().getMaxHorizontalSpeed() * config.properties.maxSpeedMultiplier;
     }
 
     public double getCurrentAcceleration() {
-        return getActiveMotorItem().getAcceleration();
+        var config = com.microdrone.mod.config.drone.DroneConfigManager.getConfig(getVariantId());
+        return getActiveMotorItem().getAcceleration() * config.properties.maxSpeedMultiplier;
     }
 
     public double getCurrentMaxVerticalSpeed() {
-        return getActiveMotorItem().getMaxVerticalSpeed();
+        var config = com.microdrone.mod.config.drone.DroneConfigManager.getConfig(getVariantId());
+        return getActiveMotorItem().getMaxVerticalSpeed() * config.properties.verticalSpeedMultiplier;
     }
 
     public double getCurrentVerticalAcceleration() {
@@ -427,7 +441,10 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable {
             ChunkPos restoreChunkPos = this.startChunkPos;
             this.startChunkPos = null;
 
-            if (this.startDimension != null && player.getServer() != null) {
+            boolean hasValidStartPos = !Double.isNaN(this.startX) &&
+                    !(Math.abs(this.startX) < 0.001 && Math.abs(this.startY) < 0.001 && Math.abs(this.startZ) < 0.001);
+
+            if (this.startDimension != null && player.getServer() != null && hasValidStartPos) {
                 ServerLevel targetLevel = player.getServer().getLevel(this.startDimension);
                 if (targetLevel != null) {
                     player.teleportTo(targetLevel, this.startX, this.startY, this.startZ, this.startYaw, this.startPitch);
@@ -455,6 +472,10 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable {
                     }
                 }
                 this.startDimension = null;
+            } else if (!hasValidStartPos) {
+                MicroDroneMod.LOGGER.warn("[SERVER] [DRONE] Invalid or origin start position ({}, {}, {}) on stopPiloting. Retaining player position at {}",
+                        this.startX, this.startY, this.startZ, player.position());
+                this.startDimension = null;
             }
 
             // 6. 初期位置チャンクの保護解除
@@ -472,7 +493,15 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable {
             this.inputVertical = 0.0f;
             this.targetYaw = 0.0f;
             this.targetPitch = 0.0f;
-            PacketDistributor.sendToPlayer(player, new DronePilotStatePayload(this.getId(), false, 0, 0, 0));
+
+            double sendX = hasValidStartPos ? this.startX : player.getX();
+            double sendY = hasValidStartPos ? this.startY : player.getY();
+            double sendZ = hasValidStartPos ? this.startZ : player.getZ();
+            PacketDistributor.sendToPlayer(player, new DronePilotStatePayload(this.getId(), false, sendX, sendY, sendZ));
+
+            this.startX = Double.NaN;
+            this.startY = Double.NaN;
+            this.startZ = Double.NaN;
             player.sendSystemMessage(Component.translatable("message.microdrone.pilot_stop"));
         }
     }
@@ -823,6 +852,17 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable {
         if (!this.level().isClientSide) {
             ItemEntity item = new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(),
                     new ItemStack(ModItems.DRONE_SPAWN_ITEM.get()));
+            if (!"default".equalsIgnoreCase(getVariantId())) {
+                net.minecraft.world.item.component.CustomData.update(
+                        net.minecraft.core.component.DataComponents.CUSTOM_DATA,
+                        item.getItem(),
+                        tag -> tag.putString("Variant", getVariantId())
+                );
+                var config = com.microdrone.mod.config.drone.DroneConfigManager.getConfig(getVariantId());
+                if (config != null && config.displayName != null) {
+                    item.getItem().set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, net.minecraft.network.chat.Component.literal(config.displayName));
+                }
+            }
             this.level().addFreshEntity(item);
 
             // バッテリーが装着されていれば一緒にドロップ
@@ -848,6 +888,15 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable {
         if (compound.hasUUID("PilotUUID")) {
             this.pilotUUID = compound.getUUID("PilotUUID");
         }
+        if (compound.contains("StartX", 6)) {
+            this.startX = compound.getDouble("StartX");
+            this.startY = compound.getDouble("StartY");
+            this.startZ = compound.getDouble("StartZ");
+        } else {
+            this.startX = Double.NaN;
+            this.startY = Double.NaN;
+            this.startZ = Double.NaN;
+        }
         if (compound.contains("InstalledBattery", 10)) {
             this.installedBattery = ItemStack.parse(this.registryAccess(), compound.getCompound("InstalledBattery")).orElse(ItemStack.EMPTY);
             updateBatterySyncData();
@@ -857,12 +906,20 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable {
             updateMotorSyncData();
         }
         this.accumulatedDistance = compound.getDouble("BatteryAccumulatedDist");
+        if (compound.contains("VariantId", 8)) {
+            setVariantId(compound.getString("VariantId"));
+        }
     }
 
     @Override
     protected void addAdditionalSaveData(CompoundTag compound) {
         if (this.pilotUUID != null) {
             compound.putUUID("PilotUUID", this.pilotUUID);
+        }
+        if (!Double.isNaN(this.startX)) {
+            compound.putDouble("StartX", this.startX);
+            compound.putDouble("StartY", this.startY);
+            compound.putDouble("StartZ", this.startZ);
         }
         if (!this.installedBattery.isEmpty()) {
             compound.put("InstalledBattery", this.installedBattery.save(this.registryAccess()));
@@ -871,6 +928,7 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable {
             compound.put("InstalledMotor", this.installedMotor.save(this.registryAccess()));
         }
         compound.putDouble("BatteryAccumulatedDist", this.accumulatedDistance);
+        compound.putString("VariantId", getVariantId());
     }
 
     @Override

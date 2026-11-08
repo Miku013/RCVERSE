@@ -44,6 +44,7 @@ public class RcBoatItem extends Item {
 
         RcBoatEntity boat = ModEntities.RC_BOAT.get().create(serverLevel);
         if (boat != null) {
+            applyVariant(itemStack, boat);
             boat.moveTo(x, y, z, context.getRotation(), 0.0F);
             serverLevel.addFreshEntity(boat);
             level.gameEvent(context.getPlayer(), GameEvent.ENTITY_PLACE, spawnPos);
@@ -79,6 +80,7 @@ public class RcBoatItem extends Item {
 
                 RcBoatEntity boat = ModEntities.RC_BOAT.get().create(level);
                 if (boat != null) {
+                    applyVariant(itemStack, boat);
                     boat.moveTo(x, y, z, player.getYRot(), 0.0F);
                     level.addFreshEntity(boat);
                     level.gameEvent(player, GameEvent.ENTITY_PLACE, hitPos);
@@ -94,6 +96,18 @@ public class RcBoatItem extends Item {
             return InteractionResultHolder.sidedSuccess(itemStack, level.isClientSide());
         }
         return InteractionResultHolder.pass(itemStack);
+    }
+
+    private void applyVariant(ItemStack itemStack, RcBoatEntity boat) {
+        var customData = itemStack.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA);
+        if (customData != null && customData.contains("Variant")) {
+            boat.setVariantId(customData.copyTag().getString("Variant"));
+        } else if (itemStack.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME)) {
+            String customName = itemStack.getHoverName().getString().trim().toLowerCase();
+            if (com.microdrone.mod.config.boat.BoatConfigManager.getAllConfigs().containsKey(customName)) {
+                boat.setVariantId(customName);
+            }
+        }
     }
 }
 

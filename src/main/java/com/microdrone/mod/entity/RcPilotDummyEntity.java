@@ -140,16 +140,32 @@ public class RcPilotDummyEntity extends LivingEntity {
         super.tick();
         this.setDeltaMovement(0, 0, 0);
 
-        // 操縦者プレイヤーがサーバーに存在しない場合は消滅
-        if (!this.level().isClientSide && this.tickCount % 40 == 0) {
+        if (!this.level().isClientSide) {
+            // ① 操縦中のビークルと紐付いていない孤立ダミーは即座に完全消滅！ (ワールド再開・リロード時のゾンビダミー即時排除)
+            if (RcVehicleManager.getByDummy(this.getUUID()) == null) {
+                this.discard();
+                return;
+            }
+
+            // ② 操縦者プレイヤーがサーバーに存在しない・死亡している場合も即座に消滅
             UUID ownerId = getOwnerUUID();
-            if (ownerId != null && this.getServer() != null) {
-                ServerPlayer player = this.getServer().getPlayerList().getPlayer(ownerId);
-                if (player == null || !player.isAlive()) {
-                    this.discard();
-                }
+            if (ownerId == null || this.getServer() == null) {
+                this.discard();
+                return;
+            }
+
+            ServerPlayer player = this.getServer().getPlayerList().getPlayer(ownerId);
+            if (player == null || !player.isAlive()) {
+                this.discard();
             }
         }
+    }
+
+    @Override
+    public boolean save(CompoundTag compound) {
+        // ダミー人形はRC操縦中のみ一時的に表示する身代わりクローン。
+        // ワールドセーブデータ（NBT）への保存を完全禁止し、ワールド再入室時の残留・増殖を100%防止する
+        return false;
     }
 
     @Override
@@ -217,6 +233,10 @@ public class RcPilotDummyEntity extends LivingEntity {
         }
         if (compound.contains("OwnerName")) {
             setOwnerName(compound.getString("OwnerName"));
+        }
+        // 過去のセーブデータ等から読み込まれた孤立ダミーは即座に完全消去
+        if (!this.level().isClientSide && RcVehicleManager.getByDummy(this.getUUID()) == null) {
+            this.discard();
         }
     }
 }

@@ -51,6 +51,27 @@ public interface RcVehicleClientController {
     default void onKeyInput(int key, int action, Entity vehicle, LocalPlayer player) {}
 
     /**
+     * マウスホイールスクロールイベント（ズーム等用）
+     * @return イベントを消費してホットバースロット切替をキャンセルする場合は true
+     */
+    default boolean onMouseScroll(double scrollDeltaY, boolean isShiftDown, Entity vehicle, LocalPlayer player) {
+        return false;
+    }
+
+    /**
+     * マウスボタンイベント（中クリックリセット等用）
+     * @return イベントを消費する場合は true
+     */
+    default boolean onMouseButton(int button, int action, int mods, Entity vehicle, LocalPlayer player) {
+        return false;
+    }
+
+    /**
+     * FOV（視野角/望遠）計算イベント
+     */
+    default void computeFov(ViewportEvent.ComputeFov event, Entity vehicle) {}
+
+    /**
      * 操縦中のプレイヤー自身のモデルを描画するかどうか
      * （地上視点時は false でプロポを持ったプレイヤーを表示、FPV/チェイス時は true で透明化）
      */

@@ -1,0 +1,6 @@
+{
+    "textures":  {
+                     "layer0":  "microdrone:item/modular_slope"
+                 },
+    "parent":  "minecraft:item/generated"
+}

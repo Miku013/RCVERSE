@@ -23,12 +23,25 @@ public class RcCarClientController implements RcVehicleClientController {
 
     private RcViewMode viewMode = RcViewMode.GROUND;
 
+    public static final double DEFAULT_CAM_DISTANCE = 1.8;
+    public static final double MIN_CAM_DISTANCE = 0.5;
+    public static final double MAX_CAM_DISTANCE = 6.0;
+
+    public static final float DEFAULT_FOV_MULTIPLIER = 1.0f;
+    public static final float MIN_FOV_MULTIPLIER = 0.35f;
+    public static final float MAX_FOV_MULTIPLIER = 1.35f;
+
+    private double camDistance = DEFAULT_CAM_DISTANCE;
+    private float fovMultiplier = DEFAULT_FOV_MULTIPLIER;
+
     private static Method cameraMoveMethod = null;
     private static boolean cameraMoveResolved = false;
 
     @Override
     public void onStart(Entity vehicle, LocalPlayer player, double startX, double startY, double startZ) {
         viewMode = RcViewMode.GROUND;
+        camDistance = DEFAULT_CAM_DISTANCE;
+        fovMultiplier = DEFAULT_FOV_MULTIPLIER;
         if (vehicle instanceof RcCarEntity car) {
             car.setLocallyControlled(true);
         }
@@ -43,6 +56,8 @@ public class RcCarClientController implements RcVehicleClientController {
 
     @Override
     public void onStop(Entity vehicle, LocalPlayer player) {
+        camDistance = DEFAULT_CAM_DISTANCE;
+        fovMultiplier = DEFAULT_FOV_MULTIPLIER;
         if (vehicle instanceof RcCarEntity car) {
             car.setLocallyControlled(false);
         }
@@ -71,7 +86,12 @@ public class RcCarClientController implements RcVehicleClientController {
                 input.vertical(),
                 car.getYRot(),
                 car.getXRot(),
-                false
+                false,
+                true,
+                car.getX(),
+                car.getY(),
+                car.getZ(),
+                car.getCurrentSpeed()
         ));
     }
 
@@ -113,7 +133,8 @@ public class RcCarClientController implements RcVehicleClientController {
             event.setYaw(carYaw);
             event.setPitch(pitch);
             mc.player.setYRot(carYaw);
-            moveCameraSafe(event.getCamera(), 1.8, 0.2, 0.0);
+            double camHeight = 0.15 + (camDistance * 0.08);
+            moveCameraSafe(event.getCamera(), camDistance, camHeight, 0.0);
         }
     }
 
@@ -155,6 +176,60 @@ public class RcCarClientController implements RcVehicleClientController {
     @Override
     public CameraType getExpectedCameraType() {
         return (viewMode == RcViewMode.CHASE) ? CameraType.THIRD_PERSON_BACK : CameraType.FIRST_PERSON;
+    }
+
+    @Override
+    public boolean onMouseScroll(double scrollDeltaY, boolean isShiftDown, Entity vehicle, LocalPlayer player) {
+        if (viewMode != RcViewMode.CHASE) return false;
+
+        if (isShiftDown) {
+            // FOV望遠/広角ズーム (レンズ倍率)
+            if (scrollDeltaY > 0) {
+                // 奥スクロール -> 拡大（望遠）
+                fovMultiplier = Math.max(MIN_FOV_MULTIPLIER, fovMultiplier - 0.05f);
+            } else if (scrollDeltaY < 0) {
+                // 手前スクロール -> 縮小（広角）
+                fovMultiplier = Math.min(MAX_FOV_MULTIPLIER, fovMultiplier + 0.05f);
+            }
+        } else {
+            // カメラ距離ズーム
+            if (scrollDeltaY > 0) {
+                // 奥スクロール -> 車体に近づく（ズームイン）
+                camDistance = Math.max(MIN_CAM_DISTANCE, camDistance - 0.2);
+            } else if (scrollDeltaY < 0) {
+                // 手前スクロール -> 車体から離れる（ズームアウト）
+                camDistance = Math.min(MAX_CAM_DISTANCE, camDistance + 0.2);
+            }
+        }
+
+        if (player != null) {
+            float zoomX = 1.0f / fovMultiplier;
+            player.displayClientMessage(Component.literal(String.format("§6[RC Camera] §f距離: §e%.1fm §f| レンズ: §e%.2fx §7(中クリックでリセット)", camDistance, zoomX)), true);
+        }
+        return true;
+    }
+
+    @Override
+    public boolean onMouseButton(int button, int action, int mods, Entity vehicle, LocalPlayer player) {
+        if (viewMode != RcViewMode.CHASE) return false;
+
+        // GLFW_MOUSE_BUTTON_MIDDLE = 2
+        if (button == org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_MIDDLE && action == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
+            camDistance = DEFAULT_CAM_DISTANCE;
+            fovMultiplier = DEFAULT_FOV_MULTIPLIER;
+            if (player != null) {
+                player.displayClientMessage(Component.literal(String.format("§a[RC Camera] §fズームをリセットしました §7(距離: %.1fm, レンズ: 1.00x)", camDistance)), true);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public void computeFov(ViewportEvent.ComputeFov event, Entity vehicle) {
+        if (viewMode == RcViewMode.CHASE) {
+            event.setFOV(event.getFOV() * fovMultiplier);
+        }
     }
 
     private static void moveCameraSafe(Camera camera, double distanceOffset, double yOffset, double xOffset) {

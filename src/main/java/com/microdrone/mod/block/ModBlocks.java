@@ -55,6 +55,30 @@ public class ModBlocks {
                     .lightLevel(state -> 12)
                     .noOcclusion(), true));
 
+    // モジュラースロープ坂（つなげるほど長く緩やかになる坂道）
+    public static final DeferredBlock<ModularSlopeBlock> MODULAR_SLOPE = BLOCKS.register("modular_slope",
+            () -> new ModularSlopeBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_BLACK)
+                    .strength(1.5f, 2.0f)
+                    .lightLevel(state -> 5)
+                    .noOcclusion()));
+
+    // 峠スロープ（どこまでも階段状に伸ばせる連続峠道）
+    public static final DeferredBlock<TougeSlopeBlock> TOUGE_SLOPE = BLOCKS.register("touge_slope",
+            () -> new TougeSlopeBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_BLACK)
+                    .strength(1.5f, 2.0f)
+                    .lightLevel(state -> 5)
+                    .noOcclusion()));
+
+    // 360°縦ループ（Loop-the-Loop）コース
+    public static final DeferredBlock<VerticalLoopBlock> VERTICAL_LOOP = BLOCKS.register("vertical_loop",
+            () -> new VerticalLoopBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_BLACK)
+                    .strength(2.0f, 3.0f)
+                    .lightLevel(state -> 4)
+                    .noOcclusion()));
+
     public static void register(IEventBus eventBus) {
         BLOCKS.register(eventBus);
     }

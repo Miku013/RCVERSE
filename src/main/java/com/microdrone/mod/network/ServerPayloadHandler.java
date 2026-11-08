@@ -42,6 +42,17 @@ public class ServerPayloadHandler {
                             // クライアントの正確な機首向き (Yaw) を完全同期！(進行方向のズレを根絶)
                             car.setYRot(payload.yaw());
                             car.yRotO = payload.yaw();
+
+                            // クライアント主導の位置・速度同期 (ステップ2: サーバー追従)
+                            if (payload.hasClientPos()) {
+                                car.applyClientPositionSync(
+                                        payload.clientX(),
+                                        payload.clientY(),
+                                        payload.clientZ(),
+                                        payload.clientSpeed(),
+                                        payload.yaw()
+                                );
+                            }
                         }
                     }
                 } else if (entity instanceof RcTankEntity tank) {

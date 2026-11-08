@@ -54,6 +54,18 @@ public class ModItems {
     public static final DeferredHolder<Item, BlockItem> BOOST_RAMP_ITEM =
             ITEMS.register("boost_ramp", () -> new BlockItem(ModBlocks.BOOST_RAMP.get(), new Item.Properties()));
 
+    // モジュラースロープ坂 (BlockItem)
+    public static final DeferredHolder<Item, BlockItem> MODULAR_SLOPE_ITEM =
+            ITEMS.register("modular_slope", () -> new BlockItem(ModBlocks.MODULAR_SLOPE.get(), new Item.Properties()));
+
+    // 峠スロープ (BlockItem)
+    public static final DeferredHolder<Item, BlockItem> TOUGE_SLOPE_ITEM =
+            ITEMS.register("touge_slope", () -> new BlockItem(ModBlocks.TOUGE_SLOPE.get(), new Item.Properties()));
+
+    // 360°縦ループコース (BlockItem)
+    public static final DeferredHolder<Item, BlockItem> VERTICAL_LOOP_ITEM =
+            ITEMS.register("vertical_loop", () -> new BlockItem(ModBlocks.VERTICAL_LOOP.get(), new Item.Properties()));
+
     // === コース小物・設備システム (Phase 1: カラーコーン ＆ Phase 2: 縁石・ガードレール・タイヤバリア) ===
     public static final DeferredHolder<Item, com.microdrone.mod.block.miniature.TrafficConeItem> TRAFFIC_CONE =
             ITEMS.register("traffic_cone", () -> new com.microdrone.mod.block.miniature.TrafficConeItem(new Item.Properties().stacksTo(64)));

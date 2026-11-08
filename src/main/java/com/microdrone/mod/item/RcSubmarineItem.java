@@ -44,6 +44,7 @@ public class RcSubmarineItem extends Item {
 
         RcSubmarineEntity submarine = ModEntities.RC_SUBMARINE.get().create(serverLevel);
         if (submarine != null) {
+            applyVariant(itemStack, submarine);
             submarine.moveTo(x, y, z, context.getRotation(), 0.0F);
             serverLevel.addFreshEntity(submarine);
             level.gameEvent(context.getPlayer(), GameEvent.ENTITY_PLACE, spawnPos);
@@ -79,6 +80,7 @@ public class RcSubmarineItem extends Item {
 
                 RcSubmarineEntity submarine = ModEntities.RC_SUBMARINE.get().create(level);
                 if (submarine != null) {
+                    applyVariant(itemStack, submarine);
                     submarine.moveTo(x, y, z, player.getYRot(), 0.0F);
                     level.addFreshEntity(submarine);
                     level.gameEvent(player, GameEvent.ENTITY_PLACE, hitPos);
@@ -94,6 +96,18 @@ public class RcSubmarineItem extends Item {
             return InteractionResultHolder.sidedSuccess(itemStack, level.isClientSide());
         }
         return InteractionResultHolder.pass(itemStack);
+    }
+
+    private void applyVariant(ItemStack itemStack, RcSubmarineEntity submarine) {
+        var customData = itemStack.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA);
+        if (customData != null && customData.contains("Variant")) {
+            submarine.setVariantId(customData.copyTag().getString("Variant"));
+        } else if (itemStack.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME)) {
+            String customName = itemStack.getHoverName().getString().trim().toLowerCase();
+            if (com.microdrone.mod.config.submarine.SubmarineConfigManager.getAllConfigs().containsKey(customName)) {
+                submarine.setVariantId(customName);
+            }
+        }
     }
 }
 

@@ -164,9 +164,6 @@ public class ClientDroneInputHandler {
     }
 
     public static void setPiloting(int droneId, boolean state, double sx, double sy, double sz) {
-        startX = sx;
-        startY = sy;
-        startZ = sz;
         Minecraft mc = Minecraft.getInstance();
         missingTicks = 0;
         MicroDroneMod.LOGGER.info("[CLIENT] [PILOT_STATE_SET] DroneId: {}, State: {}, PlayerPos: {}",
@@ -174,6 +171,16 @@ public class ClientDroneInputHandler {
                 mc.player != null ? String.format("[%.2f, %.2f, %.2f]", mc.player.getX(), mc.player.getY(), mc.player.getZ()) : "null");
 
         if (state) {
+            boolean hasValidStartPos = !Double.isNaN(sx) && !(Math.abs(sx) < 0.001 && Math.abs(sy) < 0.001 && Math.abs(sz) < 0.001);
+            if (hasValidStartPos) {
+                startX = sx;
+                startY = sy;
+                startZ = sz;
+            } else if (mc.player != null) {
+                startX = mc.player.getX();
+                startY = mc.player.getY();
+                startZ = mc.player.getZ();
+            }
             isPiloting = true;
             activeDroneId = droneId;
             Entity targetEnt = mc.level != null ? mc.level.getEntity(droneId) : null;
@@ -370,6 +377,57 @@ public class ClientDroneInputHandler {
                         event.setCanceled(true);
                     }
                 }
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public void onMouseScroll(InputEvent.MouseScrollingEvent event) {
+        if (!isPiloting || activeDroneId == -1) return;
+
+        Minecraft mc = Minecraft.getInstance();
+        LocalPlayer player = mc.player;
+        if (player == null || mc.level == null) return;
+
+        Entity entity = mc.level.getEntity(activeDroneId);
+        RcVehicleClientController controller = getControllerForEntity(entity);
+        if (controller != null) {
+            boolean isShiftDown = net.minecraft.client.gui.screens.Screen.hasShiftDown() || mc.options.keyShift.isDown();
+            boolean handled = controller.onMouseScroll(event.getScrollDeltaY(), isShiftDown, entity, player);
+            if (handled) {
+                event.setCanceled(true);
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public void onMouseButton(InputEvent.MouseButton.Pre event) {
+        if (!isPiloting || activeDroneId == -1) return;
+
+        Minecraft mc = Minecraft.getInstance();
+        LocalPlayer player = mc.player;
+        if (player == null || mc.level == null) return;
+
+        Entity entity = mc.level.getEntity(activeDroneId);
+        RcVehicleClientController controller = getControllerForEntity(entity);
+        if (controller != null) {
+            boolean handled = controller.onMouseButton(event.getButton(), event.getAction(), event.getModifiers(), entity, player);
+            if (handled) {
+                event.setCanceled(true);
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public void onComputeFov(ViewportEvent.ComputeFov event) {
+        if (!isPiloting || activeDroneId == -1) return;
+
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player != null && mc.level != null) {
+            Entity entity = mc.level.getEntity(activeDroneId);
+            RcVehicleClientController controller = getControllerForEntity(entity);
+            if (controller != null) {
+                controller.computeFov(event, entity);
             }
         }
     }

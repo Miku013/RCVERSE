@@ -38,6 +38,17 @@ public class DroneSpawnItem extends Item {
 
         DroneEntity drone = ModEntities.DRONE.get().create(serverLevel);
         if (drone != null) {
+            // アイテムのカスタムデータや金床カスタム名からバリアントIDを適用
+            var customData = itemStack.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA);
+            if (customData != null && customData.contains("Variant")) {
+                drone.setVariantId(customData.copyTag().getString("Variant"));
+            } else if (itemStack.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME)) {
+                String customName = itemStack.getHoverName().getString().trim().toLowerCase();
+                if (com.microdrone.mod.config.drone.DroneConfigManager.getAllConfigs().containsKey(customName)) {
+                    drone.setVariantId(customName);
+                }
+            }
+
             drone.moveTo(x, y, z, context.getRotation(), 0.0F);
             drone.setYHeadRot(context.getRotation());
             serverLevel.addFreshEntity(drone);
