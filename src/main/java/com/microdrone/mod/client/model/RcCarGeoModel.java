@@ -76,8 +76,10 @@ public class RcCarGeoModel extends GeoModel<RcCarEntity> {
         applyWheelRoll(wheelRR, wheelRad, true);  // 右後
 
         // 5. リトラクタブルヘッドライト開閉アニメーション (0.0=閉 ~ 1.0=開)
+        CarConfig carCfg = CarConfigManager.getConfig(animatable.getVariantId());
+        float maxAngleDeg = (carCfg != null && carCfg.properties != null) ? carCfg.properties.retractableAngle : 22.0f;
         float openProgress = animatable.getHeadlightProgress(animationState.getPartialTick());
-        float popupAngle = openProgress * (22.0f * Mth.DEG_TO_RAD);
+        float popupAngle = openProgress * (maxAngleDeg * Mth.DEG_TO_RAD);
         GeoBone retractL = this.getAnimationProcessor().getBone("retractable_l");
         GeoBone retractR = this.getAnimationProcessor().getBone("retractable_r");
         GeoBone retractBoth = this.getAnimationProcessor().getBone("retractable_lights");

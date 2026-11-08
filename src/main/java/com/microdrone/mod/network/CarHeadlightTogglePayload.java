@@ -24,3 +24,4 @@ public record CarHeadlightTogglePayload(int carId) implements CustomPacketPayloa
         return TYPE;
     }
 }
+

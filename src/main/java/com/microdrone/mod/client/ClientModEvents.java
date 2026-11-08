@@ -29,8 +29,11 @@ import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
+import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
 import net.neoforged.neoforge.client.extensions.common.IClientItemExtensions;
 import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent;
+import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
+import com.microdrone.mod.config.car.CarConfigManager;
 
 public class ClientModEvents {
 
@@ -46,6 +49,7 @@ public class ClientModEvents {
         modEventBus.addListener(ClientModEvents::registerLayerDefinitions);
         modEventBus.addListener(ClientModEvents::registerClientExtensions);
         modEventBus.addListener(ClientModEvents::registerKeyMappings);
+        modEventBus.addListener(ClientModEvents::registerReloadListeners);
 
         // クライアント側入力、カメラコントローラー、チャンクイベント、HUDオーバーレイ、サウンドマネージャーの登録
         ClientDroneInputHandler.register();
@@ -95,5 +99,11 @@ public class ClientModEvents {
 
     private static void registerKeyMappings(RegisterKeyMappingsEvent event) {
         event.register(KEY_HEADLIGHT);
+    }
+
+    private static void registerReloadListeners(RegisterClientReloadListenersEvent event) {
+        event.registerReloadListener((ResourceManagerReloadListener) resourceManager -> {
+            CarConfigManager.loadConfigs();
+        });
     }
 }
