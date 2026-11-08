@@ -22,6 +22,7 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
 
@@ -35,7 +36,8 @@ public class RoadEndBlock extends HorizontalDirectionalBlock implements EntityBl
     public static final MapCodec<RoadEndBlock> CODEC = simpleCodec(RoadEndBlock::new);
     public static final DirectionProperty FACING = HorizontalDirectionalBlock.FACING;
 
-    private static final VoxelShape SHAPE = Block.box(0, 0, 0, 16, 8, 16);
+    // 1ブロック（フルブロック）のマーカー
+    private static final VoxelShape SHAPE = Shapes.block();
 
     public RoadEndBlock(Properties properties) {
         super(properties);

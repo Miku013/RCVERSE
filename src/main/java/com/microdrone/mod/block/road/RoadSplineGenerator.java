@@ -51,9 +51,9 @@ public class RoadSplineGenerator {
         List<SplineSample> samples = new ArrayList<>();
         int segments = Math.max(8, data.getSegments());
 
-        // 始点 P0 と 終点 P3 (ブロック天面高さ基準: Y + 0.5)
-        Vec3 p0 = new Vec3(startPos.getX() + 0.5, startPos.getY() + 0.5, startPos.getZ() + 0.5);
-        Vec3 p3 = new Vec3(endPos.getX() + 0.5, endPos.getY() + 0.5, endPos.getZ() + 0.5);
+        // 始点 P0 と 終点 P3 (マーカー上面高さ基準: Y + 1.0)
+        Vec3 p0 = new Vec3(startPos.getX() + 0.5, startPos.getY() + 1.0, startPos.getZ() + 0.5);
+        Vec3 p3 = new Vec3(endPos.getX() + 0.5, endPos.getY() + 1.0, endPos.getZ() + 0.5);
 
         // 進入方向単位ベクトル T0
         Vec3 t0 = getDirectionVec(startFacing);

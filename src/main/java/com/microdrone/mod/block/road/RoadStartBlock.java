@@ -36,8 +36,8 @@ public class RoadStartBlock extends HorizontalDirectionalBlock implements Entity
     public static final MapCodec<RoadStartBlock> CODEC = simpleCodec(RoadStartBlock::new);
     public static final DirectionProperty FACING = HorizontalDirectionalBlock.FACING;
 
-    // 0.5m の低いマーカー台座
-    private static final VoxelShape SHAPE = Block.box(0, 0, 0, 16, 8, 16);
+    // 1ブロック（フルブロック）のマーカー
+    private static final VoxelShape SHAPE = Shapes.block();
 
     public RoadStartBlock(Properties properties) {
         super(properties);
