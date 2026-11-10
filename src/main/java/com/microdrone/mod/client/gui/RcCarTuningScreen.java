@@ -10,17 +10,20 @@ import net.minecraft.network.chat.Component;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
- * RCカー車重＆物理チューニングGUI画面 (アプローチ3)
+ * RCカー車重＆走行物理モードチューニングGUI画面
  * プロポを持った状態でスニーク右クリック、またはRCカーをスニーク右クリックで起動
  */
 public class RcCarTuningScreen extends Screen {
 
     private final RcCarEntity car;
     private WeightSlider slider;
+    private Button modeButton;
+    private boolean realMode;
 
     public RcCarTuningScreen(RcCarEntity car) {
         super(Component.literal("RCカー セッティング"));
         this.car = car;
+        this.realMode = car.isRealMode();
     }
 
     @Override
@@ -28,36 +31,59 @@ public class RcCarTuningScreen extends Screen {
         int centerX = this.width / 2;
         int centerY = this.height / 2;
 
+        // 0. 走行モード切替ボタン (RACE ⇔ REAL)
+        this.modeButton = Button.builder(getModeButtonText(), btn -> toggleDrivingMode())
+                .bounds(centerX - 120, centerY - 72, 240, 20).build();
+        this.addRenderableWidget(this.modeButton);
+
         float currentWeight = this.car.getVehicleMass();
         // 0.50kg ~ 2.50kg -> 0.0 ~ 1.0
         double initialProgress = Math.max(0.0, Math.min(1.0, (currentWeight - 0.50) / 2.00));
 
         // 1. 車重スライダー
-        this.slider = new WeightSlider(centerX - 120, centerY - 25, 240, 20, initialProgress);
+        this.slider = new WeightSlider(centerX - 120, centerY - 18, 240, 20, initialProgress);
         this.addRenderableWidget(this.slider);
 
         // 2. プリセットボタン (1行目: 0.80kg / 1.10kg)
         this.addRenderableWidget(Button.builder(Component.literal("軽量 (0.80kg)"), btn -> setPreset(0.80f))
-                .bounds(centerX - 120, centerY + 8, 115, 20).build());
+                .bounds(centerX - 120, centerY + 12, 115, 20).build());
 
         this.addRenderableWidget(Button.builder(Component.literal("標準 (1.10kg)"), btn -> setPreset(1.10f))
-                .bounds(centerX + 5, centerY + 8, 115, 20).build());
+                .bounds(centerX + 5, centerY + 12, 115, 20).build());
 
         // 3. プリセットボタン (2行目: 1.60kg / 2.20kg)
         this.addRenderableWidget(Button.builder(Component.literal("重量級 (1.60kg)"), btn -> setPreset(1.60f))
-                .bounds(centerX - 120, centerY + 32, 115, 20).build());
+                .bounds(centerX - 120, centerY + 36, 115, 20).build());
 
         this.addRenderableWidget(Button.builder(Component.literal("超重量 (2.20kg)"), btn -> setPreset(2.20f))
-                .bounds(centerX + 5, centerY + 32, 115, 20).build());
+                .bounds(centerX + 5, centerY + 36, 115, 20).build());
 
         // 4. 完了ボタン
         this.addRenderableWidget(Button.builder(Component.literal("設定完了"), btn -> onClose())
-                .bounds(centerX - 60, centerY + 65, 120, 20).build());
+                .bounds(centerX - 60, centerY + 68, 120, 20).build());
+    }
+
+    private Component getModeButtonText() {
+        return this.realMode
+                ? Component.literal("走行モード: §b§lREAL (可変グリップ物理)")
+                : Component.literal("走行モード: §a§lRACE (標準ドリフト補助)");
+    }
+
+    private void toggleDrivingMode() {
+        this.realMode = !this.realMode;
+        this.modeButton.setMessage(getModeButtonText());
+        this.car.setDrivingMode(this.realMode);
+        sendSyncPacket();
     }
 
     private void setPreset(float weight) {
         double progress = Math.max(0.0, Math.min(1.0, (weight - 0.50) / 2.00));
         this.slider.setValueFromPreset(progress);
+    }
+
+    private void sendSyncPacket() {
+        float w = this.slider != null ? this.slider.getWeightKg() : this.car.getVehicleMass();
+        PacketDistributor.sendToServer(new RcCarTuningPayload(this.car.getId(), w, this.realMode));
     }
 
     @Override
@@ -68,28 +94,27 @@ public class RcCarTuningScreen extends Screen {
         int centerY = this.height / 2;
 
         // タイトル
-        graphics.drawCenteredString(this.font, "§6§l=== RCカー 車重＆ジャンプ物理セッティング ===", centerX, centerY - 75, 0xFFFFFF);
+        graphics.drawCenteredString(this.font, "§6§l=== RCカー 走行モード＆物理セッティング ===", centerX, centerY - 96, 0xFFFFFF);
+
+        // モード説明
+        String modeDesc = this.realMode
+                ? "§b[REAL] §7前後/横速度分離・慣性横滑り (既存コース完全互換)"
+                : "§a[RACE] §7Spaceホップドリフト・扱いやすい標準アシスト";
+        graphics.drawCenteredString(this.font, modeDesc, centerX, centerY - 46, 0xDDDDDD);
 
         // 現在設定の解説
         float w = this.slider.getWeightKg();
         String desc;
-        String airTime;
         if (w < 0.90f) {
             desc = "§b【軽量・トリック仕様】 §7ジャンプが高くフワッと遠くまで飛びます";
-            airTime = "滞空時間目安: §e約 0.70秒 §7(軽快・ロングジャンプ)";
         } else if (w <= 1.35f) {
             desc = "§a【標準・実車1/10バギー】 §7自然な放物線と手応えのある推奨バランス";
-            airTime = "滞空時間目安: §e約 0.55秒 §7(推奨・リアルRC)";
         } else if (w <= 1.85f) {
             desc = "§6【重量級・高速レーン】 §7低空を鋭く突き抜け、ドスッと素早く着地";
-            airTime = "滞空時間目安: §e約 0.42秒 §7(低空高速・レーザー弾道)";
         } else {
             desc = "§c【超重量級・地面吸着】 §7超重厚。地面に張り付き段差やジャンプを極小化";
-            airTime = "滞空時間目安: §e約 0.32秒 §7(超重厚・即座着地)";
         }
-
-        graphics.drawCenteredString(this.font, desc, centerX, centerY - 54, 0xEEEEEE);
-        graphics.drawCenteredString(this.font, airTime, centerX, centerY - 42, 0xCCCCCC);
+        graphics.drawCenteredString(this.font, desc, centerX, centerY - 32, 0xEEEEEE);
     }
 
     @Override
@@ -129,8 +154,7 @@ public class RcCarTuningScreen extends Screen {
             // クライアント側に即時反映
             car.setCustomWeight(w);
             // サーバーへ同期パケット送信
-            PacketDistributor.sendToServer(new RcCarTuningPayload(car.getId(), w));
+            sendSyncPacket();
         }
     }
 }
-

@@ -10,6 +10,8 @@ import com.microdrone.mod.item.DroneBatteryItem;
 import com.microdrone.mod.item.DroneMotorItem;
 import com.microdrone.mod.item.ModItems;
 import com.microdrone.mod.network.DronePilotStatePayload;
+import com.microdrone.mod.physics.DrivingMode;
+import com.microdrone.mod.physics.RealCarPhysics;
 import com.microdrone.mod.sound.ModSounds;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -92,6 +94,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     private static final EntityDataAccessor<Float> DATA_LOOP_PROGRESS = SynchedEntityData.defineId(RcCarEntity.class,
             EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Boolean> DATA_HEADLIGHT = SynchedEntityData.defineId(RcCarEntity.class,
+            EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Boolean> DATA_REAL_MODE = SynchedEntityData.defineId(RcCarEntity.class,
             EntityDataSerializers.BOOLEAN);
 
     // 操縦者UUID
@@ -179,6 +183,46 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
     private BlockPos loopBlockPos = null;
     private Direction loopFacing = Direction.NORTH;
 
+    // REALモード専用物理演算エンジン (RACEモードとは完全分離)
+    private final RealCarPhysics realPhysics = new RealCarPhysics();
+
+    public RealCarPhysics getRealPhysics() {
+        return this.realPhysics;
+    }
+
+    public boolean isRealMode() {
+        return this.entityData.get(DATA_REAL_MODE);
+    }
+
+    public DrivingMode getDrivingMode() {
+        return DrivingMode.fromBoolean(isRealMode());
+    }
+
+    /**
+     * 走行モード（RACE / REAL）を切り替える。
+     * 現在の速度ベクトル・向きを維持したまま滑らかに引き継ぐ。
+     */
+    public void setDrivingMode(boolean realMode) {
+        boolean prev = this.entityData.get(DATA_REAL_MODE);
+        this.entityData.set(DATA_REAL_MODE, realMode);
+        if (prev != realMode) {
+            if (realMode) {
+                this.realPhysics.syncFromWorldVelocity(this.carVelocity, this.getYRot(), this.steerAngle);
+                this.driftDirection = 0;
+                this.driftTicks = 0;
+                this.turboBoostTicks = 0;
+            } else {
+                this.driftDirection = 0;
+                this.driftTicks = 0;
+                // REALの進行成分をRACEのcurrentSpeedへ維持
+                float yawRad = this.getYRot() * Mth.DEG_TO_RAD;
+                double fwdX = -Mth.sin(yawRad);
+                double fwdZ = Mth.cos(yawRad);
+                this.currentSpeed = (float) (this.carVelocity.x * fwdX + this.carVelocity.z * fwdZ);
+            }
+        }
+    }
+
     public boolean isInLoop() {
         return this.inLoop;
     }
@@ -212,10 +256,16 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             this.yRotO = yaw;
             this.currentSpeed = speed;
 
-            float yawRad = yaw * Mth.DEG_TO_RAD;
-            double driveX = -Mth.sin(yawRad);
-            double driveZ = Mth.cos(yawRad);
-            this.carVelocity = new Vec3(driveX * speed, this.getDeltaMovement().y, driveZ * speed);
+            if (this.isRealMode() && this.clientSyncActive) {
+                // REALモードでは横滑り成分を消さないよう実際の位置差分からワールド速度を再構成
+                this.carVelocity = new Vec3(dx, this.getDeltaMovement().y, dz);
+                this.realPhysics.syncFromWorldVelocity(this.carVelocity, yaw, this.steerAngle);
+            } else {
+                float yawRad = yaw * Mth.DEG_TO_RAD;
+                double driveX = -Mth.sin(yawRad);
+                double driveZ = Mth.cos(yawRad);
+                this.carVelocity = new Vec3(driveX * speed, this.getDeltaMovement().y, driveZ * speed);
+            }
 
             this.clientSyncActive = true;
             this.clientSyncTimeout = 5; // 5 Tick以上パケットが届かなければ自律物理へ安全フォールバック
@@ -353,6 +403,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         builder.define(DATA_IN_LOOP, false);
         builder.define(DATA_LOOP_PROGRESS, 0.0f);
         builder.define(DATA_HEADLIGHT, false);
+        builder.define(DATA_REAL_MODE, false);
     }
 
     @Override
@@ -652,214 +703,256 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         // 車用に速度を 1/4 に調整 (blocks/tick) + 外部コンフィグ倍率適用
         double maxSpeed = motor.getMaxHorizontalSpeed() * 0.55 * props.maxSpeedMultiplier;
         double accel = (0.025 + (motor.getTier() * 0.008)) * props.accelMultiplier; // 速度に合わせた滑らかで扱いやすい加速
-        double friction = 0.90; // 地面摩擦減速
 
-        // ステアリング操舵 (最大35度)
-        float steerMult = (props.invertSteer ? -1.0f : 1.0f) * props.turnSpeedMultiplier;
-        float targetSteer = this.inputSteer * 35.0f * steerMult;
-        this.steerAngle = Mth.lerp(0.40f, this.steerAngle, targetSteer);
+        if (this.isRealMode()) {
+            // === REALモード専用物理演算 (RACEモードから完全分離) ===
+            // 4点サスペンション・地面接地・ピッチ/ロール計算を先に実行
+            this.prevRollAngle = this.rollAngle;
+            this.prevPitchAngle = this.pitchAngle;
+            if (!this.onLoop && !this.inLoop) {
+                updateSuspensionPhysics(0.0f);
+            }
 
-        // ③ 接触時の出力抑制 (壁・障害物に接触/密着している状態での前進アクセルを大幅カットし、ゴリ押し抜けを完全防止)
-        // ※ スロープ斜面走行中や縦ループ走行中・突入時は段差との誤接触を防ぐため除外
-        boolean wallAhead = !this.onSlope && !this.onLoop && !this.inLoop
-                && (this.horizontalCollision || (this.inputForward > 0.05f && isObstacleAhead(0.12)));
-        if (wallAhead && this.inputForward > 0.05f) {
-            this.currentSpeed = Math.min(this.currentSpeed, 0.015f); // ほぼ停止速度に制限
-            accel *= 0.08; // 加速を90%以上カット
-        }
+            boolean wallAheadReal = !this.onSlope && !this.onLoop && !this.inLoop
+                    && (this.horizontalCollision || (this.inputForward > 0.05f && isObstacleAhead(0.12)));
+            boolean groundedNow = (this.jumpAirborneTicks <= 0) && (this.onGround() || this.wheelGrounded);
 
-        // 前進 / 後退 / ESCブレーキ処理 (実機ホビーラジコンESC仕様: 前進中のS入力は急ブレーキ、停止後にバック)
-        // Forward / Reverse / Brake processing with Mario Kart drift speed maintenance
-        if (this.inputForward > 0.05f) {
-            if (this.currentSpeed < -0.01f) {
-                this.currentSpeed += (float) (accel * 2.5f);
-                if (this.currentSpeed > 0.0f)
-                    this.currentSpeed = 0.0f;
+            RealCarPhysics.StepResult res = this.realPhysics.stepHorizontal(
+                    this.carVelocity,
+                    this.getYRot(),
+                    this.inputForward,
+                    this.inputSteer,
+                    this.inputHandbrake,
+                    groundedNow,
+                    wallAheadReal,
+                    maxSpeed,
+                    accel,
+                    props.turnSpeedMultiplier,
+                    props.invertSteer
+            );
+
+            this.setYRot(res.newYaw());
+            this.steerAngle = res.newSteerAngle();
+            this.carVelocity = res.worldVelocity();
+            this.currentSpeed = res.forwardSpeed();
+            this.driftDirection = 0;
+            this.driftTicks = 0;
+            this.turboBoostTicks = 0;
+        } else {
+            // === RACEモード (既存の挙動を完全維持) ===
+            double friction = 0.90; // 地面摩擦減速
+
+            // ステアリング操舵 (最大35度)
+            float steerMult = (props.invertSteer ? -1.0f : 1.0f) * props.turnSpeedMultiplier;
+            float targetSteer = this.inputSteer * 35.0f * steerMult;
+            this.steerAngle = Mth.lerp(0.40f, this.steerAngle, targetSteer);
+
+            // ③ 接触時の出力抑制 (壁・障害物に接触/密着している状態での前進アクセルを大幅カットし、ゴリ押し抜けを完全防止)
+            // ※ スロープ斜面走行中や縦ループ走行中・突入時は段差との誤接触を防ぐため除外
+            boolean wallAhead = !this.onSlope && !this.onLoop && !this.inLoop
+                    && (this.horizontalCollision || (this.inputForward > 0.05f && isObstacleAhead(0.12)));
+            if (wallAhead && this.inputForward > 0.05f) {
+                this.currentSpeed = Math.min(this.currentSpeed, 0.015f); // ほぼ停止速度に制限
+                accel *= 0.08; // 加速を90%以上カット
+            }
+
+            // 前進 / 後退 / ESCブレーキ処理 (実機ホビーラジコンESC仕様: 前進中のS入力は急ブレーキ、停止後にバック)
+            // Forward / Reverse / Brake processing with Mario Kart drift speed maintenance
+            if (this.inputForward > 0.05f) {
+                if (this.currentSpeed < -0.01f) {
+                    this.currentSpeed += (float) (accel * 2.5f);
+                    if (this.currentSpeed > 0.0f)
+                        this.currentSpeed = 0.0f;
+                } else {
+                    float forwardAccel = (float) (accel * this.inputForward);
+                    if (this.driftDirection != 0) {
+                        forwardAccel *= 1.30f; // Maintain high speed during drift (long slide)
+                    }
+                    this.currentSpeed += forwardAccel;
+                }
+            } else if (this.inputForward < -0.05f) {
+                if (this.currentSpeed > 0.01f) {
+                    this.currentSpeed -= (float) (accel * 2.5f);
+                    if (this.currentSpeed < 0.0f)
+                        this.currentSpeed = 0.0f;
+                } else {
+                    this.currentSpeed += (float) (accel * this.inputForward * 0.65f);
+                }
             } else {
-                float forwardAccel = (float) (accel * this.inputForward);
+                this.currentSpeed *= friction;
+                if (Math.abs(this.currentSpeed) < 0.001f) {
+                    this.currentSpeed = 0.0f;
+                }
+            }
+
+            double currentMax = (this.turboBoostTicks > 0) ? (maxSpeed * 1.30) : maxSpeed;
+            this.currentSpeed = (float) Mth.clamp(this.currentSpeed, -maxSpeed * 0.45, currentMax);
+
+            // === Mario Kart Drift State Machine ===
+            // inputSteer > 0: A key (Left), inputSteer < 0: D key (Right)
+            boolean wantsDrift = this.inputHandbrake && (this.currentSpeed > 0.03f || this.driftDirection != 0);
+
+            if (wantsDrift) {
+                // Start drift lock
+                if (this.driftDirection == 0) {
+                    if (this.inputSteer > 0.05f) {
+                        this.driftDirection = -1; // A key: Drift Left
+                        this.driftTicks = 0;
+                        if (this.onGround() || this.wheelGrounded) {
+                            Vec3 cur = this.getDeltaMovement();
+                            double hopY = 0.16 / Math.sqrt(Math.max(0.45, this.getVehicleMass() / 1.10f));
+                            this.setDeltaMovement(new Vec3(cur.x, hopY, cur.z)); // Hop jump!
+                            this.setOnGround(false);
+                            this.hasImpulse = true;
+                            this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                                    SoundEvents.ARMOR_EQUIP_LEATHER.value(), SoundSource.PLAYERS, 12.0F, 1.8F);
+                        }
+                    } else if (this.inputSteer < -0.05f) {
+                        this.driftDirection = 1; // D key: Drift Right
+                        this.driftTicks = 0;
+                        if (this.onGround() || this.wheelGrounded) {
+                            Vec3 cur = this.getDeltaMovement();
+                            double hopY = 0.16 / Math.sqrt(Math.max(0.45, this.getVehicleMass() / 1.10f));
+                            this.setDeltaMovement(new Vec3(cur.x, hopY, cur.z)); // Hop jump!
+                            this.setOnGround(false);
+                            this.hasImpulse = true;
+                            this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                                    SoundEvents.ARMOR_EQUIP_LEATHER.value(), SoundSource.PLAYERS, 12.0F, 1.8F);
+                        }
+                    }
+                }
+
                 if (this.driftDirection != 0) {
-                    forwardAccel *= 1.30f; // Maintain high speed during drift (long slide)
+                    this.driftTicks++;
                 }
-                this.currentSpeed += forwardAccel;
-            }
-        } else if (this.inputForward < -0.05f) {
-            if (this.currentSpeed > 0.01f) {
-                this.currentSpeed -= (float) (accel * 2.5f);
-                if (this.currentSpeed < 0.0f)
-                    this.currentSpeed = 0.0f;
             } else {
-                this.currentSpeed += (float) (accel * this.inputForward * 0.65f);
+                // Released space key or stopped -> Mini-Turbo release!
+                if (this.driftDirection != 0) {
+                    if (this.driftTicks >= 14 && this.currentSpeed > 0.04f) {
+                        // Mini-Turbo boost!
+                        this.turboBoostTicks = 10; // Boost dash
+                        this.currentSpeed = (float) Math.min(this.currentSpeed * 1.35f, maxSpeed * 1.30f);
+                        this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                                SoundEvents.FIREWORK_ROCKET_LAUNCH, SoundSource.PLAYERS, 12.0F, 1.8F);
+                        if (this.level().isClientSide) {
+                            spawnMiniTurboBurst();
+                        }
+                    }
+                    this.driftDirection = 0;
+                    this.driftTicks = 0;
+                }
             }
-        } else {
-            this.currentSpeed *= friction;
-            if (Math.abs(this.currentSpeed) < 0.001f) {
-                this.currentSpeed = 0.0f;
+
+            if (this.turboBoostTicks > 0) {
+                this.turboBoostTicks--;
             }
-        }
 
-        double currentMax = (this.turboBoostTicks > 0) ? (maxSpeed * 1.30) : maxSpeed;
-        this.currentSpeed = (float) Mth.clamp(this.currentSpeed, -maxSpeed * 0.45, currentMax);
+            // === Counter-Steer and In-Steer Calculations ===
+            // inputSteer > 0 is Left (A key), inputSteer < 0 is Right (D key)
+            float counterAmount = 0.0f; // 0.0 (none) to 1.0 (full counter-steer)
+            float inSteerAmount = 0.0f; // 0.0 (none) to 1.0 (full in-steer)
 
-        // === Mario Kart Drift State Machine ===
-        // inputSteer > 0: A key (Left), inputSteer < 0: D key (Right)
-        boolean wantsDrift = this.inputHandbrake && (this.currentSpeed > 0.03f || this.driftDirection != 0);
-
-        if (wantsDrift) {
-            // Start drift lock
-            if (this.driftDirection == 0) {
+            if (this.driftDirection == -1) {
+                // Left Drift: D key (<0) is Counter-Steer to Right! A key (>0) is In-Steer to
+                // Left
+                if (this.inputSteer < -0.05f) {
+                    counterAmount = -this.inputSteer; // D key = Counter-steer
+                } else if (this.inputSteer > 0.05f) {
+                    inSteerAmount = this.inputSteer; // A key = In-steer
+                }
+            } else if (this.driftDirection == 1) {
+                // Right Drift: A key (>0) is Counter-Steer to Left! D key (<0) is In-Steer to
+                // Right
                 if (this.inputSteer > 0.05f) {
-                    this.driftDirection = -1; // A key: Drift Left
-                    this.driftTicks = 0;
-                    if (this.onGround() || this.wheelGrounded) {
-                        Vec3 cur = this.getDeltaMovement();
-                        double hopY = 0.16 / Math.sqrt(Math.max(0.45, this.getVehicleMass() / 1.10f));
-                        this.setDeltaMovement(new Vec3(cur.x, hopY, cur.z)); // Hop jump!
-                        this.setOnGround(false);
-                        this.hasImpulse = true;
-                        this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
-                                SoundEvents.ARMOR_EQUIP_LEATHER.value(), SoundSource.PLAYERS, 12.0F, 1.8F);
-                    }
+                    counterAmount = this.inputSteer; // A key = Counter-steer
                 } else if (this.inputSteer < -0.05f) {
-                    this.driftDirection = 1; // D key: Drift Right
-                    this.driftTicks = 0;
-                    if (this.onGround() || this.wheelGrounded) {
-                        Vec3 cur = this.getDeltaMovement();
-                        double hopY = 0.16 / Math.sqrt(Math.max(0.45, this.getVehicleMass() / 1.10f));
-                        this.setDeltaMovement(new Vec3(cur.x, hopY, cur.z)); // Hop jump!
-                        this.setOnGround(false);
-                        this.hasImpulse = true;
-                        this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
-                                SoundEvents.ARMOR_EQUIP_LEATHER.value(), SoundSource.PLAYERS, 12.0F, 1.8F);
-                    }
+                    inSteerAmount = -this.inputSteer; // D key = In-steer
                 }
             }
 
-            if (this.driftDirection != 0) {
-                this.driftTicks++;
+            // 4点サスペンション物理とピッチ・ロール姿勢角の計算 (サスペンションシステム)
+            // ※ 360°縦ループ走行中はループ専用のピッチ・ロール・吸着物理が担当するため完全スキップ！
+            this.prevRollAngle = this.rollAngle;
+            this.prevPitchAngle = this.pitchAngle;
+            if (!this.onLoop && !this.inLoop) {
+                updateSuspensionPhysics(counterAmount);
             }
-        } else {
-            // Released space key or stopped -> Mini-Turbo release!
-            if (this.driftDirection != 0) {
-                if (this.driftTicks >= 14 && this.currentSpeed > 0.04f) {
-                    // Mini-Turbo boost!
-                    this.turboBoostTicks = 10; // Boost dash
-                    this.currentSpeed = (float) Math.min(this.currentSpeed * 1.35f, maxSpeed * 1.30f);
-                    this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
-                            SoundEvents.FIREWORK_ROCKET_LAUNCH, SoundSource.PLAYERS, 12.0F, 1.8F);
-                    if (this.level().isClientSide) {
-                        spawnMiniTurboBurst();
-                    }
+
+            // === Steering / Yaw Turn ===
+            if (this.driftDirection != 0 && Math.abs(this.currentSpeed) > 0.002f) {
+                float baseTurn = 4.2f;
+                float turnSpeed;
+                if (inSteerAmount > 0.0f) {
+                    turnSpeed = baseTurn * (1.0f + inSteerAmount * 0.85f); // In-steer tighter
+                } else {
+                    // Counter-steer controls and holds the drift angle
+                    turnSpeed = baseTurn * (1.0f - counterAmount * 0.90f);
                 }
-                this.driftDirection = 0;
-                this.driftTicks = 0;
-            }
-        }
-
-        if (this.turboBoostTicks > 0) {
-            this.turboBoostTicks--;
-        }
-
-        // === Counter-Steer and In-Steer Calculations ===
-        // inputSteer > 0 is Left (A key), inputSteer < 0 is Right (D key)
-        float counterAmount = 0.0f; // 0.0 (none) to 1.0 (full counter-steer)
-        float inSteerAmount = 0.0f; // 0.0 (none) to 1.0 (full in-steer)
-
-        if (this.driftDirection == -1) {
-            // Left Drift: D key (<0) is Counter-Steer to Right! A key (>0) is In-Steer to
-            // Left
-            if (this.inputSteer < -0.05f) {
-                counterAmount = -this.inputSteer; // D key = Counter-steer
-            } else if (this.inputSteer > 0.05f) {
-                inSteerAmount = this.inputSteer; // A key = In-steer
-            }
-        } else if (this.driftDirection == 1) {
-            // Right Drift: A key (>0) is Counter-Steer to Left! D key (<0) is In-Steer to
-            // Right
-            if (this.inputSteer > 0.05f) {
-                counterAmount = this.inputSteer; // A key = Counter-steer
-            } else if (this.inputSteer < -0.05f) {
-                inSteerAmount = -this.inputSteer; // D key = In-steer
-            }
-        }
-
-        // 4点サスペンション物理とピッチ・ロール姿勢角の計算 (サスペンションシステム)
-        // ※ 360°縦ループ走行中はループ専用のピッチ・ロール・吸着物理が担当するため完全スキップ！
-        this.prevRollAngle = this.rollAngle;
-        this.prevPitchAngle = this.pitchAngle;
-        if (!this.onLoop && !this.inLoop) {
-            updateSuspensionPhysics(counterAmount);
-        }
-
-        // === Steering / Yaw Turn ===
-        if (this.driftDirection != 0 && Math.abs(this.currentSpeed) > 0.002f) {
-            float baseTurn = 4.2f;
-            float turnSpeed;
-            if (inSteerAmount > 0.0f) {
-                turnSpeed = baseTurn * (1.0f + inSteerAmount * 0.85f); // In-steer tighter
+                this.setYRot(this.getYRot() + turnSpeed * this.driftDirection);
             } else {
-                // Counter-steer controls and holds the drift angle
-                turnSpeed = baseTurn * (1.0f - counterAmount * 0.90f);
-            }
-            this.setYRot(this.getYRot() + turnSpeed * this.driftDirection);
-        } else {
-            if (Math.abs(this.currentSpeed) > 0.002f) {
-                float baseTurn = (this.currentSpeed > 0 ? 13.5f : -13.5f);
-                float turnSpeed = (this.steerAngle / 35.0f) * baseTurn;
-                this.setYRot(this.getYRot() - turnSpeed);
-            }
-        }
-
-        // === Inertial drift movement vector synthesis (Power slide along
-        // counter-steer) ===
-        float yawRad = this.getYRot() * Mth.DEG_TO_RAD;
-        double driveX = -Mth.sin(yawRad);
-        double driveZ = Mth.cos(yawRad);
-
-        // Right vector: rightX = -driveZ = -cos, rightZ = driveX = -sin
-        double rightX = -driveZ;
-        double rightZ = driveX;
-
-        if (this.driftDirection != 0) {
-            // Slide direction vector in the counter-steer direction:
-            // Left Drift (driftDirection == -1): Counter is Right -> slide direction is
-            // Right Vector (rightX, rightZ)
-            // Right Drift (driftDirection == 1): Counter is Left -> slide direction is Left
-            // Vector (-rightX, -rightZ)
-            double counterSlideX = -rightX * this.driftDirection;
-            double counterSlideZ = -rightZ * this.driftDirection;
-
-            // When counter-steering, the car strongly slides in the counter-steered
-            // direction!
-            // Neutral: drive 0.60, slide 0.55
-            // Full Counter: drive 0.25, slide 1.05 -> Power slide laterally in
-            // counter-steer direction!
-            // Full In-steer: drive 0.90, slide 0.20 -> Drives forward into turn
-            double driveWeight = 0.60 - (counterAmount * 0.35) + (inSteerAmount * 0.30);
-            double slideWeight = 0.55 + (counterAmount * 0.50) - (inSteerAmount * 0.35);
-
-            double combinedX = (driveX * driveWeight) + (counterSlideX * slideWeight);
-            double combinedZ = (driveZ * driveWeight) + (counterSlideZ * slideWeight);
-
-            double mag = Math.sqrt(combinedX * combinedX + combinedZ * combinedZ);
-            if (mag > 0.001) {
-                combinedX = (combinedX / mag) * this.currentSpeed;
-                combinedZ = (combinedZ / mag) * this.currentSpeed;
+                if (Math.abs(this.currentSpeed) > 0.002f) {
+                    float baseTurn = (this.currentSpeed > 0 ? 13.5f : -13.5f);
+                    float turnSpeed = (this.steerAngle / 35.0f) * baseTurn;
+                    this.setYRot(this.getYRot() - turnSpeed);
+                }
             }
 
-            this.carVelocity = new Vec3(
-                    Mth.lerp(0.22, this.carVelocity.x, combinedX),
-                    0,
-                    Mth.lerp(0.22, this.carVelocity.z, combinedZ));
-        } else {
-            if (Math.abs(this.currentSpeed) < 0.001f) {
-                this.carVelocity = Vec3.ZERO;
-            } else {
+            // === Inertial drift movement vector synthesis (Power slide along
+            // counter-steer) ===
+            float yawRad = this.getYRot() * Mth.DEG_TO_RAD;
+            double driveX = -Mth.sin(yawRad);
+            double driveZ = Mth.cos(yawRad);
+
+            // Right vector: rightX = -driveZ = -cos, rightZ = driveX = -sin
+            double rightX = -driveZ;
+            double rightZ = driveX;
+
+            if (this.driftDirection != 0) {
+                // Slide direction vector in the counter-steer direction:
+                // Left Drift (driftDirection == -1): Counter is Right -> slide direction is
+                // Right Vector (rightX, rightZ)
+                // Right Drift (driftDirection == 1): Counter is Left -> slide direction is Left
+                // Vector (-rightX, -rightZ)
+                double counterSlideX = -rightX * this.driftDirection;
+                double counterSlideZ = -rightZ * this.driftDirection;
+
+                // When counter-steering, the car strongly slides in the counter-steered
+                // direction!
+                // Neutral: drive 0.60, slide 0.55
+                // Full Counter: drive 0.25, slide 1.05 -> Power slide laterally in
+                // counter-steer direction!
+                // Full In-steer: drive 0.90, slide 0.20 -> Drives forward into turn
+                double driveWeight = 0.60 - (counterAmount * 0.35) + (inSteerAmount * 0.30);
+                double slideWeight = 0.55 + (counterAmount * 0.50) - (inSteerAmount * 0.35);
+
+                double combinedX = (driveX * driveWeight) + (counterSlideX * slideWeight);
+                double combinedZ = (driveZ * driveWeight) + (counterSlideZ * slideWeight);
+
+                double mag = Math.sqrt(combinedX * combinedX + combinedZ * combinedZ);
+                if (mag > 0.001) {
+                    combinedX = (combinedX / mag) * this.currentSpeed;
+                    combinedZ = (combinedZ / mag) * this.currentSpeed;
+                }
+
                 this.carVelocity = new Vec3(
-                        Mth.lerp(0.55, this.carVelocity.x, driveX * this.currentSpeed),
+                        Mth.lerp(0.22, this.carVelocity.x, combinedX),
                         0,
-                        Mth.lerp(0.55, this.carVelocity.z, driveZ * this.currentSpeed));
+                        Mth.lerp(0.22, this.carVelocity.z, combinedZ));
+            } else {
+                if (Math.abs(this.currentSpeed) < 0.001f) {
+                    this.carVelocity = Vec3.ZERO;
+                } else {
+                    this.carVelocity = new Vec3(
+                            Mth.lerp(0.55, this.carVelocity.x, driveX * this.currentSpeed),
+                            0,
+                            Mth.lerp(0.55, this.carVelocity.z, driveZ * this.currentSpeed));
+                }
             }
         }
+
+        float commonYawRad = this.getYRot() * Mth.DEG_TO_RAD;
+        double driveX = -Mth.sin(commonYawRad);
+        double driveZ = Mth.cos(commonYawRad);
 
         // === クライアント主導位置同期（ステップ2: サーバー側処理） ===
         // 操縦者クライアントが存在し、位置同期パケットを受信中の場合:
@@ -1277,9 +1370,11 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         // Drift smoke effect (when tires lose grip)
         // Drift particles & Mini-Turbo effects
         if (this.level().isClientSide && (this.onGround() || this.wheelGrounded)
-                && Math.abs(this.currentSpeed) > 0.025f) {
+                && (Math.abs(this.currentSpeed) > 0.025f || this.carVelocity.horizontalDistance() > 0.025)) {
             if (this.driftDirection != 0) {
                 spawnDriftParticles(this.driftTicks >= 14);
+            } else if (this.isRealMode() && this.realPhysics.isDrifting()) {
+                spawnDriftParticles(false);
             }
             if (this.turboBoostTicks > 0) {
                 spawnTurboBoostTrail();
@@ -1565,6 +1660,9 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         if (compound.contains("Headlight")) {
             setHeadlightOn(compound.getBoolean("Headlight"));
         }
+        if (compound.contains("RealDrivingMode")) {
+            this.entityData.set(DATA_REAL_MODE, compound.getBoolean("RealDrivingMode"));
+        }
     }
 
     @Override
@@ -1587,6 +1685,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         compound.putFloat("CustomWeight", this.entityData.get(DATA_CUSTOM_WEIGHT));
         compound.putString("VariantId", getVariantId());
         compound.putBoolean("Headlight", isHeadlightOn());
+        compound.putBoolean("RealDrivingMode", isRealMode());
     }
 
     private void spawnDriftParticles(boolean turboReady) {

@@ -127,6 +127,7 @@ public class ServerPayloadHandler {
                 Entity entity = player.level().getEntity(payload.carEntityId());
                 if (entity instanceof RcCarEntity car) {
                     car.setCustomWeight(payload.weightKg());
+                    car.setDrivingMode(payload.realMode());
                 }
             }
         });
