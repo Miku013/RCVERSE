@@ -37,6 +37,7 @@ public class RealCarPhysics {
     private float steerAngleDeg = 0.0f;   // 現在の前輪操舵角 (deg, 左Aが正/右Dが負)
     private float slipAngleDeg = 0.0f;    // 車体中心のスリップ角 (deg)
     private boolean drifting = false;
+    private boolean counterSteering = false;
 
     // 第3段階：前後グリップ・スリップ・デバッグ監視用パラメーター
     private float frontGrip = 1.12f;
@@ -142,6 +143,18 @@ public class RealCarPhysics {
         return this.drifting;
     }
 
+    public boolean isCounterSteering() {
+        return this.counterSteering;
+    }
+
+    public float getCounterMaxAngleDeg() {
+        return this.config.maxCounterSteerAngleDeg;
+    }
+
+    public void setCounterMaxAngleDeg(float angleDeg) {
+        this.config.maxCounterSteerAngleDeg = Mth.clamp(angleDeg, 35.0f, 65.0f);
+    }
+
     public float getFrontLoadRatio() {
         return this.frontLoadRatio;
     }
@@ -174,6 +187,7 @@ public class RealCarPhysics {
         this.steerAngleDeg = 0.0f;
         this.slipAngleDeg = 0.0f;
         this.drifting = false;
+        this.counterSteering = false;
         this.frontSlipping = false;
         this.rearSlipping = false;
         this.frontGripUsage = 0.0f;
@@ -209,10 +223,25 @@ public class RealCarPhysics {
         this.forwardVelocity = prevWorldVel.x * prevFwdX + prevWorldVel.z * prevFwdZ;
         this.lateralVelocity = prevWorldVel.x * prevRightX + prevWorldVel.z * prevRightZ;
 
-        // 2. 前輪操舵角の更新（左Aキーが正、右Dキーが負、最大±35度）
+        // 2. 前輪操舵角の更新（カウンター方向入力時は設定された最大カウンター角まで切れ角を拡大し、応答を調整）
         float steerDir = invertSteer ? -1.0f : 1.0f;
-        float targetSteerDeg = inputSteer * config.maxSteeringAngleDeg * steerDir;
-        this.steerAngleDeg = Mth.lerp(config.steeringLerpRate, this.steerAngleDeg, targetSteerDeg);
+        float effectiveInput = inputSteer * steerDir;
+        boolean hasLateralSlip = Math.abs(this.lateralVelocity) > 0.012 && this.forwardVelocity > 0.02;
+        boolean steeringIntoCounter = hasLateralSlip && (effectiveInput * this.lateralVelocity < -0.001);
+        boolean currentlyCountered = hasLateralSlip && (this.steerAngleDeg * this.lateralVelocity < -0.5f);
+        this.counterSteering = steeringIntoCounter || currentlyCountered;
+
+        float maxAngle = steeringIntoCounter ? config.maxCounterSteerAngleDeg : config.maxSteeringAngleDeg;
+        float lerpRate;
+        if (Math.abs(inputSteer) < 0.05f) {
+            lerpRate = config.steeringReturnRate;
+        } else if (steeringIntoCounter) {
+            lerpRate = config.counterSteerLerpRate;
+        } else {
+            lerpRate = config.steeringLerpRate;
+        }
+        float targetSteerDeg = inputSteer * maxAngle * steerDir;
+        this.steerAngleDeg = Mth.lerp(lerpRate, this.steerAngleDeg, targetSteerDeg);
 
         // 3. 縦方向（アクセル・ブレーキ・転がり抵抗）と縦加速度の計測
         double preForwardVel = this.forwardVelocity;
@@ -345,10 +374,10 @@ public class RealCarPhysics {
         double lf = config.wheelBase * (1.0 - config.frontAxleRatio);
         double lr = config.wheelBase * config.frontAxleRatio;
 
-        // 速度が中高速になるほど大舵角時の最大実効切れ角をわずかに抑え、高速での安定したコントロール性を確保
+        // 速度が中高速になるほど大舵角時の最大実効切れ角をわずかに抑える（ただしカウンターステア時はフル切れ角を解放！）
         double totalSpeed = Math.hypot(this.forwardVelocity, this.lateralVelocity);
         double speedRatio = Mth.clamp(totalSpeed / Math.max(0.15, maxSpeed), 0.0, 1.0);
-        double highSpeedSteerScale = 1.0 - speedRatio * 0.22;
+        double highSpeedSteerScale = this.counterSteering ? 1.0 : (1.0 - speedRatio * 0.22);
         double steerRad = Math.toRadians(this.steerAngleDeg) * config.steeringSensitivity * turnMult * highSpeedSteerScale;
 
         // グリップ限界計算：最大横力 = グリップ係数 × 荷重配分(×2) × 路面摩擦 × 基準横G

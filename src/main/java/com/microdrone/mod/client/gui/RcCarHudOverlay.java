@@ -374,6 +374,7 @@ public class RcCarHudOverlay {
                 phys.getSlipAngleDeg(), phys.getYawRateDeg()), x + 5, y + 60, 0xFFFFFF, true);
         graphics.drawString(font, String.format("§7FRIC: §f%.2f  §7STEER: §f%.1f°",
                 phys.getSurfaceFriction(), phys.getSteerAngleDeg()), x + 5, y + 71, 0xFFFFFF, true);
-        graphics.drawString(font, "§7DRIFT: " + (phys.isDrifting() ? "§e§lSLIDING!" : "§aGRIPPING"), x + 5, y + 82, 0xFFFFFF, true);
+        graphics.drawString(font, "§7DRIFT: " + (phys.isDrifting() ? "§e§lSLIDING!" : "§aGRIPPING")
+                + (phys.isCounterSteering() ? " §b[COUNTER]" : ""), x + 5, y + 82, 0xFFFFFF, true);
     }
 }

@@ -128,6 +128,7 @@ public class ServerPayloadHandler {
                 if (entity instanceof RcCarEntity car) {
                     car.setCustomWeight(payload.weightKg());
                     car.setDrivingMode(payload.realMode());
+                    car.setCounterMaxAngle(payload.counterMaxAngleDeg());
                 }
             }
         });

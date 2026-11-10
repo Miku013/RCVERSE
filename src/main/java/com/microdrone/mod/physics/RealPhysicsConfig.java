@@ -6,8 +6,11 @@ package com.microdrone.mod.physics;
  */
 public class RealPhysicsConfig {
     // 操舵・車体ディメンション
-    public float maxSteeringAngleDeg = 35.0f;       // 最大前輪操舵角 (度)
-    public float steeringLerpRate = 0.35f;          // ステアリング追従速度 (0〜1)
+    public float maxSteeringAngleDeg = 35.0f;       // 通常時の最大前輪操舵角 (度)
+    public float maxCounterSteerAngleDeg = 52.0f;   // ドリフト・カウンター側の最大切れ角 (度)
+    public float steeringLerpRate = 0.24f;          // 通常切り込み追従速度 (微調整しやすい滑らかさ)
+    public float counterSteerLerpRate = 0.28f;      // カウンター側への当て込み速度
+    public float steeringReturnRate = 0.34f;        // センターへの戻し速度
     public float wheelBase = 0.42f;                 // ホイールベース (blocks相当)
     public float frontAxleRatio = 0.48f;            // 重心→前軸の比率 (0.48 = ほぼ50:50)
     public float steeringSensitivity = 1.0f;        // 操舵感度倍率
