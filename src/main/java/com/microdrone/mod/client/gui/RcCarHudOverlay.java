@@ -23,6 +23,7 @@ public class RcCarHudOverlay {
 
     private static float smoothRpm = 800.0f;
     private static int blinkTicks = 0;
+    public static boolean showPhysicsDebug = false; // 通常プレイでは非表示 (セッティング画面またはF3で表示)
 
     public static void register() {
         NeoForge.EVENT_BUS.register(new RcCarHudOverlay());
@@ -66,6 +67,11 @@ public class RcCarHudOverlay {
 
         // 4. 右側: ヘッドライトマーク ＆ 電波強度(RSSI)・距離
         renderRightCluster(graphics, font, panelX + panelW - 58, panelY + 6, car, mc.player);
+
+        // 5. 開発用物理デバッグ表示 (通常非表示、トグルON時のみ左上に表示)
+        if (showPhysicsDebug) {
+            renderPhysicsDebugOverlay(graphics, font, car);
+        }
     }
 
     /**
@@ -329,5 +335,45 @@ public class RcCarHudOverlay {
         String distStr = String.format("%dm", (int) Math.round(dist));
         int distColor = (dist < 80) ? 0xFFCBD5E1 : (dist < 110) ? 0xFFFCD34D : 0xFFF87171;
         graphics.drawString(font, distStr, rx + 14, ry, distColor, true);
+    }
+
+    /**
+     * 開発用 物理デバッグテレメトリ表示（仕様書14章準拠）
+     */
+    private void renderPhysicsDebugOverlay(GuiGraphics graphics, Font font, RcCarEntity car) {
+        int x = 8;
+        int y = 8;
+        int w = 178;
+        int h = car.isRealMode() ? 94 : 32;
+
+        graphics.fill(x, y, x + w, y + h, 0xB80E1118);
+        graphics.fill(x, y, x + w, y + 1, 0xFF06B6D4);
+
+        String modeText = car.isRealMode() ? "§b§lMODE: REAL (Physics)" : "§a§lMODE: RACE (Assist)";
+        graphics.drawString(font, modeText, x + 5, y + 4, 0xFFFFFF, true);
+
+        if (!car.isRealMode()) {
+            graphics.drawString(font, String.format("§7SPD: §f%.3f  §7DRIFT: %s",
+                    car.getCurrentSpeed(), car.getDriftDirection() != 0 ? "§eACTIVE" : "§8NO"), x + 5, y + 16, 0xFFFFFF, true);
+            return;
+        }
+
+        var phys = car.getRealPhysics();
+        var wt = phys.getWeightTransfer();
+
+        graphics.drawString(font, String.format("§7FWD: §f%.3f  §7LAT: §b%.3f",
+                phys.getForwardVelocity(), phys.getLateralVelocity()), x + 5, y + 16, 0xFFFFFF, true);
+        graphics.drawString(font, String.format("§7F-GRIP: %s%.0f%%  §7R-GRIP: %s%.0f%%",
+                phys.isFrontSlipping() ? "§c" : "§a", phys.getFrontGripUsage() * 100.0f,
+                phys.isRearSlipping() ? "§c" : "§a", phys.getRearGripUsage() * 100.0f), x + 5, y + 27, 0xFFFFFF, true);
+        graphics.drawString(font, String.format("§7LOAD F/R: §e%.0f%% / %.0f%%",
+                wt.getFrontLoadRatio() * 100.0f, wt.getRearLoadRatio() * 100.0f), x + 5, y + 38, 0xFFFFFF, true);
+        graphics.drawString(font, String.format("§7LOAD L/R: §e%.0f%% / %.0f%%",
+                wt.getLeftLoadRatio() * 100.0f, wt.getRightLoadRatio() * 100.0f), x + 5, y + 49, 0xFFFFFF, true);
+        graphics.drawString(font, String.format("§7SLIP: §f%.1f°  §7YAW: §f%.2f°/t",
+                phys.getSlipAngleDeg(), phys.getYawRateDeg()), x + 5, y + 60, 0xFFFFFF, true);
+        graphics.drawString(font, String.format("§7FRIC: §f%.2f  §7STEER: §f%.1f°",
+                phys.getSurfaceFriction(), phys.getSteerAngleDeg()), x + 5, y + 71, 0xFFFFFF, true);
+        graphics.drawString(font, "§7DRIFT: " + (phys.isDrifting() ? "§e§lSLIDING!" : "§aGRIPPING"), x + 5, y + 82, 0xFFFFFF, true);
     }
 }

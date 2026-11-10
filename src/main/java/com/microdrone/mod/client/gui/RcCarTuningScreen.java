@@ -18,6 +18,7 @@ public class RcCarTuningScreen extends Screen {
     private final RcCarEntity car;
     private WeightSlider slider;
     private Button modeButton;
+    private Button debugButton;
     private boolean realMode;
 
     public RcCarTuningScreen(RcCarEntity car) {
@@ -58,9 +59,24 @@ public class RcCarTuningScreen extends Screen {
         this.addRenderableWidget(Button.builder(Component.literal("超重量 (2.20kg)"), btn -> setPreset(2.20f))
                 .bounds(centerX + 5, centerY + 36, 115, 20).build());
 
-        // 4. 完了ボタン
+        // 4. 完了ボタン & デバッグHUD切替
         this.addRenderableWidget(Button.builder(Component.literal("設定完了"), btn -> onClose())
-                .bounds(centerX - 60, centerY + 68, 120, 20).build());
+                .bounds(centerX - 120, centerY + 68, 115, 20).build());
+
+        this.debugButton = Button.builder(getDebugButtonText(), btn -> toggleDebugHud())
+                .bounds(centerX + 5, centerY + 68, 115, 20).build();
+        this.addRenderableWidget(this.debugButton);
+    }
+
+    private Component getDebugButtonText() {
+        return RcCarHudOverlay.showPhysicsDebug
+                ? Component.literal("数値HUD: §bON")
+                : Component.literal("数値HUD: §7OFF");
+    }
+
+    private void toggleDebugHud() {
+        RcCarHudOverlay.showPhysicsDebug = !RcCarHudOverlay.showPhysicsDebug;
+        this.debugButton.setMessage(getDebugButtonText());
     }
 
     private Component getModeButtonText() {

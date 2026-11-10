@@ -235,6 +235,10 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         return this.currentSpeed;
     }
 
+    public int getDriftDirection() {
+        return this.driftDirection;
+    }
+
     /**
      * クライアント主導位置同期 (ステップ2: サーバー追従)
      * 操縦者クライアントが手元で計算した正規の位置・速度・Yawを受け取り、サーバー側の車両を追従させる。
@@ -2057,7 +2061,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         float dynamicRoll = 0.0f;
         if (this.isRealMode()) {
             double totalLatForce = this.realPhysics.getLateralForceFront() + this.realPhysics.getLateralForceRear();
-            dynamicRoll = (float) (-totalLatForce * 220.0) * rollMult;
+            dynamicRoll = (float) (-totalLatForce * 550.0) * rollMult;
         } else if (this.driftDirection != 0) {
             float baseRoll = 9.0f;
             float totalRoll = baseRoll + (counterAmount * 8.5f);

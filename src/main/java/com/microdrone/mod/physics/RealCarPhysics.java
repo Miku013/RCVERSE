@@ -345,10 +345,10 @@ public class RealCarPhysics {
         double lf = config.wheelBase * (1.0 - config.frontAxleRatio);
         double lr = config.wheelBase * config.frontAxleRatio;
 
-        // 速度が中高速になるほど大舵角時の最大実効切れ角を少し抑え、高速での安定したコントロール性を確保
+        // 速度が中高速になるほど大舵角時の最大実効切れ角をわずかに抑え、高速での安定したコントロール性を確保
         double totalSpeed = Math.hypot(this.forwardVelocity, this.lateralVelocity);
         double speedRatio = Mth.clamp(totalSpeed / Math.max(0.15, maxSpeed), 0.0, 1.0);
-        double highSpeedSteerScale = 1.0 - speedRatio * 0.30;
+        double highSpeedSteerScale = 1.0 - speedRatio * 0.22;
         double steerRad = Math.toRadians(this.steerAngleDeg) * config.steeringSensitivity * turnMult * highSpeedSteerScale;
 
         // グリップ限界計算：最大横力 = グリップ係数 × 荷重配分(×2) × 路面摩擦 × 基準横G
@@ -389,7 +389,7 @@ public class RealCarPhysics {
             // 低速領域ではタイヤモデルの発散を防ぎつつ、幾何学旋回からタイヤ物理へ滑らかにフェード
             double tireBlend = Mth.clamp((vAbs - 0.008) / Math.max(0.01, config.lowSpeedGeomThreshold), 0.0, 1.0);
 
-            double denom = Math.max(Math.abs(this.forwardVelocity), 0.09);
+            double denom = Math.max(Math.abs(this.forwardVelocity), 0.065);
             double fwdSign = this.forwardVelocity >= -0.001 ? 1.0 : -1.0;
 
             // 前軸・後軸の横方向接地速度 (右方向が正)
@@ -413,7 +413,7 @@ public class RealCarPhysics {
             double fyF = clampWithGripLimit(rawFyF, this.frontGripLimit, config.slipLimitPeakDropRatio);
             double fyR = clampWithGripLimit(rawFyR, this.rearGripLimit, config.slipLimitPeakDropRatio);
 
-            // 低速域用の幾何学的ターゲット角速度 (車庫入れ・微速旋回が自然にできるように)
+            // 低速域用の幾何学的ターゲット角速度 (微速旋回のみ補助、中〜高速は完全タイヤ物理)
             double geomOmegaRad = -(this.forwardVelocity / Math.max(0.20, config.wheelBase))
                     * Math.tan(steerRad) * 0.42;
 
@@ -437,12 +437,16 @@ public class RealCarPhysics {
                 this.lateralVelocity *= Math.pow(0.85, subDt * (1.0 - tireBlend));
             }
 
+            // コーナリングドラッグ（横滑り角度が大きいほどタイヤ摩擦により自然に減速し、グリップ回復へ繋げる）
+            double bodySlipRad = Math.atan2(Math.abs(this.lateralVelocity), Math.max(Math.abs(this.forwardVelocity), 0.05));
+            double dragRetention = 1.0 - Math.min(0.06, bodySlipRad * config.corneringDragFactor * subDt);
+
             // 車体の微小回転 δYaw に対して、速度ベクトル自体を新しい車体ローカル軸へ正確に再射影する
             double dYawRad = yawRateRad * subDt;
             double cosD = Math.cos(dYawRad);
             double sinD = Math.sin(dYawRad);
 
-            double nextFwd = this.forwardVelocity * cosD + this.lateralVelocity * sinD;
+            double nextFwd = (this.forwardVelocity * cosD + this.lateralVelocity * sinD) * dragRetention;
             double nextLat = this.lateralVelocity * cosD - this.forwardVelocity * sinD;
             this.forwardVelocity = nextFwd;
             this.lateralVelocity = nextLat;

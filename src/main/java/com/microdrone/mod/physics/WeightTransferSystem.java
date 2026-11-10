@@ -150,3 +150,4 @@ public class WeightTransferSystem {
         this.rearEffectiveLoad = this.rearLoadRatio * lateralEfficiency;
     }
 }
+
