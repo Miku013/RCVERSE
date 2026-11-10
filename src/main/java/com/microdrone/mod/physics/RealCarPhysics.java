@@ -380,16 +380,24 @@ public class RealCarPhysics {
         double highSpeedSteerScale = this.counterSteering ? 1.0 : (1.0 - speedRatio * 0.22);
         double steerRad = Math.toRadians(this.steerAngleDeg) * config.steeringSensitivity * turnMult * highSpeedSteerScale;
 
+        // カウンターステアの角度に応じたフロント食いつき（バイト）補正
+        double counterAngleRatio = this.counterSteering
+                ? Mth.clamp(Math.abs(this.steerAngleDeg) / 30.0f, 0.0f, 1.0f)
+                : 0.0;
+        double frontBiteGrip = Mth.lerp((float) counterAngleRatio, 1.0f, (float) config.counterFrontBiteGripMult);
+        double frontBiteStiff = Mth.lerp((float) counterAngleRatio, 1.0f, (float) config.counterFrontBiteStiffMult);
+
         // グリップ限界計算：最大横力 = グリップ係数 × 荷重配分(×2) × 路面摩擦 × 基準横G
         double baseLimitScale = this.surfaceFriction * config.maxLateralAccelPerTick;
-        this.frontGripLimit = Math.max(0.005, this.frontGrip * (this.frontLoadRatio * 2.0) * baseLimitScale);
+        this.frontGripLimit = Math.max(0.005, this.frontGrip * (this.frontLoadRatio * 2.0) * baseLimitScale * frontBiteGrip);
 
         double rearDynMult = 1.0;
         if (inputHandbrake && totalSpeed > 0.03) {
             rearDynMult *= config.handbrakeRearGripMult;
         }
-        // コーナーでアクセルを強く踏むと駆動力により後輪の横グリップがわずかに低下（パワースライド誘発）
-        if (powerSpinSeverity > 0.1 && Math.abs(this.steerAngleDeg) > 4.0f && totalSpeed > 0.05) {
+        // コーナーでアクセルを強く踏む、またはドリフト横滑り中にアクセルを踏むと駆動力消費により後輪横グリップ低下
+        if (powerSpinSeverity > 0.1 && totalSpeed > 0.04
+                && (Math.abs(this.steerAngleDeg) > 4.0f || Math.abs(this.lateralVelocity) > 0.02)) {
             rearDynMult *= Mth.lerp((float) powerSpinSeverity, 1.0f, (float) config.powerOversteerGripMult);
         }
         this.rearGripLimit = Math.max(0.004, this.rearGrip * (this.rearLoadRatio * 2.0) * baseLimitScale * rearDynMult);
@@ -430,16 +438,16 @@ public class RealCarPhysics {
             double alphaR = Math.atan2(vyRear, denom);
 
             // グリップ限界前の生横力
-            double rawFyF = -config.corneringStiffnessFront * (this.frontLoadRatio * 2.0) * this.surfaceFriction * alphaF;
+            double rawFyF = -config.corneringStiffnessFront * frontBiteStiff * (this.frontLoadRatio * 2.0) * this.surfaceFriction * alphaF;
             double rawFyR = -config.corneringStiffnessRear * (this.rearLoadRatio * 2.0) * this.surfaceFriction * alphaR;
 
-            // 限界超過判定＆グリップ限界によるクランプ（超過時はわずかな動摩擦低下を伴う）
+            // 限界超過判定＆グリップ限界によるクランプ（前輪はカウンター時粘り強く、後輪は動摩擦へ落とす）
             boolean fSlip = Math.abs(rawFyF) > this.frontGripLimit;
             boolean rSlip = Math.abs(rawFyR) > this.rearGripLimit;
             anyFrontSlip |= fSlip;
             anyRearSlip |= rSlip;
 
-            double fyF = clampWithGripLimit(rawFyF, this.frontGripLimit, config.slipLimitPeakDropRatio);
+            double fyF = clampWithGripLimit(rawFyF, this.frontGripLimit, config.frontSlipPeakDropRatio);
             double fyR = clampWithGripLimit(rawFyR, this.rearGripLimit, config.slipLimitPeakDropRatio);
 
             // 低速域用の幾何学的ターゲット角速度 (微速旋回のみ補助、中〜高速は完全タイヤ物理)

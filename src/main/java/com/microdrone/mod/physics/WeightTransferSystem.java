@@ -109,9 +109,13 @@ public class WeightTransferSystem {
         float targetLatShift = 0.0f;
 
         if (grounded) {
-            // 加速(a>0) → 後輪側(+)へ移動 / ブレーキ(a<0) → 前輪側(-)へ移動
+            // 加速(a>0) → 後輪側(+)へ移動（加速時はフロントの抜けを少し抑えて舵残り確保）
+            // ブレーキ(a<0) → 前輪側(-)へ移動（強めに抜重してブレーキングドリフト誘発）
+            float longGain = (longitudinalAccel >= 0.0)
+                    ? config.longitudinalWeightTransferGain * config.accelWeightTransferScale
+                    : config.longitudinalWeightTransferGain;
             targetLongShift = (float) Mth.clamp(
-                    longitudinalAccel * config.longitudinalWeightTransferGain,
+                    longitudinalAccel * longGain,
                     -config.maxLongitudinalLoadShift,
                     config.maxLongitudinalLoadShift
             );

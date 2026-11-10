@@ -28,9 +28,12 @@ public class RealPhysicsConfig {
     public double corneringStiffnessFront = 0.065;  // 前輪コーナリング剛性（スリップ角10°前後で限界付近）
     public double corneringStiffnessRear = 0.054;   // 後輪コーナリング剛性
     public double maxLateralAccelPerTick = 0.0115;  // 1軸あたりの基準最大横加速度 (前後合計 ~0.94G)
-    public double slipLimitPeakDropRatio = 0.85;    // グリップ限界超過後の動摩擦残存率 (85%)
+    public double frontSlipPeakDropRatio = 0.96;    // 前輪限界超過後の粘り率 (96%: カウンター時に逃げにくい)
+    public double slipLimitPeakDropRatio = 0.85;    // 後輪限界超過後の動摩擦残存率 (85%)
     public double handbrakeRearGripMult = 0.30;     // サイドブレーキ時の後輪グリップ倍率
-    public double powerOversteerGripMult = 0.72;    // 強アクセル旋回時の後輪横グリップ低下倍率
+    public double powerOversteerGripMult = 0.60;    // 強アクセル時の後輪横グリップ低下倍率 (パワースライド維持)
+    public double counterFrontBiteGripMult = 1.28;  // カウンターステア中のフロント食いつき限界ブースト
+    public double counterFrontBiteStiffMult = 1.22; // カウンターステア中のフロント剛性ブースト
 
     // ヨー角速度・低速安定化・発散防止
     public double yawTorqueGain = 22.0;             // タイヤ横力モーメントからYaw角速度への変換ゲイン
@@ -41,7 +44,8 @@ public class RealPhysicsConfig {
     public int physicsSubSteps = 4;                 // 1tick内のタイヤ物理サブステップ分割数 (振動・発散防止)
 
     // 第4段階：荷重移動システムパラメーター
-    public float longitudinalWeightTransferGain = 2.6f; // 縦加減速Gに対する前後荷重移動感度
+    public float longitudinalWeightTransferGain = 2.6f; // ブレーキ・減速Gに対する前後荷重移動感度
+    public float accelWeightTransferScale = 0.55f;      // 加速時のフロント抜け軽減倍率 (0.55=加速中も前輪が残りやすい)
     public float lateralWeightTransferGain = 8.5f;      // 横G(0.022基準)に対する左右荷重移動感度
     public float maxLongitudinalLoadShift = 0.24f;      // 前後荷重移動の最大変位 (0.50±0.24 → 0.26〜0.74)
     public float maxLateralLoadShift = 0.22f;           // 左右荷重移動の最大変位
