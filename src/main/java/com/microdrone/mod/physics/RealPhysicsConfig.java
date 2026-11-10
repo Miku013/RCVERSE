@@ -34,4 +34,14 @@ public class RealPhysicsConfig {
     public double lowSpeedGeomThreshold = 0.035;    // 低速域の幾何学旋回ブレンド閾値
     public double lowSpeedSnapThreshold = 0.004;    // 停止スナップ閾値
     public int physicsSubSteps = 4;                 // 1tick内のタイヤ物理サブステップ分割数 (振動・発散防止)
+
+    // 第4段階：荷重移動システムパラメーター
+    public float longitudinalWeightTransferGain = 2.4f; // 縦加減速Gに対する前後荷重移動感度
+    public float lateralWeightTransferGain = 2.6f;      // 横Gに対する左右荷重移動感度
+    public float maxLongitudinalLoadShift = 0.22f;      // 前後荷重移動の最大変位 (0.50±0.22 → 0.28〜0.72)
+    public float maxLateralLoadShift = 0.20f;           // 左右荷重移動の最大変位
+    public float minAxleLoadRatio = 0.24f;              // 抜重時の最小軸荷重比率（極端なスピン発散防止）
+    public float maxAxleLoadRatio = 0.76f;              // 加重時の最大軸荷重比率
+    public float weightTransferLerp = 0.45f;            // 荷重移動のサスペンション応答速度
+    public float lateralLoadSensitivity = 0.45f;        // 左右荷重偏り時の非線形タイヤ効率低下係数
 }

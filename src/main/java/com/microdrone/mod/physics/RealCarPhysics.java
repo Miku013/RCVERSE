@@ -52,10 +52,15 @@ public class RealCarPhysics {
     private boolean frontSlipping = false;
     private boolean rearSlipping = false;
 
-    // 第4・第5段階への拡張フック値（第3段階では均等荷重・標準摩擦を使用）
+    // 第4・第5段階：荷重移動システム ＆ 路面摩擦係数
+    private final WeightTransferSystem weightTransfer = new WeightTransferSystem();
     private float frontLoadRatio = 0.50f;
     private float rearLoadRatio = 0.50f;
     private float surfaceFriction = 1.0f;
+
+    public WeightTransferSystem getWeightTransfer() {
+        return this.weightTransfer;
+    }
 
     public RealPhysicsConfig getConfig() {
         return this.config;
@@ -173,10 +178,13 @@ public class RealCarPhysics {
         this.rearSlipping = false;
         this.frontGripUsage = 0.0f;
         this.rearGripUsage = 0.0f;
+        this.weightTransfer.reset();
+        this.frontLoadRatio = 0.50f;
+        this.rearLoadRatio = 0.50f;
     }
 
     /**
-     * REALモードの1tick分の水平物理演算を実行する（第3段階：可変グリップ方式）。
+     * REALモードの1tick分の水平物理演算を実行する（第4段階：可変グリップ＋荷重移動方式）。
      */
     public StepResult stepHorizontal(
             Vec3 prevWorldVel,
@@ -206,7 +214,8 @@ public class RealCarPhysics {
         float targetSteerDeg = inputSteer * config.maxSteeringAngleDeg * steerDir;
         this.steerAngleDeg = Mth.lerp(config.steeringLerpRate, this.steerAngleDeg, targetSteerDeg);
 
-        // 3. 縦方向（アクセル・ブレーキ・転がり抵抗）と駆動力過多による後輪グリップ変化
+        // 3. 縦方向（アクセル・ブレーキ・転がり抵抗）と縦加速度の計測
+        double preForwardVel = this.forwardVelocity;
         double effectiveAccel = (wallAhead && inputForward > 0.05f) ? accel * 0.08 : accel;
         if (wallAhead && inputForward > 0.05f) {
             this.forwardVelocity = Math.min(this.forwardVelocity, 0.015);
@@ -248,6 +257,13 @@ public class RealCarPhysics {
         }
 
         this.forwardVelocity = Mth.clamp(this.forwardVelocity, -maxSpeed * 0.45, maxSpeed);
+
+        // 第4段階：縦加減速Gと横Gに基づく荷重移動の更新（前後・左右・4輪個別データ）
+        double longitudinalAccel = (grounded && !wallAhead) ? (this.forwardVelocity - preForwardVel) : 0.0;
+        double prevTotalLatForce = this.lateralForceFront + this.lateralForceRear;
+        this.weightTransfer.update(longitudinalAccel, prevTotalLatForce, grounded, this.config);
+        this.frontLoadRatio = this.weightTransfer.getFrontEffectiveLoad();
+        this.rearLoadRatio = this.weightTransfer.getRearEffectiveLoad();
 
         // 4. 可変グリップ・バイシクルモデル（4サブステップ積分で20Hz環境でも安定）
         float newYawDeg = currentYawDeg;

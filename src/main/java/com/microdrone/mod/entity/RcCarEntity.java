@@ -2031,7 +2031,9 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
 
             // 急ブレーキ/後退でノーズダイブ(+), 前進加速でスクワット(-)
             float accelPitch = 0.0f;
-            if (this.inputForward > 0.1f) {
+            if (this.isRealMode()) {
+                accelPitch = -this.realPhysics.getWeightTransfer().getLongitudinalShift() * 34.0f;
+            } else if (this.inputForward > 0.1f) {
                 accelPitch = -2.5f * this.inputForward;
             } else if (this.inputForward < -0.1f || this.inputHandbrake) {
                 accelPitch = 4.0f;
