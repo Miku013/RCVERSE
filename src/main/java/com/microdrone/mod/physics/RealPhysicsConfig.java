@@ -22,7 +22,7 @@ public class RealPhysicsConfig {
     // 前後2軸合計で約 0.90G (≒ 0.022 blocks/tick^2) を基準最大横加速度とする
     public float baseFrontGrip = 1.08f;             // 前輪の基本グリップ係数
     public float baseRearGrip = 0.98f;              // 後輪の基本グリップ係数
-    public double corneringStiffnessFront = 0.65;   // 前輪コーナリング剛性
+    public double corneringStiffnessFront = 0.065;  // 前輪コーナリング剛性（スリップ角10°前後で限界付近）
     public double corneringStiffnessRear = 0.054;   // 後輪コーナリング剛性
     public double maxLateralAccelPerTick = 0.0115;  // 1軸あたりの基準最大横加速度 (前後合計 ~0.94G)
     public double slipLimitPeakDropRatio = 0.85;    // グリップ限界超過後の動摩擦残存率 (85%)
