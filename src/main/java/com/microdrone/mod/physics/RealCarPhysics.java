@@ -155,6 +155,14 @@ public class RealCarPhysics {
         this.config.maxCounterSteerAngleDeg = Mth.clamp(angleDeg, 35.0f, 65.0f);
     }
 
+    public float getDriftStartAngleDeg() {
+        return this.config.driftStartAngleDeg;
+    }
+
+    public void setDriftStartAngleDeg(float angleDeg) {
+        this.config.driftStartAngleDeg = Mth.clamp(angleDeg, 10.0f, 35.0f);
+    }
+
     public float getFrontLoadRatio() {
         return this.frontLoadRatio;
     }
@@ -395,10 +403,22 @@ public class RealCarPhysics {
         if (inputHandbrake && totalSpeed > 0.03) {
             rearDynMult *= config.handbrakeRearGripMult;
         }
-        // コーナーでアクセルを強く踏む、またはドリフト横滑り中にアクセルを踏むと駆動力消費により後輪横グリップ低下
-        if (powerSpinSeverity > 0.1 && totalSpeed > 0.04
-                && (Math.abs(this.steerAngleDeg) > 4.0f || Math.abs(this.lateralVelocity) > 0.02)) {
-            rearDynMult *= Mth.lerp((float) powerSpinSeverity, 1.0f, (float) config.powerOversteerGripMult);
+        // 滑り始め角度 (driftStartAngleDeg) を超えた分だけ段階的に後輪の横グリップ低下を発動
+        if (powerSpinSeverity > 0.1 && totalSpeed > 0.04) {
+            float absSteer = Math.abs(this.steerAngleDeg);
+            float startDeg = this.config.driftStartAngleDeg;
+            float slideTriggerRatio = 0.0f;
+            if (absSteer > startDeg) {
+                // しきい値超過分から +10° かけて滑らかにリアのパワースライドを強める
+                slideTriggerRatio = Mth.clamp((absSteer - startDeg) / 10.0f, 0.0f, 1.0f);
+            } else if (Math.abs(this.slipAngleDeg) > Math.max(6.0f, startDeg * 0.45f) && Math.abs(this.lateralVelocity) > 0.025) {
+                // すでに明確な横滑りアングルが付いている間はアクセルONでスライドを維持
+                slideTriggerRatio = 0.85f;
+            }
+            if (slideTriggerRatio > 0.0f) {
+                double effectiveSpin = powerSpinSeverity * slideTriggerRatio;
+                rearDynMult *= Mth.lerp((float) effectiveSpin, 1.0f, (float) config.powerOversteerGripMult);
+            }
         }
         this.rearGripLimit = Math.max(0.004, this.rearGrip * (this.rearLoadRatio * 2.0) * baseLimitScale * rearDynMult);
 

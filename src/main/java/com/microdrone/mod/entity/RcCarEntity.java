@@ -99,6 +99,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Float> DATA_COUNTER_MAX_ANGLE = SynchedEntityData.defineId(RcCarEntity.class,
             EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_DRIFT_START_ANGLE = SynchedEntityData.defineId(RcCarEntity.class,
+            EntityDataSerializers.FLOAT);
 
     // 操縦者UUID
     private UUID pilotUUID = null;
@@ -208,6 +210,16 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         float clamped = Mth.clamp(angleDeg, 35.0f, 65.0f);
         this.entityData.set(DATA_COUNTER_MAX_ANGLE, clamped);
         this.realPhysics.setCounterMaxAngleDeg(clamped);
+    }
+
+    public float getDriftStartAngle() {
+        return this.entityData.get(DATA_DRIFT_START_ANGLE);
+    }
+
+    public void setDriftStartAngle(float angleDeg) {
+        float clamped = Mth.clamp(angleDeg, 10.0f, 35.0f);
+        this.entityData.set(DATA_DRIFT_START_ANGLE, clamped);
+        this.realPhysics.setDriftStartAngleDeg(clamped);
     }
 
     /**
@@ -421,6 +433,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         builder.define(DATA_HEADLIGHT, false);
         builder.define(DATA_REAL_MODE, false);
         builder.define(DATA_COUNTER_MAX_ANGLE, 52.0f);
+        builder.define(DATA_DRIFT_START_ANGLE, 22.0f);
     }
 
     @Override
@@ -724,6 +737,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         if (this.isRealMode()) {
             // === REALモード専用物理演算 (RACEモードから完全分離) ===
             this.realPhysics.setCounterMaxAngleDeg(this.getCounterMaxAngle());
+            this.realPhysics.setDriftStartAngleDeg(this.getDriftStartAngle());
             // 4点サスペンション・地面接地・ピッチ/ロール計算を先に実行
             this.prevRollAngle = this.rollAngle;
             this.prevPitchAngle = this.pitchAngle;
@@ -1684,6 +1698,9 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         if (compound.contains("CounterMaxAngle")) {
             setCounterMaxAngle(compound.getFloat("CounterMaxAngle"));
         }
+        if (compound.contains("DriftStartAngle")) {
+            setDriftStartAngle(compound.getFloat("DriftStartAngle"));
+        }
     }
 
     @Override
@@ -1708,6 +1725,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         compound.putBoolean("Headlight", isHeadlightOn());
         compound.putBoolean("RealDrivingMode", isRealMode());
         compound.putFloat("CounterMaxAngle", getCounterMaxAngle());
+        compound.putFloat("DriftStartAngle", getDriftStartAngle());
     }
 
     private void spawnDriftParticles(boolean turboReady) {

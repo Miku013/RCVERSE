@@ -129,6 +129,7 @@ public class ServerPayloadHandler {
                     car.setCustomWeight(payload.weightKg());
                     car.setDrivingMode(payload.realMode());
                     car.setCounterMaxAngle(payload.counterMaxAngleDeg());
+                    car.setDriftStartAngle(payload.driftStartAngleDeg());
                 }
             }
         });

@@ -8,6 +8,7 @@ public class RealPhysicsConfig {
     // 操舵・車体ディメンション
     public float maxSteeringAngleDeg = 35.0f;       // 通常時の最大前輪操舵角 (度)
     public float maxCounterSteerAngleDeg = 52.0f;   // ドリフト・カウンター側の最大切れ角 (度)
+    public float driftStartAngleDeg = 22.0f;        // 横滑り(パワースライド)が始まるステア切れ角しきい値 (度)
     public float steeringLerpRate = 0.24f;          // 通常切り込み追従速度 (微調整しやすい滑らかさ)
     public float counterSteerLerpRate = 0.28f;      // カウンター側への当て込み速度
     public float steeringReturnRate = 0.34f;        // センターへの戻し速度
@@ -22,12 +23,12 @@ public class RealPhysicsConfig {
     public double corneringDragFactor = 0.022;      // 横滑り時のタイヤ引きずり減速係数
 
     // 第3段階：前後輪独立可変グリップパラメーター
-    // 前後2軸合計で約 0.90G (≒ 0.022 blocks/tick^2) を基準最大横加速度とする
-    public float baseFrontGrip = 1.08f;             // 前輪の基本グリップ係数
-    public float baseRearGrip = 0.98f;              // 後輪の基本グリップ係数
-    public double corneringStiffnessFront = 0.065;  // 前輪コーナリング剛性（スリップ角10°前後で限界付近）
-    public double corneringStiffnessRear = 0.054;   // 後輪コーナリング剛性
-    public double maxLateralAccelPerTick = 0.0115;  // 1軸あたりの基準最大横加速度 (前後合計 ~0.94G)
+    // 通常時は ~1.10G でしっかりグリップし、設定した滑り始め角度・荷重移動を超えるとスライド開始
+    public float baseFrontGrip = 1.12f;             // 前輪の基本グリップ係数
+    public float baseRearGrip = 1.04f;              // 後輪の基本グリップ係数
+    public double corneringStiffnessFront = 0.065;  // 前輪コーナリング剛性
+    public double corneringStiffnessRear = 0.060;   // 後輪コーナリング剛性
+    public double maxLateralAccelPerTick = 0.0130;  // 1軸あたりの基準最大横加速度
     public double frontSlipPeakDropRatio = 0.96;    // 前輪限界超過後の粘り率 (96%: カウンター時に逃げにくい)
     public double slipLimitPeakDropRatio = 0.85;    // 後輪限界超過後の動摩擦残存率 (85%)
     public double handbrakeRearGripMult = 0.30;     // サイドブレーキ時の後輪グリップ倍率
