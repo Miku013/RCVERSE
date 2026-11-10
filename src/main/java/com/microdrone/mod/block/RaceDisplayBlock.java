@@ -91,6 +91,28 @@ public class RaceDisplayBlock extends HorizontalDirectionalBlock implements Enti
     }
 
     @Override
+    protected net.minecraft.world.ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, net.minecraft.world.entity.player.Player player, net.minecraft.world.InteractionHand hand, net.minecraft.world.phys.BlockHitResult hitResult) {
+        if (!level.isClientSide) {
+            BlockEntity be = level.getBlockEntity(pos);
+            if (be instanceof RaceDisplayBlockEntity displayBe) {
+                BlockPos masterPos = displayBe.getMasterPos();
+                BlockEntity mBe = level.getBlockEntity(masterPos);
+                if (mBe instanceof RaceDisplayBlockEntity masterDisplay) {
+                    masterDisplay.toggleDisplayMode();
+                    boolean isCctv = masterDisplay.getDisplayMode() == RaceDisplayBlockEntity.DisplayMode.CCTV_LIVE;
+                    if (isCctv) {
+                        player.displayClientMessage(Component.literal("§a[レースビジョン] §e🔴 CCTVリアルタイム中継モード (256x144 / 30fps)§f に切り替えました！"), true);
+                    } else {
+                        player.displayClientMessage(Component.literal("§a[レースビジョン] §b🏁 リーダーボード(順位・タイム)§f に切り替えました！"), true);
+                    }
+                    level.playSound(null, pos, net.minecraft.sounds.SoundEvents.UI_BUTTON_CLICK.value(), net.minecraft.sounds.SoundSource.BLOCKS, 0.7f, 1.2f);
+                }
+            }
+        }
+        return net.minecraft.world.ItemInteractionResult.SUCCESS;
+    }
+
+    @Override
     public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltipComponents, TooltipFlag tooltipFlag) {
         tooltipComponents.add(Component.translatable("tooltip.microdrone.race_display_desc").withStyle(net.minecraft.ChatFormatting.GRAY));
         super.appendHoverText(stack, context, tooltipComponents, tooltipFlag);

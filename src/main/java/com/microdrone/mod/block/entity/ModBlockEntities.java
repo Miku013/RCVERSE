@@ -28,6 +28,10 @@ public class ModBlockEntities {
             BLOCK_ENTITIES.register("race_display",
                     () -> BlockEntityType.Builder.of(RaceDisplayBlockEntity::new, ModBlocks.RACE_DISPLAY.get()).build(null));
 
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TracksideCameraBlockEntity>> TRACKSIDE_CAMERA_BE =
+            BLOCK_ENTITIES.register("trackside_camera",
+                    () -> BlockEntityType.Builder.of(TracksideCameraBlockEntity::new, ModBlocks.TRACKSIDE_CAMERA.get()).build(null));
+
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<VerticalLoopBlockEntity>> VERTICAL_LOOP_BE =
             BLOCK_ENTITIES.register("vertical_loop",
                     () -> BlockEntityType.Builder.of(VerticalLoopBlockEntity::new, ModBlocks.VERTICAL_LOOP.get()).build(null));

@@ -35,6 +35,13 @@ public class RaceDisplayBlockEntity extends BlockEntity {
     private boolean isRacing = false;
     private int updateFlashTicks = 0;
 
+    // === CCTVライブ中継モード ===
+    public enum DisplayMode {
+        CCTV_LIVE,
+        LEADERBOARD
+    }
+    private DisplayMode displayMode = DisplayMode.CCTV_LIVE;
+
     public RaceDisplayBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.RACE_DISPLAY_BE.get(), pos, state);
         this.masterPos = pos;
@@ -119,6 +126,22 @@ public class RaceDisplayBlockEntity extends BlockEntity {
 
     public boolean isFlashing() {
         return this.updateFlashTicks > 0;
+    }
+
+    public DisplayMode getDisplayMode() {
+        return this.displayMode;
+    }
+
+    public void setDisplayMode(DisplayMode mode) {
+        this.displayMode = mode;
+        setChanged();
+        if (this.level != null && !this.level.isClientSide) {
+            this.level.sendBlockUpdated(this.worldPosition, getBlockState(), getBlockState(), 3);
+        }
+    }
+
+    public void toggleDisplayMode() {
+        setDisplayMode(this.displayMode == DisplayMode.CCTV_LIVE ? DisplayMode.LEADERBOARD : DisplayMode.CCTV_LIVE);
     }
 
     /**
@@ -252,6 +275,7 @@ public class RaceDisplayBlockEntity extends BlockEntity {
         tag.putLong("SplitTime", this.splitTimeMs);
         tag.putInt("SplitCheckpoint", this.splitCheckpoint);
         tag.putBoolean("IsRacing", this.isRacing);
+        tag.putString("DisplayMode", this.displayMode.name());
     }
 
     @Override
@@ -273,6 +297,11 @@ public class RaceDisplayBlockEntity extends BlockEntity {
         this.splitTimeMs = tag.getLong("SplitTime");
         this.splitCheckpoint = tag.getInt("SplitCheckpoint");
         this.isRacing = tag.getBoolean("IsRacing");
+        if (tag.contains("DisplayMode")) {
+            try {
+                this.displayMode = DisplayMode.valueOf(tag.getString("DisplayMode"));
+            } catch (Exception ignored) {}
+        }
     }
 
     @Override

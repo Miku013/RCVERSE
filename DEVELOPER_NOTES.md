@@ -751,3 +751,31 @@ acing_slope と drone_charger のPNGがJPEGからの変換で Format24bppRgb（�
    - 4輪サスペンションの真の接地状態（wheelGrounded）と重力落下を完全連動化。
    - 平地用レイキャスト検知深度を 0.35m から 1.25m に拡張し、地面なし時は明確に空中（非接地）判定を返却。
    - スロープのリップ判定を isLip = false に統一し、道路スロープとして登り切った後に高台へのスムーズな合流、および高台がない場合の自然な重力落下・着地を実現。
+
+---
+### 【2026-11-10】ラジコン専用HUD、中継カメラブロック、およびCCTVライブモニター描画システムの実装・検証
+1. **実装完了項目**:
+   - **ラジコン専用クラシックHUD (RcCarHudOverlay.java)**:
+     - 左下配置の丸型アナログタコメーター（0〜8,000rpm、針の動的回転描画）。
+     - デジタルスピードメーター（km/h表示）、バッテリー残量ゲージ（4目盛り＋残量%カラー変化）。
+     - ヘッドライト点灯アイコン、電波強度インジケーター（アンテナ＋バー表示）。
+   - **コース中継カメラブロック (TracksideCameraBlock.java, TracksideCameraBlockEntity.java)**:
+     - 設置型の中継カメラブロック。ワールド内のアクティブカメラリスト管理に対応。
+   - **電光掲示板のCCTV中継モード (RaceDisplayBlock.java, RaceDisplayBlockEntity.java)**:
+     - 右クリックで「リーダーボード」と「CCTVライブ中継画面」を即座に切り替え可能。
+   - **FBOオフスクリーン描画 ＆ テクスチャマッピングパイプライン**:
+     - 256×144 (16:9) の TextureTarget（FBO）を作成。
+     - CctvScreenTexture を Minecraft の TextureManager に登録し、RaceDisplayBlockEntityRenderer において RenderType.entityCutoutNoCull でモニター前面に安全マッピング。
+     - 水色（スカイブルー）のクリアカラーが電光掲示板に綺麗に映り、FBOテクスチャの投影パイプライン自体は完全に動作することを確認。
+   - **画面ジッター（高速ガタつき・視界痙攣）の完全根絶**:
+     - 原因: CCTV描画時にプロジェクション行列（Projection Matrix）を上書きしたまま復元していなかったこと、およびメインワールドの共有バッファ（mc.renderBuffers().bufferSource()）をブロック描画ループ内でフラッシュしていたこと。
+     - 修正: プロジェクション行列と ModelViewMatrix を厳格に保存・復元し、CCTV専用の隔離バッファ（MultiBufferSource.immediate）を用いることで、プレイヤー視点の乱れを100%解消。
+   - **カリング処理 & 30fpsリミッター**:
+     - プレイヤーが36m以上離れている、背を向けている、またはモニターの裏側にいる場合はFBO処理を完全スキップ。33msリミッターで30fpsを維持。
+
+2. **未解決課題と次回セッションへの引き継ぎ事項**:
+   - **現状の症状**: モニター内にスカイブルーの水色画面は映るが、車や地面のジオメトリがまだ描画されていない。
+   - **技術的な原因仮説 & 次回のアプローチ**:
+     1. cctvBufferSource.endBatch() におけるシェーダー状態・テクスチャバインディング（GeckoLib の GeoEntityRenderer が要求する RenderType のセットアップ）が、BlockEntityRenderer 内のコンテキストで正しく FBO にフラッシュされているかの検証。
+     2. まずは FBO 内に Tesselator を使って確実なテストパターン（色付きの正方形や三角形）を描画し、カメラの lookAt 変換とプロジェクション行列が正しく FBO のビューポート内に投影されるかを段階的に確認する。
+     3. あるいは、SecurityCraft や Create などのカメラMODと同様に、RenderLevelStageEvent（NeoForgeのワールド描画イベント）の適切なステージを利用して FBO 更新を行う方式の検討。

@@ -5,6 +5,7 @@ import com.microdrone.mod.client.audio.DroneSoundManager;
 import com.microdrone.mod.client.camera.DroneCameraController;
 import com.microdrone.mod.client.gui.DroneHudOverlay;
 import com.microdrone.mod.client.gui.PlaneFlightHudOverlay;
+import com.microdrone.mod.client.gui.RcCarHudOverlay;
 import com.microdrone.mod.client.gui.TankGunnerHudOverlay;
 import com.microdrone.mod.client.input.ClientDroneInputHandler;
 import com.microdrone.mod.client.model.DroneModel;
@@ -56,6 +57,7 @@ public class ClientModEvents {
         DroneCameraController.register();
         com.microdrone.mod.client.chunk.ClientChunkEvents.register();
         DroneHudOverlay.register();
+        RcCarHudOverlay.register();
         TankGunnerHudOverlay.register();
         PlaneFlightHudOverlay.register();
         DroneSoundManager.register();
