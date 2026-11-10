@@ -2053,7 +2053,10 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
 
         // 旋回・ドリフトによる遠心力ロール (外側サスペンションが正しく沈み込む)
         float dynamicRoll = 0.0f;
-        if (this.driftDirection != 0) {
+        if (this.isRealMode()) {
+            double totalLatForce = this.realPhysics.getLateralForceFront() + this.realPhysics.getLateralForceRear();
+            dynamicRoll = (float) (-totalLatForce * 220.0) * rollMult;
+        } else if (this.driftDirection != 0) {
             float baseRoll = 9.0f;
             float totalRoll = baseRoll + (counterAmount * 8.5f);
             dynamicRoll = -this.driftDirection * totalRoll * rollMult;

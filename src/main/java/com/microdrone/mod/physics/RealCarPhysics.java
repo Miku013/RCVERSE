@@ -6,11 +6,14 @@ import net.minecraft.world.phys.Vec3;
 /**
  * RCカー REALモード専用物理演算エンジン
  *
- * 【第2段階：速度分離・座標変換・基礎走行】
- * - ワールド速度を車体ローカルの「前後方向速度 (forwardVelocity)」と
- *   「左右横方向速度 (lateralVelocity)」へ分離して管理する。
- * - 車体の向き (Yaw) と実際の進行方向を独立させ、旋回時に横方向慣性が生まれる。
- * - 既存の RACE モードやモデルアニメーションとは完全に分離されている。
+ * 【第3段階：可変グリップ（前後輪独立グリップ限界・スリップ角・Yawモーメント制御）】
+ * - 前輪・後輪それぞれのスリップ角と横力を計算し、
+ *   最大横力（グリップ係数 × 荷重 × 路面摩擦）による限界クリップを導入。
+ * - 前輪と後輪の横力差モーメントで YawRate（旋回角速度）を発生させ、
+ *   オーバーステア（自然なドリフト開始）、アンダーステア、カウンターステア、
+ *   グリップ回復による安定復帰をすべて物理演算から自然に発生させる。
+ * - 低速域はスピン・数値振動を防ぐため幾何学ステアへ滑らかにブレンドし、
+ *   1tickを4サブステップ分割して 20Hz 環境でも破綻しない安定性を確保。
  */
 public class RealCarPhysics {
 
@@ -27,13 +30,32 @@ public class RealCarPhysics {
 
     private final RealPhysicsConfig config = new RealPhysicsConfig();
 
+    // 速度・姿勢状態
     private double forwardVelocity = 0.0; // 車体前方(+)/後方(-)の速度 (blocks/tick)
     private double lateralVelocity = 0.0; // 車体右(+)/左(-)の横滑り速度 (blocks/tick)
-    private float yawRateDeg = 0.0f;      // 旋回速度 (deg/tick)
+    private float yawRateDeg = 0.0f;      // 旋回速度 (deg/tick, 右が正/左が負)
     private float steerAngleDeg = 0.0f;   // 現在の前輪操舵角 (deg, 左Aが正/右Dが負)
-    private float slipAngleDeg = 0.0f;    // 車体進行方向とのスリップ角 (deg)
-    private float surfaceFriction = 1.0f; // 現在の路面摩擦係数 (第5段階で路面判定連動)
+    private float slipAngleDeg = 0.0f;    // 車体中心のスリップ角 (deg)
     private boolean drifting = false;
+
+    // 第3段階：前後グリップ・スリップ・デバッグ監視用パラメーター
+    private float frontGrip = 1.12f;
+    private float rearGrip = 1.02f;
+    private double frontGripLimit = 0.0;
+    private double rearGripLimit = 0.0;
+    private double lateralForceFront = 0.0;
+    private double lateralForceRear = 0.0;
+    private float frontSlipAngleDeg = 0.0f;
+    private float rearSlipAngleDeg = 0.0f;
+    private float frontGripUsage = 0.0f;  // 0.0〜1.0+ (1.0以上で限界到達)
+    private float rearGripUsage = 0.0f;
+    private boolean frontSlipping = false;
+    private boolean rearSlipping = false;
+
+    // 第4・第5段階への拡張フック値（第3段階では均等荷重・標準摩擦を使用）
+    private float frontLoadRatio = 0.50f;
+    private float rearLoadRatio = 0.50f;
+    private float surfaceFriction = 1.0f;
 
     public RealPhysicsConfig getConfig() {
         return this.config;
@@ -59,6 +81,54 @@ public class RealCarPhysics {
         return this.slipAngleDeg;
     }
 
+    public float getFrontGrip() {
+        return this.frontGrip;
+    }
+
+    public float getRearGrip() {
+        return this.rearGrip;
+    }
+
+    public double getFrontGripLimit() {
+        return this.frontGripLimit;
+    }
+
+    public double getRearGripLimit() {
+        return this.rearGripLimit;
+    }
+
+    public double getLateralForceFront() {
+        return this.lateralForceFront;
+    }
+
+    public double getLateralForceRear() {
+        return this.lateralForceRear;
+    }
+
+    public float getFrontSlipAngleDeg() {
+        return this.frontSlipAngleDeg;
+    }
+
+    public float getRearSlipAngleDeg() {
+        return this.rearSlipAngleDeg;
+    }
+
+    public float getFrontGripUsage() {
+        return this.frontGripUsage;
+    }
+
+    public float getRearGripUsage() {
+        return this.rearGripUsage;
+    }
+
+    public boolean isFrontSlipping() {
+        return this.frontSlipping;
+    }
+
+    public boolean isRearSlipping() {
+        return this.rearSlipping;
+    }
+
     public float getSurfaceFriction() {
         return this.surfaceFriction;
     }
@@ -67,15 +137,22 @@ public class RealCarPhysics {
         return this.drifting;
     }
 
+    public float getFrontLoadRatio() {
+        return this.frontLoadRatio;
+    }
+
+    public float getRearLoadRatio() {
+        return this.rearLoadRatio;
+    }
+
     /**
      * ワールド速度と車体Yawから、車体ローカル速度（前後/左右）へ同期する。
-     * RACE -> REAL モード切替時や外部衝突後の引き継ぎに使用し、速度を不自然にリセットしない。
      */
     public void syncFromWorldVelocity(Vec3 worldVel, float yawDeg, float currentSteerDeg) {
         float yawRad = yawDeg * Mth.DEG_TO_RAD;
         double fwdX = -Mth.sin(yawRad);
         double fwdZ = Mth.cos(yawRad);
-        double rightX = -fwdZ; // (-cos, -sin)
+        double rightX = -fwdZ;
         double rightZ = fwdX;
 
         this.forwardVelocity = worldVel.x * fwdX + worldVel.z * fwdZ;
@@ -92,22 +169,14 @@ public class RealCarPhysics {
         this.steerAngleDeg = 0.0f;
         this.slipAngleDeg = 0.0f;
         this.drifting = false;
+        this.frontSlipping = false;
+        this.rearSlipping = false;
+        this.frontGripUsage = 0.0f;
+        this.rearGripUsage = 0.0f;
     }
 
     /**
-     * REALモードの1tick分の水平物理演算を実行する。
-     *
-     * @param prevWorldVel    前tickのワールド水平速度
-     * @param currentYawDeg   現在の車体向き (deg)
-     * @param inputForward    アクセル(+)/ブレーキ・後退(-)入力 (-1.0〜+1.0)
-     * @param inputSteer      ステアリング入力 (左A:+1.0 / 右D:-1.0)
-     * @param inputHandbrake  サイドブレーキ入力
-     * @param grounded        タイヤまたは車体が接地しているか
-     * @param wallAhead       前方に壁が密着しているか
-     * @param maxSpeed        モーター＆車体コンフィグ由来の最高速度 (blocks/tick)
-     * @param accel           モーター＆車体コンフィグ由来の基礎加速度
-     * @param turnMult        車体コンフィグの旋回倍率
-     * @param invertSteer     ステア反転フラグ
+     * REALモードの1tick分の水平物理演算を実行する（第3段階：可変グリップ方式）。
      */
     public StepResult stepHorizontal(
             Vec3 prevWorldVel,
@@ -132,31 +201,33 @@ public class RealCarPhysics {
         this.forwardVelocity = prevWorldVel.x * prevFwdX + prevWorldVel.z * prevFwdZ;
         this.lateralVelocity = prevWorldVel.x * prevRightX + prevWorldVel.z * prevRightZ;
 
-        // 2. 前輪操舵角の更新（左Aキーが正、最大±35度）
+        // 2. 前輪操舵角の更新（左Aキーが正、右Dキーが負、最大±35度）
         float steerDir = invertSteer ? -1.0f : 1.0f;
         float targetSteerDeg = inputSteer * config.maxSteeringAngleDeg * steerDir;
         this.steerAngleDeg = Mth.lerp(config.steeringLerpRate, this.steerAngleDeg, targetSteerDeg);
 
-        // 3. 前後方向のアクセル・ブレーキ・転がり抵抗（接地中のみ駆動力・ブレーキが効く）
-        double effectiveAccel = wallAhead && inputForward > 0.05f ? accel * 0.08 : accel;
+        // 3. 縦方向（アクセル・ブレーキ・転がり抵抗）と駆動力過多による後輪グリップ変化
+        double effectiveAccel = (wallAhead && inputForward > 0.05f) ? accel * 0.08 : accel;
         if (wallAhead && inputForward > 0.05f) {
             this.forwardVelocity = Math.min(this.forwardVelocity, 0.015);
         }
 
+        double powerSpinSeverity = 0.0;
         if (grounded) {
             if (inputForward > 0.05f) {
                 if (this.forwardVelocity < -0.01) {
-                    // 後退中の前進入力は強ブレーキ
                     this.forwardVelocity += effectiveAccel * config.brakeDecelMultiplier;
                     if (this.forwardVelocity > 0.0) {
                         this.forwardVelocity = 0.0;
                     }
                 } else {
-                    this.forwardVelocity += effectiveAccel * inputForward;
+                    // 高回転アクセル入力ほど駆動輪（後輪）の縦力消費が増え、パワードリフトのきっかけになる
+                    double fwdGain = effectiveAccel * inputForward;
+                    this.forwardVelocity += fwdGain;
+                    powerSpinSeverity = Mth.clamp(inputForward, 0.0f, 1.0f);
                 }
             } else if (inputForward < -0.05f) {
                 if (this.forwardVelocity > 0.01) {
-                    // 前進中の後退入力はブレーキ
                     this.forwardVelocity -= effectiveAccel * config.brakeDecelMultiplier;
                     if (this.forwardVelocity < 0.0) {
                         this.forwardVelocity = 0.0;
@@ -165,85 +236,69 @@ public class RealCarPhysics {
                     this.forwardVelocity += effectiveAccel * inputForward * config.reversePowerMultiplier;
                 }
             } else {
-                // アクセルOFF時の自然な転がり抵抗
                 this.forwardVelocity *= config.rollingFriction;
             }
 
-            // サイドブレーキ押下時は少し制動が掛かる
             if (inputHandbrake) {
-                this.forwardVelocity *= 0.96;
+                this.forwardVelocity *= 0.965;
             }
         } else {
-            // 空中飛行中はわずかな空気抵抗のみ
             this.forwardVelocity *= 0.995;
             this.lateralVelocity *= 0.995;
         }
 
         this.forwardVelocity = Mth.clamp(this.forwardVelocity, -maxSpeed * 0.45, maxSpeed);
 
-        // 4. 旋回角速度 (YawRate) と車体向きの更新
-        //    （第2段階: ホイールベース＆速度に応じた自然な旋回 / 第3段階で前後タイヤ横力差モーメントへ発展）
+        // 4. 可変グリップ・バイシクルモデル（4サブステップ積分で20Hz環境でも安定）
         float newYawDeg = currentYawDeg;
-        if (grounded && Math.abs(this.forwardVelocity) > 0.002) {
-            double speedAbs = Math.abs(this.forwardVelocity);
-            double speedRatio = Mth.clamp(speedAbs / Math.max(0.15, maxSpeed), 0.0, 1.0);
-            // 高速域ではハンドル角あたりの急激な旋回をマイルドにし、旋回半径を大きくする
-            double highSpeedDamp = 1.0 - speedRatio * 0.38;
-            double steerRad = Math.toRadians(this.steerAngleDeg) * config.steeringSensitivity * turnMult;
-            // 自転車幾何学ベースの目標角速度 (速度 × tan(steer) / wheelBase)
-            double angularVelRad = (this.forwardVelocity / Math.max(0.20, config.wheelBase)) * Math.tan(steerRad) * 0.42 * highSpeedDamp;
-            if (inputHandbrake && speedAbs > 0.04) {
-                // サイドブレーキ時はテールが流れやすくヨーレートが増幅
-                angularVelRad *= 1.35;
-            }
-            float targetYawRate = (float) Math.toDegrees(-angularVelRad); // 左A(steer>0)でYaw減
-            targetYawRate = Mth.clamp(targetYawRate, -config.maxYawRateDegPerTick, config.maxYawRateDegPerTick);
-
-            this.yawRateDeg = Mth.lerp(0.45f, this.yawRateDeg, targetYawRate);
-            newYawDeg = currentYawDeg + this.yawRateDeg;
+        if (grounded) {
+            newYawDeg = stepBicycleTirePhysics(
+                    currentYawDeg,
+                    inputForward,
+                    inputHandbrake,
+                    maxSpeed,
+                    turnMult,
+                    powerSpinSeverity
+            );
         } else {
-            this.yawRateDeg = Mth.lerp(0.25f, this.yawRateDeg, 0.0f);
+            // 空中は横力・タイヤ旋回が発生せず、慣性を保つ
+            this.yawRateDeg = Mth.lerp(0.15f, this.yawRateDeg, 0.0f);
+            this.frontGripUsage = 0.0f;
+            this.rearGripUsage = 0.0f;
+            this.frontSlipping = false;
+            this.rearSlipping = false;
+            this.lateralForceFront = 0.0;
+            this.lateralForceRear = 0.0;
         }
 
-        // 5. 車体が回転しても移動慣性ベクトル自体はすぐには回らないため、
-        //    回転前のローカル速度(forward, lateral)を回転前Yawでワールドへ戻し、回転後Yawへ再射影する！
-        //    これにより「車体が曲がった瞬間に横方向速度が自然に生まれる」状態になる。
-        double preWorldX = prevFwdX * this.forwardVelocity + prevRightX * this.lateralVelocity;
-        double preWorldZ = prevFwdZ * this.forwardVelocity + prevRightZ * this.lateralVelocity;
-
-        float newYawRad = newYawDeg * Mth.DEG_TO_RAD;
-        double newFwdX = -Mth.sin(newYawRad);
-        double newFwdZ = Mth.cos(newYawRad);
-        double newRightX = -newFwdZ;
-        double newRightZ = newFwdX;
-
-        this.forwardVelocity = preWorldX * newFwdX + preWorldZ * newFwdZ;
-        this.lateralVelocity = preWorldX * newRightX + preWorldZ * newRightZ;
-
-        // 6. 横方向速度のタイヤグリップによる段階的減衰（毎tickゼロにせず慣性を残す）
+        // 低速時の微小ドリフト残存による不安定を防止
         if (grounded) {
-            double retention = inputHandbrake ? config.handbrakeLateralRetention : config.normalLateralRetention;
-            this.lateralVelocity *= retention;
-
-            // 低速域での不安定な微小滑りを抑制
             if (Math.abs(this.forwardVelocity) < config.lowSpeedSnapThreshold && Math.abs(inputForward) < 0.05f) {
                 this.forwardVelocity = 0.0;
             }
-            if (Math.abs(this.lateralVelocity) < config.lowSpeedSnapThreshold * 0.5) {
+            if (Math.abs(this.lateralVelocity) < config.lowSpeedSnapThreshold * 0.5 && Math.abs(this.steerAngleDeg) < 1.0f) {
                 this.lateralVelocity = 0.0;
             }
         }
 
-        // 発散防止の上限クランプ
+        // 発散防止の安全クランプ
         this.forwardVelocity = Mth.clamp(this.forwardVelocity, -maxSpeed * 0.6, maxSpeed * 1.15);
-        this.lateralVelocity = Mth.clamp(this.lateralVelocity, -maxSpeed * 1.1, maxSpeed * 1.1);
+        this.lateralVelocity = Mth.clamp(this.lateralVelocity, -maxSpeed * 1.15, maxSpeed * 1.15);
 
         updateSlipAndDriftFlags();
 
-        // 7. 新しいローカル速度から最終ワールド速度ベクトルを再合成
-        double outWorldX = newFwdX * this.forwardVelocity + newRightX * this.lateralVelocity;
-        double outWorldZ = newFwdZ * this.forwardVelocity + newRightZ * this.lateralVelocity;
-        Vec3 outWorldVel = new Vec3(outWorldX, 0.0, outWorldZ);
+        // 5. 最終Yawのローカル速度からワールド速度ベクトルへ再合成
+        float outYawRad = newYawDeg * Mth.DEG_TO_RAD;
+        double outFwdX = -Mth.sin(outYawRad);
+        double outFwdZ = Mth.cos(outYawRad);
+        double outRightX = -outFwdZ;
+        double outRightZ = outFwdX;
+
+        Vec3 outWorldVel = new Vec3(
+                outFwdX * this.forwardVelocity + outRightX * this.lateralVelocity,
+                0.0,
+                outFwdZ * this.forwardVelocity + outRightZ * this.lateralVelocity
+        );
 
         return new StepResult(
                 outWorldVel,
@@ -257,6 +312,160 @@ public class RealCarPhysics {
         );
     }
 
+    /**
+     * 前後2軸（バイシクルモデル）に基づく可変グリップ＆YawRate旋回計算
+     */
+    private float stepBicycleTirePhysics(
+            float startYawDeg,
+            float inputForward,
+            boolean inputHandbrake,
+            double maxSpeed,
+            float turnMult,
+            double powerSpinSeverity
+    ) {
+        this.frontGrip = config.baseFrontGrip;
+        this.rearGrip = config.baseRearGrip;
+
+        double lf = config.wheelBase * (1.0 - config.frontAxleRatio);
+        double lr = config.wheelBase * config.frontAxleRatio;
+
+        // 速度が中高速になるほど大舵角時の最大実効切れ角を少し抑え、高速での安定したコントロール性を確保
+        double totalSpeed = Math.hypot(this.forwardVelocity, this.lateralVelocity);
+        double speedRatio = Mth.clamp(totalSpeed / Math.max(0.15, maxSpeed), 0.0, 1.0);
+        double highSpeedSteerScale = 1.0 - speedRatio * 0.30;
+        double steerRad = Math.toRadians(this.steerAngleDeg) * config.steeringSensitivity * turnMult * highSpeedSteerScale;
+
+        // グリップ限界計算：最大横力 = グリップ係数 × 荷重配分(×2) × 路面摩擦 × 基準横G
+        double baseLimitScale = this.surfaceFriction * config.maxLateralAccelPerTick;
+        this.frontGripLimit = Math.max(0.005, this.frontGrip * (this.frontLoadRatio * 2.0) * baseLimitScale);
+
+        double rearDynMult = 1.0;
+        if (inputHandbrake && totalSpeed > 0.03) {
+            rearDynMult *= config.handbrakeRearGripMult;
+        }
+        // コーナーでアクセルを強く踏むと駆動力により後輪の横グリップがわずかに低下（パワースライド誘発）
+        if (powerSpinSeverity > 0.1 && Math.abs(this.steerAngleDeg) > 4.0f && totalSpeed > 0.05) {
+            rearDynMult *= Mth.lerp((float) powerSpinSeverity, 1.0f, (float) config.powerOversteerGripMult);
+        }
+        this.rearGripLimit = Math.max(0.004, this.rearGrip * (this.rearLoadRatio * 2.0) * baseLimitScale * rearDynMult);
+
+        int subSteps = Math.max(1, config.physicsSubSteps);
+        double subDt = 1.0 / subSteps;
+
+        double yawRateRad = Math.toRadians(this.yawRateDeg); // rad/tick
+        float currentYaw = startYawDeg;
+
+        double lastFyF = 0.0;
+        double lastFyR = 0.0;
+        double lastAlphaF = 0.0;
+        double lastAlphaR = 0.0;
+        boolean anyFrontSlip = false;
+        boolean anyRearSlip = false;
+
+        for (int i = 0; i < subSteps; i++) {
+            double vAbs = Math.hypot(this.forwardVelocity, this.lateralVelocity);
+            if (vAbs < 0.003) {
+                this.lateralVelocity *= Math.pow(0.5, subDt);
+                yawRateRad *= Math.pow(0.5, subDt);
+                continue;
+            }
+
+            // 低速領域ではタイヤモデルの発散を防ぎつつ、幾何学旋回からタイヤ物理へ滑らかにフェード
+            double tireBlend = Mth.clamp((vAbs - 0.008) / Math.max(0.01, config.lowSpeedGeomThreshold), 0.0, 1.0);
+
+            double denom = Math.max(Math.abs(this.forwardVelocity), 0.09);
+            double fwdSign = this.forwardVelocity >= -0.001 ? 1.0 : -1.0;
+
+            // 前軸・後軸の横方向接地速度 (右方向が正)
+            double vyFront = this.lateralVelocity + lf * yawRateRad;
+            double vyRear = this.lateralVelocity - lr * yawRateRad;
+
+            // スリップ角 (rad)
+            double alphaF = Math.atan2(vyFront, denom) + (fwdSign * steerRad);
+            double alphaR = Math.atan2(vyRear, denom);
+
+            // グリップ限界前の生横力
+            double rawFyF = -config.corneringStiffnessFront * (this.frontLoadRatio * 2.0) * this.surfaceFriction * alphaF;
+            double rawFyR = -config.corneringStiffnessRear * (this.rearLoadRatio * 2.0) * this.surfaceFriction * alphaR;
+
+            // 限界超過判定＆グリップ限界によるクランプ（超過時はわずかな動摩擦低下を伴う）
+            boolean fSlip = Math.abs(rawFyF) > this.frontGripLimit;
+            boolean rSlip = Math.abs(rawFyR) > this.rearGripLimit;
+            anyFrontSlip |= fSlip;
+            anyRearSlip |= rSlip;
+
+            double fyF = clampWithGripLimit(rawFyF, this.frontGripLimit, config.slipLimitPeakDropRatio);
+            double fyR = clampWithGripLimit(rawFyR, this.rearGripLimit, config.slipLimitPeakDropRatio);
+
+            // 低速域用の幾何学的ターゲット角速度 (車庫入れ・微速旋回が自然にできるように)
+            double geomOmegaRad = -(this.forwardVelocity / Math.max(0.20, config.wheelBase))
+                    * Math.tan(steerRad) * 0.42;
+
+            // 全体横力とヨーモーメントの適用
+            double totalFy = fyF + fyR;
+            double yawTorque = (lf * fyF) - (lr * fyR);
+
+            this.lateralVelocity += totalFy * tireBlend * subDt;
+
+            double dynYawRateRad = yawRateRad + (yawTorque * config.yawTorqueGain) * tireBlend * subDt;
+            dynYawRateRad *= Math.pow(config.yawAngularDamping, subDt);
+
+            // 低速時は幾何学旋回、中〜高速は完全なタイヤ物理YawRateへブレンド
+            yawRateRad = Mth.lerp(tireBlend, geomOmegaRad, dynYawRateRad);
+
+            double maxYawRad = Math.toRadians(config.maxYawRateDegPerTick);
+            yawRateRad = Mth.clamp(yawRateRad, -maxYawRad, maxYawRad);
+
+            // 低速かつサイドブレーキ非使用時は不要な横速度を軽く減衰してピタッと直進収束
+            if (tireBlend < 0.99 && !inputHandbrake) {
+                this.lateralVelocity *= Math.pow(0.85, subDt * (1.0 - tireBlend));
+            }
+
+            // 車体の微小回転 δYaw に対して、速度ベクトル自体を新しい車体ローカル軸へ正確に再射影する
+            double dYawRad = yawRateRad * subDt;
+            double cosD = Math.cos(dYawRad);
+            double sinD = Math.sin(dYawRad);
+
+            double nextFwd = this.forwardVelocity * cosD + this.lateralVelocity * sinD;
+            double nextLat = this.lateralVelocity * cosD - this.forwardVelocity * sinD;
+            this.forwardVelocity = nextFwd;
+            this.lateralVelocity = nextLat;
+
+            currentYaw += (float) Math.toDegrees(dYawRad);
+
+            lastFyF = fyF;
+            lastFyR = fyR;
+            lastAlphaF = alphaF;
+            lastAlphaR = alphaR;
+        }
+
+        this.yawRateDeg = (float) Math.toDegrees(yawRateRad);
+        this.lateralForceFront = lastFyF;
+        this.lateralForceRear = lastFyR;
+        this.frontSlipAngleDeg = (float) Math.toDegrees(lastAlphaF);
+        this.rearSlipAngleDeg = (float) Math.toDegrees(lastAlphaR);
+        this.frontSlipping = anyFrontSlip;
+        this.rearSlipping = anyRearSlip;
+        this.frontGripUsage = (float) (Math.abs(lastFyF) / Math.max(0.001, this.frontGripLimit));
+        this.rearGripUsage = (float) (Math.abs(lastFyR) / Math.max(0.001, this.rearGripLimit));
+
+        return currentYaw;
+    }
+
+    /**
+     * 最大横力を超えないように制限する（限界超過後は動摩擦残存率で自然にサチュレート）
+     */
+    private static double clampWithGripLimit(double rawForce, double limit, double peakDropRatio) {
+        double abs = Math.abs(rawForce);
+        if (abs <= limit) {
+            return rawForce;
+        }
+        // 限界超過後、少しだけグリップが落ちて滑らかなブレイク感を出す（急激なゼロ落ちはさせない）
+        double excess = Math.min(1.0, (abs - limit) / Math.max(0.001, limit));
+        double dropFactor = 1.0 - excess * (1.0 - peakDropRatio);
+        return Math.signum(rawForce) * limit * dropFactor;
+    }
+
     private void updateSlipAndDriftFlags() {
         double totalHoriz = Math.hypot(this.forwardVelocity, this.lateralVelocity);
         if (totalHoriz > 0.015) {
@@ -264,7 +473,7 @@ public class RealCarPhysics {
         } else {
             this.slipAngleDeg = 0.0f;
         }
-        // スリップ角 10度以上 かつ 一定の速度がある時をドリフト状態と判定
-        this.drifting = (totalHoriz > 0.045) && (Math.abs(this.slipAngleDeg) >= 10.0f);
+        // スリップ角 8度以上 または 後輪が限界滑りを起こしているときドリフト状態と判定
+        this.drifting = (totalHoriz > 0.04) && (Math.abs(this.slipAngleDeg) >= 8.0f || this.rearSlipping);
     }
 }
