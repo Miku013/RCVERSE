@@ -38,6 +38,7 @@ public class RealCarPhysics {
     private float slipAngleDeg = 0.0f;    // 車体中心のスリップ角 (deg)
     private boolean drifting = false;
     private boolean counterSteering = false;
+    private int recentSlideTicks = 0; // 直近まで横滑り/ドリフトしていた余韻カウント (立ち上がりおつり抑止用)
 
     // 第3段階：前後グリップ・スリップ・デバッグ監視用パラメーター
     private float frontGrip = 1.12f;
@@ -185,6 +186,7 @@ public class RealCarPhysics {
         this.lateralVelocity = worldVel.x * rightX + worldVel.z * rightZ;
         this.steerAngleDeg = currentSteerDeg;
         this.yawRateDeg = 0.0f;
+        this.recentSlideTicks = 0;
         updateSlipAndDriftFlags();
     }
 
@@ -196,6 +198,7 @@ public class RealCarPhysics {
         this.slipAngleDeg = 0.0f;
         this.drifting = false;
         this.counterSteering = false;
+        this.recentSlideTicks = 0;
         this.frontSlipping = false;
         this.rearSlipping = false;
         this.frontGripUsage = 0.0f;
@@ -242,7 +245,7 @@ public class RealCarPhysics {
         float maxAngle = steeringIntoCounter ? config.maxCounterSteerAngleDeg : config.maxSteeringAngleDeg;
         float lerpRate;
         if (Math.abs(inputSteer) < 0.05f) {
-            lerpRate = config.steeringReturnRate;
+            lerpRate = currentlyCountered ? config.counterReturnRate : config.steeringReturnRate;
         } else if (steeringIntoCounter) {
             lerpRate = config.counterSteerLerpRate;
         } else {
@@ -315,6 +318,7 @@ public class RealCarPhysics {
             newYawDeg = stepBicycleTirePhysics(
                     currentYawDeg,
                     inputForward,
+                    inputSteer,
                     inputHandbrake,
                     maxSpeed,
                     turnMult,
@@ -346,6 +350,11 @@ public class RealCarPhysics {
         this.lateralVelocity = Mth.clamp(this.lateralVelocity, -maxSpeed * 1.15, maxSpeed * 1.15);
 
         updateSlipAndDriftFlags();
+        if (this.drifting || this.counterSteering || Math.abs(this.lateralVelocity) > config.exitDampingLatThreshold) {
+            this.recentSlideTicks = 8;
+        } else if (this.recentSlideTicks > 0) {
+            this.recentSlideTicks--;
+        }
 
         // 5. 最終Yawのローカル速度からワールド速度ベクトルへ再合成
         float outYawRad = newYawDeg * Mth.DEG_TO_RAD;
@@ -378,6 +387,7 @@ public class RealCarPhysics {
     private float stepBicycleTirePhysics(
             float startYawDeg,
             float inputForward,
+            float inputSteer,
             boolean inputHandbrake,
             double maxSpeed,
             float turnMult,
@@ -432,6 +442,8 @@ public class RealCarPhysics {
 
         int subSteps = Math.max(1, config.physicsSubSteps);
         double subDt = 1.0 / subSteps;
+        boolean steeringNeutral = Math.abs(inputSteer) < 0.05f;
+        boolean hadRecentSlide = this.drifting || this.counterSteering || this.recentSlideTicks > 0;
 
         double yawRateRad = Math.toRadians(this.yawRateDeg); // rad/tick
         float currentYaw = startYawDeg;
@@ -444,6 +456,7 @@ public class RealCarPhysics {
         boolean anyRearSlip = false;
 
         for (int i = 0; i < subSteps; i++) {
+            double subStartLat = this.lateralVelocity;
             double vAbs = Math.hypot(this.forwardVelocity, this.lateralVelocity);
             if (vAbs < 0.003) {
                 this.lateralVelocity *= Math.pow(0.5, subDt);
@@ -457,12 +470,26 @@ public class RealCarPhysics {
             double denom = Math.max(Math.abs(this.forwardVelocity), 0.065);
             double fwdSign = this.forwardVelocity >= -0.001 ? 1.0 : -1.0;
 
+            // ② RCドリフト用ステアジャイロ／立ち上がりダンピング（横速度がゼロ付近へ収束した瞬間の過剰Yawをおつり抑止）
+            double latThresh = Math.max(0.01, config.exitDampingLatThreshold);
+            double exitProximity = 1.0 - Mth.clamp(Math.abs(this.lateralVelocity) / latThresh, 0.0, 1.0);
+            double gyroSteerRad = 0.0;
+            if (config.enableExitGyro && steeringNeutral && tireBlend > 0.1) {
+                double maxGyroRad = Math.toRadians(14.0);
+                gyroSteerRad = Mth.clamp(
+                        fwdSign * yawRateRad * config.gyroCounterAssistGain * tireBlend * (0.45 + 0.55 * exitProximity),
+                        -maxGyroRad,
+                        maxGyroRad
+                );
+            }
+            double effectiveSteerRad = steerRad + gyroSteerRad;
+
             // 前軸・後軸の横方向接地速度 (右方向が正)
             double vyFront = this.lateralVelocity + lf * yawRateRad;
             double vyRear = this.lateralVelocity - lr * yawRateRad;
 
             // スリップ角 (rad)
-            double alphaF = Math.atan2(vyFront, denom) + (fwdSign * steerRad);
+            double alphaF = Math.atan2(vyFront, denom) + (fwdSign * effectiveSteerRad);
             double alphaR = Math.atan2(vyRear, denom);
 
             // グリップ限界前の生横力
@@ -489,7 +516,17 @@ public class RealCarPhysics {
             this.lateralVelocity += totalFy * tireBlend * subDt;
 
             double dynYawRateRad = yawRateRad + (yawTorque * config.yawTorqueGain) * tireBlend * subDt;
-            dynYawRateRad *= Math.pow(config.yawAngularDamping, subDt);
+            double effectiveYawDamping = config.yawAngularDamping;
+            if (config.enableExitGyro && vAbs > 0.04) {
+                if (steeringNeutral) {
+                    double dampingWeight = Math.max(exitProximity, hadRecentSlide ? 0.45 : 0.15);
+                    effectiveYawDamping = Mth.lerp(dampingWeight, config.yawAngularDamping, config.exitGyroYawDamping);
+                } else if (hadRecentSlide && exitProximity > 0.0 && Math.abs(yawRateRad) > 0.08) {
+                    // カウンター維持のまま横滑りがゼロへ収束した直後の急激な逆振り（おつり）のみ軽く緩和
+                    effectiveYawDamping = Mth.lerp(0.25 * exitProximity, config.yawAngularDamping, config.exitGyroYawDamping);
+                }
+            }
+            dynYawRateRad *= Math.pow(effectiveYawDamping, subDt);
 
             // 低速時は幾何学旋回、中〜高速は完全なタイヤ物理YawRateへブレンド
             yawRateRad = Mth.lerp(tireBlend, geomOmegaRad, dynYawRateRad);
@@ -515,6 +552,13 @@ public class RealCarPhysics {
             double nextLat = this.lateralVelocity * cosD - this.forwardVelocity * sinD;
             this.forwardVelocity = nextFwd;
             this.lateralVelocity = nextLat;
+
+            // 中立操舵中にドリフト立ち上がりで lateralVelocity が 0 を跨いだ瞬間、過剰な逆滑り＆Yawを吸収
+            if (config.enableExitGyro && steeringNeutral && hadRecentSlide
+                    && Math.abs(subStartLat) > 1e-4 && (subStartLat * this.lateralVelocity <= 0.0)) {
+                this.lateralVelocity *= config.exitLatZeroCrossDamping;
+                yawRateRad *= 0.55;
+            }
 
             currentYaw += (float) Math.toDegrees(dYawRad);
 
