@@ -779,3 +779,29 @@ acing_slope と drone_charger のPNGがJPEGからの変換で Format24bppRgb（�
      1. cctvBufferSource.endBatch() におけるシェーダー状態・テクスチャバインディング（GeckoLib の GeoEntityRenderer が要求する RenderType のセットアップ）が、BlockEntityRenderer 内のコンテキストで正しく FBO にフラッシュされているかの検証。
      2. まずは FBO 内に Tesselator を使って確実なテストパターン（色付きの正方形や三角形）を描画し、カメラの lookAt 変換とプロジェクション行列が正しく FBO のビューポート内に投影されるかを段階的に確認する。
      3. あるいは、SecurityCraft や Create などのカメラMODと同様に、RenderLevelStageEvent（NeoForgeのワールド描画イベント）の適切なステージを利用して FBO 更新を行う方式の検討。
+---
+### 【2026-11-12】REALモードドリフト物理の本格チューニング ＆ 道路生成マーカー円弧補間実装
+**対象ブランチ**: `feature/rc-real-mode`（最新コミット: `69047d5`） / **保護ベースライン**: `master` (`5ecc573`)・`backup/pre-real-mode`
+
+1. **実装・改善完了項目**:
+   - **道路生成マーカーの曲線精度向上 (`RoadSplineData`, `RoadSplineGenerator`, `RoadConfigScreen`, `RoadConfigPayload`)**:
+     - 方法B（終端2点ベース円弧フィットモード `90° / 180°` の追加 ＆ セグメント分割数 `16〜128` スライダー拡張）を実装し、より真円に近い滑らかなコーナー生成に対応（`0aa2edc`）。
+   - **REALモード専用フットブレーキ ＆ 荷重移動連携 (`RealCarPhysics.java`, `RealPhysicsConfig.java`)**:
+     - REALモードのスペースキーをマイルドな専用フットブレーキ（`spaceBrakeDecelMultiplier = 0.68`、`brakeRearGripRetention = 0.88`、速度0で完全停止）に変更し、直進時は安定減速・旋回中は前輪への荷重移動でブレーキングドリフトを誘発可能に調整（`77eab9d`, `f325287`）。RACEモードの挙動には一切変更なし。
+   - **ドリフト・カウンター・立ち上がり特性の物理チューニング ＆ ログ解析検証**:
+     - **カウンター維持と段階グリップ回復**: チューニングGUIからの最大カウンター角・滑り始め角度連動に加え、カウンター時のフロント過大グリップ・偽ブレーキ荷重移動（`maxSpeed` クランプ時の誤減速判定）・アクセル瞬間抜き時のリアグリップ急復帰（`smoothedPowerSpin` で平滑化）を修正し、「カウンターで旋回半径が広がり、戻すと徐々にグリップが戻って姿勢制御しやすい」バランスを実現（`2ba864f`, `c1f5ce6`, `271aef9`）。
+     - **立ち上がりステアジャイロ／おつり抑制 ＆ 線形フロント領域拡大**: 中立戻し時の過剰な `yawRate` を自動減衰するジャイロ＆立ち上がりダンピング（`enableExitGyro = true`）と、`exitFastReturnRate = 0.56f` による収束時の残存カウンター早戻しを導入。さらに前輪剛性 `0.056` / `baseFrontGrip = 1.22f` / `maxLateralAccelPerTick = 0.0195` により前輪の線形グリップ限界角を約 `16° → 24°` へ拡大し、初期アンダーとおつり反転を大幅低減（`3921357`, `fec6117`）。
+     - **REALモード速度調整**: `realSpeedScale = 1.47`、`realAccelScale = 1.32` へ引き上げ（直線最高速を約 `+5 km/h` 増の `48 km/h` 前後へ調整、`71b7b95`）。
+   - **一時テレメトリーCSVログ機能（現在は無効化済み）**:
+     - `RealCarPhysics.recordTelemetryTick` による `run/logs/rc_real_telemetry.csv` 出力を用いて実測解析を実施（最終的に `enableTelemetryLog = false` で無効化、`69047d5`）。
+
+2. **重要な技術仕様・次回 AI への注意事項**:
+   - **既存召喚済み車両のNBT設定**: `RcCarEntity` は `DATA_COUNTER_MAX_ANGLE`（新規初期値 `44.0f`）や `DATA_DRIFT_START_ANGLE`（初期値 `22.0f`）をNBTへ保存し毎tick `RealCarPhysics` へ渡すため、既存ワールドに召喚済みの車体はチューニングGUI側の値で上書きされる点に注意。
+   - **速度換算仕様**: `RcCarHudOverlay` / 物理出力ともに `km/h = blocks/tick * 72.0`。
+   - **モード分離**: すべてのリアルタイムタイヤ物理・ブレーキ・速度倍率は `RcCarEntity.isRealMode()` 分岐内のみに閉じており、既存の `RACE` モードには手を入れていない。
+
+3. **次回のTODO（予定タスク）**:
+   - **モンスタートラックのダブルウィッシュボーン機構**: 4輪サスペンション／アームボーンの車体傾斜・ストローク追従連動。
+   - **ライト用ボーンのエミッシブ発光ギミック**: 細かなライトパーツボーンの発光表現。
+   - **道路生成マーカーの道幅拡張**: 生成される道路の幅を拡張・設定できるようにする。
+   - **道路生成マーカーの仕組みを応用したジャンプ台生成**: 道路スプライン／マーカー基盤を使ったスロープ・ジャンプ台生成。
