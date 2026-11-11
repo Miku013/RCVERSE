@@ -61,14 +61,83 @@ public class RoadSplineGenerator {
         Vec3 p0 = new Vec3(startPos.getX() + 0.5, startPos.getY() + 1.0, startPos.getZ() + 0.5).subtract(t0.scale(0.5));
         Vec3 p3 = new Vec3(endPos.getX() + 0.5, endPos.getY() + 1.0, endPos.getZ() + 0.5).add(t3.scale(0.5));
 
-        // 制御点距離
-        double d = data.getControlPointDistance();
-        Vec3 p1 = p0.add(t0.scale(d));
-        Vec3 p2 = p3.subtract(t3.scale(d)); // 終点に入る向きなので終点から -T3
+        // 90°真円近似の黄金比定数 k = 4/3 * (sqrt(2) - 1)
+        final double CIRCLE_K = 0.5522847498;
+
+        Vec3 chord = p3.subtract(p0);
+        Vec3 chordH = new Vec3(chord.x, 0.0, chord.z);
+        double dirDot = t0.dot(t3);
+
+        // 2区間真円半円弧モード（真円フィットON かつ 180°逆向き平行ヘアピン かつ 横幅2m以上）
+        boolean useTwoSegmentArc = false;
+        Vec3 apexPos = null;
+        Vec3 apexTangent = null;
+        Vec3 p0_1 = null, p0_2 = null, p1_1 = null, p1_2 = null;
+
+        // 1区間用制御点
+        Vec3 p1;
+        Vec3 p2;
+
+        if (data.isArcFitMode()) {
+            if (dirDot < -0.9) {
+                // 180°ヘアピン: t0 に対する前進ズレと横幅を分解し、2つの90°真円ベジェで完全半円弧を生成
+                double fwdOffset = chordH.dot(t0);
+                Vec3 latVec = chordH.subtract(t0.scale(fwdOffset));
+                double latDist = latVec.length();
+                if (latDist >= 2.0) {
+                    useTwoSegmentArc = true;
+                    double radius = latDist * 0.5;
+                    apexTangent = latVec.normalize();
+                    double apexFwdDist = Math.max(0.0, fwdOffset) + radius;
+                    double apexY = (p0.y + p3.y) * 0.5;
+
+                    Vec3 midHoriz = p0.add(latVec.scale(0.5)).add(t0.scale(apexFwdDist));
+                    apexPos = new Vec3(midHoriz.x, apexY, midHoriz.z);
+
+                    double dStart = apexPos.subtract(p0).dot(t0);
+                    double dMid1 = apexPos.subtract(p0).dot(apexTangent);
+                    p0_1 = p0.add(t0.scale(dStart * CIRCLE_K));
+                    p0_2 = apexPos.subtract(apexTangent.scale(dMid1 * CIRCLE_K));
+
+                    double dMid2 = p3.subtract(apexPos).dot(apexTangent);
+                    double dEnd = p3.subtract(apexPos).dot(t3);
+                    p1_1 = apexPos.add(apexTangent.scale(dMid2 * CIRCLE_K));
+                    p1_2 = p3.subtract(t3.scale(dEnd * CIRCLE_K));
+                }
+            }
+
+            if (!useTwoSegmentArc) {
+                if (Math.abs(dirDot) < 0.1) {
+                    // 90°直交コーナー: 黄金比 0.5523 で誤差 0.027% 未満の真円弧を生成
+                    double d0 = chordH.dot(t0);
+                    double d3 = chordH.dot(t3);
+                    if (d0 > 1.0 && d3 > 1.0) {
+                        p1 = p0.add(t0.scale(d0 * CIRCLE_K));
+                        p2 = p3.subtract(t3.scale(d3 * CIRCLE_K));
+                    } else {
+                        double d = data.getControlPointDistance();
+                        p1 = p0.add(t0.scale(d));
+                        p2 = p3.subtract(t3.scale(d));
+                    }
+                } else {
+                    // 同方向S字/レーンチェンジなど: 弦長に応じた自然な制御点距離
+                    double autoDist = Mth.clamp(chord.length() * 0.42, 4.0, 48.0);
+                    p1 = p0.add(t0.scale(autoDist));
+                    p2 = p3.subtract(t3.scale(autoDist));
+                }
+            } else {
+                p1 = p0_1;
+                p2 = p1_2;
+            }
+        } else {
+            // 手動ベジェモード（従来の挙動を完全維持）
+            double d = data.getControlPointDistance();
+            p1 = p0.add(t0.scale(d));
+            p2 = p3.subtract(t3.scale(d)); // 終点に入る向きなので終点から -T3
+        }
 
         // カーブ全体の曲がる向き (左カーブ / 右カーブ) を判定
         // ベジェ始点から終点へのベクトルと T0 の外積 Y 成分
-        Vec3 chord = p3.subtract(p0);
         double crossY = t0.x * chord.z - t0.z * chord.x;
         boolean isTurnRight = crossY > 0.0; // 時計回り (右)
         if (data.getTurnDirection() == 1) isTurnRight = false; // 強制左
@@ -84,27 +153,27 @@ public class RoadSplineGenerator {
         for (int i = 0; i <= segments; i++) {
             double t = (double) i / (double) segments;
 
-            // 3次ベジェ曲線位置: P(t) = (1-t)^3 P0 + 3(1-t)^2 t P1 + 3(1-t) t^2 P2 + t^3 P3
-            double u = 1.0 - t;
-            double tt = t * t;
-            double uu = u * u;
-            double uuu = uu * u;
-            double ttt = tt * t;
-
-            Vec3 pos = p0.scale(uuu)
-                    .add(p1.scale(3.0 * uu * t))
-                    .add(p2.scale(3.0 * u * tt))
-                    .add(p3.scale(ttt));
+            Vec3 pos;
+            Vec3 dpos;
+            if (useTwoSegmentArc) {
+                if (t <= 0.5) {
+                    double localT = t * 2.0;
+                    pos = evalCubicBezier(p0, p0_1, p0_2, apexPos, localT);
+                    dpos = evalCubicBezierDeriv(p0, p0_1, p0_2, apexPos, localT);
+                } else {
+                    double localT = (t - 0.5) * 2.0;
+                    pos = evalCubicBezier(apexPos, p1_1, p1_2, p3, localT);
+                    dpos = evalCubicBezierDeriv(apexPos, p1_1, p1_2, p3, localT);
+                }
+            } else {
+                pos = evalCubicBezier(p0, p1, p2, p3, t);
+                dpos = evalCubicBezierDeriv(p0, p1, p2, p3, t);
+            }
 
             if (i > 0) {
                 totalDist += pos.distanceTo(prevCenter);
             }
             prevCenter = pos;
-
-            // 1階微分 (接線ベクトル): P'(t) = 3(1-t)^2 (P1-P0) + 6(1-t)t (P2-P1) + 3t^2 (P3-P2)
-            Vec3 dpos = p1.subtract(p0).scale(3.0 * uu)
-                    .add(p2.subtract(p1).scale(6.0 * u * t))
-                    .add(p3.subtract(p2).scale(3.0 * tt));
 
             Vec3 tangent = dpos.lengthSqr() > 1e-6 ? dpos.normalize() : t0;
 
@@ -138,6 +207,23 @@ public class RoadSplineGenerator {
         }
 
         return samples;
+    }
+
+    private static Vec3 evalCubicBezier(Vec3 p0, Vec3 p1, Vec3 p2, Vec3 p3, double t) {
+        double u = 1.0 - t;
+        double tt = t * t;
+        double uu = u * u;
+        return p0.scale(uu * u)
+                .add(p1.scale(3.0 * uu * t))
+                .add(p2.scale(3.0 * u * tt))
+                .add(p3.scale(tt * t));
+    }
+
+    private static Vec3 evalCubicBezierDeriv(Vec3 p0, Vec3 p1, Vec3 p2, Vec3 p3, double t) {
+        double u = 1.0 - t;
+        return p1.subtract(p0).scale(3.0 * u * u)
+                .add(p2.subtract(p1).scale(6.0 * u * t))
+                .add(p3.subtract(p2).scale(3.0 * t * t));
     }
 
     private static Vec3 getDirectionVec(Direction dir) {

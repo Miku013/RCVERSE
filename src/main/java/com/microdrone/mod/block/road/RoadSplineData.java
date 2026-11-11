@@ -24,7 +24,8 @@ public class RoadSplineData {
     private float endBankAngle = 0.0f;
     private int turnDirection = 0; // 0=自動 (AUTO), 1=左 (LEFT), 2=右 (RIGHT)
     private float controlPointDistance = 12.0f; // ベジェ制御点の突き出し距離 (m)
-    private int segments = 32; // 分割ステップ数
+    private int segments = 64; // 分割ステップ数 (16〜128)
+    private boolean arcFitMode = true; // 真円（円弧）自動フィットモード
     private boolean isPreview = true; // プレビュー中か
     private boolean isGenerated = false; // 正式生成済みか
 
@@ -87,6 +88,14 @@ public class RoadSplineData {
         this.segments = Math.max(8, Math.min(128, segments));
     }
 
+    public boolean isArcFitMode() {
+        return arcFitMode;
+    }
+
+    public void setArcFitMode(boolean arcFitMode) {
+        this.arcFitMode = arcFitMode;
+    }
+
     public boolean isPreview() {
         return isPreview;
     }
@@ -111,6 +120,7 @@ public class RoadSplineData {
         tag.putInt("TurnDirection", this.turnDirection);
         tag.putFloat("ControlPointDistance", this.controlPointDistance);
         tag.putInt("Segments", this.segments);
+        tag.putBoolean("ArcFitMode", this.arcFitMode);
         tag.putBoolean("IsPreview", this.isPreview);
         tag.putBoolean("IsGenerated", this.isGenerated);
     }
@@ -123,6 +133,7 @@ public class RoadSplineData {
         if (tag.contains("TurnDirection")) this.turnDirection = tag.getInt("TurnDirection");
         if (tag.contains("ControlPointDistance")) this.controlPointDistance = tag.getFloat("ControlPointDistance");
         if (tag.contains("Segments")) this.segments = tag.getInt("Segments");
+        this.arcFitMode = tag.contains("ArcFitMode") && tag.getBoolean("ArcFitMode");
         if (tag.contains("IsPreview")) this.isPreview = tag.getBoolean("IsPreview");
         if (tag.contains("IsGenerated")) this.isGenerated = tag.getBoolean("IsGenerated");
     }

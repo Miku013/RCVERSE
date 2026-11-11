@@ -3,7 +3,6 @@ package com.microdrone.mod.network;
 import com.microdrone.mod.MicroDroneMod;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
@@ -18,6 +17,7 @@ public record RoadConfigPayload(
         int turnDirection,
         float controlPointDistance,
         int segments,
+        boolean arcFitMode,
         boolean isPreview,
         boolean isGenerated,
         int action // 0=パラメータ更新, 1=自動探索リトライ, 2=確定生成, 3=削除
@@ -33,6 +33,7 @@ public record RoadConfigPayload(
                 buf.writeInt(val.turnDirection());
                 buf.writeFloat(val.controlPointDistance());
                 buf.writeInt(val.segments());
+                buf.writeBoolean(val.arcFitMode());
                 buf.writeBoolean(val.isPreview());
                 buf.writeBoolean(val.isGenerated());
                 buf.writeInt(val.action());
@@ -44,6 +45,7 @@ public record RoadConfigPayload(
                     buf.readInt(),
                     buf.readFloat(),
                     buf.readInt(),
+                    buf.readBoolean(),
                     buf.readBoolean(),
                     buf.readBoolean(),
                     buf.readInt()

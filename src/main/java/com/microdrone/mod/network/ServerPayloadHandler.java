@@ -145,6 +145,7 @@ public class ServerPayloadHandler {
                     data.setTurnDirection(payload.turnDirection());
                     data.setControlPointDistance(payload.controlPointDistance());
                     data.setSegments(payload.segments());
+                    data.setArcFitMode(payload.arcFitMode());
                     data.setPreview(payload.isPreview());
                     data.setGenerated(payload.isGenerated());
 
