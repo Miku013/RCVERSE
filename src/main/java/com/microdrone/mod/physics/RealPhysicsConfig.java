@@ -16,9 +16,10 @@ public class RealPhysicsConfig {
     public float frontAxleRatio = 0.48f;            // 重心→前軸の比率 (0.48 = ほぼ50:50)
     public float steeringSensitivity = 1.0f;        // 操舵感度倍率
 
-    // 加減速・転がり抵抗
+    // 加減速・転がり抵抗・ブレーキ
     public double rollingFriction = 0.968;          // アクセルOFF時の自然な転がり慣性
-    public double brakeDecelMultiplier = 2.4;       // ブレーキ減速度倍率
+    public double brakeDecelMultiplier = 2.4;       // Sキーのブレーキ減速度倍率
+    public double spaceBrakeDecelMultiplier = 2.6;  // スペースキー専用フットブレーキ減速度倍率
     public double reversePowerMultiplier = 0.55;    // リバース出力倍率
     public double corneringDragFactor = 0.022;      // 横滑り時のタイヤ引きずり減速係数
 
@@ -31,7 +32,7 @@ public class RealPhysicsConfig {
     public double maxLateralAccelPerTick = 0.0130;  // 1軸あたりの基準最大横加速度
     public double frontSlipPeakDropRatio = 0.96;    // 前輪限界超過後の粘り率 (96%: カウンター時に逃げにくい)
     public double slipLimitPeakDropRatio = 0.85;    // 後輪限界超過後の動摩擦残存率 (85%)
-    public double handbrakeRearGripMult = 0.30;     // サイドブレーキ時の後輪グリップ倍率
+    public double brakeRearGripRetention = 0.88;    // フットブレーキ時の後輪横グリップ保持率 (制動と荷重移動を優先)
     public double powerOversteerGripMult = 0.60;    // 強アクセル時の後輪横グリップ低下倍率 (パワースライド維持)
     public double counterFrontBiteGripMult = 1.28;  // カウンターステア中のフロント食いつき限界ブースト
     public double counterFrontBiteStiffMult = 1.22; // カウンターステア中のフロント剛性ブースト

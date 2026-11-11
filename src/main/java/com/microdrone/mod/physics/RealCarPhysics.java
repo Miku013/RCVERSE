@@ -260,7 +260,18 @@ public class RealCarPhysics {
 
         double powerSpinSeverity = 0.0;
         if (grounded) {
-            if (inputForward > 0.05f) {
+            if (inputHandbrake) {
+                // スペースキー: REALモード専用フットブレーキ（強い減速・0で停止し後退に入らない）
+                double brakeForce = effectiveAccel * config.spaceBrakeDecelMultiplier;
+                if (this.forwardVelocity > 0.001) {
+                    this.forwardVelocity = Math.max(0.0, this.forwardVelocity - brakeForce);
+                } else if (this.forwardVelocity < -0.001) {
+                    this.forwardVelocity = Math.min(0.0, this.forwardVelocity + brakeForce);
+                } else {
+                    this.forwardVelocity = 0.0;
+                    this.lateralVelocity *= 0.65; // 完全停止間際は横ズレも収束
+                }
+            } else if (inputForward > 0.05f) {
                 if (this.forwardVelocity < -0.01) {
                     this.forwardVelocity += effectiveAccel * config.brakeDecelMultiplier;
                     if (this.forwardVelocity > 0.0) {
@@ -283,10 +294,6 @@ public class RealCarPhysics {
                 }
             } else {
                 this.forwardVelocity *= config.rollingFriction;
-            }
-
-            if (inputHandbrake) {
-                this.forwardVelocity *= 0.965;
             }
         } else {
             this.forwardVelocity *= 0.995;
@@ -401,7 +408,8 @@ public class RealCarPhysics {
 
         double rearDynMult = 1.0;
         if (inputHandbrake && totalSpeed > 0.03) {
-            rearDynMult *= config.handbrakeRearGripMult;
+            // 専用ブレーキ時は強すぎない制動分(0.88)のみ反映し、直進安定と荷重移動によるドリフト進入を両立
+            rearDynMult *= config.brakeRearGripRetention;
         }
         // 滑り始め角度 (driftStartAngleDeg) を超えた分だけ段階的に後輪の横グリップ低下を発動
         if (powerSpinSeverity > 0.1 && totalSpeed > 0.04) {
@@ -489,8 +497,8 @@ public class RealCarPhysics {
             double maxYawRad = Math.toRadians(config.maxYawRateDegPerTick);
             yawRateRad = Mth.clamp(yawRateRad, -maxYawRad, maxYawRad);
 
-            // 低速かつサイドブレーキ非使用時は不要な横速度を軽く減衰してピタッと直進収束
-            if (tireBlend < 0.99 && !inputHandbrake) {
+            // 低速時は不要な横速度を軽く減衰してピタッと直進・停止収束
+            if (tireBlend < 0.99) {
                 this.lateralVelocity *= Math.pow(0.85, subDt * (1.0 - tireBlend));
             }
 
