@@ -58,7 +58,7 @@ public class RealPhysicsConfig {
     public double exitLatZeroCrossDamping = 0.25; // 中立時lateralVelocity=0跨ぎ（おつり）瞬間の横滑り減衰倍率
 
     // 一時テスト用: 挙動解析CSVログ (logs/rc_real_telemetry.csv)
-    public boolean enableTelemetryLog = true;
+    public boolean enableTelemetryLog = false;
 
     // 第4段階：荷重移動システムパラメーター
     public float longitudinalWeightTransferGain = 3.4f; // ブレーキ・減速Gに対する前後荷重移動感度
