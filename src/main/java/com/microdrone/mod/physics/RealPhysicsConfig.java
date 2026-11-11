@@ -20,8 +20,8 @@ public class RealPhysicsConfig {
     public float steeringSensitivity = 1.0f; // 操舵感度倍率
 
     // 加減速・転がり抵抗・ブレーキ
-    public double realSpeedScale = 1.32; // REALモード最高速倍率 (走行スピード・ドリフト進入速度の確保)
-    public double realAccelScale = 1.25; // REALモード加速度倍率 (コーナー立ち上がり・空転トラクション確保)
+    public double realSpeedScale = 1.47; // REALモード最高速倍率 (1.32→1.47で約+5km/h相当: 43km/h→48km/h)
+    public double realAccelScale = 1.32; // REALモード加速度倍率 (最高速向上に合わせたちょうど良い加速)
     public double rollingFriction = 0.968; // アクセルOFF時の自然な転がり慣性
     public double brakeDecelMultiplier = 2.4; // Sキーのブレーキ減速度倍率
     public double spaceBrakeDecelMultiplier = 0.68; // スペースキー専用フットブレーキ減速度倍率 (マイルド制御)
@@ -34,7 +34,7 @@ public class RealPhysicsConfig {
     public float baseRearGrip = 1.03f; // 後輪の基本グリップ係数
     public double corneringStiffnessFront = 0.056; // 前輪コーナリング剛性 (約24度まで線形に粘り急アンダーを防止)
     public double corneringStiffnessRear = 0.058; // 後輪コーナリング剛性
-    public double maxLateralAccelPerTick = 0.0185; // 1軸あたりの基準最大横加速度 (高速コーナリング余裕確保)
+    public double maxLateralAccelPerTick = 0.0195; // 1軸あたりの基準最大横加速度 (+5km/h増速に合わせた旋回余力補正)
     public double frontSlipPeakDropRatio = 0.99; // 前輪限界超過後の粘り率 (99%: 急なアンダー抜けを抑制)
     public double slipLimitPeakDropRatio = 0.90; // 後輪限界超過後の動摩擦残存率 (90%)
     public double brakeRearGripRetention = 0.88; // フットブレーキ時の後輪横グリップ保持率 (制動と荷重移動を優先)
