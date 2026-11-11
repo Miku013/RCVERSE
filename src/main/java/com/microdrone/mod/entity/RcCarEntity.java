@@ -432,7 +432,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         builder.define(DATA_LOOP_PROGRESS, 0.0f);
         builder.define(DATA_HEADLIGHT, false);
         builder.define(DATA_REAL_MODE, false);
-        builder.define(DATA_COUNTER_MAX_ANGLE, 42.0f);
+        builder.define(DATA_COUNTER_MAX_ANGLE, 44.0f);
         builder.define(DATA_DRIFT_START_ANGLE, 22.0f);
     }
 
@@ -736,6 +736,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
 
         if (this.isRealMode()) {
             // === REALモード専用物理演算 (RACEモードから完全分離) ===
+            double realMaxSpeed = maxSpeed * this.realPhysics.getConfig().realSpeedScale;
+            double realAccel = accel * this.realPhysics.getConfig().realAccelScale;
             this.realPhysics.setCounterMaxAngleDeg(this.getCounterMaxAngle());
             this.realPhysics.setDriftStartAngleDeg(this.getDriftStartAngle());
             // 4点サスペンション・地面接地・ピッチ/ロール計算を先に実行
@@ -757,8 +759,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
                     this.inputHandbrake,
                     groundedNow,
                     wallAheadReal,
-                    maxSpeed,
-                    accel,
+                    realMaxSpeed,
+                    realAccel,
                     props.turnSpeedMultiplier,
                     props.invertSteer
             );

@@ -447,13 +447,13 @@ public class RealCarPhysics {
             float startDeg = this.config.driftStartAngleDeg;
             float slideTriggerRatio = 0.0f;
             if (!this.counterSteering && absSteer > startDeg) {
-                // イン側への切り込み超過分から +10° かけて滑らかにリアのパワースライドを強める
-                slideTriggerRatio = Mth.clamp((absSteer - startDeg) / 10.0f, 0.0f, 1.0f);
+                // イン側への切り込み超過分から +6° かけてリアのパワースライドを発動（大舵角時は素直にテールを出す）
+                slideTriggerRatio = Mth.clamp((absSteer - startDeg) / 6.0f, 0.0f, 1.0f);
             } else {
                 // カウンター中およびステア戻し中は、現在のスリップ角に応じて段階的に後輪グリップを回復させる
                 float absSlip = Math.abs(this.slipAngleDeg);
                 if (absSlip > 3.5f && Math.abs(this.lateralVelocity) > 0.012) {
-                    float maxRatio = this.counterSteering ? 0.55f : 0.75f;
+                    float maxRatio = this.counterSteering ? 0.78f : 0.75f;
                     slideTriggerRatio = Mth.clamp((absSlip - 3.5f) / 16.5f, 0.0f, 1.0f) * maxRatio;
                 }
             }

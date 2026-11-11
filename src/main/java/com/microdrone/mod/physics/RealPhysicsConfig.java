@@ -8,36 +8,38 @@ package com.microdrone.mod.physics;
 public class RealPhysicsConfig {
     // 操舵・車体ディメンション
     public float maxSteeringAngleDeg = 35.0f; // 通常時の最大前輪操舵角 (度)
-    public float maxCounterSteerAngleDeg = 42.0f; // ドリフト・カウンター側の最大切れ角 (度)
+    public float maxCounterSteerAngleDeg = 44.0f; // ドリフト・カウンター側の最大切れ角 (度)
     public float driftStartAngleDeg = 22.0f; // 横滑り(パワースライド)が始まるステア切れ角しきい値 (度)
-    public float steeringLerpRate = 0.24f; // 通常切り込み追従速度 (微調整しやすい滑らかさ)
-    public float counterSteerLerpRate = 0.21f; // カウンター側への当て込み速度 (急激な巻き込み防止)
-    public float steeringReturnRate = 0.26f; // センターへの戻し速度 (徐々にグリップ回復させる)
-    public float counterReturnRate = 0.28f; // カウンターステア解放時のセンター戻し速度
+    public float steeringLerpRate = 0.25f; // 通常切り込み追従速度 (微調整しやすい滑らかさ)
+    public float counterSteerLerpRate = 0.24f; // カウンター側への当て込み速度
+    public float steeringReturnRate = 0.28f; // センターへの戻し速度 (徐々にグリップ回復させる)
+    public float counterReturnRate = 0.32f; // カウンターステア解放時のセンター戻し速度
     public float wheelBase = 0.42f; // ホイールベース (blocks相当)
     public float frontAxleRatio = 0.48f; // 重心→前軸の比率 (0.48 = ほぼ50:50)
     public float steeringSensitivity = 1.0f; // 操舵感度倍率
 
     // 加減速・転がり抵抗・ブレーキ
+    public double realSpeedScale = 1.32; // REALモード最高速倍率 (走行スピード・ドリフト進入速度の確保)
+    public double realAccelScale = 1.25; // REALモード加速度倍率 (コーナー立ち上がり・空転トラクション確保)
     public double rollingFriction = 0.968; // アクセルOFF時の自然な転がり慣性
     public double brakeDecelMultiplier = 2.4; // Sキーのブレーキ減速度倍率
     public double spaceBrakeDecelMultiplier = 0.68; // スペースキー専用フットブレーキ減速度倍率 (マイルド制御)
     public double reversePowerMultiplier = 0.55; // リバース出力倍率
-    public double corneringDragFactor = 0.022; // 横滑り時のタイヤ引きずり減速係数
+    public double corneringDragFactor = 0.020; // 横滑り時のタイヤ引きずり減速係数
 
     // 第3段階：前後輪独立可変グリップパラメーター
-    // 通常時は ~1.10G でしっかりグリップし、設定した滑り始め角度・荷重移動を超えるとスライド開始
-    public float baseFrontGrip = 1.12f; // 前輪の基本グリップ係数
-    public float baseRearGrip = 1.07f; // 後輪の基本グリップ係数
-    public double corneringStiffnessFront = 0.065; // 前輪コーナリング剛性
-    public double corneringStiffnessRear = 0.061; // 後輪コーナリング剛性
-    public double maxLateralAccelPerTick = 0.0130; // 1軸あたりの基準最大横加速度
+    // 前輪がしっかりインへ切れ込み、パワーオン大舵角で自然にリアがステップアウトする設定
+    public float baseFrontGrip = 1.18f; // 前輪の基本グリップ係数 (進入アンダーステア防止)
+    public float baseRearGrip = 1.04f; // 後輪の基本グリップ係数
+    public double corneringStiffnessFront = 0.076; // 前輪コーナリング剛性 (レスポンス向上)
+    public double corneringStiffnessRear = 0.060; // 後輪コーナリング剛性
+    public double maxLateralAccelPerTick = 0.0165; // 1軸あたりの基準最大横加速度 (速度向上に合わせた旋回力)
     public double frontSlipPeakDropRatio = 0.96; // 前輪限界超過後の粘り率 (96%: カウンター時に逃げにくい)
-    public double slipLimitPeakDropRatio = 0.90; // 後輪限界超過後の動摩擦残存率 (85%)
+    public double slipLimitPeakDropRatio = 0.90; // 後輪限界超過後の動摩擦残存率 (90%)
     public double brakeRearGripRetention = 0.88; // フットブレーキ時の後輪横グリップ保持率 (制動と荷重移動を優先)
-    public double powerOversteerGripMult = 0.70; // 強アクセル時の後輪横グリップ低下倍率 (カウンターと戻しのバランス重視)
-    public double counterFrontBiteGripMult = 1.06; // カウンターステア中のフロント食いつき限界ブースト (控えめにして外へ逃がす)
-    public double counterFrontBiteStiffMult = 1.06; // カウンターステア中のフロント剛性ブースト
+    public double powerOversteerGripMult = 0.58; // 強アクセル時の後輪横グリップ低下倍率 (抜けすぎず流れすぎないバランス)
+    public double counterFrontBiteGripMult = 1.14; // カウンターステア中のフロント食いつき限界ブースト (アングル保持力)
+    public double counterFrontBiteStiffMult = 1.12; // カウンターステア中のフロント剛性ブースト
 
     // ヨー角速度・低速安定化・発散防止
     public double yawTorqueGain = 22.0; // タイヤ横力モーメントからYaw角速度への変換ゲイン
