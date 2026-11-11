@@ -46,6 +46,7 @@ public class RealCarPhysics {
     private boolean drifting = false;
     private boolean counterSteering = false;
     private int recentSlideTicks = 0; // 直近まで横滑り/ドリフトしていた余韻カウント (立ち上がりおつり抑止用)
+    private double smoothedPowerSpin = 0.0; // アクセル瞬間抜き時の急激なリアグリップ復帰を防ぐ滑らか保持値
 
     // 第3段階：前後グリップ・スリップ・デバッグ監視用パラメーター
     private float frontGrip = 1.12f;
@@ -203,6 +204,7 @@ public class RealCarPhysics {
         this.steerAngleDeg = currentSteerDeg;
         this.yawRateDeg = 0.0f;
         this.recentSlideTicks = 0;
+        this.smoothedPowerSpin = 0.0;
         updateSlipAndDriftFlags();
     }
 
@@ -215,6 +217,7 @@ public class RealCarPhysics {
         this.drifting = false;
         this.counterSteering = false;
         this.recentSlideTicks = 0;
+        this.smoothedPowerSpin = 0.0;
         this.frontSlipping = false;
         this.rearSlipping = false;
         this.frontGripUsage = 0.0f;
@@ -322,10 +325,25 @@ public class RealCarPhysics {
             this.lateralVelocity *= 0.995;
         }
 
-        this.forwardVelocity = Mth.clamp(this.forwardVelocity, -maxSpeed * 0.45, maxSpeed);
+        if (this.forwardVelocity > maxSpeed) {
+            this.forwardVelocity = Mth.lerp(0.28, this.forwardVelocity, maxSpeed);
+        } else if (this.forwardVelocity < -maxSpeed * 0.45) {
+            this.forwardVelocity = -maxSpeed * 0.45;
+        }
+
+        // 瞬間的なアクセル抜きでリアグリップが1tickで1.0へ跳ね戻らないよう滑らかに維持・減衰
+        double spinTarget = powerSpinSeverity;
+        double spinRate = (spinTarget >= this.smoothedPowerSpin)
+                ? 0.55
+                : (inputHandbrake || inputForward < -0.05f ? 0.45 : 0.20);
+        this.smoothedPowerSpin = Mth.lerp(spinRate, this.smoothedPowerSpin, spinTarget);
 
         // 第4段階：縦加減速Gと横Gに基づく荷重移動の更新（前後・左右・4輪個別データ）
+        // ※ maxSpeed超過リミットの減衰がフルアクセル中に「急ブレーキ荷重」として前輪へドカ乗りするのを防止
         double longitudinalAccel = (grounded && !wallAhead) ? (this.forwardVelocity - preForwardVel) : 0.0;
+        if (inputForward > 0.05f && !inputHandbrake && longitudinalAccel < 0.0) {
+            longitudinalAccel = 0.0;
+        }
         double prevTotalLatForce = this.lateralForceFront + this.lateralForceRear;
         this.weightTransfer.update(longitudinalAccel, prevTotalLatForce, grounded, this.config);
         this.frontLoadRatio = this.weightTransfer.getFrontEffectiveLoad();
@@ -341,7 +359,7 @@ public class RealCarPhysics {
                     inputHandbrake,
                     maxSpeed,
                     turnMult,
-                    powerSpinSeverity
+                    this.smoothedPowerSpin
             );
         } else {
             // 空中は横力・タイヤ旋回が発生せず、慣性を保つ

@@ -10,10 +10,10 @@ public class RealPhysicsConfig {
     public float maxSteeringAngleDeg = 35.0f; // 通常時の最大前輪操舵角 (度)
     public float maxCounterSteerAngleDeg = 44.0f; // ドリフト・カウンター側の最大切れ角 (度)
     public float driftStartAngleDeg = 22.0f; // 横滑り(パワースライド)が始まるステア切れ角しきい値 (度)
-    public float steeringLerpRate = 0.25f; // 通常切り込み追従速度 (微調整しやすい滑らかさ)
-    public float counterSteerLerpRate = 0.24f; // カウンター側への当て込み速度
-    public float steeringReturnRate = 0.28f; // センターへの戻し速度 (徐々にグリップ回復させる)
-    public float counterReturnRate = 0.32f; // カウンターステア解放時のセンター戻し速度
+    public float steeringLerpRate = 0.24f; // 通常切り込み追従速度 (微調整しやすい滑らかさ)
+    public float counterSteerLerpRate = 0.18f; // カウンター側への当て込み速度 (立ち上がり抜け・当てすぎ防止)
+    public float steeringReturnRate = 0.26f; // センターへの戻し速度 (徐々にグリップ回復させる)
+    public float counterReturnRate = 0.28f; // カウンターステア解放時のセンター戻し速度
     public float wheelBase = 0.42f; // ホイールベース (blocks相当)
     public float frontAxleRatio = 0.48f; // 重心→前軸の比率 (0.48 = ほぼ50:50)
     public float steeringSensitivity = 1.0f; // 操舵感度倍率
@@ -29,21 +29,21 @@ public class RealPhysicsConfig {
 
     // 第3段階：前後輪独立可変グリップパラメーター
     // 前輪がしっかりインへ切れ込み、パワーオン大舵角で自然にリアがステップアウトする設定
-    public float baseFrontGrip = 1.18f; // 前輪の基本グリップ係数 (進入アンダーステア防止)
+    public float baseFrontGrip = 1.16f; // 前輪の基本グリップ係数 (進入アンダーステア防止)
     public float baseRearGrip = 1.04f; // 後輪の基本グリップ係数
-    public double corneringStiffnessFront = 0.076; // 前輪コーナリング剛性 (レスポンス向上)
+    public double corneringStiffnessFront = 0.068; // 前輪コーナリング剛性 (適度な進入応答とカウンター許容幅)
     public double corneringStiffnessRear = 0.060; // 後輪コーナリング剛性
     public double maxLateralAccelPerTick = 0.0165; // 1軸あたりの基準最大横加速度 (速度向上に合わせた旋回力)
     public double frontSlipPeakDropRatio = 0.96; // 前輪限界超過後の粘り率 (96%: カウンター時に逃げにくい)
     public double slipLimitPeakDropRatio = 0.90; // 後輪限界超過後の動摩擦残存率 (90%)
     public double brakeRearGripRetention = 0.88; // フットブレーキ時の後輪横グリップ保持率 (制動と荷重移動を優先)
-    public double powerOversteerGripMult = 0.58; // 強アクセル時の後輪横グリップ低下倍率 (抜けすぎず流れすぎないバランス)
-    public double counterFrontBiteGripMult = 1.14; // カウンターステア中のフロント食いつき限界ブースト (アングル保持力)
-    public double counterFrontBiteStiffMult = 1.12; // カウンターステア中のフロント剛性ブースト
+    public double powerOversteerGripMult = 0.62; // 強アクセル時の後輪横グリップ低下倍率 (抜重感と持続の両立)
+    public double counterFrontBiteGripMult = 1.00; // カウンターステア中のフロント食いつき倍率 (1.0=急激な立て直し抜けを防止)
+    public double counterFrontBiteStiffMult = 0.88; // カウンターステア中のフロント剛性補正 (0.88=カウンターの甘い当て維持がしやすい)
 
     // ヨー角速度・低速安定化・発散防止
-    public double yawTorqueGain = 22.0; // タイヤ横力モーメントからYaw角速度への変換ゲイン
-    public double yawAngularDamping = 0.80; // ヨー回転の自然減衰（過剰スピン抑制・カウンター効き両立）
+    public double yawTorqueGain = 17.0; // タイヤ横力モーメントからYaw角速度への変換ゲイン (急な立ち上がり戻し緩和)
+    public double yawAngularDamping = 0.82; // ヨー回転の自然減衰（過剰スピン抑制・持続ドリフト両立）
     public float maxYawRateDegPerTick = 14.0f; // 旋回角速度上限 (deg/tick)
     public double lowSpeedGeomThreshold = 0.055; // この速度以下のみ幾何学ステア補助をブレンド
     public double lowSpeedSnapThreshold = 0.004; // 停止スナップ閾値
