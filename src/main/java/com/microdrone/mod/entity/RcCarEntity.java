@@ -432,7 +432,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
         builder.define(DATA_LOOP_PROGRESS, 0.0f);
         builder.define(DATA_HEADLIGHT, false);
         builder.define(DATA_REAL_MODE, false);
-        builder.define(DATA_COUNTER_MAX_ANGLE, 52.0f);
+        builder.define(DATA_COUNTER_MAX_ANGLE, 42.0f);
         builder.define(DATA_DRIFT_START_ANGLE, 22.0f);
     }
 
@@ -767,6 +767,16 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable {
             this.steerAngle = res.newSteerAngle();
             this.carVelocity = res.worldVelocity();
             this.currentSpeed = res.forwardSpeed();
+            if (this.level().isClientSide && this.locallyControlled) {
+                this.realPhysics.recordTelemetryTick(
+                        this.getId(),
+                        this.getX(),
+                        this.getZ(),
+                        this.inputForward,
+                        this.inputSteer,
+                        this.inputHandbrake
+                );
+            }
             this.driftDirection = 0;
             this.driftTicks = 0;
             this.turboBoostTicks = 0;

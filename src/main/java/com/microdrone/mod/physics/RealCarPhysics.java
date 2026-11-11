@@ -3,6 +3,13 @@ package com.microdrone.mod.physics;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 
+import java.io.BufferedWriter;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.util.Locale;
+
 /**
  * RCカー REALモード専用物理演算エンジン
  *
@@ -59,6 +66,15 @@ public class RealCarPhysics {
     private float frontLoadRatio = 0.50f;
     private float rearLoadRatio = 0.50f;
     private float surfaceFriction = 1.0f;
+
+    // 一時テスト用テレメトリー記録状態
+    private double lastRearDynMult = 1.0;
+    private double lastGyroSteerDeg = 0.0;
+    private float lastStepYawDeg = 0.0f;
+    private int telemetryTickCounter = 0;
+    private static final Object TELEMETRY_LOCK = new Object();
+    private static BufferedWriter telemetryWriter = null;
+    private static boolean telemetryFileInitialized = false;
 
     public WeightTransferSystem getWeightTransfer() {
         return this.weightTransfer;
@@ -206,6 +222,9 @@ public class RealCarPhysics {
         this.weightTransfer.reset();
         this.frontLoadRatio = 0.50f;
         this.rearLoadRatio = 0.50f;
+        this.lastRearDynMult = 1.0;
+        this.lastGyroSteerDeg = 0.0;
+        flushTelemetry();
     }
 
     /**
@@ -350,6 +369,7 @@ public class RealCarPhysics {
         this.lateralVelocity = Mth.clamp(this.lateralVelocity, -maxSpeed * 1.15, maxSpeed * 1.15);
 
         updateSlipAndDriftFlags();
+        this.lastStepYawDeg = newYawDeg;
         if (this.drifting || this.counterSteering || Math.abs(this.lateralVelocity) > config.exitDampingLatThreshold) {
             this.recentSlideTicks = 8;
         } else if (this.recentSlideTicks > 0) {
@@ -426,18 +446,23 @@ public class RealCarPhysics {
             float absSteer = Math.abs(this.steerAngleDeg);
             float startDeg = this.config.driftStartAngleDeg;
             float slideTriggerRatio = 0.0f;
-            if (absSteer > startDeg) {
-                // しきい値超過分から +10° かけて滑らかにリアのパワースライドを強める
+            if (!this.counterSteering && absSteer > startDeg) {
+                // イン側への切り込み超過分から +10° かけて滑らかにリアのパワースライドを強める
                 slideTriggerRatio = Mth.clamp((absSteer - startDeg) / 10.0f, 0.0f, 1.0f);
-            } else if (Math.abs(this.slipAngleDeg) > Math.max(6.0f, startDeg * 0.45f) && Math.abs(this.lateralVelocity) > 0.025) {
-                // すでに明確な横滑りアングルが付いている間はアクセルONでスライドを維持
-                slideTriggerRatio = 0.85f;
+            } else {
+                // カウンター中およびステア戻し中は、現在のスリップ角に応じて段階的に後輪グリップを回復させる
+                float absSlip = Math.abs(this.slipAngleDeg);
+                if (absSlip > 3.5f && Math.abs(this.lateralVelocity) > 0.012) {
+                    float maxRatio = this.counterSteering ? 0.55f : 0.75f;
+                    slideTriggerRatio = Mth.clamp((absSlip - 3.5f) / 16.5f, 0.0f, 1.0f) * maxRatio;
+                }
             }
             if (slideTriggerRatio > 0.0f) {
                 double effectiveSpin = powerSpinSeverity * slideTriggerRatio;
                 rearDynMult *= Mth.lerp((float) effectiveSpin, 1.0f, (float) config.powerOversteerGripMult);
             }
         }
+        this.lastRearDynMult = rearDynMult;
         this.rearGripLimit = Math.max(0.004, this.rearGrip * (this.rearLoadRatio * 2.0) * baseLimitScale * rearDynMult);
 
         int subSteps = Math.max(1, config.physicsSubSteps);
@@ -452,6 +477,7 @@ public class RealCarPhysics {
         double lastFyR = 0.0;
         double lastAlphaF = 0.0;
         double lastAlphaR = 0.0;
+        double lastGyroDeg = 0.0;
         boolean anyFrontSlip = false;
         boolean anyRearSlip = false;
 
@@ -566,6 +592,7 @@ public class RealCarPhysics {
             lastFyR = fyR;
             lastAlphaF = alphaF;
             lastAlphaR = alphaR;
+            lastGyroDeg = Math.toDegrees(gyroSteerRad);
         }
 
         this.yawRateDeg = (float) Math.toDegrees(yawRateRad);
@@ -577,6 +604,7 @@ public class RealCarPhysics {
         this.rearSlipping = anyRearSlip;
         this.frontGripUsage = (float) (Math.abs(lastFyF) / Math.max(0.001, this.frontGripLimit));
         this.rearGripUsage = (float) (Math.abs(lastFyR) / Math.max(0.001, this.rearGripLimit));
+        this.lastGyroSteerDeg = lastGyroDeg;
 
         return currentYaw;
     }
@@ -604,5 +632,102 @@ public class RealCarPhysics {
         }
         // スリップ角 8度以上 または 後輪が限界滑りを起こしているときドリフト状態と判定
         this.drifting = (totalHoriz > 0.04) && (Math.abs(this.slipAngleDeg) >= 8.0f || this.rearSlipping);
+    }
+
+    /**
+     * 一時テスト用：REALモードの走行挙動を logs/rc_real_telemetry.csv へ記録する
+     */
+    public void recordTelemetryTick(
+            int entityId,
+            double posX,
+            double posZ,
+            float inputForward,
+            float inputSteer,
+            boolean inputHandbrake
+    ) {
+        if (!this.config.enableTelemetryLog) {
+            return;
+        }
+        double speed = Math.hypot(this.forwardVelocity, this.lateralVelocity);
+        boolean active = speed > 0.015 || Math.abs(inputForward) > 0.05f || Math.abs(inputSteer) > 0.05f || inputHandbrake;
+        if (!active) {
+            return;
+        }
+        this.telemetryTickCounter++;
+        double yawRadPerTick = Math.abs(Math.toRadians(this.yawRateDeg));
+        double estRadius = yawRadPerTick > 0.002 ? Math.min(999.9, speed / yawRadPerTick) : 999.9;
+
+        String line = String.format(
+                Locale.ROOT,
+                "%d,%d,%.4f,%.4f,%.2f,%.2f,%d,%.2f,%d,%d,%.5f,%.5f,%.5f,%.2f,%.2f,%.3f,%.2f,%.3f,%.3f,%.5f,%.5f,%.5f,%.5f,%.2f,%.2f,%.3f,%.2f",
+                this.telemetryTickCounter,
+                entityId,
+                posX,
+                posZ,
+                inputForward,
+                inputSteer,
+                inputHandbrake ? 1 : 0,
+                this.steerAngleDeg,
+                this.counterSteering ? 1 : 0,
+                this.drifting ? 1 : 0,
+                this.forwardVelocity,
+                this.lateralVelocity,
+                speed,
+                this.slipAngleDeg,
+                this.lastStepYawDeg,
+                this.yawRateDeg,
+                estRadius,
+                this.frontLoadRatio,
+                this.rearLoadRatio,
+                this.frontGripLimit,
+                this.rearGripLimit,
+                this.lateralForceFront,
+                this.lateralForceRear,
+                this.frontGripUsage,
+                this.rearGripUsage,
+                this.lastRearDynMult,
+                this.lastGyroSteerDeg
+        );
+
+        synchronized (TELEMETRY_LOCK) {
+            try {
+                if (telemetryWriter == null) {
+                    Path logPath = Path.of("logs", "rc_real_telemetry.csv");
+                    if (logPath.getParent() != null) {
+                        Files.createDirectories(logPath.getParent());
+                    }
+                    boolean truncate = !telemetryFileInitialized;
+                    telemetryWriter = Files.newBufferedWriter(
+                            logPath,
+                            StandardCharsets.UTF_8,
+                            StandardOpenOption.CREATE,
+                            truncate ? StandardOpenOption.TRUNCATE_EXISTING : StandardOpenOption.APPEND,
+                            StandardOpenOption.WRITE
+                    );
+                    if (truncate) {
+                        telemetryWriter.write("tick,entityId,posX,posZ,inFwd,inSteer,brake,steerDeg,counter,drift,fwdVel,latVel,speed,slipDeg,yawDeg,yawRateDeg,estRadius,fLoad,rLoad,fLimit,rLimit,fyF,fyR,fUsage,rUsage,rearDynMult,gyroDeg");
+                        telemetryWriter.newLine();
+                        telemetryFileInitialized = true;
+                    }
+                }
+                telemetryWriter.write(line);
+                telemetryWriter.newLine();
+                if (this.telemetryTickCounter % 10 == 0) {
+                    telemetryWriter.flush();
+                }
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    public void flushTelemetry() {
+        synchronized (TELEMETRY_LOCK) {
+            if (telemetryWriter != null) {
+                try {
+                    telemetryWriter.flush();
+                } catch (Exception ignored) {
+                }
+            }
+        }
     }
 }

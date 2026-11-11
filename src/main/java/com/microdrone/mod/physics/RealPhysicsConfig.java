@@ -8,12 +8,12 @@ package com.microdrone.mod.physics;
 public class RealPhysicsConfig {
     // 操舵・車体ディメンション
     public float maxSteeringAngleDeg = 35.0f; // 通常時の最大前輪操舵角 (度)
-    public float maxCounterSteerAngleDeg = 52.0f; // ドリフト・カウンター側の最大切れ角 (度)
+    public float maxCounterSteerAngleDeg = 42.0f; // ドリフト・カウンター側の最大切れ角 (度)
     public float driftStartAngleDeg = 22.0f; // 横滑り(パワースライド)が始まるステア切れ角しきい値 (度)
     public float steeringLerpRate = 0.24f; // 通常切り込み追従速度 (微調整しやすい滑らかさ)
-    public float counterSteerLerpRate = 0.28f; // カウンター側への当て込み速度
-    public float steeringReturnRate = 0.34f; // センターへの戻し速度
-    public float counterReturnRate = 0.50f; // カウンターステア解放時の素早いセンター戻し速度
+    public float counterSteerLerpRate = 0.21f; // カウンター側への当て込み速度 (急激な巻き込み防止)
+    public float steeringReturnRate = 0.26f; // センターへの戻し速度 (徐々にグリップ回復させる)
+    public float counterReturnRate = 0.28f; // カウンターステア解放時のセンター戻し速度
     public float wheelBase = 0.42f; // ホイールベース (blocks相当)
     public float frontAxleRatio = 0.48f; // 重心→前軸の比率 (0.48 = ほぼ50:50)
     public float steeringSensitivity = 1.0f; // 操舵感度倍率
@@ -35,9 +35,9 @@ public class RealPhysicsConfig {
     public double frontSlipPeakDropRatio = 0.96; // 前輪限界超過後の粘り率 (96%: カウンター時に逃げにくい)
     public double slipLimitPeakDropRatio = 0.90; // 後輪限界超過後の動摩擦残存率 (85%)
     public double brakeRearGripRetention = 0.88; // フットブレーキ時の後輪横グリップ保持率 (制動と荷重移動を優先)
-    public double powerOversteerGripMult = 0.50; // 強アクセル時の後輪横グリップ低下倍率 (パワースライド維持)
-    public double counterFrontBiteGripMult = 1.28; // カウンターステア中のフロント食いつき限界ブースト
-    public double counterFrontBiteStiffMult = 1.25; // カウンターステア中のフロント剛性ブースト
+    public double powerOversteerGripMult = 0.70; // 強アクセル時の後輪横グリップ低下倍率 (カウンターと戻しのバランス重視)
+    public double counterFrontBiteGripMult = 1.06; // カウンターステア中のフロント食いつき限界ブースト (控えめにして外へ逃がす)
+    public double counterFrontBiteStiffMult = 1.06; // カウンターステア中のフロント剛性ブースト
 
     // ヨー角速度・低速安定化・発散防止
     public double yawTorqueGain = 22.0; // タイヤ横力モーメントからYaw角速度への変換ゲイン
@@ -50,9 +50,12 @@ public class RealPhysicsConfig {
     // ② RCドリフト用ステアジャイロ／立ち上がりダンピング（テスト実装）
     public boolean enableExitGyro = true; // 立ち上がりジャイロ＆Yaw減衰の有効化
     public double exitDampingLatThreshold = 0.042; // 立ち上がり収束帯とみなす横速度しきい値 (blocks/tick)
-    public double exitGyroYawDamping = 0.42; // 立ち上がり収束帯＆中立戻し時の強力Yaw減衰 (小さいほどピタッと止まる)
-    public double gyroCounterAssistGain = 0.32; // ステア中立戻し時の過剰YawRate抑止ジャイロゲイン
-    public double exitLatZeroCrossDamping = 0.25; // 中立時lateralVelocity=0跨ぎ（おつり）瞬間の横滑り減衰倍率
+    public double exitGyroYawDamping = 0.65; // 立ち上がり収束帯＆中立戻し時の追加Yaw減衰 (徐々にグリップ・直進へ収束)
+    public double gyroCounterAssistGain = 0.20; // ステア中立戻し時の過剰YawRate抑止ジャイロゲイン
+    public double exitLatZeroCrossDamping = 0.35; // 中立時lateralVelocity=0跨ぎ（おつり）瞬間の横滑り減衰倍率
+
+    // 一時テスト用: 挙動解析CSVログ (logs/rc_real_telemetry.csv)
+    public boolean enableTelemetryLog = true;
 
     // 第4段階：荷重移動システムパラメーター
     public float longitudinalWeightTransferGain = 3.4f; // ブレーキ・減速Gに対する前後荷重移動感度
