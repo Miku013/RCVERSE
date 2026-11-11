@@ -13,7 +13,8 @@ public class RealPhysicsConfig {
     public float steeringLerpRate = 0.24f; // 通常切り込み追従速度 (微調整しやすい滑らかさ)
     public float counterSteerLerpRate = 0.18f; // カウンター側への当て込み速度 (立ち上がり抜け・当てすぎ防止)
     public float steeringReturnRate = 0.26f; // センターへの戻し速度 (徐々にグリップ回復させる)
-    public float counterReturnRate = 0.28f; // カウンターステア解放時のセンター戻し速度
+    public float counterReturnRate = 0.30f; // カウンターステア解放時の標準戻し速度
+    public float exitFastReturnRate = 0.56f; // ドリフト収束後の過剰残存ステアの素早い自動戻し (逆振り防止)
     public float wheelBase = 0.42f; // ホイールベース (blocks相当)
     public float frontAxleRatio = 0.48f; // 重心→前軸の比率 (0.48 = ほぼ50:50)
     public float steeringSensitivity = 1.0f; // 操舵感度倍率
@@ -29,21 +30,21 @@ public class RealPhysicsConfig {
 
     // 第3段階：前後輪独立可変グリップパラメーター
     // 前輪がしっかりインへ切れ込み、パワーオン大舵角で自然にリアがステップアウトする設定
-    public float baseFrontGrip = 1.16f; // 前輪の基本グリップ係数 (進入アンダーステア防止)
-    public float baseRearGrip = 1.04f; // 後輪の基本グリップ係数
-    public double corneringStiffnessFront = 0.068; // 前輪コーナリング剛性 (適度な進入応答とカウンター許容幅)
-    public double corneringStiffnessRear = 0.060; // 後輪コーナリング剛性
-    public double maxLateralAccelPerTick = 0.0165; // 1軸あたりの基準最大横加速度 (速度向上に合わせた旋回力)
-    public double frontSlipPeakDropRatio = 0.96; // 前輪限界超過後の粘り率 (96%: カウンター時に逃げにくい)
+    public float baseFrontGrip = 1.22f; // 前輪の基本グリップ係数 (進入アンダーステア防止・線形域拡大)
+    public float baseRearGrip = 1.03f; // 後輪の基本グリップ係数
+    public double corneringStiffnessFront = 0.056; // 前輪コーナリング剛性 (約24度まで線形に粘り急アンダーを防止)
+    public double corneringStiffnessRear = 0.058; // 後輪コーナリング剛性
+    public double maxLateralAccelPerTick = 0.0185; // 1軸あたりの基準最大横加速度 (高速コーナリング余裕確保)
+    public double frontSlipPeakDropRatio = 0.99; // 前輪限界超過後の粘り率 (99%: 急なアンダー抜けを抑制)
     public double slipLimitPeakDropRatio = 0.90; // 後輪限界超過後の動摩擦残存率 (90%)
     public double brakeRearGripRetention = 0.88; // フットブレーキ時の後輪横グリップ保持率 (制動と荷重移動を優先)
     public double powerOversteerGripMult = 0.62; // 強アクセル時の後輪横グリップ低下倍率 (抜重感と持続の両立)
     public double counterFrontBiteGripMult = 1.00; // カウンターステア中のフロント食いつき倍率 (1.0=急激な立て直し抜けを防止)
-    public double counterFrontBiteStiffMult = 0.88; // カウンターステア中のフロント剛性補正 (0.88=カウンターの甘い当て維持がしやすい)
+    public double counterFrontBiteStiffMult = 0.92; // カウンターステア中のフロント剛性補正 (穏やかな当て維持)
 
     // ヨー角速度・低速安定化・発散防止
-    public double yawTorqueGain = 17.0; // タイヤ横力モーメントからYaw角速度への変換ゲイン (急な立ち上がり戻し緩和)
-    public double yawAngularDamping = 0.82; // ヨー回転の自然減衰（過剰スピン抑制・持続ドリフト両立）
+    public double yawTorqueGain = 16.0; // タイヤ横力モーメントからYaw角速度への変換ゲイン (急な立ち上がり戻し緩和)
+    public double yawAngularDamping = 0.83; // ヨー回転の自然減衰（過剰スピン抑制・持続ドリフト両立）
     public float maxYawRateDegPerTick = 14.0f; // 旋回角速度上限 (deg/tick)
     public double lowSpeedGeomThreshold = 0.055; // この速度以下のみ幾何学ステア補助をブレンド
     public double lowSpeedSnapThreshold = 0.004; // 停止スナップ閾値
@@ -51,10 +52,10 @@ public class RealPhysicsConfig {
 
     // ② RCドリフト用ステアジャイロ／立ち上がりダンピング（テスト実装）
     public boolean enableExitGyro = true; // 立ち上がりジャイロ＆Yaw減衰の有効化
-    public double exitDampingLatThreshold = 0.042; // 立ち上がり収束帯とみなす横速度しきい値 (blocks/tick)
-    public double exitGyroYawDamping = 0.65; // 立ち上がり収束帯＆中立戻し時の追加Yaw減衰 (徐々にグリップ・直進へ収束)
-    public double gyroCounterAssistGain = 0.20; // ステア中立戻し時の過剰YawRate抑止ジャイロゲイン
-    public double exitLatZeroCrossDamping = 0.35; // 中立時lateralVelocity=0跨ぎ（おつり）瞬間の横滑り減衰倍率
+    public double exitDampingLatThreshold = 0.065; // 立ち上がり収束帯とみなす横速度しきい値 (約7度以下で収束開始)
+    public double exitGyroYawDamping = 0.50; // 立ち上がり収束帯＆中立戻し時の追加Yaw減衰 (立ち上がりおつり抑制)
+    public double gyroCounterAssistGain = 0.28; // ステア中立戻し時の過剰YawRate抑止ジャイロゲイン
+    public double exitLatZeroCrossDamping = 0.25; // 中立時lateralVelocity=0跨ぎ（おつり）瞬間の横滑り減衰倍率
 
     // 一時テスト用: 挙動解析CSVログ (logs/rc_real_telemetry.csv)
     public boolean enableTelemetryLog = true;

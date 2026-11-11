@@ -267,7 +267,14 @@ public class RealCarPhysics {
         float maxAngle = steeringIntoCounter ? config.maxCounterSteerAngleDeg : config.maxSteeringAngleDeg;
         float lerpRate;
         if (Math.abs(inputSteer) < 0.05f) {
-            lerpRate = currentlyCountered ? config.counterReturnRate : config.steeringReturnRate;
+            boolean overshotSteerExit = (this.recentSlideTicks > 0 || currentlyCountered)
+                    && Math.abs(this.lateralVelocity) < 0.09
+                    && Math.abs(this.steerAngleDeg) > Math.abs(this.slipAngleDeg) + 8.0f;
+            if (overshotSteerExit) {
+                lerpRate = config.exitFastReturnRate;
+            } else {
+                lerpRate = currentlyCountered ? config.counterReturnRate : config.steeringReturnRate;
+            }
         } else if (steeringIntoCounter) {
             lerpRate = config.counterSteerLerpRate;
         } else {
@@ -340,9 +347,13 @@ public class RealCarPhysics {
 
         // 第4段階：縦加減速Gと横Gに基づく荷重移動の更新（前後・左右・4輪個別データ）
         // ※ maxSpeed超過リミットの減衰がフルアクセル中に「急ブレーキ荷重」として前輪へドカ乗りするのを防止
+        // ※ また単なるアクセルオフ減速時は過剰な前傾荷重(ノーズダイブ→逆振りおつり)を抑え、意図的ブレーキ時のみ強めに前へ乗せる
+        boolean isActivelyBraking = inputHandbrake || (inputForward < -0.05f && preForwardVel > 0.01);
         double longitudinalAccel = (grounded && !wallAhead) ? (this.forwardVelocity - preForwardVel) : 0.0;
         if (inputForward > 0.05f && !inputHandbrake && longitudinalAccel < 0.0) {
             longitudinalAccel = 0.0;
+        } else if (!isActivelyBraking && longitudinalAccel < 0.0) {
+            longitudinalAccel *= 0.35;
         }
         double prevTotalLatForce = this.lateralForceFront + this.lateralForceRear;
         this.weightTransfer.update(longitudinalAccel, prevTotalLatForce, grounded, this.config);
@@ -440,7 +451,7 @@ public class RealCarPhysics {
         // 速度が中高速になるほど大舵角時の最大実効切れ角をわずかに抑える（ただしカウンターステア時はフル切れ角を解放！）
         double totalSpeed = Math.hypot(this.forwardVelocity, this.lateralVelocity);
         double speedRatio = Mth.clamp(totalSpeed / Math.max(0.15, maxSpeed), 0.0, 1.0);
-        double highSpeedSteerScale = this.counterSteering ? 1.0 : (1.0 - speedRatio * 0.22);
+        double highSpeedSteerScale = this.counterSteering ? 1.0 : (1.0 - speedRatio * 0.26);
         double steerRad = Math.toRadians(this.steerAngleDeg) * config.steeringSensitivity * turnMult * highSpeedSteerScale;
 
         // カウンターステアの角度に応じたフロント食いつき（バイト）補正
@@ -563,11 +574,11 @@ public class RealCarPhysics {
             double effectiveYawDamping = config.yawAngularDamping;
             if (config.enableExitGyro && vAbs > 0.04) {
                 if (steeringNeutral) {
-                    double dampingWeight = Math.max(exitProximity, hadRecentSlide ? 0.45 : 0.15);
+                    double dampingWeight = Math.max(exitProximity, hadRecentSlide ? 0.55 : 0.15);
                     effectiveYawDamping = Mth.lerp(dampingWeight, config.yawAngularDamping, config.exitGyroYawDamping);
-                } else if (hadRecentSlide && exitProximity > 0.0 && Math.abs(yawRateRad) > 0.08) {
-                    // カウンター維持のまま横滑りがゼロへ収束した直後の急激な逆振り（おつり）のみ軽く緩和
-                    effectiveYawDamping = Mth.lerp(0.25 * exitProximity, config.yawAngularDamping, config.exitGyroYawDamping);
+                } else if (hadRecentSlide && exitProximity > 0.0 && Math.abs(yawRateRad) > 0.07) {
+                    // カウンター維持のまま横滑りがゼロへ収束した直後の急激な逆振り（おつり）のみ緩和
+                    effectiveYawDamping = Mth.lerp(0.35 * exitProximity, config.yawAngularDamping, config.exitGyroYawDamping);
                 }
             }
             dynYawRateRad *= Math.pow(effectiveYawDamping, subDt);
