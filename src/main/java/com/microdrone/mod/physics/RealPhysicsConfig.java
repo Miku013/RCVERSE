@@ -19,7 +19,7 @@ public class RealPhysicsConfig {
     // 加減速・転がり抵抗・ブレーキ
     public double rollingFriction = 0.968;          // アクセルOFF時の自然な転がり慣性
     public double brakeDecelMultiplier = 2.4;       // Sキーのブレーキ減速度倍率
-    public double spaceBrakeDecelMultiplier = 2.6;  // スペースキー専用フットブレーキ減速度倍率
+    public double spaceBrakeDecelMultiplier = 0.68; // スペースキー専用フットブレーキ減速度倍率 (マイルド制御)
     public double reversePowerMultiplier = 0.55;    // リバース出力倍率
     public double corneringDragFactor = 0.022;      // 横滑り時のタイヤ引きずり減速係数
 
@@ -46,8 +46,8 @@ public class RealPhysicsConfig {
     public int physicsSubSteps = 4;                 // 1tick内のタイヤ物理サブステップ分割数 (振動・発散防止)
 
     // 第4段階：荷重移動システムパラメーター
-    public float longitudinalWeightTransferGain = 2.6f; // ブレーキ・減速Gに対する前後荷重移動感度
-    public float accelWeightTransferScale = 0.55f;      // 加速時のフロント抜け軽減倍率 (0.55=加速中も前輪が残りやすい)
+    public float longitudinalWeightTransferGain = 3.4f; // ブレーキ・減速Gに対する前後荷重移動感度
+    public float accelWeightTransferScale = 0.42f;      // 加速時のフロント抜け軽減倍率 (0.42=加速中は前輪抜けを抑制)
     public float lateralWeightTransferGain = 8.5f;      // 横G(0.022基準)に対する左右荷重移動感度
     public float maxLongitudinalLoadShift = 0.24f;      // 前後荷重移動の最大変位 (0.50±0.24 → 0.26〜0.74)
     public float maxLateralLoadShift = 0.22f;           // 左右荷重移動の最大変位
