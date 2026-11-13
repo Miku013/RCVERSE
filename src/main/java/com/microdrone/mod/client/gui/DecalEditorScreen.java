@@ -144,6 +144,33 @@ public class DecalEditorScreen extends Screen {
         return VehicleCategory.CAR;
     }
 
+    private Component getEditorTitle() {
+        VehicleCategory cat = getVehicleCategory();
+        return switch (cat) {
+            case PLANE -> Component.literal("RC飛行機 デカール工房（リバリーエディター）");
+            case BOAT -> Component.literal("RCボート デカール工房（リバリーエディター）");
+            case SUBMARINE -> Component.literal("RC潜水艦 デカール工房（リバリーエディター）");
+            case TANK -> Component.literal("RC戦車 デカール工房（リバリーエディター）");
+            case DRONE -> Component.literal("マイクロドローン デカール工房（リバリーエディター）");
+            default -> Component.literal("RCカー デカール工房（リバリーエディター）");
+        };
+    }
+
+    private float getBaseScale() {
+        VehicleCategory cat = getVehicleCategory();
+        return switch (cat) {
+            case PLANE, BOAT -> 0.25f;
+            case DRONE -> 1.0f;
+            default -> 0.2f; // CAR, SUBMARINE, TANK
+        };
+    }
+
+    private float getFactor() {
+        float configScale = getConfigScale();
+        float baseScale = getBaseScale();
+        return this.previewZoom * baseScale * configScale * 0.0625f;
+    }
+
     private float getConfigScale() {
         if (this.previewEntity instanceof RcCarEntity car) {
             return CarConfigManager.getConfig(car.getVariantId()).properties.scale;
@@ -633,11 +660,10 @@ public class DecalEditorScreen extends Screen {
         if (this.isDraggingDecal) {
             CarDecalData cur = getCurrentDecal();
             if (cur != null && this.previewEntity != null) {
-                float configScale = getConfigScale();
-                float factor = this.previewZoom * 0.2f * configScale * 0.0625f;
+                float factor = getFactor();
                 float sens = 1.0f / Math.max(0.001f, factor);
 
-                float dxCam = (float) dragX * sens;
+                float dxCam = (float) -dragX * sens;
                 float dyCam = (float) -dragY * sens;
 
                 // レンダラー内の 180度正面合わせ回転 (Axis.YP(180)) を反映
@@ -682,8 +708,7 @@ public class DecalEditorScreen extends Screen {
         int centerX = (10 + viewportWidth) / 2 + (int) this.modelPanX;
         int centerY = this.height / 2 + 10 + (int) this.modelPanY;
 
-        float configScale = getConfigScale();
-        float factor = this.previewZoom * 0.2f * configScale * 0.0625f;
+        float factor = getFactor();
 
         float x0 = cur.getPosX();
         float y0 = cur.getPosY();
@@ -768,7 +793,7 @@ public class DecalEditorScreen extends Screen {
         }
 
         // 4. タイトルと情報テキスト
-        graphics.drawString(this.font, this.title, 18, 16, 0xFFE0E0E0);
+        graphics.drawString(this.font, getEditorTitle(), 18, 16, 0xFFE0E0E0);
         graphics.drawString(this.font, Component.literal("ドラッグ: 視点回転 / 右ドラッグ: モデル移動 / ステッカー(Shift): 移動 / ホイール: ズーム"), 18, this.height - 24, 0xFFA0A0B0);
 
         // ステッカーファイル名表示
@@ -794,6 +819,11 @@ public class DecalEditorScreen extends Screen {
         // 6. 選択中ステッカーのドラッグ用ハイライト枠表示 (くっきり最前面で描画)
         ScreenPos dPos = getDecalScreenPos();
         if (dPos != null && dPos.x >= 10 && dPos.x <= viewportWidth && dPos.y >= 10 && dPos.y <= this.height - 10) {
+            PoseStack pose = graphics.pose();
+            pose.pushPose();
+            // 3Dモデル (Z=150) より手前・最前面レイヤー (Z=400) に配置してモデルの奥に隠れるのを防ぐ
+            pose.translate(0, 0, 400.0f);
+
             int ringColor = this.isDraggingDecal ? 0xFFFFEE44 : 0xFF00EEFF;
             int innerColor = this.isDraggingDecal ? 0x33FFDD00 : 0x2200CCFF;
             int r = (int) dPos.radius;
@@ -809,6 +839,9 @@ public class DecalEditorScreen extends Screen {
             graphics.fill(cx - 36, cy - r - 13, cx + 36, cy - r - 1, 0xCC101018);
             graphics.renderOutline(cx - 36, cy - r - 13, 72, 12, ringColor);
             graphics.drawCenteredString(this.font, Component.literal("✛ つかんで移動"), cx, cy - r - 11, ringColor);
+
+            graphics.flush();
+            pose.popPose();
         }
     }
 
@@ -836,6 +869,9 @@ public class DecalEditorScreen extends Screen {
 
         dispatcher.setRenderShadow(true);
         RenderSystem.disableDepthTest();
+
+        // 3Dモデル描画で書き込まれた深度バッファをクリアし、以後の2D GUI枠がモデル奥に隠れるのを完全に解消
+        RenderSystem.clear(org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT, Minecraft.ON_OSX);
 
         poseStack.popPose();
     }
