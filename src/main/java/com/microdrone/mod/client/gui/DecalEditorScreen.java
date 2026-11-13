@@ -712,9 +712,14 @@ public class DecalEditorScreen extends Screen {
                 float cosP = (float) Math.cos(pitchRad);
                 float sinP = (float) Math.sin(pitchRad);
 
-                float dX = dxCam * cosY - dyCam * sinP * sinY;
+                // RCカー(乗用車)と他全乗り物(ドローン、飛行機、ボート、潜水艦、戦車、トラック)のBlockbench空間差異(前後Z・左右Xの180度反転)を吸収
+                boolean isStandardCar = (getVehicleCategory() == VehicleCategory.CAR)
+                        && (this.decalHolder == null || !"truck".equalsIgnoreCase(this.decalHolder.getVariantId()));
+                float horizSign = isStandardCar ? 1.0f : -1.0f;
+
+                float dX = (dxCam * cosY - dyCam * sinP * sinY) * horizSign;
                 float dY = dyCam * cosP;
-                float dZ = dxCam * sinY + dyCam * sinP * cosY;
+                float dZ = (dxCam * sinY + dyCam * sinP * cosY) * horizSign;
 
                 cur.setPosX(Mth.clamp(cur.getPosX() + dX, -30.0f, 30.0f));
                 cur.setPosY(Mth.clamp(cur.getPosY() + dY, 0.0f, 50.0f));
