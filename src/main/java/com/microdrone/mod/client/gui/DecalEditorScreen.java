@@ -186,10 +186,6 @@ public class DecalEditorScreen extends Screen {
     }
 
     private float getEffectiveYaw() {
-        // 戦車のみRcTankGeoRendererでAxis.YP(180)を行わない(-yawのみ)ため、180度加算を除外
-        if (getVehicleCategory() == VehicleCategory.TANK) {
-            return this.previewYaw;
-        }
         return this.previewYaw + 180.0f;
     }
 
@@ -703,9 +699,7 @@ public class DecalEditorScreen extends Screen {
                 float factor = getFactor();
                 float sens = 1.0f / Math.max(0.001f, factor);
 
-                // 戦車モデルのみBlockbench空間のX軸(左右)の正負が他車種と逆のため、ドラッグ符号を補正
-                float dxSign = (getVehicleCategory() == VehicleCategory.TANK) ? 1.0f : -1.0f;
-                float dxCam = (float) (dragX * dxSign) * sens;
+                float dxCam = (float) -dragX * sens;
                 float dyCam = (float) -dragY * sens;
 
                 // レンダラー内の正面合わせ回転を反映（戦車以外は Axis.YP(180)）
