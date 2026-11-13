@@ -109,8 +109,8 @@ public class DecalTableBlock extends HorizontalDirectionalBlock implements Entit
             return InteractionResult.PASS;
         }
 
-        // スニーク素手クリック: 載っているRCカーを取り出す
-        if (player.isShiftKeyDown() && table.hasCar()) {
+        // スニーク素手クリック: 載っているRC乗り物を取り出す
+        if (player.isShiftKeyDown() && !table.getStoredCar().isEmpty()) {
             if (!level.isClientSide) {
                 ItemStack car = table.getStoredCar();
                 table.setStoredCar(ItemStack.EMPTY);
@@ -124,8 +124,8 @@ public class DecalTableBlock extends HorizontalDirectionalBlock implements Entit
             return InteractionResult.SUCCESS;
         }
 
-        // 通常素手クリック: 車が載っていればエディター画面を開く (手持ちからではない: false)
-        if (table.hasCar()) {
+        // 通常素手クリック: 乗り物が載っていればエディター画面を開く (手持ちからではない: false)
+        if (!table.getStoredCar().isEmpty()) {
             if (level.isClientSide) {
                 openEditorScreen(table, pos, table.getStoredCar(), false);
             }
@@ -145,7 +145,7 @@ public class DecalTableBlock extends HorizontalDirectionalBlock implements Entit
         if (!state.is(newState.getBlock())) {
             BlockEntity be = level.getBlockEntity(pos);
             if (be instanceof DecalTableBlockEntity table) {
-                if (table.hasCar()) {
+                if (!table.getStoredCar().isEmpty()) {
                     Containers.dropItemStack(level, pos.getX(), pos.getY(), pos.getZ(), table.getStoredCar());
                 }
             }

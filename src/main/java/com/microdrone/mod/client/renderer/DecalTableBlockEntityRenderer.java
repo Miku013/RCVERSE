@@ -39,8 +39,8 @@ public class DecalTableBlockEntityRenderer extends GeoBlockRenderer<DecalTableBl
         // 1. 作業台自体のGeckoLibモデル描画
         super.render(animatable, partialTick, poseStack, bufferSource, packedLight, packedOverlay);
 
-        // 2. 作業台の上にRCカーが載っている場合、天板の上にミニカーを展示描画
-        if (animatable.hasCar()) {
+        // 2. 作業台の上にRC乗り物が載っている場合、天板の上にモデルを展示描画
+        if (!animatable.getStoredCar().isEmpty()) {
             ItemStack car = animatable.getStoredCar();
             poseStack.pushPose();
             // 天板中央 (Y=1.02m) に水平に綺麗に展示

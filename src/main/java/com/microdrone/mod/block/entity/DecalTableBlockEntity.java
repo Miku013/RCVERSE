@@ -41,7 +41,7 @@ public class DecalTableBlockEntity extends BlockEntity implements GeoBlockEntity
     }
 
     public boolean hasCar() {
-        return !this.storedCar.isEmpty() && this.storedCar.getItem() instanceof RcCarItem;
+        return !this.storedCar.isEmpty() && com.microdrone.mod.block.DecalTableBlock.isDecalApplicableItem(this.storedCar);
     }
 
     @Override

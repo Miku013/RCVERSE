@@ -189,7 +189,7 @@ public class ServerPayloadHandler {
             if (context.player() instanceof ServerPlayer player) {
                 var be = player.level().getBlockEntity(payload.tablePos());
                 if (be instanceof com.microdrone.mod.block.entity.DecalTableBlockEntity table) {
-                    if (table.hasCar()) {
+                    if (!table.getStoredCar().isEmpty()) {
                         ItemStack carStack = table.getStoredCar();
                         net.minecraft.world.item.component.CustomData.update(
                                 net.minecraft.core.component.DataComponents.CUSTOM_DATA,
@@ -225,7 +225,7 @@ public class ServerPayloadHandler {
             if (context.player() instanceof ServerPlayer player) {
                 var be = player.level().getBlockEntity(payload.tablePos());
                 if (be instanceof com.microdrone.mod.block.entity.DecalTableBlockEntity table) {
-                    if (payload.returnToPlayer() && table.hasCar()) {
+                    if (payload.returnToPlayer() && !table.getStoredCar().isEmpty()) {
                         ItemStack car = table.getStoredCar();
                         table.setStoredCar(ItemStack.EMPTY);
                         table.setChanged();
