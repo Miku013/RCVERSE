@@ -1025,3 +1025,8 @@ acing_slope と drone_charger のPNGがJPEGからの変換で Format24bppRgb（�
   - ServerPayloadHandler、DecalTableBlock、DecalTableBlockEntityRenderer の判定を !table.getStoredCar().isEmpty() に強化し、作業台上の展示描画、保存、キャンセル返還、スニーク回収のすべてが全6車種で完全に動作するように修復。
 - [x] **RC戦車デカール移動の左右逆現象修正 (2026-11-13)**:
   - RC戦車モデル（c_tank.geo.json）は他の5車種と異なりモデリング座標系（Blockbench空間の左右X軸および前後Z軸）が反転しているため、エディターでの左右ドラッグ（dxCam）の符号が戦車だけ逆転していた問題を修正。dxSign による車種別符号補正を導入し、戦車でも真上・水平・側面すべての視点でカーソルに完全に追従するよう最適化。
+- [x] **全車種モデル向き・レンダラー基準の完全統一 (2026-11-13)**:
+  - 変更前の安全チェックポイントとして checkpoint-pre-tank-unify タグおよび ackup-pre-tank-unify ブランチを作成。
+  - c_tank.geo.json の root ボーンに otation: [0, 180, 0] を設定し、PzH2000（pzhtank.geo.json）や他全車種と同じ「北（-Z）＝正面（進行方向）」基準に統一。
+  - RcTankGeoRenderer のレンダラー回転を他全車種と完全に同じ Axis.YP(180.0F - yaw)、ピッチ・ロール符号を統一。
+  - DecalEditorScreen の getEffectiveYaw およびドラッグ計算から戦車専用の例外分岐（if (TANK) ...）を完全撤去し、全6車種共通の堅牢なパイプラインに一本化。
