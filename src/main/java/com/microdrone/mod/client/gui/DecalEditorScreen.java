@@ -189,42 +189,6 @@ public class DecalEditorScreen extends Screen {
         };
     }
 
-    private float getBaseScale() {
-        VehicleCategory cat = getVehicleCategory();
-        return switch (cat) {
-            case PLANE, BOAT -> 0.25f;
-            case DRONE -> 1.0f;
-            default -> 0.2f; // CAR, SUBMARINE, TANK
-        };
-    }
-
-    private float getEffectiveYaw() {
-        return this.previewYaw + 180.0f;
-    }
-
-    public float getFactor() {
-        float configScale = getConfigScale();
-        float baseScale = getBaseScale();
-        return this.previewZoom * baseScale * configScale * 0.0625f;
-    }
-
-    private float getConfigScale() {
-        if (this.previewEntity instanceof RcCarEntity car) {
-            return CarConfigManager.getConfig(car.getVariantId()).properties.scale;
-        } else if (this.previewEntity instanceof RcPlaneEntity plane) {
-            return PlaneConfigManager.getConfig(plane.getVariantId()).properties.scale;
-        } else if (this.previewEntity instanceof RcBoatEntity boat) {
-            return BoatConfigManager.getConfig(boat.getVariantId()).properties.scale;
-        } else if (this.previewEntity instanceof RcSubmarineEntity sub) {
-            return SubmarineConfigManager.getConfig(sub.getVariantId()).properties.scale;
-        } else if (this.previewEntity instanceof RcTankEntity tank) {
-            return TankConfigManager.getConfig(tank.getVariantId()).properties.scale;
-        } else if (this.previewEntity instanceof DroneEntity drone) {
-            return DroneConfigManager.getConfig(drone.getVariantId()).properties.scale;
-        }
-        return 1.0f;
-    }
-
     @Override
     public void removed() {
         super.removed();
