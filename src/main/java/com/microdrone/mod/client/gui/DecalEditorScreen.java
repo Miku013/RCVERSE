@@ -703,7 +703,9 @@ public class DecalEditorScreen extends Screen {
                 float factor = getFactor();
                 float sens = 1.0f / Math.max(0.001f, factor);
 
-                float dxCam = (float) -dragX * sens;
+                // 戦車モデルのみBlockbench空間のX軸(左右)の正負が他車種と逆のため、ドラッグ符号を補正
+                float dxSign = (getVehicleCategory() == VehicleCategory.TANK) ? 1.0f : -1.0f;
+                float dxCam = (float) (dragX * dxSign) * sens;
                 float dyCam = (float) -dragY * sens;
 
                 // レンダラー内の正面合わせ回転を反映（戦車以外は Axis.YP(180)）
