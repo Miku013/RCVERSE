@@ -23,6 +23,7 @@ import com.microdrone.mod.item.RcCarItem;
 import com.microdrone.mod.item.RcPlaneItem;
 import com.microdrone.mod.item.RcSubmarineItem;
 import com.microdrone.mod.item.RcTankItem;
+import com.microdrone.mod.network.CancelDecalPayload;
 import com.microdrone.mod.network.UpdateDecalsPayload;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -70,18 +71,8 @@ public class DecalEditorScreen extends Screen {
         }
     }
 
-    // 現在アクティブなエディタ画面インスタンス（3D描画レイヤーからの投影座標受信用）
+    // 現在アクティブなエディタ画面インスタンス（3D描画レイヤーからの選択ステッカー参照用）
     public static DecalEditorScreen activeScreen = null;
-
-    private float projectedScreenX = Float.NaN;
-    private float projectedScreenY = Float.NaN;
-    private float projectedRadius = 20.0f;
-
-    public void setProjectedDecalPos(float sx, float sy, float radius) {
-        this.projectedScreenX = sx;
-        this.projectedScreenY = sy;
-        this.projectedRadius = radius;
-    }
 
     public CarDecalData getCurrentSelectedDecal() {
         return getCurrentDecal();
@@ -139,13 +130,21 @@ public class DecalEditorScreen extends Screen {
     private float panelScrollY = 0.0f;
     private float maxScrollY = 0.0f;
 
+    private final boolean openedFromHand;
+    private boolean isSaved = false;
+
     public DecalEditorScreen(DecalTableBlockEntity table) {
-        this(table, null);
+        this(table, null, false);
     }
 
     public DecalEditorScreen(DecalTableBlockEntity table, ItemStack initialCarStack) {
+        this(table, initialCarStack, false);
+    }
+
+    public DecalEditorScreen(DecalTableBlockEntity table, ItemStack initialCarStack, boolean openedFromHand) {
         super(Component.translatable("gui.microdrone.decal_editor.title"));
         this.table = table;
+        this.openedFromHand = openedFromHand;
         if (initialCarStack != null && !initialCarStack.isEmpty()) {
             this.carStack = initialCarStack.copy();
         } else if (table != null && !table.getStoredCar().isEmpty()) {
@@ -630,12 +629,23 @@ public class DecalEditorScreen extends Screen {
     }
 
     private void save(boolean takeOut) {
+        this.isSaved = true;
         CompoundTag decalsTag = CarDecalData.serializeDecals(this.editingDecals);
         PacketDistributor.sendToServer(new UpdateDecalsPayload(this.table.getBlockPos(), decalsTag, takeOut));
         if (takeOut && this.table != null) {
             this.table.setStoredCar(ItemStack.EMPTY);
         }
         onClose();
+    }
+
+    @Override
+    public void onClose() {
+        if (!this.isSaved && this.openedFromHand && this.table != null) {
+            // 手持ちから車体を入れてキャンセルした（またはESCで閉じた）場合: サーバーに通知して手元に返却
+            PacketDistributor.sendToServer(new CancelDecalPayload(this.table.getBlockPos(), true));
+            this.table.setStoredCar(ItemStack.EMPTY);
+        }
+        super.onClose();
     }
 
     @Override
@@ -724,54 +734,6 @@ public class DecalEditorScreen extends Screen {
             return true;
         }
         return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
-    }
-
-    private record ScreenPos(float x, float y, float radius) {}
-
-    private ScreenPos getDecalScreenPos() {
-        CarDecalData cur = getCurrentDecal();
-        if (cur == null || this.previewEntity == null) return null;
-
-        // 3Dレンダラー (RcVehicleDecalLayer) から送られた数学的・描画的に100%正確な画面座標を最優先使用
-        if (!Float.isNaN(this.projectedScreenX) && !Float.isNaN(this.projectedScreenY)) {
-            return new ScreenPos(this.projectedScreenX, this.projectedScreenY, this.projectedRadius);
-        }
-
-        int panelWidth = 155;
-        int panelX = this.width - panelWidth - 10;
-        int viewportWidth = panelX - 10;
-        int centerX = (10 + viewportWidth) / 2 + (int) this.modelPanX;
-        int centerY = this.height / 2 + 10 + (int) this.modelPanY;
-
-        float factor = getFactor();
-
-        // GeckoLib/Blockbenchモデル空間におけるX座標反転を相殺
-        float x0 = -cur.getPosX();
-        float y0 = cur.getPosY();
-        float z0 = cur.getPosZ();
-
-        // レンダラー内の正面合わせ回転を反映（戦車以外は Axis.YP(180)）
-        float effectiveYaw = getEffectiveYaw();
-        float yawRad = (float) Math.toRadians(effectiveYaw);
-        float cosY = (float) Math.cos(yawRad);
-        float sinY = (float) Math.sin(yawRad);
-
-        float x1 = x0 * cosY + z0 * sinY;
-        float y1 = y0;
-        float z1 = -x0 * sinY + z0 * cosY;
-
-        float pitchRad = (float) Math.toRadians(this.previewPitch);
-        float cosP = (float) Math.cos(pitchRad);
-        float sinP = (float) Math.sin(pitchRad);
-
-        float x2 = x1;
-        float y2 = y1 * cosP - z1 * sinP;
-
-        float sx = centerX + x2 * factor;
-        float sy = centerY - y2 * factor;
-
-        float radius = Math.max(14.0f, (cur.getScale() * factor) * 0.8f);
-        return new ScreenPos(sx, sy, radius);
     }
 
     @Override

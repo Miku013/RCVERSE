@@ -57,6 +57,13 @@ public class ModNetworking {
                 ServerPayloadHandler::handleUpdateDecals
         );
 
+        // クライアント -> サーバー (デカール作業台 キャンセル時アイテム返還)
+        registrar.playToServer(
+                CancelDecalPayload.TYPE,
+                CancelDecalPayload.STREAM_CODEC,
+                ServerPayloadHandler::handleCancelDecal
+        );
+
         // サーバー -> クライアント (操縦状態通知)
         registrar.playToClient(
                 DronePilotStatePayload.TYPE,

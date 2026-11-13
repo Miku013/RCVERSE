@@ -219,4 +219,24 @@ public class ServerPayloadHandler {
             }
         });
     }
+
+    public static void handleCancelDecal(CancelDecalPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (context.player() instanceof ServerPlayer player) {
+                var be = player.level().getBlockEntity(payload.tablePos());
+                if (be instanceof com.microdrone.mod.block.entity.DecalTableBlockEntity table) {
+                    if (payload.returnToPlayer() && table.hasCar()) {
+                        ItemStack car = table.getStoredCar();
+                        table.setStoredCar(ItemStack.EMPTY);
+                        table.setChanged();
+                        player.level().sendBlockUpdated(payload.tablePos(), table.getBlockState(), table.getBlockState(), 3);
+                        player.level().playSound(null, payload.tablePos(), net.minecraft.sounds.SoundEvents.ITEM_PICKUP, net.minecraft.sounds.SoundSource.BLOCKS, 0.8F, 1.0F);
+                        if (!player.getInventory().add(car)) {
+                            player.drop(car, false);
+                        }
+                    }
+                }
+            }
+        });
+    }
 }

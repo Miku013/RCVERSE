@@ -93,8 +93,8 @@ public class DecalTableBlock extends HorizontalDirectionalBlock implements Entit
             } else {
                 // クライアント側でも即座に作業台へ車体をセット
                 table.setStoredCar(carToStore);
-                // 手に持っていた車体スタックを直接渡してエディターを開く
-                openEditorScreen(table, pos, carToStore);
+                // 手に持っていた車体スタックを直接渡してエディターを開く (手持ちから開いたフラグ: true)
+                openEditorScreen(table, pos, carToStore, true);
             }
             return ItemInteractionResult.SUCCESS;
         }
@@ -124,10 +124,10 @@ public class DecalTableBlock extends HorizontalDirectionalBlock implements Entit
             return InteractionResult.SUCCESS;
         }
 
-        // 通常素手クリック: 車が載っていればエディター画面を開く
+        // 通常素手クリック: 車が載っていればエディター画面を開く (手持ちからではない: false)
         if (table.hasCar()) {
             if (level.isClientSide) {
-                openEditorScreen(table, pos, table.getStoredCar());
+                openEditorScreen(table, pos, table.getStoredCar(), false);
             }
             return InteractionResult.SUCCESS;
         }
@@ -135,9 +135,9 @@ public class DecalTableBlock extends HorizontalDirectionalBlock implements Entit
         return InteractionResult.PASS;
     }
 
-    private void openEditorScreen(DecalTableBlockEntity table, BlockPos pos, ItemStack carStack) {
+    private void openEditorScreen(DecalTableBlockEntity table, BlockPos pos, ItemStack carStack, boolean openedFromHand) {
         net.neoforged.fml.loading.FMLEnvironment.dist.isClient();
-        com.microdrone.mod.client.gui.DecalEditorOpener.open(pos, carStack);
+        com.microdrone.mod.client.gui.DecalEditorOpener.open(pos, carStack, openedFromHand);
     }
 
     @Override
