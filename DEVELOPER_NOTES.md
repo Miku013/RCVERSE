@@ -1030,3 +1030,6 @@ acing_slope と drone_charger のPNGがJPEGからの変換で Format24bppRgb（�
   - c_tank.geo.json の root ボーンに otation: [0, 180, 0] を設定し、PzH2000（pzhtank.geo.json）や他全車種と同じ「北（-Z）＝正面（進行方向）」基準に統一。
   - RcTankGeoRenderer のレンダラー回転を他全車種と完全に同じ Axis.YP(180.0F - yaw)、ピッチ・ロール符号を統一。
   - DecalEditorScreen の getEffectiveYaw およびドラッグ計算から戦車専用の例外分岐（if (TANK) ...）を完全撤去し、全6車種共通の堅牢なパイプラインに一本化。
+- [x] **真上視点時のステッカー左右逆ドラッグ移動の数学的解消 (2026-11-13)**:
+  - 画面ピクセル投影方程式を解析的に逆変換した結果、dxCam に掛かっていた不要な負符号（-dragX）を解消し、dX = dxCam * cosY + dyCam * sinP * sinY および dZ = dxCam * sinY - dyCam * sinP * cosY の厳密解を適用。
+  - 戦車をはじめ全車種で、真上（ピッチ85度）・水平・斜めの全カメラアングルにおいて、マウスの左右・上下ドラッグとステッカーの移動方向がカーソルに完全に100%追従するよう解決。
