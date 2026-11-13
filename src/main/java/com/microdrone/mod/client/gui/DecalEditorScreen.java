@@ -70,6 +70,27 @@ public class DecalEditorScreen extends Screen {
         }
     }
 
+    // 現在アクティブなエディタ画面インスタンス（3D描画レイヤーからの投影座標受信用）
+    public static DecalEditorScreen activeScreen = null;
+
+    private float projectedScreenX = Float.NaN;
+    private float projectedScreenY = Float.NaN;
+    private float projectedRadius = 20.0f;
+
+    public void setProjectedDecalPos(float sx, float sy, float radius) {
+        this.projectedScreenX = sx;
+        this.projectedScreenY = sy;
+        this.projectedRadius = radius;
+    }
+
+    public CarDecalData getCurrentSelectedDecal() {
+        return getCurrentDecal();
+    }
+
+    public boolean isDecalDragging() {
+        return this.isDraggingDecal;
+    }
+
     private final DecalTableBlockEntity table;
     private final ItemStack carStack;
     private Entity previewEntity;
@@ -173,7 +194,7 @@ public class DecalEditorScreen extends Screen {
         return this.previewYaw + 180.0f;
     }
 
-    private float getFactor() {
+    public float getFactor() {
         float configScale = getConfigScale();
         float baseScale = getBaseScale();
         return this.previewZoom * baseScale * configScale * 0.0625f;
@@ -197,8 +218,17 @@ public class DecalEditorScreen extends Screen {
     }
 
     @Override
+    public void removed() {
+        super.removed();
+        if (activeScreen == this) {
+            activeScreen = null;
+        }
+    }
+
+    @Override
     protected void init() {
         super.init();
+        activeScreen = this;
 
         // 外部車種設定 (JSON) を即座に一括リロード検知 (F3+T なしで最新設定を反映)
         CarConfigManager.loadConfigs();
@@ -710,6 +740,11 @@ public class DecalEditorScreen extends Screen {
         CarDecalData cur = getCurrentDecal();
         if (cur == null || this.previewEntity == null) return null;
 
+        // 3Dレンダラー (RcVehicleDecalLayer) から送られた数学的・描画的に100%正確な画面座標を最優先使用
+        if (!Float.isNaN(this.projectedScreenX) && !Float.isNaN(this.projectedScreenY)) {
+            return new ScreenPos(this.projectedScreenX, this.projectedScreenY, this.projectedRadius);
+        }
+
         int panelWidth = 155;
         int panelX = this.width - panelWidth - 10;
         int viewportWidth = panelX - 10;
@@ -825,7 +860,7 @@ public class DecalEditorScreen extends Screen {
             renderEntityInGui(graphics, centerX, centerY, this.previewZoom, this.previewYaw, this.previewPitch, this.previewEntity);
         }
 
-        // 6. 選択中ステッカーのドラッグ用ハイライト枠表示 (くっきり最前面で描画)
+        // 6. 選択中ステッカーのドラッグ用「✛ つかんで移動」バッジ表示（3D枠はステッカー表面に密着描画し、2D側は最前面バッジとして完全追従）
         ScreenPos dPos = getDecalScreenPos();
         if (dPos != null && dPos.x >= 10 && dPos.x <= viewportWidth && dPos.y >= 10 && dPos.y <= this.height - 10) {
             PoseStack pose = graphics.pose();
@@ -834,20 +869,23 @@ public class DecalEditorScreen extends Screen {
             pose.translate(0, 0, 400.0f);
 
             int ringColor = this.isDraggingDecal ? 0xFFFFEE44 : 0xFF00EEFF;
-            int innerColor = this.isDraggingDecal ? 0x33FFDD00 : 0x2200CCFF;
-            int r = (int) dPos.radius;
             int cx = (int) dPos.x;
             int cy = (int) dPos.y;
+            int r = (int) dPos.radius;
 
-            // 半透明ハイライト背景とくっきり二重枠
-            graphics.fill(cx - r, cy - r, cx + r, cy + r, innerColor);
-            graphics.renderOutline(cx - r, cy - r, r * 2, r * 2, ringColor);
-            graphics.renderOutline(cx - r - 1, cy - r - 1, r * 2 + 2, r * 2 + 2, 0x88000000);
+            // 中心ポイント（小さな十字マーカー）
+            graphics.fill(cx - 2, cy - 2, cx + 3, cy + 3, ringColor);
 
             // 「✛ つかんで移動」バッジ表示 (ドロップシャドウ付き)
-            graphics.fill(cx - 36, cy - r - 13, cx + 36, cy - r - 1, 0xCC101018);
-            graphics.renderOutline(cx - 36, cy - r - 13, 72, 12, ringColor);
-            graphics.drawCenteredString(this.font, Component.literal("✛ つかんで移動"), cx, cy - r - 11, ringColor);
+            int badgeW = 74;
+            int badgeH = 14;
+            int bx = cx - badgeW / 2;
+            int by = cy - r - 16;
+            if (by < 14) by = cy + r + 4; // 画面上端に近い場合はステッカー下部に表示
+
+            graphics.fill(bx, by, bx + badgeW, by + badgeH, 0xDD101018);
+            graphics.renderOutline(bx, by, badgeW, badgeH, ringColor);
+            graphics.drawCenteredString(this.font, Component.literal("✛ つかんで移動"), cx, by + 3, ringColor);
 
             graphics.flush();
             pose.popPose();
