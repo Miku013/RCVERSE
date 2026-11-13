@@ -652,16 +652,8 @@ public class DecalEditorScreen extends Screen {
                 this.lastMouseY = mouseY;
                 return true;
             } else if (button == 0) {
-                ScreenPos pos = getDecalScreenPos();
-                boolean hitDecal = false;
-                if (pos != null) {
-                    double distSq = (mouseX - pos.x) * (mouseX - pos.x) + (mouseY - pos.y) * (mouseY - pos.y);
-                    if (distSq <= pos.radius * pos.radius) {
-                        hitDecal = true;
-                    }
-                }
-
-                if (hitDecal || hasShiftDown()) {
+                // Shift+左クリックドラッグでステッカー移動、通常の左ドラッグで3D視点回転
+                if (hasShiftDown()) {
                     this.isDraggingDecal = true;
                 } else {
                     this.isDragging = true;
@@ -838,7 +830,7 @@ public class DecalEditorScreen extends Screen {
 
         // 4. タイトルと情報テキスト
         graphics.drawString(this.font, getEditorTitle(), 18, 16, 0xFFE0E0E0);
-        graphics.drawString(this.font, Component.literal("ドラッグ: 視点回転 / 右ドラッグ: モデル移動 / ステッカー(Shift): 移動 / ホイール: ズーム"), 18, this.height - 24, 0xFFA0A0B0);
+        graphics.drawString(this.font, Component.literal("ドラッグ: 視点回転 / Shift+ドラッグ: ステッカー移動 / 右ドラッグ: モデル移動 / ホイール: ズーム"), 18, this.height - 24, 0xFFA0A0B0);
 
         // ステッカーファイル名表示
         CarDecalData cur = getCurrentDecal();
@@ -860,35 +852,9 @@ public class DecalEditorScreen extends Screen {
             renderEntityInGui(graphics, centerX, centerY, this.previewZoom, this.previewYaw, this.previewPitch, this.previewEntity);
         }
 
-        // 6. 選択中ステッカーのドラッグ用「✛ つかんで移動」バッジ表示（3D枠はステッカー表面に密着描画し、2D側は最前面バッジとして完全追従）
-        ScreenPos dPos = getDecalScreenPos();
-        if (dPos != null && dPos.x >= 10 && dPos.x <= viewportWidth && dPos.y >= 10 && dPos.y <= this.height - 10) {
-            PoseStack pose = graphics.pose();
-            pose.pushPose();
-            // 3Dモデル (Z=150) より手前・最前面レイヤー (Z=400) に配置してモデルの奥に隠れるのを防ぐ
-            pose.translate(0, 0, 400.0f);
-
-            int ringColor = this.isDraggingDecal ? 0xFFFFEE44 : 0xFF00EEFF;
-            int cx = (int) dPos.x;
-            int cy = (int) dPos.y;
-            int r = (int) dPos.radius;
-
-            // 中心ポイント（小さな十字マーカー）
-            graphics.fill(cx - 2, cy - 2, cx + 3, cy + 3, ringColor);
-
-            // 「✛ つかんで移動」バッジ表示 (ドロップシャドウ付き)
-            int badgeW = 74;
-            int badgeH = 14;
-            int bx = cx - badgeW / 2;
-            int by = cy - r - 16;
-            if (by < 14) by = cy + r + 4; // 画面上端に近い場合はステッカー下部に表示
-
-            graphics.fill(bx, by, bx + badgeW, by + badgeH, 0xDD101018);
-            graphics.renderOutline(bx, by, badgeW, badgeH, ringColor);
-            graphics.drawCenteredString(this.font, Component.literal("✛ つかんで移動"), cx, by + 3, ringColor);
-
-            graphics.flush();
-            pose.popPose();
+        // 6. ドラッグ中のステータス表示 (3D枠自体はステッカー表面に100%直接描画)
+        if (this.isDraggingDecal) {
+            graphics.drawCenteredString(this.font, Component.literal("✦ ステッカー移動中 (Shift+ドラッグ)"), (10 + viewportWidth) / 2, 28, 0xFFFFEE44);
         }
     }
 

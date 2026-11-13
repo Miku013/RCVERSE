@@ -179,6 +179,52 @@ public class DecalTextureManager {
         for (int y = 0; y < 17; y++) drawThickPixel(img, ox + 11, oy + y, col);
     }
 
+    private static ResourceLocation frameNormalLoc = null;
+    private static ResourceLocation frameDraggingLoc = null;
+
+    /**
+     * 3Dエディタでステッカーの周囲に直接張り付くハイライト枠テクスチャ（Cyan / Yellow）
+     */
+    public static ResourceLocation getSelectionFrameTexture(boolean isDragging) {
+        if (isDragging) {
+            if (frameDraggingLoc == null) {
+                frameDraggingLoc = registerFrameTexture("decal_frame_active", 0xFFFFFF00); // 鮮やかな黄色 (ABGR)
+            }
+            return frameDraggingLoc;
+        } else {
+            if (frameNormalLoc == null) {
+                frameNormalLoc = registerFrameTexture("decal_frame_normal", 0xFF00EEFF); // 明るいシアン水色 (ABGR)
+            }
+            return frameNormalLoc;
+        }
+    }
+
+    private static ResourceLocation registerFrameTexture(String name, int color) {
+        int size = 64;
+        NativeImage img = new NativeImage(NativeImage.Format.RGBA, size, size, false);
+        int border = 2;
+        int cornerLen = 14;
+
+        for (int y = 0; y < size; y++) {
+            for (int x = 0; x < size; x++) {
+                boolean isOuterEdge = (x < border || x >= size - border || y < border || y >= size - border);
+                boolean isCorner = (x < cornerLen || x >= size - cornerLen) && (y < cornerLen || y >= size - cornerLen);
+                boolean isCornerThick = isCorner && (x < border * 3 || x >= size - border * 3 || y < border * 3 || y >= size - border * 3);
+
+                if (isOuterEdge || isCornerThick) {
+                    img.setPixelRGBA(x, y, color);
+                } else {
+                    img.setPixelRGBA(x, y, 0); // 内部は完全透過
+                }
+            }
+        }
+
+        DynamicTexture dynamicTexture = new DynamicTexture(img);
+        ResourceLocation loc = ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, "textures/gui/" + name + ".png");
+        Minecraft.getInstance().getTextureManager().register(loc, dynamicTexture);
+        return loc;
+    }
+
     private static void drawThickPixel(NativeImage img, int x, int y, int col) {
         if (x >= 0 && x < 63 && y >= 0 && y < 63) {
             img.setPixelRGBA(x, y, col);

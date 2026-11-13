@@ -122,55 +122,44 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
                     .setLight(packedLight)
                     .setNormal(currentPose, 0.0f, 0.0f, 1.0f);
 
-            // エディターで選択中のステッカーには、ステッカー表面にピッタリ密着するハイライト枠を3D描画
+            // エディターで選択中のステッカーには、ステッカー表面にピッタリ密着するハイライト枠をステッカーと同一パイプライン（3D）で直接描画
             com.microdrone.mod.client.gui.DecalEditorScreen editor = com.microdrone.mod.client.gui.DecalEditorScreen.activeScreen;
             if (editor != null && editor.getCurrentSelectedDecal() == decal) {
-                // 3Dモデル変換後の正確な画面GUI座標 (X, Y) をエディタへ通知
-                float sx = matrix.m30();
-                float sy = matrix.m31();
-                float r = Math.max(14.0f, (halfWidth + halfHeight) * 0.5f / unitScale * editor.getFactor() * 0.8f);
-                editor.setProjectedDecalPos(sx, sy, r);
+                ResourceLocation frameLoc = DecalTextureManager.getSelectionFrameTexture(editor.isDecalDragging());
+                VertexConsumer frameConsumer = bufferSource.getBuffer(RenderType.entityCutoutNoCull(frameLoc));
 
-                // ステッカーの四辺にピッタリ密着するハイライト枠（3D描画）
-                VertexConsumer lineConsumer = bufferSource.getBuffer(RenderType.gui());
-                float zFrame = 0.003f; // ステッカー表面の直上にわずかに浮かせてZ-fighting防止
-                float border = Math.max(0.004f, halfWidth * 0.04f);
+                float pad = baseHalfSize * 0.08f;
+                float fw = halfWidth + pad;
+                float fh = halfHeight + pad;
+                float zFrame = 0.003f; // ステッカー直上
 
-                int cr = editor.isDecalDragging() ? 255 : 0;
-                int cg = editor.isDecalDragging() ? 238 : 238;
-                int cb = editor.isDecalDragging() ? 68 : 255;
-                int ca = 255;
+                frameConsumer.addVertex(matrix, -fw,  fh, zFrame)
+                        .setColor(255, 255, 255, 255)
+                        .setUv(0.0f, 0.0f)
+                        .setOverlay(packedOverlay)
+                        .setLight(net.minecraft.client.renderer.LightTexture.FULL_BRIGHT)
+                        .setNormal(currentPose, 0.0f, 0.0f, 1.0f);
 
-                // 上辺枠
-                lineConsumer.addVertex(matrix, -halfWidth - border,  halfHeight + border, zFrame).setColor(cr, cg, cb, ca);
-                lineConsumer.addVertex(matrix, -halfWidth - border,  halfHeight,          zFrame).setColor(cr, cg, cb, ca);
-                lineConsumer.addVertex(matrix,  halfWidth + border,  halfHeight,          zFrame).setColor(cr, cg, cb, ca);
-                lineConsumer.addVertex(matrix,  halfWidth + border,  halfHeight + border, zFrame).setColor(cr, cg, cb, ca);
+                frameConsumer.addVertex(matrix, -fw, -fh, zFrame)
+                        .setColor(255, 255, 255, 255)
+                        .setUv(0.0f, 1.0f)
+                        .setOverlay(packedOverlay)
+                        .setLight(net.minecraft.client.renderer.LightTexture.FULL_BRIGHT)
+                        .setNormal(currentPose, 0.0f, 0.0f, 1.0f);
 
-                // 下辺枠
-                lineConsumer.addVertex(matrix, -halfWidth - border, -halfHeight,          zFrame).setColor(cr, cg, cb, ca);
-                lineConsumer.addVertex(matrix, -halfWidth - border, -halfHeight - border, zFrame).setColor(cr, cg, cb, ca);
-                lineConsumer.addVertex(matrix,  halfWidth + border, -halfHeight - border, zFrame).setColor(cr, cg, cb, ca);
-                lineConsumer.addVertex(matrix,  halfWidth + border, -halfHeight,          zFrame).setColor(cr, cg, cb, ca);
+                frameConsumer.addVertex(matrix,  fw, -fh, zFrame)
+                        .setColor(255, 255, 255, 255)
+                        .setUv(1.0f, 1.0f)
+                        .setOverlay(packedOverlay)
+                        .setLight(net.minecraft.client.renderer.LightTexture.FULL_BRIGHT)
+                        .setNormal(currentPose, 0.0f, 0.0f, 1.0f);
 
-                // 左辺枠
-                lineConsumer.addVertex(matrix, -halfWidth - border,  halfHeight,          zFrame).setColor(cr, cg, cb, ca);
-                lineConsumer.addVertex(matrix, -halfWidth - border, -halfHeight,          zFrame).setColor(cr, cg, cb, ca);
-                lineConsumer.addVertex(matrix, -halfWidth,          -halfHeight,          zFrame).setColor(cr, cg, cb, ca);
-                lineConsumer.addVertex(matrix, -halfWidth,           halfHeight,          zFrame).setColor(cr, cg, cb, ca);
-
-                // 右辺枠
-                lineConsumer.addVertex(matrix,  halfWidth,           halfHeight,          zFrame).setColor(cr, cg, cb, ca);
-                lineConsumer.addVertex(matrix,  halfWidth,          -halfHeight,          zFrame).setColor(cr, cg, cb, ca);
-                lineConsumer.addVertex(matrix,  halfWidth + border, -halfHeight,          zFrame).setColor(cr, cg, cb, ca);
-                lineConsumer.addVertex(matrix,  halfWidth + border,  halfHeight,          zFrame).setColor(cr, cg, cb, ca);
-
-                // 面内ハイライトティント（半透明）
-                int fillA = editor.isDecalDragging() ? 60 : 35;
-                lineConsumer.addVertex(matrix, -halfWidth,  halfHeight, zFrame).setColor(cr, cg, cb, fillA);
-                lineConsumer.addVertex(matrix, -halfWidth, -halfHeight, zFrame).setColor(cr, cg, cb, fillA);
-                lineConsumer.addVertex(matrix,  halfWidth, -halfHeight, zFrame).setColor(cr, cg, cb, fillA);
-                lineConsumer.addVertex(matrix,  halfWidth,  halfHeight, zFrame).setColor(cr, cg, cb, fillA);
+                frameConsumer.addVertex(matrix,  fw,  fh, zFrame)
+                        .setColor(255, 255, 255, 255)
+                        .setUv(1.0f, 0.0f)
+                        .setOverlay(packedOverlay)
+                        .setLight(net.minecraft.client.renderer.LightTexture.FULL_BRIGHT)
+                        .setNormal(currentPose, 0.0f, 0.0f, 1.0f);
             }
 
             poseStack.popPose();
