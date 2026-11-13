@@ -1109,3 +1109,14 @@ ull のままとなり、mouseDragged 内でドラッグ計算が実行されて
     - [RcRackBlockEntityRenderer.java](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/java/com/microdrone/mod/client/renderer/RcRackBlockEntityRenderer.java): FACING 水平回転とレイヤー合成。
   - **アイテムアイコン・登録**:
     - 16x16ピクセルアートアイコン ([rc_rack.png](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/resources/assets/microdrone/textures/item/rc_rack.png))、ブロックモデル、クリエイティブタブ、日英言語登録完了。
+
+- [x] **RC展示ラック（rc_rack）の2ブロック高マルチブロック化と4段完全対応 (2026-11-14)**:
+  - **原因**: 単一ブロック配置では上部（Y >= 1.0）の空間がMinecraftのワールドグリッド上で空気ブロック扱いとなり、レイキャストが突き抜けて最上段（slot_3）の当たり判定に届いていなかった。
+  - **施した修正**:
+    - [RcRackBlock.java](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/java/com/microdrone/mod/block/RcRackBlock.java): DoubleBlockHalf（LOWER / UPPER）の2ブロック高構造へ移行。
+    - 下段設置時に上段（UPPER）ブロックを自動生成し、破壊時は相互に連動破壊。
+    - **段判定の完全最適化**:
+      - 下段（LOWER）クリック時: Y < 0.5 で slot_0（1段目）、Y >= 0.5 で slot_1（2段目）
+      - 上段（UPPER）クリック時: Y < 0.5 で slot_2（3段目）、Y >= 0.5 で slot_3（4段目・最上段）
+      - 上段へのインタラクションは下段の RcRackBlockEntity へシームレスに転送。
+    - 全4段への確実な設置・回収・交換が可能に。
