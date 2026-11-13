@@ -706,9 +706,9 @@ public class DecalEditorScreen extends Screen {
                 float cosP = (float) Math.cos(pitchRad);
                 float sinP = (float) Math.sin(pitchRad);
 
-                float dX = dxCam * cosY + dyCam * sinP * sinY;
+                float dX = dxCam * cosY - dyCam * sinP * sinY;
                 float dY = dyCam * cosP;
-                float dZ = dxCam * sinY - dyCam * sinP * cosY;
+                float dZ = dxCam * sinY + dyCam * sinP * cosY;
 
                 cur.setPosX(Mth.clamp(cur.getPosX() + dX, -30.0f, 30.0f));
                 cur.setPosY(Mth.clamp(cur.getPosY() + dY, 0.0f, 50.0f));
