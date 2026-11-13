@@ -9,6 +9,7 @@ import com.microdrone.mod.client.gui.RcCarHudOverlay;
 import com.microdrone.mod.client.gui.TankGunnerHudOverlay;
 import com.microdrone.mod.client.input.ClientDroneInputHandler;
 import com.microdrone.mod.client.model.DroneModel;
+import com.microdrone.mod.client.renderer.DecalTableBlockEntityRenderer;
 import com.microdrone.mod.client.renderer.DroneChargerBlockEntityRenderer;
 import com.microdrone.mod.client.renderer.DroneGeoRenderer;
 import com.microdrone.mod.client.renderer.DroneRenderer;
@@ -78,6 +79,7 @@ public class ClientModEvents {
         event.registerBlockEntityRenderer(ModBlockEntities.VERTICAL_LOOP_BE.get(), com.microdrone.mod.client.renderer.VerticalLoopBlockEntityRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.MODULAR_SLOPE_BE.get(), com.microdrone.mod.client.renderer.ModularSlopeBlockEntityRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.ROAD_START_BE.get(), com.microdrone.mod.client.renderer.RoadStartBlockEntityRenderer::new);
+        event.registerBlockEntityRenderer(ModBlockEntities.DECAL_TABLE_BE.get(), DecalTableBlockEntityRenderer::new);
     }
 
     private static void registerLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {

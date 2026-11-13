@@ -117,12 +117,14 @@ public class RoadStartBlockEntity extends BlockEntity {
      */
     public AABB getRoadBoundingBox() {
         if (linkedEndPos != null) {
-            int minX = Math.min(worldPosition.getX(), linkedEndPos.getX()) - 16;
+            int padXZ = Math.max(16, (int) Math.ceil(splineData.getLoopHeight()) + 6);
+            int padYUp = Math.max(16, (int) Math.ceil(splineData.getLoopHeight()) + 6);
+            int minX = Math.min(worldPosition.getX(), linkedEndPos.getX()) - padXZ;
             int minY = Math.min(worldPosition.getY(), linkedEndPos.getY()) - 8;
-            int minZ = Math.min(worldPosition.getZ(), linkedEndPos.getZ()) - 16;
-            int maxX = Math.max(worldPosition.getX(), linkedEndPos.getX()) + 17;
-            int maxY = Math.max(worldPosition.getY(), linkedEndPos.getY()) + 16;
-            int maxZ = Math.max(worldPosition.getZ(), linkedEndPos.getZ()) + 17;
+            int minZ = Math.min(worldPosition.getZ(), linkedEndPos.getZ()) - padXZ;
+            int maxX = Math.max(worldPosition.getX(), linkedEndPos.getX()) + padXZ + 1;
+            int maxY = Math.max(worldPosition.getY(), linkedEndPos.getY()) + padYUp;
+            int maxZ = Math.max(worldPosition.getZ(), linkedEndPos.getZ()) + padXZ + 1;
             return new AABB(minX, minY, minZ, maxX, maxY, maxZ);
         }
         return new AABB(worldPosition);

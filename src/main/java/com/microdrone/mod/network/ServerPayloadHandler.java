@@ -9,6 +9,7 @@ import com.microdrone.mod.entity.RcTankEntity;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public class ServerPayloadHandler {
@@ -140,12 +141,15 @@ public class ServerPayloadHandler {
             if (context.player() instanceof ServerPlayer player) {
                 if (player.level().getBlockEntity(payload.startPos()) instanceof com.microdrone.mod.block.road.RoadStartBlockEntity startBe) {
                     var data = startBe.getSplineData();
+                    data.setRoadMode(com.microdrone.mod.block.road.RoadSplineData.RoadMode.fromId(payload.roadMode()));
                     data.setRoadWidth(payload.roadWidth());
                     data.setMaxBankAngle(payload.maxBankAngle());
                     data.setTurnDirection(payload.turnDirection());
                     data.setControlPointDistance(payload.controlPointDistance());
                     data.setSegments(payload.segments());
                     data.setArcFitMode(payload.arcFitMode());
+                    data.setLoopHeight(payload.loopHeight());
+                    data.setLoopBoostMultiplier(payload.loopBoostMultiplier());
                     data.setPreview(payload.isPreview());
                     data.setGenerated(payload.isGenerated());
 
@@ -175,6 +179,42 @@ public class ServerPayloadHandler {
                 Entity entity = player.level().getEntity(payload.carId());
                 if (entity instanceof RcCarEntity car && car.isPilotedBy(player)) {
                     car.toggleHeadlight();
+                }
+            }
+        });
+    }
+
+    public static void handleUpdateDecals(UpdateDecalsPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (context.player() instanceof ServerPlayer player) {
+                var be = player.level().getBlockEntity(payload.tablePos());
+                if (be instanceof com.microdrone.mod.block.entity.DecalTableBlockEntity table) {
+                    if (table.hasCar()) {
+                        ItemStack carStack = table.getStoredCar();
+                        net.minecraft.world.item.component.CustomData.update(
+                                net.minecraft.core.component.DataComponents.CUSTOM_DATA,
+                                carStack,
+                                tag -> tag.put("Decals", payload.decalsTag()));
+                        table.setStoredCar(carStack);
+                        table.setChanged();
+                        player.level().sendBlockUpdated(payload.tablePos(), table.getBlockState(), table.getBlockState(), 3);
+
+                        if (payload.takeOut()) {
+                            // 適用して手元に回収
+                            table.setStoredCar(ItemStack.EMPTY);
+                            table.setChanged();
+                            player.level().sendBlockUpdated(payload.tablePos(), table.getBlockState(), table.getBlockState(), 3);
+                            player.level().playSound(null, payload.tablePos(), net.minecraft.sounds.SoundEvents.ITEM_PICKUP, net.minecraft.sounds.SoundSource.BLOCKS, 0.8F, 1.0F);
+                            if (!player.getInventory().add(carStack)) {
+                                player.drop(carStack, false);
+                            }
+                            player.displayClientMessage(net.minecraft.network.chat.Component.translatable("chat.microdrone.decals_saved_and_taken"), true);
+                        } else {
+                            // 適用して作業台に残す
+                            player.level().playSound(null, payload.tablePos(), net.minecraft.sounds.SoundEvents.BOOK_PAGE_TURN, net.minecraft.sounds.SoundSource.BLOCKS, 1.0F, 1.2F);
+                            player.displayClientMessage(net.minecraft.network.chat.Component.translatable("chat.microdrone.decals_saved"), true);
+                        }
+                    }
                 }
             }
         });

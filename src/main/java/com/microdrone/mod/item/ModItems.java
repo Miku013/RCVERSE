@@ -82,6 +82,10 @@ public class ModItems {
     public static final DeferredHolder<Item, BlockItem> JUMP_PAD_ITEM =
             ITEMS.register("jump_pad", () -> new BlockItem(ModBlocks.JUMP_PAD.get(), new Item.Properties()));
 
+    // デカール作業台 (BlockItem)
+    public static final DeferredHolder<Item, BlockItem> DECAL_TABLE_ITEM =
+            ITEMS.register("decal_table", () -> new BlockItem(ModBlocks.DECAL_TABLE.get(), new Item.Properties()));
+
     // === コース小物・設備システム (Phase 1: カラーコーン ＆ Phase 2: 縁石・ガードレール・タイヤバリア) ===
     public static final DeferredHolder<Item, com.microdrone.mod.block.miniature.TrafficConeItem> TRAFFIC_CONE =
             ITEMS.register("traffic_cone", () -> new com.microdrone.mod.block.miniature.TrafficConeItem(new Item.Properties().stacksTo(64)));

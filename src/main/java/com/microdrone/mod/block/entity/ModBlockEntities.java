@@ -48,6 +48,10 @@ public class ModBlockEntities {
             BLOCK_ENTITIES.register("road_end",
                     () -> BlockEntityType.Builder.of(com.microdrone.mod.block.road.RoadEndBlockEntity::new, ModBlocks.ROAD_END.get()).build(null));
 
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<DecalTableBlockEntity>> DECAL_TABLE_BE =
+            BLOCK_ENTITIES.register("decal_table",
+                    () -> BlockEntityType.Builder.of(DecalTableBlockEntity::new, ModBlocks.DECAL_TABLE.get()).build(null));
+
     public static void register(IEventBus eventBus) {
         BLOCK_ENTITIES.register(eventBus);
     }

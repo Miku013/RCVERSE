@@ -110,6 +110,13 @@ public class ModBlocks {
                     .lightLevel(state -> state.hasProperty(JumpPadBlock.POWER) ? (state.getValue(JumpPadBlock.POWER) == 1 ? 5 : (state.getValue(JumpPadBlock.POWER) == 2 ? 8 : 12)) : 8)
                     .noOcclusion()));
 
+    // デカール作業台 (3Dリバリーエディター)
+    public static final DeferredBlock<DecalTableBlock> DECAL_TABLE = BLOCKS.register("decal_table",
+            () -> new DecalTableBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.WOOD)
+                    .strength(2.0f, 3.0f)
+                    .noOcclusion()));
+
     public static void register(IEventBus eventBus) {
         BLOCKS.register(eventBus);
     }

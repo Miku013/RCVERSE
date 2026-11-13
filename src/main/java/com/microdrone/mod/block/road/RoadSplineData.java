@@ -8,18 +8,68 @@ import net.minecraft.nbt.CompoundTag;
  * 道路生成（ヘアピンカーブ・スプライン道路）の設定パラメータ
  */
 public class RoadSplineData {
+    /**
+     * 道路生成モード（将来他モードも拡張可能）
+     */
+    public enum RoadMode {
+        ROAD(0, "通常道路"),
+        JUMP_RAMP(1, "ジャンプ台"),
+        LOOP_360(2, "360°ループ");
+
+        private final int id;
+        private final String displayName;
+
+        RoadMode(int id, String displayName) {
+            this.id = id;
+            this.displayName = displayName;
+        }
+
+        public int getId() {
+            return id;
+        }
+
+        public String getDisplayName() {
+            return displayName;
+        }
+
+        public RoadMode next() {
+            RoadMode[] values = values();
+            return values[(this.ordinal() + 1) % values.length];
+        }
+
+        public static RoadMode fromId(int id) {
+            for (RoadMode mode : values()) {
+                if (mode.id == id) {
+                    return mode;
+                }
+            }
+            return ROAD;
+        }
+    }
+
     // 規定値
     public static final float DEFAULT_ROAD_WIDTH = 5.0f;
     public static final float MIN_ROAD_WIDTH = 4.0f;
-    public static final float MAX_ROAD_WIDTH = 7.0f;
+    public static final float MAX_ROAD_WIDTH = 9.0f;
 
     public static final float DEFAULT_MAX_BANK = 0.0f;
     public static final float MIN_MAX_BANK = 0.0f;
     public static final float MAX_MAX_BANK = 45.0f;
 
+    public static final float DEFAULT_LOOP_HEIGHT = 10.0f;
+    public static final float MIN_LOOP_HEIGHT = 6.0f;  // 破綻しない最低ループ直径(半径3.0m)
+    public static final float MAX_LOOP_HEIGHT = 32.0f;
+
+    public static final float DEFAULT_LOOP_BOOST = 1.0f;
+    public static final float MIN_LOOP_BOOST = 1.0f;
+    public static final float MAX_LOOP_BOOST = 3.0f;
+
     // パラメータ
+    private RoadMode roadMode = RoadMode.ROAD;
     private float roadWidth = DEFAULT_ROAD_WIDTH;
     private float maxBankAngle = DEFAULT_MAX_BANK;
+    private float loopHeight = DEFAULT_LOOP_HEIGHT;
+    private float loopBoostMultiplier = DEFAULT_LOOP_BOOST;
     private float startBankAngle = 0.0f;
     private float endBankAngle = 0.0f;
     private int turnDirection = 0; // 0=自動 (AUTO), 1=左 (LEFT), 2=右 (RIGHT)
@@ -30,6 +80,14 @@ public class RoadSplineData {
     private boolean isGenerated = false; // 正式生成済みか
 
     public RoadSplineData() {
+    }
+
+    public RoadMode getRoadMode() {
+        return roadMode;
+    }
+
+    public void setRoadMode(RoadMode roadMode) {
+        this.roadMode = roadMode != null ? roadMode : RoadMode.ROAD;
     }
 
     public float getRoadWidth() {
@@ -46,6 +104,14 @@ public class RoadSplineData {
 
     public void setMaxBankAngle(float maxBankAngle) {
         this.maxBankAngle = Math.max(MIN_MAX_BANK, Math.min(MAX_MAX_BANK, maxBankAngle));
+    }
+
+    public float getLoopHeight() {
+        return loopHeight;
+    }
+
+    public void setLoopHeight(float loopHeight) {
+        this.loopHeight = Math.max(MIN_LOOP_HEIGHT, Math.min(MAX_LOOP_HEIGHT, loopHeight));
     }
 
     public float getStartBankAngle() {
@@ -88,6 +154,14 @@ public class RoadSplineData {
         this.segments = Math.max(8, Math.min(128, segments));
     }
 
+    public float getLoopBoostMultiplier() {
+        return loopBoostMultiplier;
+    }
+
+    public void setLoopBoostMultiplier(float loopBoostMultiplier) {
+        this.loopBoostMultiplier = Math.max(MIN_LOOP_BOOST, Math.min(MAX_LOOP_BOOST, loopBoostMultiplier));
+    }
+
     public boolean isArcFitMode() {
         return arcFitMode;
     }
@@ -113,8 +187,11 @@ public class RoadSplineData {
     }
 
     public void saveToNbt(CompoundTag tag) {
+        tag.putInt("RoadMode", this.roadMode.getId());
         tag.putFloat("RoadWidth", this.roadWidth);
         tag.putFloat("MaxBankAngle", this.maxBankAngle);
+        tag.putFloat("LoopHeight", this.loopHeight);
+        tag.putFloat("LoopBoostMultiplier", this.loopBoostMultiplier);
         tag.putFloat("StartBankAngle", this.startBankAngle);
         tag.putFloat("EndBankAngle", this.endBankAngle);
         tag.putInt("TurnDirection", this.turnDirection);
@@ -126,8 +203,11 @@ public class RoadSplineData {
     }
 
     public void loadFromNbt(CompoundTag tag) {
+        this.roadMode = tag.contains("RoadMode") ? RoadMode.fromId(tag.getInt("RoadMode")) : RoadMode.ROAD;
         if (tag.contains("RoadWidth")) this.roadWidth = tag.getFloat("RoadWidth");
         if (tag.contains("MaxBankAngle")) this.maxBankAngle = tag.getFloat("MaxBankAngle");
+        if (tag.contains("LoopHeight")) setLoopHeight(tag.getFloat("LoopHeight"));
+        if (tag.contains("LoopBoostMultiplier")) setLoopBoostMultiplier(tag.getFloat("LoopBoostMultiplier"));
         if (tag.contains("StartBankAngle")) this.startBankAngle = tag.getFloat("StartBankAngle");
         if (tag.contains("EndBankAngle")) this.endBankAngle = tag.getFloat("EndBankAngle");
         if (tag.contains("TurnDirection")) this.turnDirection = tag.getInt("TurnDirection");

@@ -67,17 +67,40 @@ public class RcCarGeoModel extends GeoModel<RcCarEntity> {
 
         // 2. 4輪サスペンションのストローク（タイヤ上下可動）
         // 車体全体のピッチ・ロール姿勢は RcCarGeoRenderer (poseStack) 側で一元管理。
-        // ここではタイヤがフェンダー内へ出入りする微小ストロークを適用
-        float suspScale = 6.0f;
+        // モンスタートラックなどの大ストローク車両 (ダブルウィッシュボーン搭載車) では可動域を拡大
+        // ※ Blockbench空間は 1 block = 16 units なので、実測スケール 16.0f にて厳密一致
+        boolean isTruck = "truck".equalsIgnoreCase(animatable.getVariantId());
+        float suspScale = isTruck ? 16.0f : 6.0f;
         float suspFL = animatable.getSuspFL() * suspScale;
         float suspFR = animatable.getSuspFR() * suspScale;
         float suspRL = animatable.getSuspRL() * suspScale;
         float suspRR = animatable.getSuspRR() * suspScale;
 
+        // 車体（ボディ・アッパー部）の着地バウンス振動 (ドスンと沈み込んでフワッと戻る)
+        // ※ タイヤ(steer/wheel)は接地しているため、ボディ側を下げることでサスペンションが深く沈み込む
+        float bounceScale = 16.0f;
+        float bounceY = animatable.getChassisBounce() * bounceScale;
+        GeoBone bodyBone = this.getAnimationProcessor().getBone("body");
+        GeoBone glassBone = this.getAnimationProcessor().getBone("Glass");
+        GeoBone lightBone = this.getAnimationProcessor().getBone("light");
+        if (bodyBone != null) {
+            bodyBone.setPosY(bounceY);
+        }
+        if (glassBone != null) {
+            glassBone.setPosY(bounceY);
+        }
+        if (lightBone != null) {
+            lightBone.setPosY(bounceY);
+        }
+
         if (steerFL != null) steerFL.setPosY(suspFL);
         if (steerFR != null) steerFR.setPosY(suspFR);
         if (wheelRL != null) wheelRL.setPosY(suspRL);
         if (wheelRR != null) wheelRR.setPosY(suspRR);
+
+        // 3. ダブルウィッシュボーンサスペンションの視覚的連動アニメーション
+        // (アッパー/ロアアームのスイング、ショックアブソーバーの伸縮・傾き、バンプキャンバー)
+        applyDoubleWishbone(animatable, suspFL, suspFR, suspRL, suspRR);
 
         // 4. タイヤ回転
         // モデルのボーン設計（Z軸横倒しモデリングか、直立モデリングか）を自動判別して適用
@@ -196,6 +219,83 @@ public class RcCarGeoModel extends GeoModel<RcCarEntity> {
             // 右輪 (-X側) は +X回転で前進、左輪 (+X側) は -X回転で前進
             wheelBone.setRotY(0.0f);
             wheelBone.setRotX(isRightSide ? wheelRad : -wheelRad);
+        }
+    }
+
+    /**
+     * ダブルウィッシュボーンサスペンションのボーン連動アニメーション
+     * @param suspFL フロント左サスペンション変位 (ブロックベンチ単位)
+     * @param suspFR フロント右サスペンション変位
+     * @param suspRL リア左サスペンション変位
+     * @param suspRR リア右サスペンション変位
+     */
+    private void applyDoubleWishbone(RcCarEntity animatable, float suspFL, float suspFR, float suspRL, float suspRR) {
+        // FL (フロント左)
+        applyCornerWishbone(animatable, "fl", suspFL, false);
+        // FR (フロント右)
+        applyCornerWishbone(animatable, "fr", suspFR, true);
+        // RL (リア左)
+        applyCornerWishbone(animatable, "rl", suspRL, false);
+        // RR (リア右)
+        applyCornerWishbone(animatable, "rr", suspRR, true);
+    }
+
+    /**
+     * 1輪ごとのダブルウィッシュボーン連動
+     * @param suffix "fl", "fr", "rl", "rr"
+     * @param suspY サスペンション変位 (上方向が正、下方向が負)
+     * @param isRight 右輪かどうか
+     */
+    private void applyCornerWishbone(RcCarEntity animatable, String suffix, float suspY, boolean isRight) {
+        GeoBone armLower = this.getAnimationProcessor().getBone("arm_lower_" + suffix);
+        GeoBone armUpper = this.getAnimationProcessor().getBone("arm_upper_" + suffix);
+        GeoBone shockBody = this.getAnimationProcessor().getBone("shock_body_" + suffix);
+        GeoBone shockRod = this.getAnimationProcessor().getBone("shock_rod_" + suffix);
+        GeoBone knuckle = this.getAnimationProcessor().getBone("knuckle_" + suffix);
+
+        // このボーン群が存在しないモデルではスキップ
+        if (armLower == null && armUpper == null && shockBody == null) {
+            return;
+        }
+
+        // アーム実効長 (truck.geo.json実測値: ピボット間 10.01 ブロックベンチ単位)
+        float armLength = 10.0f;
+        // サスペンション上下動によるアームスイング角 (ラジアン)
+        // 上に沈むと (suspY > 0)、左輪(+X)は反時計回り(Z軸プラス)、右輪(-X)は時計回り(Z軸マイナス)
+        // 最大変位 +4.5 unit のとき約 +26.7°、-3.5 unit のとき約 -20.5°
+        float clampedRatio = Mth.clamp(suspY / armLength, -0.35f, 0.45f);
+        float swingAngle = (float) Math.asin(clampedRatio);
+        float armRotZ = isRight ? -swingAngle : swingAngle;
+
+        // 1. ロアアームのスイング
+        if (armLower != null) {
+            float initZ = (armLower.getInitialSnapshot() != null) ? armLower.getInitialSnapshot().getRotZ() : armLower.getRotZ();
+            armLower.setRotZ(initZ + armRotZ);
+        }
+
+        // 2. アッパーアームのスイング (ジオメトリ特性でロアアームより短いため 1.25倍 スイング)
+        if (armUpper != null) {
+            float initZ = (armUpper.getInitialSnapshot() != null) ? armUpper.getInitialSnapshot().getRotZ() : armUpper.getRotZ();
+            armUpper.setRotZ(initZ + armRotZ * 1.25f);
+        }
+
+        // 3. ショックアブソーバーの傾きとピストン伸縮
+        if (shockBody != null) {
+            float initZ = (shockBody.getInitialSnapshot() != null) ? shockBody.getInitialSnapshot().getRotZ() : shockBody.getRotZ();
+            float shockSwing = armRotZ * 0.50f;
+            shockBody.setRotZ(initZ + shockSwing);
+        }
+
+        if (shockRod != null) {
+            // ショックロッドのピストン伸縮 (実測幾何学比率: サス変位の約95%がシリンダー内に吸い込まれる)
+            shockRod.setPosY(-suspY * 0.95f);
+        }
+
+        // 4. ナックル / キャンバー角 (バンプキャンバー: 縮むとネガティブキャンバー)
+        if (knuckle != null) {
+            float initZ = (knuckle.getInitialSnapshot() != null) ? knuckle.getInitialSnapshot().getRotZ() : knuckle.getRotZ();
+            float bumpCamber = armRotZ * 0.25f;
+            knuckle.setRotZ(initZ + bumpCamber);
         }
     }
 }

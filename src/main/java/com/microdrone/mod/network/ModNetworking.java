@@ -50,6 +50,13 @@ public class ModNetworking {
                 ServerPayloadHandler::handleRoadConfig
         );
 
+        // クライアント -> サーバー (デカール作業台 ステッカー設定同期)
+        registrar.playToServer(
+                UpdateDecalsPayload.TYPE,
+                UpdateDecalsPayload.STREAM_CODEC,
+                ServerPayloadHandler::handleUpdateDecals
+        );
+
         // サーバー -> クライアント (操縦状態通知)
         registrar.playToClient(
                 DronePilotStatePayload.TYPE,

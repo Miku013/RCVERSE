@@ -37,10 +37,19 @@ public class RcCarItem extends Item {
 
         RcCarEntity car = ModEntities.RC_CAR.get().create(serverLevel);
         if (car != null) {
-            // アイテムのカスタムデータや金床カスタム名からバリアントIDを適用
+            // アイテムのカスタムデータや金床カスタム名からバリアントIDや塗装色を適用
             var customData = itemStack.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA);
-            if (customData != null && customData.contains("Variant")) {
-                car.setVariantId(customData.copyTag().getString("Variant"));
+            if (customData != null) {
+                net.minecraft.nbt.CompoundTag tag = customData.copyTag();
+                if (tag.contains("Variant")) {
+                    car.setVariantId(tag.getString("Variant"));
+                }
+                if (tag.contains("BodyColor")) {
+                    car.setBodyColor(tag.getInt("BodyColor"));
+                }
+                if (tag.contains("Decals", 10)) {
+                    car.setDecals(RcCarEntity.deserializeDecals(tag.getCompound("Decals")));
+                }
             } else if (itemStack.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME)) {
                 String customName = itemStack.getHoverName().getString().trim().toLowerCase();
                 if (com.microdrone.mod.config.car.CarConfigManager.getAllConfigs().containsKey(customName)) {

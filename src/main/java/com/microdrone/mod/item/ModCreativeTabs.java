@@ -45,6 +45,7 @@ public class ModCreativeTabs {
                         output.accept(ModItems.VERTICAL_LOOP_ITEM.get());
                         output.accept(ModItems.ROAD_START_ITEM.get());
                         output.accept(ModItems.ROAD_END_ITEM.get());
+                        output.accept(ModItems.DECAL_TABLE_ITEM.get());
                         output.accept(ModItems.MINIATURE_PLACEMENT_ITEM.get());
 
                         // バッテリー

@@ -22,13 +22,17 @@ public class RoadSplineManager {
         public final BlockPos startPos;
         public final BlockPos endPos;
         public final float roadWidth;
+        public final RoadSplineData.RoadMode roadMode;
+        public final float loopBoostMultiplier;
         public final AABB boundingBox;
         public final List<RoadSplineGenerator.SplineSample> samples;
 
-        public CachedRoad(BlockPos startPos, BlockPos endPos, float roadWidth, AABB boundingBox, List<RoadSplineGenerator.SplineSample> samples) {
+        public CachedRoad(BlockPos startPos, BlockPos endPos, float roadWidth, RoadSplineData.RoadMode roadMode, float loopBoostMultiplier, AABB boundingBox, List<RoadSplineGenerator.SplineSample> samples) {
             this.startPos = startPos;
             this.endPos = endPos;
             this.roadWidth = roadWidth;
+            this.roadMode = roadMode != null ? roadMode : RoadSplineData.RoadMode.ROAD;
+            this.loopBoostMultiplier = loopBoostMultiplier;
             this.boundingBox = boundingBox;
             this.samples = samples;
         }
@@ -69,7 +73,7 @@ public class RoadSplineManager {
         );
 
         AABB aabb = startBe.getRoadBoundingBox();
-        CachedRoad road = new CachedRoad(startBe.getBlockPos(), endPos, data.getRoadWidth(), aabb, samples);
+        CachedRoad road = new CachedRoad(startBe.getBlockPos(), endPos, data.getRoadWidth(), data.getRoadMode(), data.getLoopBoostMultiplier(), aabb, samples);
 
         String key = getLevelKey(level);
         ACTIVE_ROADS.computeIfAbsent(key, k -> new ConcurrentHashMap<>()).put(startBe.getBlockPos(), road);
@@ -102,8 +106,11 @@ public class RoadSplineManager {
         for (CachedRoad road : map.values()) {
             // AABB で大まかにフィルタ (計算負荷を大幅削減)
             if (road.boundingBox.inflate(2.0).contains(x, y, z)) {
-                RoadSplineGenerator.RoadHitResult hit = RoadSplineGenerator.sampleRoadSurface(road.samples, road.roadWidth, x, y, z);
+                RoadSplineGenerator.RoadHitResult hit = RoadSplineGenerator.sampleRoadSurface(road.samples, road.roadWidth, road.roadMode, x, y, z);
                 if (hit.hit) {
+                    if (hit.isLoop360) {
+                        hit = hit.withLoopBoost(road.loopBoostMultiplier);
+                    }
                     double dy = Math.abs(y - hit.groundY);
                     if (dy < bestDistY) {
                         bestDistY = dy;
