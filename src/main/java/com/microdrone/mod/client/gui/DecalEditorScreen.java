@@ -165,6 +165,14 @@ public class DecalEditorScreen extends Screen {
         };
     }
 
+    private float getEffectiveYaw() {
+        // 戦車のみRcTankGeoRendererでAxis.YP(180)を行わない(-yawのみ)ため、180度加算を除外
+        if (getVehicleCategory() == VehicleCategory.TANK) {
+            return this.previewYaw;
+        }
+        return this.previewYaw + 180.0f;
+    }
+
     private float getFactor() {
         float configScale = getConfigScale();
         float baseScale = getBaseScale();
@@ -666,8 +674,8 @@ public class DecalEditorScreen extends Screen {
                 float dxCam = (float) -dragX * sens;
                 float dyCam = (float) -dragY * sens;
 
-                // レンダラー内の 180度正面合わせ回転 (Axis.YP(180)) を反映
-                float effectiveYaw = this.previewYaw + 180.0f;
+                // レンダラー内の正面合わせ回転を反映（戦車以外は Axis.YP(180)）
+                float effectiveYaw = getEffectiveYaw();
                 float yawRad = (float) Math.toRadians(effectiveYaw);
                 float cosY = (float) Math.cos(yawRad);
                 float sinY = (float) Math.sin(yawRad);
@@ -710,12 +718,13 @@ public class DecalEditorScreen extends Screen {
 
         float factor = getFactor();
 
-        float x0 = cur.getPosX();
+        // GeckoLib/Blockbenchモデル空間におけるX座標反転を相殺
+        float x0 = -cur.getPosX();
         float y0 = cur.getPosY();
         float z0 = cur.getPosZ();
 
-        // レンダラー内の 180度正面合わせ回転 (Axis.YP(180)) を反映
-        float effectiveYaw = this.previewYaw + 180.0f;
+        // レンダラー内の正面合わせ回転を反映（戦車以外は Axis.YP(180)）
+        float effectiveYaw = getEffectiveYaw();
         float yawRad = (float) Math.toRadians(effectiveYaw);
         float cosY = (float) Math.cos(yawRad);
         float sinY = (float) Math.sin(yawRad);
