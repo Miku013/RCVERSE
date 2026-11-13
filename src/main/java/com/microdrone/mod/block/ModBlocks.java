@@ -124,6 +124,13 @@ public class ModBlocks {
                     .strength(2.0f, 3.0f)
                     .noOcclusion()));
 
+    // RC展示ラック (4段マルチRC展示ラック)
+    public static final DeferredBlock<RcRackBlock> RC_RACK = BLOCKS.register("rc_rack",
+            () -> new RcRackBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_BLACK)
+                    .strength(2.0f, 3.0f)
+                    .noOcclusion()));
+
     public static void register(IEventBus eventBus) {
         BLOCKS.register(eventBus);
     }

@@ -1098,3 +1098,14 @@ ull のままとなり、mouseDragged 内でドラッグ計算が実行されて
   - **モデル定義**:
     - [road_start.json](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/resources/assets/microdrone/models/item/road_start.json): item/generated で2Dアイテム表示化。
     - [road_end.json](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/resources/assets/microdrone/models/item/road_end.json): item/generated で2Dアイテム表示化。
+
+- [x] **4段マルチRC展示ラック（rc_rack）の実装完了 (2026-11-14)**:
+  - ユーザー提供の Blockbench 4段RCラックモデル ([rc_rack.geo.json](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/resources/assets/microdrone/geo/rc_rack.geo.json)) およびテクスチャ ([rc_rack.png](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/resources/assets/microdrone/textures/block/rc_rack.png)) を適用。
+  - **4段独立ボーン吸着展示 (slot_0 〜 slot_3)**:
+    - [RcRackDisplayLayer.java](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/java/com/microdrone/mod/client/renderer/RcRackDisplayLayer.java): GeoRenderLayer.renderForBone を活用し、各段のボーン（slot_0 [Y=2], slot_1 [Y=12], slot_2 [Y=21], slot_3 [Y=29]）のピボット座標および回転に自動吸着して各ラジコン・アイテムを3D展示。
+  - **ブロック・エンティティ・操作性**:
+    - [RcRackBlock.java](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/java/com/microdrone/mod/block/RcRackBlock.java): 2ブロック高（32px）の当たり判定（VoxelShape）を実装。プレイヤーが狙った段の高さ（Y座標）をクリックすることで、該当段へ直感的にアイテムを設置・交換（アイテム持ち右クリック）または回収（素手右クリック）可能。ブロック破壊時は全段のアイテムをドロップ。
+    - [RcRackBlockEntity.java](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/java/com/microdrone/mod/block/entity/RcRackBlockEntity.java): 4スロットの NonNullList<ItemStack> をNBT保存・同期。
+    - [RcRackBlockEntityRenderer.java](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/java/com/microdrone/mod/client/renderer/RcRackBlockEntityRenderer.java): FACING 水平回転とレイヤー合成。
+  - **アイテムアイコン・登録**:
+    - 16x16ピクセルアートアイコン ([rc_rack.png](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/resources/assets/microdrone/textures/item/rc_rack.png))、ブロックモデル、クリエイティブタブ、日英言語登録完了。

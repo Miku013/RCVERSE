@@ -56,6 +56,10 @@ public class ModBlockEntities {
             BLOCK_ENTITIES.register("rc_workbench",
                     () -> BlockEntityType.Builder.of(RcWorkbenchBlockEntity::new, ModBlocks.RC_WORKBENCH.get()).build(null));
 
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<RcRackBlockEntity>> RC_RACK_BE =
+            BLOCK_ENTITIES.register("rc_rack",
+                    () -> BlockEntityType.Builder.of(RcRackBlockEntity::new, ModBlocks.RC_RACK.get()).build(null));
+
     public static void register(IEventBus eventBus) {
         BLOCK_ENTITIES.register(eventBus);
     }

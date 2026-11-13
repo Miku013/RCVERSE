@@ -166,6 +166,8 @@
   "block.microdrone.rc_workbench": "RC Workbench",
   "item.microdrone.rc_workbench": "RC Workbench",
   "container.microdrone.rc_workbench": "RC Workbench",
+  "block.microdrone.rc_rack": "RC Display Rack",
+  "item.microdrone.rc_rack": "RC Display Rack",
   "gui.microdrone.decal_editor.title": "RC Car Livery Editor",
   "gui.microdrone.decal.part_hood": "Hood",
   "gui.microdrone.decal.part_roof": "Roof",
