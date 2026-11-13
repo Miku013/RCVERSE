@@ -1023,3 +1023,5 @@ acing_slope と drone_charger のPNGがJPEGからの変換で Format24bppRgb（�
 - [x] **hasCar判定の全車種汎用化と確実な返還・保存の保証 (2026-11-13)**:
   - DecalTableBlockEntity.hasCar() が RcCarItem のみを判定していたため、ドローン・潜水艦・飛行機・ボート・戦車で hasCar() == false となり、サーバー側でのデカール保存（handleUpdateDecals）およびキャンセル返還（handleCancelDecal）が無視されていた根本原因を解消。
   - ServerPayloadHandler、DecalTableBlock、DecalTableBlockEntityRenderer の判定を !table.getStoredCar().isEmpty() に強化し、作業台上の展示描画、保存、キャンセル返還、スニーク回収のすべてが全6車種で完全に動作するように修復。
+- [x] **RC戦車デカール移動の左右逆現象修正 (2026-11-13)**:
+  - RC戦車モデル（c_tank.geo.json）は他の5車種と異なりモデリング座標系（Blockbench空間の左右X軸および前後Z軸）が反転しているため、エディターでの左右ドラッグ（dxCam）の符号が戦車だけ逆転していた問題を修正。dxSign による車種別符号補正を導入し、戦車でも真上・水平・側面すべての視点でカーソルに完全に追従するよう最適化。
