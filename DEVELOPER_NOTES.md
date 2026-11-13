@@ -1063,3 +1063,6 @@ ull のままとなり、mouseDragged 内でドラッグ計算が実行されて
     1. **全エンティティの getDecals() 統一**: RcCarEntity と同様に、!this.decals.isEmpty() の場合はメモリ上のリストインスタンスを直接返すよう統一。無駄な毎フレームデシリアライズも解消。
     2. **選択中デカール判定のインデックス化**: RcVehicleDecalLayer で i == selectedIndex || editor.getCurrentSelectedDecal() == decal によるインデックス判定を導入し、参照の一致・不一致に関わらず常に確実に姿勢行列を取得できるように強化。
     3. DecalEditorScreen に getSelectedDecalIndex() を追加。
+- [x] **デカールドラッグ処理のリファクタリング完了 (2026-11-13)**:
+  - 3D投影逆行列方式の採用により完全に不要となった旧ヒューリスティック計算用メソッド群（getBaseScale, getEffectiveYaw, getFactor, getConfigScale）を [DecalEditorScreen.java](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/java/com/microdrone/mod/client/gui/DecalEditorScreen.java) から安全に削除・整理。
+  - 全6車種（RCカー、ドローン、プレーン、ボート、潜水艦、戦車）において、数学的に統一されたクリーンなステッカー工房システムが完成。
