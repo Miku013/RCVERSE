@@ -36,22 +36,26 @@ public class RcRackDisplayLayer extends GeoRenderLayer<RcRackBlockEntity> {
 
                     RenderUtil.translateAndRotateMatrixForBone(poseStack, bone);
 
-                    // 各段のボーン原点（ピボット）からマシンの位置・向きを調整
-                    // 棚板の天板面よりわずかに上 (Y=0.06m) に配置し、手前（Z-方向）を向くよう調整
-                    poseStack.translate(0.0, 0.06, 0.0);
-                    poseStack.mulPose(Axis.YP.rotationDegrees(180.0F));
-                    poseStack.scale(0.85F, 0.85F, 0.85F);
+                    // 1. RCビークルアイテムであれば、3D実物モデル（GeckoLib）を描画！
+                    boolean rendered3D = RcVehicleDisplayRenderer.renderVehicle3D(stack, poseStack, bufferSource, packedLight, animatable.getLevel(), 0.75F);
 
-                    this.itemRenderer.renderStatic(
-                            stack,
-                            ItemDisplayContext.FIXED,
-                            packedLight,
-                            packedOverlay,
-                            poseStack,
-                            bufferSource,
-                            animatable.getLevel(),
-                            (int) animatable.getBlockPos().asLong() + slot
-                    );
+                    // 2. ビークル以外の通常アイテムやプロポの場合、ItemRendererで描画
+                    if (!rendered3D) {
+                        poseStack.translate(0.0, 0.08, 0.0);
+                        poseStack.mulPose(Axis.YP.rotationDegrees(180.0F));
+                        poseStack.scale(0.85F, 0.85F, 0.85F);
+
+                        this.itemRenderer.renderStatic(
+                                stack,
+                                ItemDisplayContext.FIXED,
+                                packedLight,
+                                packedOverlay,
+                                poseStack,
+                                bufferSource,
+                                animatable.getLevel(),
+                                (int) animatable.getBlockPos().asLong() + slot
+                        );
+                    }
 
                     poseStack.popPose();
                     poseStack.pushPose();

@@ -60,6 +60,10 @@ public class ModBlockEntities {
             BLOCK_ENTITIES.register("rc_rack",
                     () -> BlockEntityType.Builder.of(RcRackBlockEntity::new, ModBlocks.RC_RACK.get()).build(null));
 
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<RcShowcaseBlockEntity>> RC_SHOWCASE_BE =
+            BLOCK_ENTITIES.register("rc_showcase",
+                    () -> BlockEntityType.Builder.of(RcShowcaseBlockEntity::new, ModBlocks.RC_SHOWCASE.get()).build(null));
+
     public static void register(IEventBus eventBus) {
         BLOCK_ENTITIES.register(eventBus);
     }

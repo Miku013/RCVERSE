@@ -168,6 +168,8 @@
   "container.microdrone.rc_workbench": "RC工作台",
   "block.microdrone.rc_rack": "RC展示ラック",
   "item.microdrone.rc_rack": "RC展示ラック",
+  "block.microdrone.rc_showcase": "RC大型ショウケース",
+  "item.microdrone.rc_showcase": "RC大型ショウケース",
   "gui.microdrone.decal_editor.title": "RCカー デカール工房 (リバリーエディター)",
   "gui.microdrone.decal.part_hood": "ボンネット",
   "gui.microdrone.decal.part_roof": "ルーフ",

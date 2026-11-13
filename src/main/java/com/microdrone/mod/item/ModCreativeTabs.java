@@ -48,6 +48,7 @@ public class ModCreativeTabs {
                         output.accept(ModItems.DECAL_TABLE_ITEM.get());
                         output.accept(ModItems.RC_WORKBENCH_ITEM.get());
                         output.accept(ModItems.RC_RACK_ITEM.get());
+                        output.accept(ModItems.RC_SHOWCASE_ITEM.get());
                         output.accept(ModItems.MINIATURE_PLACEMENT_ITEM.get());
 
                         // バッテリー

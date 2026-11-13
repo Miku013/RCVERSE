@@ -1120,3 +1120,38 @@ ull のままとなり、mouseDragged 内でドラッグ計算が実行されて
       - 上段（UPPER）クリック時: Y < 0.5 で slot_2（3段目）、Y >= 0.5 で slot_3（4段目・最上段）
       - 上段へのインタラクションは下段の RcRackBlockEntity へシームレスに転送。
     - 全4段への確実な設置・回収・交換が可能に。
+
+---
+
+## 2026-11-14: RCショーケース（幅3×高さ2ブロック、10スロット）の追加とRCラック/ショーケースの3Dモデル描画対応
+
+### 1. 概要
+- ユーザーから提供されたショーケースのBlockbenchモデル（`showcase.geo.json`）およびテクスチャ（`rc_showcase.png`）を元に、幅3ブロック×高さ2ブロック×奥行1ブロックの大型展示ケース `rc_showcase` を実装しました。
+- 同時に、「展示台に置いたRCモデルが2Dアイコン表示のまま」となっていた課題を解決するため、実体GeckoLibモデル（車、ドローン、戦車、飛行機、ボート、潜水艦）を自動検出して3Dレンダリングする共通描画ヘルパー `RcVehicleDisplayRenderer` を導入し、RCラック（`rc_rack`）とRCショーケース（`rc_showcase`）の両方に適用しました。
+
+### 2. 変更・追加されたファイル
+- **3Dビークル共通描画ヘルパー**:
+  - `src/main/java/com/microdrone/mod/client/renderer/RcVehicleDisplayRenderer.java`
+    - クライアントサイドのダミーEntityを生成・キャッシュし、デカール（ボディカラー）やペイント情報（NBT）を反映した上で実体3Dモデル（GeckoLibレンダラー）を展示用スケール（0.32〜0.4F）で描画。通常アイテムはMinecraft標準の `ItemRenderer` でフォールバック描画。
+- **RCラック（既存）の改善**:
+  - `src/main/java/com/microdrone/mod/client/renderer/RcRackDisplayLayer.java`
+    - 従来の2Dフラットアイテム描画から `RcVehicleDisplayRenderer` 経由の3D描画へ移行。
+- **RCショーケース（新規）**:
+  - `src/main/java/com/microdrone/mod/block/RcShowcaseBlock.java`
+    - 幅3×高さ2の6ブロック構成マルチブロック。中央下（`CENTER_LOWER`）が本体（マスター）となり、他の5箇所（左右・上段）はマスターへクリック操作を転送し、当たり判定（VoxelShape）を提供。
+    - クリック時のスロット判定：
+      - 上段クリック（Y>=1.0）：左（slot_0, 1）、中（slot_2）、右（slot_3, 4）
+      - 下段クリック（Y<1.0）：左（slot_5, 6）、中（slot_7）、右（slot_8, 9）
+      - 空手しゃがみ右クリックでアイテム回収、手に持ったアイテムで設置。
+  - `src/main/java/com/microdrone/mod/block/entity/RcShowcaseBlockEntity.java`
+    - 10スロット（`ItemStackHandler(10)`）を管理するBlockEntity（GeckoLib GeoBlockEntity対応）。
+  - `src/main/java/com/microdrone/mod/client/model/RcShowcaseModel.java`
+    - `geo/rc_showcase.geo.json` と `textures/block/rc_showcase.png` をバインド。
+  - `src/main/java/com/microdrone/mod/client/renderer/RcShowcaseBlockEntityRenderer.java` & `RcShowcaseDisplayLayer.java`
+    - 10箇所のボーン（`slot_0` 〜 `slot_9`）の位置・向きをGeoBoneから自動取得し、各スロットに格納されたアイテム/ビークルを正確な3D姿勢で描画。
+  - リソース・登録類:
+    - Geoモデル: `assets/microdrone/geo/rc_showcase.geo.json`
+    - ブロックテクスチャ: `assets/microdrone/textures/block/rc_showcase.png`
+    - 16x16 アイテムアイコン: `assets/microdrone/textures/item/rc_showcase.png`
+    - アイテム/ブロックモデル・blockstates: `models/item/rc_showcase.json`, `models/block/rc_showcase.json`, `blockstates/rc_showcase.json`
+    - 各種レジストリ登録: `ModBlocks.java`, `ModItems.java`, `ModBlockEntities.java`, `ModCreativeTabs.java`, `ClientModEvents.java`, `ja_jp.json`, `en_us.json`

@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "microdrone:block/rc_showcase"
+    }
+  }
+}

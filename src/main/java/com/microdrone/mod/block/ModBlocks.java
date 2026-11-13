@@ -131,6 +131,13 @@ public class ModBlocks {
                     .strength(2.0f, 3.0f)
                     .noOcclusion()));
 
+    // RC大型ショウケース (幅3マス×高さ2マス 10スロット3D展示ケース)
+    public static final DeferredBlock<RcShowcaseBlock> RC_SHOWCASE = BLOCKS.register("rc_showcase",
+            () -> new RcShowcaseBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.WOOD)
+                    .strength(2.0f, 3.0f)
+                    .noOcclusion()));
+
     public static void register(IEventBus eventBus) {
         BLOCKS.register(eventBus);
     }
