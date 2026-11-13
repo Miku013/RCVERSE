@@ -1054,3 +1054,12 @@ acing_slope と drone_charger のPNGがJPEGからの変換で Format24bppRgb（�
     3. **結果**:
        - 車種ごとのモデル向き（RCカー vs 他5車種）やカメラの全画角（水平、真上俯瞰、斜め、真横）に関係なく、数学的に画面上のマウスカーソルとステッカーが100%完全追従する統一パイプラインを実現。
        - テストビルド確認済み（gradlew build -x test 成功）。テスト後に不要コードのリファクタリング予定。
+- [x] **RCカー以外の5車種でステッカー移動が動かなくなる問題の原因特定と修正 (2026-11-13)**:
+  - **原因の特定**:
+    - RcCarEntity.java では getDecals() がメモリ内の 	his.decals リストをそのまま返していたのに対し、他の5車種（DroneEntity, RcBoatEntity, RcPlaneEntity, RcSubmarineEntity, RcTankEntity）ではクライアント側で getDecals() が呼ばれるたびに NBT (DATA_DECALS) から新規に deserializeDecals して新しいオブジェクトインスタンスを生成して返していた。
+    - そのため、RcVehicleDecalLayer での選択中判定 editor.getCurrentSelectedDecal() == decal においてオブジェクト参照の不一致（false）が起き、エディターに姿勢行列（lastDecalPoseMatrix）が渡されず 
+ull のままとなり、mouseDragged 内でドラッグ計算が実行されていなかった。
+  - **施した修正**:
+    1. **全エンティティの getDecals() 統一**: RcCarEntity と同様に、!this.decals.isEmpty() の場合はメモリ上のリストインスタンスを直接返すよう統一。無駄な毎フレームデシリアライズも解消。
+    2. **選択中デカール判定のインデックス化**: RcVehicleDecalLayer で i == selectedIndex || editor.getCurrentSelectedDecal() == decal によるインデックス判定を導入し、参照の一致・不一致に関わらず常に確実に姿勢行列を取得できるように強化。
+    3. DecalEditorScreen に getSelectedDecalIndex() を追加。
