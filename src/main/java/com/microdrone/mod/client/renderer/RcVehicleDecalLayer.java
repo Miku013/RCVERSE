@@ -64,6 +64,12 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
 
             VertexConsumer decalConsumer = bufferSource.getBuffer(RenderType.entityCutoutNoCull(textureLoc));
 
+            // エディターで選択中のステッカーの場合、ボーン座標系（デカール配置オフセット直前）の姿勢行列をエディターに共有
+            com.microdrone.mod.client.gui.DecalEditorScreen editor = com.microdrone.mod.client.gui.DecalEditorScreen.activeScreen;
+            if (editor != null && editor.getCurrentSelectedDecal() == decal) {
+                editor.updateDecalPoseMatrix(poseStack.last().pose());
+            }
+
             poseStack.pushPose();
 
             // 1. デカールの配置オフセット (Blockbench unit: 1/16 block)
@@ -123,7 +129,6 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
                     .setNormal(currentPose, 0.0f, 0.0f, 1.0f);
 
             // エディターで選択中のステッカーには、ステッカー表面にピッタリ密着するハイライト枠をステッカーと同一パイプライン（3D）で直接描画
-            com.microdrone.mod.client.gui.DecalEditorScreen editor = com.microdrone.mod.client.gui.DecalEditorScreen.activeScreen;
             if (editor != null && editor.getCurrentSelectedDecal() == decal) {
                 ResourceLocation frameLoc = DecalTextureManager.getSelectionFrameTexture(editor.isDecalDragging());
                 VertexConsumer frameConsumer = bufferSource.getBuffer(RenderType.entityCutoutNoCull(frameLoc));

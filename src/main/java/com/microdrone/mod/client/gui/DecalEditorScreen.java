@@ -43,6 +43,8 @@ import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
+import org.joml.Matrix4f;
+import org.joml.Vector3f;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -73,6 +75,13 @@ public class DecalEditorScreen extends Screen {
 
     // 現在アクティブなエディタ画面インスタンス（3D描画レイヤーからの選択ステッカー参照用）
     public static DecalEditorScreen activeScreen = null;
+
+    // 3Dレンダラーから渡される、選択中デカールのボーン姿勢行列（GUI画面ピクセル座標への4x4変換行列）
+    private Matrix4f lastDecalPoseMatrix = null;
+
+    public void updateDecalPoseMatrix(Matrix4f matrix) {
+        this.lastDecalPoseMatrix = new Matrix4f(matrix);
+    }
 
     public CarDecalData getCurrentSelectedDecal() {
         return getCurrentDecal();
@@ -696,37 +705,26 @@ public class DecalEditorScreen extends Screen {
         if (this.isDraggingDecal) {
             CarDecalData cur = getCurrentDecal();
             if (cur != null && this.previewEntity != null) {
-                float factor = getFactor();
-                float sens = 1.0f / Math.max(0.001f, factor);
+                if (this.lastDecalPoseMatrix != null) {
+                    // カメラ描画行列（ボーン→画面ピクセル）の逆行列を用いて、マウスの2D画面ドラッグ量(dragX, dragY)をボーンの3D移動量に正確に逆投影
+                    Matrix4f invMat = new Matrix4f(this.lastDecalPoseMatrix).invert();
+                    Vector3f deltaModel = new Vector3f();
+                    invMat.transformDirection((float) dragX, (float) dragY, 0.0f, deltaModel);
 
-                float dxCam = (float) -dragX * sens;
-                float dyCam = (float) -dragY * sens;
+                    if (Float.isFinite(deltaModel.x) && Float.isFinite(deltaModel.y) && Float.isFinite(deltaModel.z)) {
+                        float unitScaleInv = 16.0f; // 1ブロック = 16 Blockbench unit
+                        float dX = deltaModel.x * unitScaleInv;
+                        float dY = deltaModel.y * unitScaleInv;
+                        float dZ = deltaModel.z * unitScaleInv;
 
-                // レンダラー内の正面合わせ回転を反映（Axis.YP(180)）
-                float effectiveYaw = getEffectiveYaw();
-                float yawRad = (float) Math.toRadians(effectiveYaw);
-                float cosY = (float) Math.cos(yawRad);
-                float sinY = (float) Math.sin(yawRad);
+                        cur.setPosX(Mth.clamp(cur.getPosX() + dX, -30.0f, 30.0f));
+                        cur.setPosY(Mth.clamp(cur.getPosY() + dY, 0.0f, 50.0f));
+                        cur.setPosZ(Mth.clamp(cur.getPosZ() + dZ, -55.0f, 55.0f));
 
-                float pitchRad = (float) Math.toRadians(this.previewPitch);
-                float cosP = (float) Math.cos(pitchRad);
-                float sinP = (float) Math.sin(pitchRad);
-
-                // RCカー(乗用車)と他全乗り物(ドローン、飛行機、ボート、潜水艦、戦車、トラック)のBlockbench空間差異(前後Z・左右Xの180度反転)を吸収
-                boolean isStandardCar = (getVehicleCategory() == VehicleCategory.CAR)
-                        && (this.decalHolder == null || !"truck".equalsIgnoreCase(this.decalHolder.getVariantId()));
-                float horizSign = isStandardCar ? 1.0f : -1.0f;
-
-                float dX = (dxCam * cosY - dyCam * sinP * sinY) * horizSign;
-                float dY = dyCam * cosP;
-                float dZ = (dxCam * sinY + dyCam * sinP * cosY) * horizSign;
-
-                cur.setPosX(Mth.clamp(cur.getPosX() + dX, -30.0f, 30.0f));
-                cur.setPosY(Mth.clamp(cur.getPosY() + dY, 0.0f, 50.0f));
-                cur.setPosZ(Mth.clamp(cur.getPosZ() + dZ, -55.0f, 55.0f));
-
-                syncSlidersFromCurrentDecal();
-                return true;
+                        syncSlidersFromCurrentDecal();
+                        return true;
+                    }
+                }
             }
         }
         if (this.isDragging) {
