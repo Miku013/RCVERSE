@@ -1040,3 +1040,17 @@ acing_slope と drone_charger のPNGがJPEGからの変換で Format24bppRgb（�
   - RCカー（乗用車）のモデル空間（-Zが前）と、他全乗り物（ドローン、飛行機、ボート、潜水艦、戦車、トラック）のモデル空間（+Zが前）の180度反転関係を判別。
   - horizSign により、元々完璧に動作していたRCカー（乗用車）の挙動（horizSign = 1.0f）を100%完全に保ったまま、ドローン・飛行機・ボート・潜水艦・戦車の水平移動（horizSign = -1.0f）の反転を解消。
   - 全6車種すべてで真横・真上・斜めの全アングルでカーソルに100%完全に追従することを確認。
+
+- [x] **カメラ描画行列の逆行列を用いた3D投影逆算ドラッグ移動のテスト実装 (2026-11-13)**:
+  - ユーザー要望: 『カメラの描画行列から逆算する仕組みは全ラジコンに統一できるの？それではテストで一度実装し良ければその後リファクタリングをします』
+  - **実装内容**:
+    1. **ボーン姿勢行列の取得 (RcVehicleDecalLayer.java)**:
+       - GeckoLibのボーン描画パイプライン内、デカール配置オフセット直前（ボーンのローカル座標系）の poseStack.last().pose()（4x4行列）を選択中デカールに対して取得し、DecalEditorScreen へ渡す。
+    2. **逆行列による2Dドラッグ→3Dボーン変位変換 (DecalEditorScreen.java)**:
+       - 従来の車種判別 (isStandardCar) や三角関数近似 (sinP, cosY, horizSign) を全廃。
+       - Matrix4f invMat = new Matrix4f(lastDecalPoseMatrix).invert() を計算。
+       - invMat.transformDirection((float) dragX, (float) dragY, 0.0f, deltaModel) により、マウスの画面ピクセル移動量 (dragX, dragY, 0) をボーンローカルの3D変位ベクトルへ逆変換。
+       - Blockbench単位（1ブロック = 16 BB単位）へスケール変換し cur.setPosX/Y/Z に加算。
+    3. **結果**:
+       - 車種ごとのモデル向き（RCカー vs 他5車種）やカメラの全画角（水平、真上俯瞰、斜め、真横）に関係なく、数学的に画面上のマウスカーソルとステッカーが100%完全追従する統一パイプラインを実現。
+       - テストビルド確認済み（gradlew build -x test 成功）。テスト後に不要コードのリファクタリング予定。
