@@ -1089,3 +1089,12 @@ ull のままとなり、mouseDragged 内でドラッグ計算が実行されて
     - [drone_controller_gui.json](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/resources/assets/microdrone/models/item/drone_controller_gui.json): 2Dアイコン用モデル定義を新設。
     - [ClientModEvents.java](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/java/com/microdrone/mod/client/ClientModEvents.java): ModelEvent.RegisterAdditional イベントで GUI_MODEL を追加登録。
     - [DroneControllerItemRenderer.java](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/java/com/microdrone/mod/client/renderer/item/DroneControllerItemRenderer.java): renderByItem をオーバーライドし、ItemDisplayContext.GUI（インベントリ・ホットバー）の場合のみ 2D アイコン用 BakedModel を描画し、それ以外（一人称視点、三人称手持ち、地面ドロップ等）は super.renderByItem を呼び出して従来のリアルな3Dプロポモデル（GeckoLib）を描画するよう完全に分離。
+
+- [x] **道路生成マーカー（始点・終点）アイテムアイコンの視認性改善 (2026-11-14)**:
+  - 従来の極薄ブロックモデル（高さ1.5pxのプレート）参照によるインベントリ内での視認性不良を解消。
+  - **16x16 2Dピクセルアートアイコン新設**:
+    - [road_start.png](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/resources/assets/microdrone/textures/item/road_start.png): サーキットアスファルト路面＋赤白縁石、白スタートラインおよび前方を指す鮮やかな緑色スタート矢印（▲）をデザイン。
+    - [road_end.png](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/resources/assets/microdrone/textures/item/road_end.png): サーキットアスファルト路面＋赤白縁石、白黒チェッカーゴールラインおよびチェッカーフラッグ（市松旗）をデザイン。
+  - **モデル定義**:
+    - [road_start.json](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/resources/assets/microdrone/models/item/road_start.json): item/generated で2Dアイテム表示化。
+    - [road_end.json](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/resources/assets/microdrone/models/item/road_end.json): item/generated で2Dアイテム表示化。

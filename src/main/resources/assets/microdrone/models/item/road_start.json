@@ -1,4 +1,6 @@
 {
-    "parent": "microdrone:block/road_start"
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "microdrone:item/road_start"
+  }
 }
-
