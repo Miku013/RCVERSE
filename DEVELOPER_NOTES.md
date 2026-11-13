@@ -1020,3 +1020,6 @@ acing_slope と drone_charger のPNGがJPEGからの変換で Format24bppRgb（�
   - CancelDecalPayload: キャンセル時にサーバーへ返還要求を送信する軽量パケットを新設。
   - DecalEditorScreen: 「キャンセル」ボタン押下時またはESCキーによる onClose() 時に、未保存かつ手持ち投入であれば作業台から車体を取り出してプレイヤーのインベントリ（溢れた場合はドロップ）に即時返還。
   - 作業台に車体が飲み込まれたまま放置され、別モデル投入時に押し出される問題を完全解決。
+- [x] **hasCar判定の全車種汎用化と確実な返還・保存の保証 (2026-11-13)**:
+  - DecalTableBlockEntity.hasCar() が RcCarItem のみを判定していたため、ドローン・潜水艦・飛行機・ボート・戦車で hasCar() == false となり、サーバー側でのデカール保存（handleUpdateDecals）およびキャンセル返還（handleCancelDecal）が無視されていた根本原因を解消。
+  - ServerPayloadHandler、DecalTableBlock、DecalTableBlockEntityRenderer の判定を !table.getStoredCar().isEmpty() に強化し、作業台上の展示描画、保存、キャンセル返還、スニーク回収のすべてが全6車種で完全に動作するように修復。
