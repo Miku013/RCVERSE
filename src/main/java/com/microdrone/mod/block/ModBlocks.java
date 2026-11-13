@@ -117,6 +117,13 @@ public class ModBlocks {
                     .strength(2.0f, 3.0f)
                     .noOcclusion()));
 
+    // RC工作台 (RCマシン組み立て ＆ 展示台)
+    public static final DeferredBlock<RcWorkbenchBlock> RC_WORKBENCH = BLOCKS.register("rc_workbench",
+            () -> new RcWorkbenchBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.WOOD)
+                    .strength(2.0f, 3.0f)
+                    .noOcclusion()));
+
     public static void register(IEventBus eventBus) {
         BLOCKS.register(eventBus);
     }

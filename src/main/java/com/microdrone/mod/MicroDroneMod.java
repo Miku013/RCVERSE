@@ -26,6 +26,7 @@ public class MicroDroneMod {
         ModEntities.register(modEventBus);
         modEventBus.addListener(ModEntities::registerAttributes);
         ModItems.register(modEventBus);
+        com.microdrone.mod.inventory.ModMenus.register(modEventBus);
         ModCreativeTabs.register(modEventBus);
         ModNetworking.register(modEventBus);
         com.microdrone.mod.sound.ModSounds.register(modEventBus);

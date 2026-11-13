@@ -52,6 +52,7 @@ public class ClientModEvents {
         modEventBus.addListener(ClientModEvents::registerClientExtensions);
         modEventBus.addListener(ClientModEvents::registerKeyMappings);
         modEventBus.addListener(ClientModEvents::registerReloadListeners);
+        modEventBus.addListener(ClientModEvents::registerMenuScreens);
 
         // クライアント側入力、カメラコントローラー、チャンクイベント、HUDオーバーレイ、サウンドマネージャーの登録
         ClientDroneInputHandler.register();
@@ -80,6 +81,11 @@ public class ClientModEvents {
         event.registerBlockEntityRenderer(ModBlockEntities.MODULAR_SLOPE_BE.get(), com.microdrone.mod.client.renderer.ModularSlopeBlockEntityRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.ROAD_START_BE.get(), com.microdrone.mod.client.renderer.RoadStartBlockEntityRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.DECAL_TABLE_BE.get(), DecalTableBlockEntityRenderer::new);
+        event.registerBlockEntityRenderer(ModBlockEntities.RC_WORKBENCH_BE.get(), com.microdrone.mod.client.renderer.RcWorkbenchBlockEntityRenderer::new);
+    }
+
+    private static void registerMenuScreens(net.neoforged.neoforge.client.event.RegisterMenuScreensEvent event) {
+        event.register(com.microdrone.mod.inventory.ModMenus.RC_WORKBENCH_MENU.get(), com.microdrone.mod.client.gui.RcWorkbenchScreen::new);
     }
 
     private static void registerLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {

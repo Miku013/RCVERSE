@@ -86,6 +86,10 @@ public class ModItems {
     public static final DeferredHolder<Item, BlockItem> DECAL_TABLE_ITEM =
             ITEMS.register("decal_table", () -> new BlockItem(ModBlocks.DECAL_TABLE.get(), new Item.Properties()));
 
+    // RC工作台 (BlockItem)
+    public static final DeferredHolder<Item, BlockItem> RC_WORKBENCH_ITEM =
+            ITEMS.register("rc_workbench", () -> new BlockItem(ModBlocks.RC_WORKBENCH.get(), new Item.Properties()));
+
     // === コース小物・設備システム (Phase 1: カラーコーン ＆ Phase 2: 縁石・ガードレール・タイヤバリア) ===
     public static final DeferredHolder<Item, com.microdrone.mod.block.miniature.TrafficConeItem> TRAFFIC_CONE =
             ITEMS.register("traffic_cone", () -> new com.microdrone.mod.block.miniature.TrafficConeItem(new Item.Properties().stacksTo(64)));

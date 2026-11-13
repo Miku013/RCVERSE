@@ -52,6 +52,10 @@ public class ModBlockEntities {
             BLOCK_ENTITIES.register("decal_table",
                     () -> BlockEntityType.Builder.of(DecalTableBlockEntity::new, ModBlocks.DECAL_TABLE.get()).build(null));
 
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<RcWorkbenchBlockEntity>> RC_WORKBENCH_BE =
+            BLOCK_ENTITIES.register("rc_workbench",
+                    () -> BlockEntityType.Builder.of(RcWorkbenchBlockEntity::new, ModBlocks.RC_WORKBENCH.get()).build(null));
+
     public static void register(IEventBus eventBus) {
         BLOCK_ENTITIES.register(eventBus);
     }
