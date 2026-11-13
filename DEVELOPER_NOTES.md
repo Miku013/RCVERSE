@@ -1014,3 +1014,9 @@ acing_slope と drone_charger のPNGがJPEGからの変換で Format24bppRgb（�
   - dX = dxCam * cosY - dyCam * sinP * sinY
   - dZ = dxCam * sinY + dyCam * sinP * cosY
   - に符号を反転。真横での完璧な上下左右動作をそのまま維持しつつ、真上視点での上下ドラッグもカーソル通り直感的に追従するよう完全同期。
+### H. デカール作業台 キャンセル時車両返還機能の実装 (2026-11-13)
+- [x] **手持ち投入時のキャンセル返還保証**:
+  - DecalTableBlock: 手持ちのRCアイテムで作業台を開いた場合、フラグ openedFromHand = true をエディターに伝達。
+  - CancelDecalPayload: キャンセル時にサーバーへ返還要求を送信する軽量パケットを新設。
+  - DecalEditorScreen: 「キャンセル」ボタン押下時またはESCキーによる onClose() 時に、未保存かつ手持ち投入であれば作業台から車体を取り出してプレイヤーのインベントリ（溢れた場合はドロップ）に即時返還。
+  - 作業台に車体が飲み込まれたまま放置され、別モデル投入時に押し出される問題を完全解決。
