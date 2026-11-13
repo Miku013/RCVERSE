@@ -1,4 +1,6 @@
 {
-  "parent": "microdrone:block/decal_table"
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "microdrone:item/decal_table"
+  }
 }
-

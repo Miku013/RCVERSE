@@ -1,3 +1,6 @@
 {
-  "parent": "microdrone:block/rc_workbench"
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "microdrone:item/rc_workbench"
+  }
 }

@@ -1076,3 +1076,16 @@ ull のままとなり、mouseDragged 内でドラッグ計算が実行されて
     - [RcWorkbenchMenu.java](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/java/com/microdrone/mod/inventory/RcWorkbenchMenu.java): 3x3クラフトグリッド + 完成品スロットに加え、天板展示スロット (Slot 46) を装備。
     - [RcWorkbenchScreen.java](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/java/com/microdrone/mod/client/gui/RcWorkbenchScreen.java): 3x3組み立て画面および「展示」スロットUI。
     - クリエイティブタブ登録、日・英言語キー設定完了。ビルド動作確認済み。
+- [x] **アイテムアイコン（16x16）の作成・適用およびプロポのGUI/手持ちモデル分離実装 (2026-11-14)**:
+  - **デカール作業台・RC工作台・プロポの16x16アイコン作成**:
+    - [decal_table.png](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/resources/assets/microdrone/textures/item/decal_table.png): 木目テーブルと上部ツールラック、ペイントスプレーをあしらった16x16ドット絵。
+    - [rc_workbench.png](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/resources/assets/microdrone/textures/item/rc_workbench.png): 赤色ベースのホビー工作台天板とツールウォール、万力を表現した16x16ドット絵。
+    - [drone_controller.png](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/resources/assets/microdrone/textures/item/drone_controller.png): 液晶画面、アンテナ、ステアリングホイール、トリガーグリップを備えたRCプロポ（送信機）の16x16ドット絵。
+  - **モデル定義の適用**:
+    - [decal_table.json](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/resources/assets/microdrone/models/item/decal_table.json): item/generated で2Dアイテム表示化。
+    - [rc_workbench.json](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/resources/assets/microdrone/models/item/rc_workbench.json): item/generated で2Dアイテム表示化。
+  - **プロポのGUI（2D）/ 手持ち（3D）分離描画**:
+    - [drone_controller.json](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/resources/assets/microdrone/models/item/drone_controller.json): parent: "minecraft:builtin/entity" を維持（手持ち時の3D GeckoLib描画を保護）。
+    - [drone_controller_gui.json](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/resources/assets/microdrone/models/item/drone_controller_gui.json): 2Dアイコン用モデル定義を新設。
+    - [ClientModEvents.java](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/java/com/microdrone/mod/client/ClientModEvents.java): ModelEvent.RegisterAdditional イベントで GUI_MODEL を追加登録。
+    - [DroneControllerItemRenderer.java](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/java/com/microdrone/mod/client/renderer/item/DroneControllerItemRenderer.java): renderByItem をオーバーライドし、ItemDisplayContext.GUI（インベントリ・ホットバー）の場合のみ 2D アイコン用 BakedModel を描画し、それ以外（一人称視点、三人称手持ち、地面ドロップ等）は super.renderByItem を呼び出して従来のリアルな3Dプロポモデル（GeckoLib）を描画するよう完全に分離。

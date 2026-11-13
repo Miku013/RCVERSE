@@ -53,6 +53,7 @@ public class ClientModEvents {
         modEventBus.addListener(ClientModEvents::registerKeyMappings);
         modEventBus.addListener(ClientModEvents::registerReloadListeners);
         modEventBus.addListener(ClientModEvents::registerMenuScreens);
+        modEventBus.addListener(ClientModEvents::registerAdditionalModels);
 
         // クライアント側入力、カメラコントローラー、チャンクイベント、HUDオーバーレイ、サウンドマネージャーの登録
         ClientDroneInputHandler.register();
@@ -115,5 +116,9 @@ public class ClientModEvents {
         event.registerReloadListener((ResourceManagerReloadListener) resourceManager -> {
             CarConfigManager.loadConfigs();
         });
+    }
+
+    private static void registerAdditionalModels(net.neoforged.neoforge.client.event.ModelEvent.RegisterAdditional event) {
+        event.register(DroneControllerItemRenderer.GUI_MODEL);
     }
 }
