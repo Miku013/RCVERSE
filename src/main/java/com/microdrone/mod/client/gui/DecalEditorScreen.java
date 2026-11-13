@@ -87,6 +87,10 @@ public class DecalEditorScreen extends Screen {
         return getCurrentDecal();
     }
 
+    public int getSelectedDecalIndex() {
+        return this.selectedDecalIndex;
+    }
+
     public boolean isDecalDragging() {
         return this.isDraggingDecal;
     }

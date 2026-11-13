@@ -37,8 +37,12 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
             return;
         }
 
+        com.microdrone.mod.client.gui.DecalEditorScreen editor = com.microdrone.mod.client.gui.DecalEditorScreen.activeScreen;
+        int selectedIndex = editor != null ? editor.getSelectedDecalIndex() : -1;
+
         String boneName = bone.getName();
-        for (CarDecalData decal : decals) {
+        for (int i = 0; i < decals.size(); i++) {
+            CarDecalData decal = decals.get(i);
             if (decal == null || decal.getTextureName() == null || decal.getTextureName().isBlank()) {
                 continue;
             }
@@ -65,8 +69,8 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
             VertexConsumer decalConsumer = bufferSource.getBuffer(RenderType.entityCutoutNoCull(textureLoc));
 
             // エディターで選択中のステッカーの場合、ボーン座標系（デカール配置オフセット直前）の姿勢行列をエディターに共有
-            com.microdrone.mod.client.gui.DecalEditorScreen editor = com.microdrone.mod.client.gui.DecalEditorScreen.activeScreen;
-            if (editor != null && editor.getCurrentSelectedDecal() == decal) {
+            boolean isSelected = (editor != null) && (i == selectedIndex || editor.getCurrentSelectedDecal() == decal);
+            if (isSelected) {
                 editor.updateDecalPoseMatrix(poseStack.last().pose());
             }
 
@@ -129,7 +133,7 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
                     .setNormal(currentPose, 0.0f, 0.0f, 1.0f);
 
             // エディターで選択中のステッカーには、ステッカー表面にピッタリ密着するハイライト枠をステッカーと同一パイプライン（3D）で直接描画
-            if (editor != null && editor.getCurrentSelectedDecal() == decal) {
+            if (isSelected) {
                 ResourceLocation frameLoc = DecalTextureManager.getSelectionFrameTexture(editor.isDecalDragging());
                 VertexConsumer frameConsumer = bufferSource.getBuffer(RenderType.entityCutoutNoCull(frameLoc));
 

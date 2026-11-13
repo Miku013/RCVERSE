@@ -772,6 +772,9 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable, c
     // === デカール (ステッカー) 管理 ===
     @Override
     public java.util.List<com.microdrone.mod.decal.CarDecalData> getDecals() {
+        if (!this.decals.isEmpty()) {
+            return this.decals;
+        }
         if (this.level().isClientSide) {
             CompoundTag syncTag = this.entityData.get(DATA_DECALS);
             java.util.List<com.microdrone.mod.decal.CarDecalData> list = com.microdrone.mod.decal.CarDecalData.deserializeDecals(syncTag);
@@ -779,7 +782,7 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable, c
                 this.decals.clear();
                 this.decals.addAll(list);
             }
-            return list;
+            return this.decals;
         }
         return this.decals;
     }
