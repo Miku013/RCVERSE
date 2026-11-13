@@ -29,6 +29,10 @@ public class RcVehicleDisplayRenderer {
     private static RcSubmarineEntity dummySubmarine;
 
     public static boolean renderVehicle3D(ItemStack stack, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight, Level level, float scale) {
+        return renderVehicle3D(stack, poseStack, bufferSource, packedLight, level, scale, 0.0F);
+    }
+
+    public static boolean renderVehicle3D(ItemStack stack, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight, Level level, float scale, float yRotation) {
         if (stack.isEmpty() || level == null) return false;
 
         Entity entity = null;
@@ -93,6 +97,9 @@ public class RcVehicleDisplayRenderer {
         if (entity != null) {
             poseStack.pushPose();
             poseStack.translate(0.0, yOffset, 0.0);
+            if (yRotation != 0.0F) {
+                poseStack.mulPose(Axis.YP.rotationDegrees(yRotation));
+            }
             poseStack.scale(scale, scale, scale);
 
             // 車体向きの補正（正面を向ける）

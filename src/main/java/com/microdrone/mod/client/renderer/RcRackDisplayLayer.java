@@ -36,13 +36,13 @@ public class RcRackDisplayLayer extends GeoRenderLayer<RcRackBlockEntity> {
 
                     RenderUtil.translateAndRotateMatrixForBone(poseStack, bone);
 
-                    // 1. RCビークルアイテムであれば、3D実物モデル（GeckoLib）を描画！
-                    boolean rendered3D = RcVehicleDisplayRenderer.renderVehicle3D(stack, poseStack, bufferSource, packedLight, animatable.getLevel(), 0.75F);
+                    // 1. RCビークルアイテムであれば、3D実物モデル（GeckoLib）を描画（真横を向くよう90度回転）
+                    boolean rendered3D = RcVehicleDisplayRenderer.renderVehicle3D(stack, poseStack, bufferSource, packedLight, animatable.getLevel(), 0.75F, 90.0F);
 
                     // 2. ビークル以外の通常アイテムやプロポの場合、ItemRendererで描画
                     if (!rendered3D) {
                         poseStack.translate(0.0, 0.08, 0.0);
-                        poseStack.mulPose(Axis.YP.rotationDegrees(180.0F));
+                        poseStack.mulPose(Axis.YP.rotationDegrees(90.0F));
                         poseStack.scale(0.85F, 0.85F, 0.85F);
 
                         this.itemRenderer.renderStatic(

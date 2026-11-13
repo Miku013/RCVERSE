@@ -19,6 +19,7 @@
 					"name": "caseframe",
 					"parent": "root",
 					"pivot": [0, 0, 0],
+					"rotation": [0, 180, 0],
 					"cubes": [
 						{"origin": [-24, 0, -8], "size": [48, 6, 17], "uv": [0, 0]},
 						{"origin": [-24, 31, -8], "size": [48, 3, 17], "uv": [0, 23]},
@@ -32,6 +33,7 @@
 					"name": "grass",
 					"parent": "root",
 					"pivot": [0, 0, 0],
+					"rotation": [0, 180, 0],
 					"cubes": [
 						{"origin": [0, 6, -8], "size": [23, 25, 1], "uv": [68, 84]},
 						{"origin": [-23, 6, -7], "size": [23, 25, 1], "uv": [94, 58]}
@@ -39,52 +41,42 @@
 				},
 				{
 					"name": "slot_0",
-					"parent": "root",
 					"pivot": [-18, 19, 2]
 				},
 				{
 					"name": "slot_1",
-					"parent": "root",
 					"pivot": [-9, 19, 2]
 				},
 				{
 					"name": "slot_2",
-					"parent": "root",
 					"pivot": [0, 19, 2]
 				},
 				{
 					"name": "slot_3",
-					"parent": "root",
 					"pivot": [9, 19, 2]
 				},
 				{
 					"name": "slot_4",
-					"parent": "root",
 					"pivot": [18, 19, 2]
 				},
 				{
 					"name": "slot_5",
-					"parent": "root",
 					"pivot": [-18, 6, 2]
 				},
 				{
 					"name": "slot_6",
-					"parent": "root",
 					"pivot": [-11, 6, 2]
 				},
 				{
 					"name": "slot_7",
-					"parent": "root",
 					"pivot": [0, 6, 2]
 				},
 				{
 					"name": "slot_8",
-					"parent": "root",
 					"pivot": [11, 6, 2]
 				},
 				{
 					"name": "slot_9",
-					"parent": "root",
 					"pivot": [18, 6, 2]
 				}
 			]

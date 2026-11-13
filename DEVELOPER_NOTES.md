@@ -1155,3 +1155,19 @@ ull のままとなり、mouseDragged 内でドラッグ計算が実行されて
     - 16x16 アイテムアイコン: `assets/microdrone/textures/item/rc_showcase.png`
     - アイテム/ブロックモデル・blockstates: `models/item/rc_showcase.json`, `models/block/rc_showcase.json`, `blockstates/rc_showcase.json`
     - 各種レジストリ登録: `ModBlocks.java`, `ModItems.java`, `ModBlockEntities.java`, `ModCreativeTabs.java`, `ClientModEvents.java`, `ja_jp.json`, `en_us.json`
+
+---
+
+## 2026-11-14: ショーケースモデルの更新およびラック・ショーケースの展示角度調整
+
+### 1. 概要
+- ユーザーから提供された修正版 `showcase.geo.json`（フレーム回転180度追加、各スロットピボットのZ座標調整反映）への差し替えを実施しました。
+- ラックおよびショーケースに展示されるモデルの向きを調整：
+  - **RCラック**: 真正面向きから「真横（90度）」に変更。
+  - **RCショーケース**: モデルの正面が「少し斜め左（25度）」を向くように回転。
+
+### 2. 変更ファイル
+- `assets/microdrone/geo/rc_showcase.geo.json`: ユーザー提供の最新モデル定義へ差し替え。
+- `RcVehicleDisplayRenderer.java`: 描画時にY軸回転角（`yRotation`）を受け取れるようオーバーロードを追加。
+- `RcRackDisplayLayer.java`: RCビークルおよびアイテムの描画向きを真横（90度）に設定。
+- `RcShowcaseDisplayLayer.java`: RCビークルおよびアイテムの描画向きを少し斜め左（25度）に設定。
