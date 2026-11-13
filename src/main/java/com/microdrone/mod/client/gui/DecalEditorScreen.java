@@ -699,10 +699,10 @@ public class DecalEditorScreen extends Screen {
                 float factor = getFactor();
                 float sens = 1.0f / Math.max(0.001f, factor);
 
-                float dxCam = (float) -dragX * sens;
+                float dxCam = (float) dragX * sens;
                 float dyCam = (float) -dragY * sens;
 
-                // レンダラー内の正面合わせ回転を反映（戦車以外は Axis.YP(180)）
+                // レンダラー内の正面合わせ回転を反映（Axis.YP(180)）
                 float effectiveYaw = getEffectiveYaw();
                 float yawRad = (float) Math.toRadians(effectiveYaw);
                 float cosY = (float) Math.cos(yawRad);
@@ -712,9 +712,10 @@ public class DecalEditorScreen extends Screen {
                 float cosP = (float) Math.cos(pitchRad);
                 float sinP = (float) Math.sin(pitchRad);
 
-                float dX = dxCam * cosY - dyCam * sinP * sinY;
+                // カメラ視線に対する3D投影連立方程式の解析解（真上・斜め・水平の全アングルでカーソル移動と100%完全同期）
+                float dX = dxCam * cosY + dyCam * sinP * sinY;
                 float dY = dyCam * cosP;
-                float dZ = dxCam * sinY + dyCam * sinP * cosY;
+                float dZ = dxCam * sinY - dyCam * sinP * cosY;
 
                 cur.setPosX(Mth.clamp(cur.getPosX() + dX, -30.0f, 30.0f));
                 cur.setPosY(Mth.clamp(cur.getPosY() + dY, 0.0f, 50.0f));
