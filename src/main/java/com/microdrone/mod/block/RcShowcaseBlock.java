@@ -213,12 +213,12 @@ public class RcShowcaseBlock extends HorizontalDirectionalBlock implements Entit
         double clickY = hit.y - masterPos.getY(); // 0.0〜2.0m
         boolean isUpper = clickY >= 1.05;
 
-        // 水平方向（X軸方向）のオフセットを計算
+        // 水平方向（X軸方向）のオフセットを計算（プレイヤー視線の左右とモデルスロットの配置を一致）
         Vec3 masterCenter = new Vec3(masterPos.getX() + 0.5, masterPos.getY(), masterPos.getZ() + 0.5);
         Vec3 delta = hit.subtract(masterCenter);
         double rad = Math.toRadians(-facing.toYRot());
         double localX = delta.x * Math.cos(rad) - delta.z * Math.sin(rad);
-        double bbX = localX * 16.0; // Blockbench単位 (-24〜+24)
+        double bbX = -localX * 16.0; // Blockbench単位 (-24〜+24) 左右反転補正
 
         if (isUpper) {
             if (bbX < -13.5) return 0;      // slot_0 (-18)

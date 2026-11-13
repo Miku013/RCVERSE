@@ -1171,3 +1171,11 @@ ull のままとなり、mouseDragged 内でドラッグ計算が実行されて
 - `RcVehicleDisplayRenderer.java`: 描画時にY軸回転角（`yRotation`）を受け取れるようオーバーロードを追加。
 - `RcRackDisplayLayer.java`: RCビークルおよびアイテムの描画向きを真横（90度）に設定。
 - `RcShowcaseDisplayLayer.java`: RCビークルおよびアイテムの描画向きを少し斜め左（25度）に設定。
+
+---
+
+## 2026-11-14: RCショーケースのクリック位置（左右スロット判定）反転修正
+
+### 1. 概要
+- RCショーケースでアイテムを取り付け・取り外しする際、プレイヤーの視線に対してスロットの左右判定が逆になっていた問題を修正しました。
+- `RcShowcaseBlock.java` の `getSlotIndexFromHit` において、水平オフセット座標 `bbX` の符号を反転（`-localX * 16.0`）させ、プレイヤーから見て左側をクリックした時は左側のスロット（slot_0, slot_1 / slot_5, slot_6）、右側をクリックした時は右側のスロット（slot_3, slot_4 / slot_8, slot_9）が正確に反応するように修正しました。
