@@ -48,7 +48,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class DroneEntity extends Entity implements GeoEntity, RcControllable {
+public class DroneEntity extends Entity implements GeoEntity, RcControllable, com.microdrone.mod.decal.RcDecalHolder {
     private final AnimatableInstanceCache geoCache = GeckoLibUtil.createInstanceCache(this);
 
     // フェイルセーフ用: 操縦中プレイヤーUUID -> ドローン
@@ -80,6 +80,10 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable {
     public static final float YAW_SENSITIVITY = 1.0f;                   // 旋回感度
 
     // === バッテリー同期用 EntityData ===
+    private static final EntityDataAccessor<CompoundTag> DATA_DECALS =
+            SynchedEntityData.defineId(DroneEntity.class, EntityDataSerializers.COMPOUND_TAG);
+    private final java.util.List<com.microdrone.mod.decal.CarDecalData> decals = new java.util.ArrayList<>();
+
     private static final EntityDataAccessor<Boolean> DATA_HAS_BATTERY =
             SynchedEntityData.defineId(DroneEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Integer> DATA_BATTERY_REMAINING =
@@ -146,6 +150,7 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable {
 
     @Override
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        builder.define(DATA_DECALS, new CompoundTag());
         builder.define(DATA_HAS_BATTERY, false);
         builder.define(DATA_BATTERY_REMAINING, 0);
         builder.define(DATA_BATTERY_MAX, 0);
@@ -757,6 +762,17 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable {
         if (!this.level().isClientSide) {
             ItemStack heldItem = player.getItemInHand(hand);
 
+            // ハサミでステッカー全剥がし
+            if (heldItem.is(net.minecraft.world.item.Items.SHEARS)) {
+                if (!this.getDecals().isEmpty()) {
+                    this.clearDecals();
+                    this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                            net.minecraft.sounds.SoundEvents.SHEEP_SHEAR, net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.0F);
+                    player.sendSystemMessage(net.minecraft.network.chat.Component.translatable("message.microdrone.car_decal_cleared"));
+                    return InteractionResult.SUCCESS;
+                }
+            }
+
             // 1. バッテリーアイテム所持時: バッテリー装着
             if (heldItem.getItem() instanceof DroneBatteryItem batteryItem) {
                 if (!this.installedBattery.isEmpty()) {
@@ -863,6 +879,13 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable {
                     item.getItem().set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, net.minecraft.network.chat.Component.literal(config.displayName));
                 }
             }
+            if (!this.decals.isEmpty()) {
+                net.minecraft.world.item.component.CustomData.update(
+                        net.minecraft.core.component.DataComponents.CUSTOM_DATA,
+                        item.getItem(),
+                        tag -> tag.put("Decals", com.microdrone.mod.decal.CarDecalData.serializeDecals(this.decals))
+                );
+            }
             this.level().addFreshEntity(item);
 
             // バッテリーが装着されていれば一緒にドロップ
@@ -909,6 +932,9 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable {
         if (compound.contains("VariantId", 8)) {
             setVariantId(compound.getString("VariantId"));
         }
+        if (compound.contains("Decals", 10)) {
+            setDecals(com.microdrone.mod.decal.CarDecalData.deserializeDecals(compound.getCompound("Decals")));
+        }
     }
 
     @Override
@@ -929,6 +955,9 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable {
         }
         compound.putDouble("BatteryAccumulatedDist", this.accumulatedDistance);
         compound.putString("VariantId", getVariantId());
+        if (!this.decals.isEmpty()) {
+            compound.put("Decals", com.microdrone.mod.decal.CarDecalData.serializeDecals(this.decals));
+        }
     }
 
     @Override
@@ -937,5 +966,41 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable {
         // ラジコン遠隔操縦・目視飛行・他プレイヤーからの視認のため最大電波距離(250m)超まで描画判定を大幅拡張
         double range = Math.max(256.0, this.getBoundingBox().getSize() * 64.0) * getViewScale();
         return distance < range * range;
+    }
+
+    // === デカール (ステッカー) 管理 ===
+    @Override
+    public java.util.List<com.microdrone.mod.decal.CarDecalData> getDecals() {
+        if (this.level().isClientSide) {
+            CompoundTag syncTag = this.entityData.get(DATA_DECALS);
+            java.util.List<com.microdrone.mod.decal.CarDecalData> list = com.microdrone.mod.decal.CarDecalData.deserializeDecals(syncTag);
+            if (!list.isEmpty()) {
+                this.decals.clear();
+                this.decals.addAll(list);
+            }
+            return list;
+        }
+        return this.decals;
+    }
+
+    @Override
+    public void setDecals(java.util.List<com.microdrone.mod.decal.CarDecalData> newDecals) {
+        this.decals.clear();
+        if (newDecals != null) {
+            this.decals.addAll(newDecals);
+        }
+        this.entityData.set(DATA_DECALS, com.microdrone.mod.decal.CarDecalData.serializeDecals(this.decals));
+    }
+
+    @Override
+    public void addDecal(com.microdrone.mod.decal.CarDecalData decal) {
+        this.decals.add(decal);
+        this.entityData.set(DATA_DECALS, com.microdrone.mod.decal.CarDecalData.serializeDecals(this.decals));
+    }
+
+    @Override
+    public void clearDecals() {
+        this.decals.clear();
+        this.entityData.set(DATA_DECALS, new CompoundTag());
     }
 }

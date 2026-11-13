@@ -45,10 +45,14 @@ import java.util.UUID;
  * - 主砲発射・マズルフラッシュ・反動（リコイル）
  * - バッテリー・モーター換装スロット
  */
-public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
+public class RcTankEntity extends Entity implements GeoEntity, RcControllable, com.microdrone.mod.decal.RcDecalHolder {
     private final AnimatableInstanceCache geoCache = GeckoLibUtil.createInstanceCache(this);
 
     // === 同期用 EntityData ===
+    private static final EntityDataAccessor<CompoundTag> DATA_DECALS =
+            SynchedEntityData.defineId(RcTankEntity.class, EntityDataSerializers.COMPOUND_TAG);
+    private final java.util.List<com.microdrone.mod.decal.CarDecalData> decals = new java.util.ArrayList<>();
+
     private static final EntityDataAccessor<Boolean> DATA_HAS_BATTERY =
             SynchedEntityData.defineId(RcTankEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Integer> DATA_BATTERY_REMAINING =
@@ -157,6 +161,7 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
 
     @Override
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        builder.define(DATA_DECALS, new CompoundTag());
         builder.define(DATA_HAS_BATTERY, false);
         builder.define(DATA_BATTERY_REMAINING, 0);
         builder.define(DATA_BATTERY_MAX, 1200);
@@ -544,6 +549,18 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
 
         ItemStack held = player.getItemInHand(hand);
 
+        // 0. ハサミでステッカー全剥がし
+        ItemStack heldItem = player.getItemInHand(hand);
+        if (heldItem.is(net.minecraft.world.item.Items.SHEARS)) {
+            if (!this.getDecals().isEmpty()) {
+                this.clearDecals();
+                this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                        net.minecraft.sounds.SoundEvents.SHEEP_SHEAR, net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.0F);
+                player.sendSystemMessage(net.minecraft.network.chat.Component.translatable("message.microdrone.car_decal_cleared"));
+                return InteractionResult.SUCCESS;
+            }
+        }
+
         // 1. スニーク右クリック: 回収
         if (player.isShiftKeyDown() && !isPiloted()) {
             ItemStack dropStack = new ItemStack(ModItems.RC_TANK_ITEM.get());
@@ -557,6 +574,13 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
                 if (config != null && config.displayName != null) {
                     dropStack.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal(config.displayName));
                 }
+            }
+            if (!this.decals.isEmpty()) {
+                net.minecraft.world.item.component.CustomData.update(
+                        net.minecraft.core.component.DataComponents.CUSTOM_DATA,
+                        dropStack,
+                        tag -> tag.put("Decals", com.microdrone.mod.decal.CarDecalData.serializeDecals(this.decals))
+                );
             }
             ItemEntity drop = new ItemEntity(level(), getX(), getY() + 0.2, getZ(), dropStack);
             level().addFreshEntity(drop);
@@ -706,6 +730,9 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
                 entityData.set(DATA_INSTALLED_MOTOR, this.installedMotor.copy());
             }
         }
+        if (compound.contains("Decals", 10)) {
+            setDecals(com.microdrone.mod.decal.CarDecalData.deserializeDecals(compound.getCompound("Decals")));
+        }
     }
 
     @Override
@@ -716,6 +743,9 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
         }
         if (!this.installedMotor.isEmpty()) {
             compound.put("InstalledMotor", this.installedMotor.save(this.registryAccess()));
+        }
+        if (!this.decals.isEmpty()) {
+            compound.put("Decals", com.microdrone.mod.decal.CarDecalData.serializeDecals(this.decals));
         }
     }
 
@@ -737,5 +767,41 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable {
     @Override
     public AnimatableInstanceCache getAnimatableInstanceCache() {
         return this.geoCache;
+    }
+
+    // === デカール (ステッカー) 管理 ===
+    @Override
+    public java.util.List<com.microdrone.mod.decal.CarDecalData> getDecals() {
+        if (this.level().isClientSide) {
+            CompoundTag syncTag = this.entityData.get(DATA_DECALS);
+            java.util.List<com.microdrone.mod.decal.CarDecalData> list = com.microdrone.mod.decal.CarDecalData.deserializeDecals(syncTag);
+            if (!list.isEmpty()) {
+                this.decals.clear();
+                this.decals.addAll(list);
+            }
+            return list;
+        }
+        return this.decals;
+    }
+
+    @Override
+    public void setDecals(java.util.List<com.microdrone.mod.decal.CarDecalData> newDecals) {
+        this.decals.clear();
+        if (newDecals != null) {
+            this.decals.addAll(newDecals);
+        }
+        this.entityData.set(DATA_DECALS, com.microdrone.mod.decal.CarDecalData.serializeDecals(this.decals));
+    }
+
+    @Override
+    public void addDecal(com.microdrone.mod.decal.CarDecalData decal) {
+        this.decals.add(decal);
+        this.entityData.set(DATA_DECALS, com.microdrone.mod.decal.CarDecalData.serializeDecals(this.decals));
+    }
+
+    @Override
+    public void clearDecals() {
+        this.decals.clear();
+        this.entityData.set(DATA_DECALS, new CompoundTag());
     }
 }

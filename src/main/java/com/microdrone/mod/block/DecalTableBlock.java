@@ -78,8 +78,8 @@ public class DecalTableBlock extends HorizontalDirectionalBlock implements Entit
             return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
         }
 
-        // 1. 手持ちがRCカーの場合: 作業台にセット（または既存車と交換）
-        if (stack.getItem() instanceof RcCarItem) {
+        // 1. 手持ちがRC乗り物アイテムの場合: 作業台にセット（または既存乗り物と交換）
+        if (isDecalApplicableItem(stack)) {
             ItemStack carToStore = stack.copyWithCount(1);
             if (!level.isClientSide) {
                 ItemStack oldCar = table.getStoredCar();
@@ -151,5 +151,16 @@ public class DecalTableBlock extends HorizontalDirectionalBlock implements Entit
             }
             super.onRemove(state, level, pos, newState, isMoving);
         }
+    }
+
+    public static boolean isDecalApplicableItem(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return false;
+        var item = stack.getItem();
+        return item instanceof RcCarItem
+                || item instanceof com.microdrone.mod.item.DroneSpawnItem
+                || item instanceof com.microdrone.mod.item.RcPlaneItem
+                || item instanceof com.microdrone.mod.item.RcBoatItem
+                || item instanceof com.microdrone.mod.item.RcSubmarineItem
+                || item instanceof com.microdrone.mod.item.RcTankItem;
     }
 }

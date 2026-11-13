@@ -925,3 +925,30 @@ acing_slope と drone_charger のPNGがJPEGからの変換で Format24bppRgb（�
   1. `RoadSplineGenerator.java` に `ROAD_SURFACE_Y_OFFSET = 0.015` (1.5cm) を新設。
   2. スプライン基準点 `p0` および `p3` の生成時に `ROAD_SURFACE_Y_OFFSET` を加算。
   3. これにより、道路面・縁石・側面スカートのメッシュ描画および車両タイヤの接地サンプリング（`RoadSplineManager.sampleRoad`）の双方がわずか1.5cm持ち上がり、地面ブロックとのZ-fightingが完全に解消。肉眼上は地面に隙間なく接地して見えつつ、グラフィック干渉のない滑らかなアスファルト描画を実現。
+
+### 全RC機体（飛行機・ボート・潜水艦・戦車・ドローン・車）へのデカール（ステッカー）システム汎用拡張 (2026-11-13)
+- **要望**: RCカーのみに対応していたデカール（ステッカー）工房・3Dリバリーエディターおよび機体への描画・保存システムを、全ビークル（RC飛行機、RCボート、RC潜水艦、RC戦車、ドローン）にも汎用化して一括対応する。
+- **実装内容**:
+  1. **汎用インターフェース (RcDecalHolder.java) の新設**:
+     - getDecals(), setDecals(List<CarDecalData>), ddDecal(CarDecalData), emoveDecal(int) を定義。
+     - RcCarEntity, RcPlaneEntity, RcBoatEntity, RcSubmarineEntity, RcTankEntity, DroneEntity がすべて実装。
+     - 各エンティティで DATA_DECALS_NBT (EntityDataSerializers.COMPOUND_TAG) による自動同期およびNBT（Decals タグ）永続化を実装。
+  2. **汎用GeckoLib描画レイヤー (RcVehicleDecalLayer.java) の新設**:
+     - <T extends Entity & GeoAnimatable & RcDecalHolder> に対応した汎用レイヤー。
+     - ボーン名指定マッチング（指定ボーンがない場合は ody, chassis, oot, 先頭ボーンへ安全にフォールバック）。
+     - 各機体のレンダラー（RcCarGeoRenderer, RcPlaneGeoRenderer, RcBoatGeoRenderer, RcSubmarineGeoRenderer, RcTankGeoRenderer, DroneGeoRenderer）に登録。
+  3. **デカール作業台 (DecalTableBlock.java) の拡張**:
+     - isDecalApplicableItem メソッドを新設し、全6種類のビークルアイテム（カー、ドローン、プレーン、ボート、潜水艦、タンク）を作業台に載せて編集可能に。
+  4. **3DリバリーエディターGUI (DecalEditorScreen.java) の汎用化**:
+     - 編集対象のビークル種別（車、飛行機、戦車、ドローン、ボート、潜水艦）を自動判定し、タイトルと3Dプレビューモデルを動的にロード。
+     - 各機体のサイズに合わせた自動スケール調整。
+     - 機体種別に応じたプリセットボタン（P1〜P5）の動的切替:
+       - RCカー: ボンネット, ルーフ, トランク, 左ドア, 右ドア
+       - 飛行機: 機首, 主翼(上), 胴体(左), 胴体(右), 尾翼
+       - 戦車: 砲塔(正面), 車体(正面), 砲塔(左), 砲塔(右), 車体(後部)
+       - ドローン: トップ, ボトム, アーム(前), アーム(後), キャノピー
+       - ボート: 甲板, 船首, 左舷, 右舷, 船尾
+       - 潜水艦: セイル(塔), 船体(上面), 左舷, 右舷, 船尾
+  5. **アイテム回収・再設置時のNBTデカール引き継ぎ**:
+     - 各機体のスニーク右クリック回収時に CustomData の Decals タグへデカール一覧を保存。
+     - アイテム（DroneSpawnItem, RcTankItem, RcPlaneItem, RcBoatItem, RcSubmarineItem）からの設置時に CustomData.copyTag() からデカールを自動復元。

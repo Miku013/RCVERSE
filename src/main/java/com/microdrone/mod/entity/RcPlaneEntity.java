@@ -42,10 +42,13 @@ import java.util.UUID;
  * - モード切替ハイブリッド: 直感アシスト飛行(自動水平復帰) ⇔ 本格アクロバット(手動ロール・宙返り)
  * - 飛行制御ログ出力システム ＆ 地面接触時の姿勢リセット防止
  */
-public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
+public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable, com.microdrone.mod.decal.RcDecalHolder {
     private final AnimatableInstanceCache geoCache = GeckoLibUtil.createInstanceCache(this);
 
     // === 同期用 EntityData ===
+    private static final EntityDataAccessor<CompoundTag> DATA_DECALS =
+            SynchedEntityData.defineId(RcPlaneEntity.class, EntityDataSerializers.COMPOUND_TAG);
+    private final java.util.List<com.microdrone.mod.decal.CarDecalData> decals = new java.util.ArrayList<>();
     private static final EntityDataAccessor<Boolean> DATA_HAS_BATTERY =
             SynchedEntityData.defineId(RcPlaneEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Integer> DATA_BATTERY_REMAINING =
@@ -152,6 +155,7 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
 
     @Override
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        builder.define(DATA_DECALS, new CompoundTag());
         builder.define(DATA_HAS_BATTERY, false);
         builder.define(DATA_BATTERY_REMAINING, 0);
         builder.define(DATA_BATTERY_MAX, 1200);
@@ -527,6 +531,17 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
     public InteractionResult interact(Player player, InteractionHand hand) {
         ItemStack held = player.getItemInHand(hand);
 
+        // 0. ハサミ (Items.SHEARS) でステッカー全剥がし
+        if (held.is(net.minecraft.world.item.Items.SHEARS)) {
+            if (!this.getDecals().isEmpty()) {
+                this.clearDecals();
+                this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                        net.minecraft.sounds.SoundEvents.SHEEP_SHEAR, net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.0F);
+                player.sendSystemMessage(net.minecraft.network.chat.Component.translatable("message.microdrone.car_decal_cleared"));
+                return InteractionResult.SUCCESS;
+            }
+        }
+
         // 1. スニーク右クリック: 機体回収
         if (player.isShiftKeyDown() && held.isEmpty()) {
             ItemStack dropStack = new ItemStack(ModItems.RC_PLANE_ITEM.get());
@@ -540,6 +555,13 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
                 if (config != null && config.displayName != null) {
                     dropStack.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, net.minecraft.network.chat.Component.literal(config.displayName));
                 }
+            }
+            if (!this.decals.isEmpty()) {
+                net.minecraft.world.item.component.CustomData.update(
+                        net.minecraft.core.component.DataComponents.CUSTOM_DATA,
+                        dropStack,
+                        tag -> tag.put("Decals", com.microdrone.mod.decal.CarDecalData.serializeDecals(this.decals))
+                );
             }
             if (!player.getInventory().add(dropStack)) {
                 level().addFreshEntity(new ItemEntity(level(), getX(), getY(), getZ(), dropStack));
@@ -666,6 +688,9 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
         this.throttle = tag.getFloat("Throttle");
         this.airspeed = tag.getFloat("Airspeed");
         this.flightMode = tag.getInt("FlightMode");
+        if (tag.contains("Decals", 10)) {
+            setDecals(com.microdrone.mod.decal.CarDecalData.deserializeDecals(tag.getCompound("Decals")));
+        }
     }
 
     @Override
@@ -679,6 +704,9 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
         tag.putFloat("Throttle", this.throttle);
         tag.putFloat("Airspeed", this.airspeed);
         tag.putInt("FlightMode", this.flightMode);
+        if (!this.decals.isEmpty()) {
+            tag.put("Decals", com.microdrone.mod.decal.CarDecalData.serializeDecals(this.decals));
+        }
     }
 
     @Override
@@ -688,5 +716,41 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable {
     @Override
     public AnimatableInstanceCache getAnimatableInstanceCache() {
         return this.geoCache;
+    }
+
+    // === デカール (ステッカー) 管理 ===
+    @Override
+    public java.util.List<com.microdrone.mod.decal.CarDecalData> getDecals() {
+        if (this.level().isClientSide) {
+            CompoundTag syncTag = this.entityData.get(DATA_DECALS);
+            java.util.List<com.microdrone.mod.decal.CarDecalData> list = com.microdrone.mod.decal.CarDecalData.deserializeDecals(syncTag);
+            if (!list.isEmpty()) {
+                this.decals.clear();
+                this.decals.addAll(list);
+            }
+            return list;
+        }
+        return this.decals;
+    }
+
+    @Override
+    public void setDecals(java.util.List<com.microdrone.mod.decal.CarDecalData> newDecals) {
+        this.decals.clear();
+        if (newDecals != null) {
+            this.decals.addAll(newDecals);
+        }
+        this.entityData.set(DATA_DECALS, com.microdrone.mod.decal.CarDecalData.serializeDecals(this.decals));
+    }
+
+    @Override
+    public void addDecal(com.microdrone.mod.decal.CarDecalData decal) {
+        this.decals.add(decal);
+        this.entityData.set(DATA_DECALS, com.microdrone.mod.decal.CarDecalData.serializeDecals(this.decals));
+    }
+
+    @Override
+    public void clearDecals() {
+        this.decals.clear();
+        this.entityData.set(DATA_DECALS, new CompoundTag());
     }
 }

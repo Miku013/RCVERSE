@@ -21,6 +21,8 @@ public class DroneGeoRenderer extends GeoEntityRenderer<DroneEntity> {
 
         // battery_slot ボーンへのバッテリー描画レイヤーを追加
         addRenderLayer(new DroneBatteryLayer(this));
+        // ステッカー（デカール）描画レイヤーを追加
+        addRenderLayer(new RcVehicleDecalLayer<>(this));
     }
 
     @Override

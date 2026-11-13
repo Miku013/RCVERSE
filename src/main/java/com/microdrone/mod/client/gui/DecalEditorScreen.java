@@ -2,9 +2,27 @@ package com.microdrone.mod.client.gui;
 
 import com.microdrone.mod.block.entity.DecalTableBlockEntity;
 import com.microdrone.mod.client.decal.DecalTextureManager;
+import com.microdrone.mod.config.boat.BoatConfigManager;
+import com.microdrone.mod.config.car.CarConfigManager;
+import com.microdrone.mod.config.drone.DroneConfigManager;
+import com.microdrone.mod.config.plane.PlaneConfigManager;
+import com.microdrone.mod.config.submarine.SubmarineConfigManager;
+import com.microdrone.mod.config.tank.TankConfigManager;
 import com.microdrone.mod.decal.CarDecalData;
+import com.microdrone.mod.decal.RcDecalHolder;
+import com.microdrone.mod.entity.DroneEntity;
 import com.microdrone.mod.entity.ModEntities;
+import com.microdrone.mod.entity.RcBoatEntity;
 import com.microdrone.mod.entity.RcCarEntity;
+import com.microdrone.mod.entity.RcPlaneEntity;
+import com.microdrone.mod.entity.RcSubmarineEntity;
+import com.microdrone.mod.entity.RcTankEntity;
+import com.microdrone.mod.item.DroneSpawnItem;
+import com.microdrone.mod.item.RcBoatItem;
+import com.microdrone.mod.item.RcCarItem;
+import com.microdrone.mod.item.RcPlaneItem;
+import com.microdrone.mod.item.RcSubmarineItem;
+import com.microdrone.mod.item.RcTankItem;
 import com.microdrone.mod.network.UpdateDecalsPayload;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -18,10 +36,13 @@ import net.minecraft.client.gui.components.Checkbox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 
@@ -30,14 +51,29 @@ import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * デカール作業台の専用3Dリバリーエディター画面 (GUI)
- * マウスドラッグで車体を360°回転させながら、透過PNGステッカーの位置・回転・サイズをリアルタイム編集可能
+ * 全RC乗り物（カー、飛行機、ボート、潜水艦、戦車、ドローン）対応の3Dデカール工房 (リバリーエディター) GUI
+ * マウスドラッグで車体・機体を360°回転させながら、透過PNGステッカーの位置・回転・サイズをリアルタイム編集可能
  */
 public class DecalEditorScreen extends Screen {
 
+    public enum VehicleCategory {
+        CAR("ボンネット", "ルーフ", "トランク", "左ドア", "右ドア"),
+        PLANE("機首", "胴体上面", "尾翼", "左主翼", "右主翼"),
+        BOAT("船首", "甲板", "船尾", "左舷", "右舷"),
+        SUBMARINE("艦首", "艦橋上", "艦尾", "左舷", "右舷"),
+        TANK("前面装甲", "砲塔天板", "車体後部", "左側面", "右側面"),
+        DRONE("前部", "上面", "後部", "左側", "右側");
+
+        public final String p1, p2, p3, p4, p5;
+        VehicleCategory(String p1, String p2, String p3, String p4, String p5) {
+            this.p1 = p1; this.p2 = p2; this.p3 = p3; this.p4 = p4; this.p5 = p5;
+        }
+    }
+
     private final DecalTableBlockEntity table;
     private final ItemStack carStack;
-    private RcCarEntity previewCar;
+    private Entity previewEntity;
+    private RcDecalHolder decalHolder;
 
     // 編集中のデカールリスト
     private final List<CarDecalData> editingDecals = new ArrayList<>();
@@ -98,28 +134,75 @@ public class DecalEditorScreen extends Screen {
         }
     }
 
+    private VehicleCategory getVehicleCategory() {
+        Item item = this.carStack.getItem();
+        if (item instanceof RcPlaneItem) return VehicleCategory.PLANE;
+        if (item instanceof RcBoatItem) return VehicleCategory.BOAT;
+        if (item instanceof RcSubmarineItem) return VehicleCategory.SUBMARINE;
+        if (item instanceof RcTankItem) return VehicleCategory.TANK;
+        if (item instanceof DroneSpawnItem) return VehicleCategory.DRONE;
+        return VehicleCategory.CAR;
+    }
+
+    private float getConfigScale() {
+        if (this.previewEntity instanceof RcCarEntity car) {
+            return CarConfigManager.getConfig(car.getVariantId()).properties.scale;
+        } else if (this.previewEntity instanceof RcPlaneEntity plane) {
+            return PlaneConfigManager.getConfig(plane.getVariantId()).properties.scale;
+        } else if (this.previewEntity instanceof RcBoatEntity boat) {
+            return BoatConfigManager.getConfig(boat.getVariantId()).properties.scale;
+        } else if (this.previewEntity instanceof RcSubmarineEntity sub) {
+            return SubmarineConfigManager.getConfig(sub.getVariantId()).properties.scale;
+        } else if (this.previewEntity instanceof RcTankEntity tank) {
+            return TankConfigManager.getConfig(tank.getVariantId()).properties.scale;
+        } else if (this.previewEntity instanceof DroneEntity drone) {
+            return DroneConfigManager.getConfig(drone.getVariantId()).properties.scale;
+        }
+        return 1.0f;
+    }
+
     @Override
     protected void init() {
         super.init();
 
-        // 外部車種設定 (JSON) を即座にリロード検知 (F3+T なしで最新設定を反映)
-        com.microdrone.mod.config.car.CarConfigManager.loadConfigs();
+        // 外部車種設定 (JSON) を即座に一括リロード検知 (F3+T なしで最新設定を反映)
+        CarConfigManager.loadConfigs();
+        PlaneConfigManager.loadConfigs();
+        BoatConfigManager.loadConfigs();
+        SubmarineConfigManager.loadConfigs();
+        TankConfigManager.loadConfigs();
+        DroneConfigManager.loadConfigs();
 
-        // 1. ダミーRCカーの生成（プレビュー用）
+        // 1. ダミーRC乗り物エンティティの生成（プレビュー用）
         if (this.minecraft != null && this.minecraft.level != null) {
-            this.previewCar = ModEntities.RC_CAR.get().create(this.minecraft.level);
-            if (this.previewCar != null) {
-                var customData = this.carStack.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA);
+            Item item = this.carStack.getItem();
+            if (item instanceof RcPlaneItem) {
+                this.previewEntity = ModEntities.RC_PLANE.get().create(this.minecraft.level);
+            } else if (item instanceof RcBoatItem) {
+                this.previewEntity = ModEntities.RC_BOAT.get().create(this.minecraft.level);
+            } else if (item instanceof RcSubmarineItem) {
+                this.previewEntity = ModEntities.RC_SUBMARINE.get().create(this.minecraft.level);
+            } else if (item instanceof RcTankItem) {
+                this.previewEntity = ModEntities.RC_TANK.get().create(this.minecraft.level);
+            } else if (item instanceof DroneSpawnItem) {
+                this.previewEntity = ModEntities.DRONE.get().create(this.minecraft.level);
+            } else {
+                this.previewEntity = ModEntities.RC_CAR.get().create(this.minecraft.level);
+            }
+
+            if (this.previewEntity instanceof RcDecalHolder holder) {
+                this.decalHolder = holder;
+                var customData = this.carStack.get(DataComponents.CUSTOM_DATA);
                 if (customData != null) {
                     CompoundTag tag = customData.copyTag();
                     if (tag.contains("Variant")) {
-                        this.previewCar.setVariantId(tag.getString("Variant"));
+                        holder.setVariantId(tag.getString("Variant"));
                     }
-                    if (tag.contains("BodyColor")) {
-                        this.previewCar.setBodyColor(tag.getInt("BodyColor"));
+                    if (tag.contains("BodyColor") && this.previewEntity instanceof RcCarEntity car) {
+                        car.setBodyColor(tag.getInt("BodyColor"));
                     }
                     if (tag.contains("Decals", 10)) {
-                        List<CarDecalData> loaded = RcCarEntity.deserializeDecals(tag.getCompound("Decals"));
+                        List<CarDecalData> loaded = CarDecalData.deserializeDecals(tag.getCompound("Decals"));
                         this.editingDecals.clear();
                         for (CarDecalData d : loaded) {
                             this.editingDecals.add(d.copy());
@@ -133,19 +216,13 @@ public class DecalEditorScreen extends Screen {
         this.availableStickers = DecalTextureManager.getAvailableStickerFiles();
         if (this.editingDecals.isEmpty()) {
             String initialTex = this.availableStickers.isEmpty() ? "sample_racing_43.png" : this.availableStickers.get(0);
-            boolean isTruck = this.previewCar != null && "truck".equalsIgnoreCase(this.previewCar.getVariantId());
             float naturalAspect = DecalTextureManager.getImageAspectRatio(initialTex);
-            CarDecalData first;
-            if (isTruck) {
-                first = new CarDecalData(initialTex, "body", 0.0f, 26.2f, 14.0f, -90.0f, 0.0f, 0.0f, 7.0f, naturalAspect);
-            } else {
-                first = new CarDecalData(initialTex, "body", 0.0f, 10.5f, -34.0f, -80.0f, 0.0f, 0.0f, 6.0f, naturalAspect);
-            }
+            CarDecalData first = createInitialDecalForCategory(initialTex, naturalAspect);
             this.editingDecals.add(first);
         }
-        this.selectedDecalIndex = Mth.clamp(this.selectedDecalIndex, 0, this.editingDecals.size() - 1);
+        this.selectedDecalIndex = 0;
 
-        // 2. UIコントロールの配置 (画面右側エリア: panelX)
+        // UIレイアウト
         int panelWidth = 155;
         int panelX = this.width - panelWidth - 10;
         int y = 22;
@@ -159,20 +236,21 @@ public class DecalEditorScreen extends Screen {
         this.addRenderableWidget(this.nextStickerBtn);
         y += 22;
 
-        // --- [固定ヘッダー] 部位プリセットボタン ---
+        // --- [固定ヘッダー] 部位プリセットボタン (乗り物カテゴリ別ラベル) ---
+        VehicleCategory cat = getVehicleCategory();
         int pw = (panelWidth - 4) / 3;
-        this.addRenderableWidget(Button.builder(Component.translatable("gui.microdrone.decal.part_hood"), b -> applyPreset("HOOD"))
+        this.addRenderableWidget(Button.builder(Component.literal(cat.p1), b -> applyPreset("P1"))
                 .bounds(panelX, y, pw, 18).build());
-        this.addRenderableWidget(Button.builder(Component.translatable("gui.microdrone.decal.part_roof"), b -> applyPreset("ROOF"))
+        this.addRenderableWidget(Button.builder(Component.literal(cat.p2), b -> applyPreset("P2"))
                 .bounds(panelX + pw + 2, y, pw, 18).build());
-        this.addRenderableWidget(Button.builder(Component.translatable("gui.microdrone.decal.part_trunk"), b -> applyPreset("TRUNK"))
+        this.addRenderableWidget(Button.builder(Component.literal(cat.p3), b -> applyPreset("P3"))
                 .bounds(panelX + (pw + 2) * 2, y, pw, 18).build());
         y += 20;
 
         int pw2 = (panelWidth - 2) / 2;
-        this.addRenderableWidget(Button.builder(Component.translatable("gui.microdrone.decal.part_door_l"), b -> applyPreset("DOOR_L"))
+        this.addRenderableWidget(Button.builder(Component.literal(cat.p4), b -> applyPreset("P4"))
                 .bounds(panelX, y, pw2, 18).build());
-        this.addRenderableWidget(Button.builder(Component.translatable("gui.microdrone.decal.part_door_r"), b -> applyPreset("DOOR_R"))
+        this.addRenderableWidget(Button.builder(Component.literal(cat.p5), b -> applyPreset("P5"))
                 .bounds(panelX + pw2 + 2, y, pw2, 18).build());
         y += 22;
 
@@ -264,85 +342,58 @@ public class DecalEditorScreen extends Screen {
         this.addRenderableWidget(this.removeDecalBtn);
         this.addRenderableWidget(this.nextDecalLayerBtn);
 
-        // --- [固定フッター] 保存・回収・キャンセルボタン ---
-        this.addRenderableWidget(Button.builder(Component.translatable("gui.microdrone.decal.save_and_take"), b -> save(true))
-                .bounds(panelX, this.height - 44, panelWidth, 18).build());
+        // --- [固定フッター] 適用して回収 / 適用 / キャンセル ---
+        int actionBtnY = this.height - 44;
+        this.addRenderableWidget(Button.builder(Component.literal("適用して回収"), b -> save(true))
+                .bounds(panelX, actionBtnY, panelWidth, 18).build());
 
-        int halfBtnWidth = (panelWidth - 4) / 2;
-        this.addRenderableWidget(Button.builder(Component.translatable("gui.microdrone.decal.save"), b -> save(false))
-                .bounds(panelX, this.height - 24, halfBtnWidth, 18).build());
-        this.addRenderableWidget(Button.builder(CommonComponents.GUI_CANCEL, b -> onClose())
-                .bounds(panelX + halfBtnWidth + 4, this.height - 24, halfBtnWidth, 18).build());
+        int bottomY = this.height - 24;
+        this.addRenderableWidget(Button.builder(Component.literal("適用"), b -> save(false))
+                .bounds(panelX, bottomY, 74, 18).build());
+        this.addRenderableWidget(Button.builder(Component.literal("キャンセル"), b -> onClose())
+                .bounds(panelX + 78, bottomY, 77, 18).build());
 
         updateScrollablePositions();
         syncSlidersFromCurrentDecal();
     }
 
+    private CarDecalData createInitialDecalForCategory(String tex, float aspect) {
+        VehicleCategory cat = getVehicleCategory();
+        boolean isTruck = this.decalHolder != null && "truck".equalsIgnoreCase(this.decalHolder.getVariantId());
+        return switch (cat) {
+            case PLANE -> new CarDecalData(tex, "body", 0.0f, 12.0f, 0.0f, -90.0f, 0.0f, 0.0f, 7.0f, aspect);
+            case BOAT -> new CarDecalData(tex, "body", 0.0f, 8.0f, 0.0f, -90.0f, 0.0f, 0.0f, 6.0f, aspect);
+            case SUBMARINE -> new CarDecalData(tex, "body", 0.0f, 20.0f, 0.0f, -90.0f, 0.0f, 0.0f, 7.0f, aspect);
+            case TANK -> new CarDecalData(tex, "chassis", 0.0f, 22.0f, 0.0f, -90.0f, 0.0f, 0.0f, 7.0f, aspect);
+            case DRONE -> new CarDecalData(tex, "chassis", 0.0f, 4.0f, 0.0f, -90.0f, 0.0f, 0.0f, 4.0f, aspect);
+            default -> isTruck
+                    ? new CarDecalData(tex, "body", 0.0f, 26.2f, 14.0f, -90.0f, 0.0f, 0.0f, 7.0f, aspect)
+                    : new CarDecalData(tex, "body", 0.0f, 10.5f, -34.0f, -80.0f, 0.0f, 0.0f, 6.0f, aspect);
+        };
+    }
+
     private <T extends AbstractWidget> T addScrollable(T widget, int baseY) {
         this.scrollableWidgets.add(widget);
         this.scrollableBaseY.add(baseY);
-        this.addRenderableWidget(widget);
-        return widget;
+        return this.addRenderableWidget(widget);
     }
 
     private void updateScrollablePositions() {
-        int topClip = 84;
-        int bottomClip = this.height - 84;
+        int bottomFooterStart = this.height - 84;
         for (int i = 0; i < this.scrollableWidgets.size(); i++) {
             AbstractWidget widget = this.scrollableWidgets.get(i);
-            int curY = this.scrollableBaseY.get(i) - (int) this.panelScrollY;
-            widget.setY(curY);
-            widget.visible = (curY + widget.getHeight() >= topClip && curY <= bottomClip);
+            int baseY = this.scrollableBaseY.get(i);
+            int currentY = (int) (baseY - this.panelScrollY);
+            widget.setY(currentY);
+            widget.visible = (currentY >= 84 && currentY + widget.getHeight() <= bottomFooterStart);
         }
-
-        syncSlidersFromCurrentDecal();
     }
 
     private CarDecalData getCurrentDecal() {
-        if (this.editingDecals.isEmpty()) return null;
-        if (this.selectedDecalIndex < 0 || this.selectedDecalIndex >= this.editingDecals.size()) {
-            this.selectedDecalIndex = 0;
+        if (this.selectedDecalIndex >= 0 && this.selectedDecalIndex < this.editingDecals.size()) {
+            return this.editingDecals.get(this.selectedDecalIndex);
         }
-        return this.editingDecals.get(this.selectedDecalIndex);
-    }
-
-    private void cycleSticker(int direction) {
-        if (this.availableStickers.isEmpty()) return;
-        this.selectedStickerFileIndex = (this.selectedStickerFileIndex + direction + this.availableStickers.size()) % this.availableStickers.size();
-        String selected = this.availableStickers.get(this.selectedStickerFileIndex);
-        CarDecalData cur = getCurrentDecal();
-        if (cur != null) {
-            cur.setTextureName(selected);
-            // 元画像のアスペクト比 (幅 / 高さ) を自動検出して反映
-            float naturalAspect = DecalTextureManager.getImageAspectRatio(selected);
-            cur.setAspect(naturalAspect);
-            syncSlidersFromCurrentDecal();
-        }
-    }
-
-    private void selectDecalLayer(int direction) {
-        if (this.editingDecals.isEmpty()) return;
-        this.selectedDecalIndex = (this.selectedDecalIndex + direction + this.editingDecals.size()) % this.editingDecals.size();
-        syncSlidersFromCurrentDecal();
-    }
-
-    private void addNewDecal() {
-        if (this.editingDecals.size() >= 8) return; // 最大8枚まで
-        CarDecalData cur = getCurrentDecal();
-        CarDecalData newDecal = cur != null ? cur.copy() : new CarDecalData();
-        newDecal.setPosZ(newDecal.getPosZ() - 2.0f); // 重なりを避けるため少しずらす
-        this.editingDecals.add(newDecal);
-        this.selectedDecalIndex = this.editingDecals.size() - 1;
-        syncSlidersFromCurrentDecal();
-    }
-
-    private void removeCurrentDecal() {
-        if (this.editingDecals.size() <= 1) return; // 最低1枚は残す
-        this.editingDecals.remove(this.selectedDecalIndex);
-        if (this.selectedDecalIndex >= this.editingDecals.size()) {
-            this.selectedDecalIndex = this.editingDecals.size() - 1;
-        }
-        syncSlidersFromCurrentDecal();
+        return null;
     }
 
     private void syncSlidersFromCurrentDecal() {
@@ -356,79 +407,165 @@ public class DecalEditorScreen extends Screen {
         if (this.rotSlider != null) this.rotSlider.setFloatValue(cur.getRotZ());
         if (this.scaleSlider != null) this.scaleSlider.setFloatValue(cur.getScale());
         if (this.aspectSlider != null) this.aspectSlider.setFloatValue(cur.getAspect());
-        if (this.mirrorCheckbox != null && this.mirrorCheckbox.selected() != cur.isMirrorX()) {
-            this.mirrorCheckbox.onPress();
+        if (this.mirrorCheckbox != null) {
+            if (this.mirrorCheckbox.selected() != cur.isMirrorX()) {
+                this.mirrorCheckbox.onPress();
+            }
         }
+    }
 
-        // 現在のステッカーファイル名とインデックスを同期
-        int idx = this.availableStickers.indexOf(cur.getTextureName());
-        if (idx != -1) {
-            this.selectedStickerFileIndex = idx;
+    private void cycleSticker(int dir) {
+        if (this.availableStickers.isEmpty()) return;
+        this.selectedStickerFileIndex = (this.selectedStickerFileIndex + dir + this.availableStickers.size()) % this.availableStickers.size();
+        String chosen = this.availableStickers.get(this.selectedStickerFileIndex);
+        CarDecalData cur = getCurrentDecal();
+        if (cur != null) {
+            cur.setTextureName(chosen);
+            float naturalAspect = DecalTextureManager.getImageAspectRatio(chosen);
+            cur.setAspect(naturalAspect);
+            if (this.aspectSlider != null) {
+                this.aspectSlider.setFloatValue(naturalAspect);
+            }
         }
+    }
+
+    private void selectDecalLayer(int dir) {
+        if (this.editingDecals.isEmpty()) return;
+        this.selectedDecalIndex = (this.selectedDecalIndex + dir + this.editingDecals.size()) % this.editingDecals.size();
+        syncSlidersFromCurrentDecal();
+    }
+
+    private void addNewDecal() {
+        CarDecalData cur = getCurrentDecal();
+        CarDecalData newDecal;
+        if (cur != null) {
+            newDecal = cur.copy();
+            newDecal.setPosZ(newDecal.getPosZ() + 4.0f);
+        } else {
+            String tex = this.availableStickers.isEmpty() ? "sample_racing_43.png" : this.availableStickers.get(0);
+            float naturalAspect = DecalTextureManager.getImageAspectRatio(tex);
+            newDecal = createInitialDecalForCategory(tex, naturalAspect);
+        }
+        this.editingDecals.add(newDecal);
+        this.selectedDecalIndex = this.editingDecals.size() - 1;
+        syncSlidersFromCurrentDecal();
+    }
+
+    private void removeCurrentDecal() {
+        if (this.editingDecals.size() <= 1) return;
+        this.editingDecals.remove(this.selectedDecalIndex);
+        this.selectedDecalIndex = Math.max(0, this.selectedDecalIndex - 1);
+        syncSlidersFromCurrentDecal();
     }
 
     private void applyPreset(String part) {
         CarDecalData cur = getCurrentDecal();
-        if (cur == null || this.previewCar == null) return;
-        boolean isTruck = "truck".equalsIgnoreCase(this.previewCar.getVariantId());
+        if (cur == null || this.previewEntity == null) return;
+        VehicleCategory cat = getVehicleCategory();
+        boolean isTruck = this.decalHolder != null && "truck".equalsIgnoreCase(this.decalHolder.getVariantId());
 
         switch (part) {
-            case "HOOD" -> { // ボンネット
+            case "P1" -> { // 前部 / ボンネット / 機首 / 船首 / 前面
                 cur.setPosX(0.0f);
-                cur.setPosY(isTruck ? 26.2f : 10.5f);
-                cur.setPosZ(isTruck ? 14.0f : -34.0f);
-                cur.setRotX(isTruck ? -90.0f : -80.0f);
                 cur.setRotY(0.0f);
                 cur.setRotZ(0.0f);
-                cur.setScale(isTruck ? 7.0f : 6.0f);
                 cur.setMirrorX(false);
+                switch (cat) {
+                    case PLANE -> { cur.setPosY(8.0f); cur.setPosZ(15.0f); cur.setRotX(-90.0f); cur.setScale(6.0f); }
+                    case BOAT -> { cur.setPosY(6.0f); cur.setPosZ(15.0f); cur.setRotX(-90.0f); cur.setScale(6.0f); }
+                    case SUBMARINE -> { cur.setPosY(16.0f); cur.setPosZ(15.0f); cur.setRotX(-90.0f); cur.setScale(6.0f); }
+                    case TANK -> { cur.setPosY(14.0f); cur.setPosZ(20.0f); cur.setRotX(-70.0f); cur.setScale(6.0f); }
+                    case DRONE -> { cur.setPosY(2.5f); cur.setPosZ(3.0f); cur.setRotX(-90.0f); cur.setScale(4.0f); }
+                    default -> {
+                        cur.setPosY(isTruck ? 26.2f : 10.5f);
+                        cur.setPosZ(isTruck ? 14.0f : -34.0f);
+                        cur.setRotX(isTruck ? -90.0f : -80.0f);
+                        cur.setScale(isTruck ? 7.0f : 6.0f);
+                    }
+                }
             }
-            case "ROOF" -> { // ルーフ
+            case "P2" -> { // 上面 / ルーフ / 胴体上 / 甲板 / 天板
                 cur.setPosX(0.0f);
-                cur.setPosY(isTruck ? 36.2f : 22.0f);
-                cur.setPosZ(isTruck ? 4.0f : 9.4f);
                 cur.setRotX(-90.0f);
                 cur.setRotY(0.0f);
                 cur.setRotZ(0.0f);
-                cur.setScale(isTruck ? 7.0f : 6.0f);
                 cur.setMirrorX(false);
+                switch (cat) {
+                    case PLANE -> { cur.setPosY(12.0f); cur.setPosZ(0.0f); cur.setScale(6.0f); }
+                    case BOAT -> { cur.setPosY(8.0f); cur.setPosZ(0.0f); cur.setScale(6.0f); }
+                    case SUBMARINE -> { cur.setPosY(20.0f); cur.setPosZ(0.0f); cur.setScale(6.0f); }
+                    case TANK -> { cur.setPosY(22.0f); cur.setPosZ(0.0f); cur.setScale(6.0f); }
+                    case DRONE -> { cur.setPosY(4.0f); cur.setPosZ(0.0f); cur.setScale(4.0f); }
+                    default -> {
+                        cur.setPosY(isTruck ? 36.2f : 22.0f);
+                        cur.setPosZ(isTruck ? 4.0f : 9.4f);
+                        cur.setScale(isTruck ? 7.0f : 6.0f);
+                    }
+                }
             }
-            case "DOOR_L" -> { // 左ドア
-                cur.setPosX(isTruck ? -9.2f : -13.2f);
-                cur.setPosY(isTruck ? 20.0f : 12.5f);
-                cur.setPosZ(isTruck ? 4.0f : 4.5f);
-                cur.setRotX(0.0f);
-                cur.setRotY(-90.0f);
-                cur.setRotZ(0.0f);
-                cur.setScale(isTruck ? 6.0f : 5.0f);
-                cur.setMirrorX(false);
-            }
-            case "DOOR_R" -> { // 右ドア
-                cur.setPosX(isTruck ? 9.2f : 13.2f);
-                cur.setPosY(isTruck ? 20.0f : 12.5f);
-                cur.setPosZ(isTruck ? 4.0f : 4.5f);
-                cur.setRotX(0.0f);
-                cur.setRotY(90.0f);
-                cur.setRotZ(0.0f);
-                cur.setScale(isTruck ? 6.0f : 5.0f);
-                cur.setMirrorX(true); // 右ドアはUV反転
-            }
-            case "TRUNK" -> { // トランク / リア
+            case "P3" -> { // 後部 / トランク / 尾翼 / 船尾
                 cur.setPosX(0.0f);
-                cur.setPosY(isTruck ? 22.0f : 16.2f);
-                cur.setPosZ(isTruck ? -14.0f : 31.0f);
-                cur.setRotX(isTruck ? -90.0f : -90.0f);
+                cur.setRotX(-90.0f);
                 cur.setRotY(0.0f);
                 cur.setRotZ(0.0f);
-                cur.setScale(isTruck ? 6.0f : 5.0f);
                 cur.setMirrorX(false);
+                switch (cat) {
+                    case PLANE -> { cur.setPosY(15.0f); cur.setPosZ(-18.0f); cur.setScale(5.0f); }
+                    case BOAT -> { cur.setPosY(6.0f); cur.setPosZ(-15.0f); cur.setScale(5.0f); }
+                    case SUBMARINE -> { cur.setPosY(14.0f); cur.setPosZ(-15.0f); cur.setScale(5.0f); }
+                    case TANK -> { cur.setPosY(12.0f); cur.setPosZ(-20.0f); cur.setScale(5.0f); }
+                    case DRONE -> { cur.setPosY(2.5f); cur.setPosZ(-3.0f); cur.setScale(4.0f); }
+                    default -> {
+                        cur.setPosY(isTruck ? 22.0f : 16.2f);
+                        cur.setPosZ(isTruck ? -14.0f : 31.0f);
+                        cur.setScale(isTruck ? 6.0f : 5.0f);
+                    }
+                }
+            }
+            case "P4" -> { // 左側 / 左ドア / 左主翼 / 左舷 / 左側面
+                cur.setMirrorX(false);
+                switch (cat) {
+                    case PLANE -> { cur.setPosX(-16.0f); cur.setPosY(16.0f); cur.setPosZ(6.0f); cur.setRotX(-90.0f); cur.setRotY(0.0f); cur.setRotZ(0.0f); cur.setScale(6.0f); }
+                    case BOAT -> { cur.setPosX(-8.0f); cur.setPosY(6.0f); cur.setPosZ(0.0f); cur.setRotX(0.0f); cur.setRotY(-90.0f); cur.setRotZ(0.0f); cur.setScale(5.0f); }
+                    case SUBMARINE -> { cur.setPosX(-8.0f); cur.setPosY(14.0f); cur.setPosZ(0.0f); cur.setRotX(0.0f); cur.setRotY(-90.0f); cur.setRotZ(0.0f); cur.setScale(5.0f); }
+                    case TANK -> { cur.setPosX(-12.0f); cur.setPosY(10.0f); cur.setPosZ(0.0f); cur.setRotX(0.0f); cur.setRotY(-90.0f); cur.setRotZ(0.0f); cur.setScale(5.0f); }
+                    case DRONE -> { cur.setPosX(-6.0f); cur.setPosY(2.0f); cur.setPosZ(0.0f); cur.setRotX(-90.0f); cur.setRotY(0.0f); cur.setRotZ(0.0f); cur.setScale(3.5f); }
+                    default -> {
+                        cur.setPosX(isTruck ? -9.2f : -13.2f);
+                        cur.setPosY(isTruck ? 20.0f : 12.5f);
+                        cur.setPosZ(isTruck ? 4.0f : 4.5f);
+                        cur.setRotX(0.0f);
+                        cur.setRotY(-90.0f);
+                        cur.setRotZ(0.0f);
+                        cur.setScale(isTruck ? 6.0f : 5.0f);
+                    }
+                }
+            }
+            case "P5" -> { // 右側 / 右ドア / 右主翼 / 右舷 / 右側面
+                cur.setMirrorX(true);
+                switch (cat) {
+                    case PLANE -> { cur.setPosX(16.0f); cur.setPosY(16.0f); cur.setPosZ(6.0f); cur.setRotX(-90.0f); cur.setRotY(0.0f); cur.setRotZ(0.0f); cur.setScale(6.0f); }
+                    case BOAT -> { cur.setPosX(8.0f); cur.setPosY(6.0f); cur.setPosZ(0.0f); cur.setRotX(0.0f); cur.setRotY(90.0f); cur.setRotZ(0.0f); cur.setScale(5.0f); }
+                    case SUBMARINE -> { cur.setPosX(8.0f); cur.setPosY(14.0f); cur.setPosZ(0.0f); cur.setRotX(0.0f); cur.setRotY(90.0f); cur.setRotZ(0.0f); cur.setScale(5.0f); }
+                    case TANK -> { cur.setPosX(12.0f); cur.setPosY(10.0f); cur.setPosZ(0.0f); cur.setRotX(0.0f); cur.setRotY(90.0f); cur.setRotZ(0.0f); cur.setScale(5.0f); }
+                    case DRONE -> { cur.setPosX(6.0f); cur.setPosY(2.0f); cur.setPosZ(0.0f); cur.setRotX(-90.0f); cur.setRotY(0.0f); cur.setRotZ(0.0f); cur.setScale(3.5f); }
+                    default -> {
+                        cur.setPosX(isTruck ? 9.2f : 13.2f);
+                        cur.setPosY(isTruck ? 20.0f : 12.5f);
+                        cur.setPosZ(isTruck ? 4.0f : 4.5f);
+                        cur.setRotX(0.0f);
+                        cur.setRotY(90.0f);
+                        cur.setRotZ(0.0f);
+                        cur.setScale(isTruck ? 6.0f : 5.0f);
+                    }
+                }
             }
         }
         syncSlidersFromCurrentDecal();
     }
 
     private void save(boolean takeOut) {
-        CompoundTag decalsTag = RcCarEntity.serializeDecals(this.editingDecals);
+        CompoundTag decalsTag = CarDecalData.serializeDecals(this.editingDecals);
         PacketDistributor.sendToServer(new UpdateDecalsPayload(this.table.getBlockPos(), decalsTag, takeOut));
         if (takeOut && this.table != null) {
             this.table.setStoredCar(ItemStack.EMPTY);
@@ -495,8 +632,8 @@ public class DecalEditorScreen extends Screen {
         }
         if (this.isDraggingDecal) {
             CarDecalData cur = getCurrentDecal();
-            if (cur != null && this.previewCar != null) {
-                float configScale = com.microdrone.mod.config.car.CarConfigManager.getConfig(this.previewCar.getVariantId()).properties.scale;
+            if (cur != null && this.previewEntity != null) {
+                float configScale = getConfigScale();
                 float factor = this.previewZoom * 0.2f * configScale * 0.0625f;
                 float sens = 1.0f / Math.max(0.001f, factor);
 
@@ -537,7 +674,7 @@ public class DecalEditorScreen extends Screen {
 
     private ScreenPos getDecalScreenPos() {
         CarDecalData cur = getCurrentDecal();
-        if (cur == null || this.previewCar == null) return null;
+        if (cur == null || this.previewEntity == null) return null;
 
         int panelWidth = 155;
         int panelX = this.width - panelWidth - 10;
@@ -545,7 +682,7 @@ public class DecalEditorScreen extends Screen {
         int centerX = (10 + viewportWidth) / 2 + (int) this.modelPanX;
         int centerY = this.height / 2 + 10 + (int) this.modelPanY;
 
-        float configScale = com.microdrone.mod.config.car.CarConfigManager.getConfig(this.previewCar.getVariantId()).properties.scale;
+        float configScale = getConfigScale();
         float factor = this.previewZoom * 0.2f * configScale * 0.0625f;
 
         float x0 = cur.getPosX();
@@ -644,14 +781,14 @@ public class DecalEditorScreen extends Screen {
         String layerText = String.format("デカール %d / %d", this.selectedDecalIndex + 1, Math.max(1, this.editingDecals.size()));
         graphics.drawCenteredString(this.font, Component.literal(layerText), panelX + panelWidth / 2, this.height - 78, 0xFFE0E0E0);
 
-        // 5. 3D RCカーモデルのリアルタイムプレビュー描画
-        if (this.previewCar != null) {
-            // 編集中のデカールリストをダミー車体に反映
-            this.previewCar.setDecals(this.editingDecals);
+        // 5. 3D RC乗り物モデルのリアルタイムプレビュー描画
+        if (this.previewEntity != null && this.decalHolder != null) {
+            // 編集中のデカールリストをダミー乗り物に反映
+            this.decalHolder.setDecals(this.editingDecals);
 
             int centerX = (10 + viewportWidth) / 2 + (int) this.modelPanX;
             int centerY = this.height / 2 + 10 + (int) this.modelPanY;
-            renderCarInGui(graphics, centerX, centerY, this.previewZoom, this.previewYaw, this.previewPitch, this.previewCar);
+            renderEntityInGui(graphics, centerX, centerY, this.previewZoom, this.previewYaw, this.previewPitch, this.previewEntity);
         }
 
         // 6. 選択中ステッカーのドラッグ用ハイライト枠表示 (くっきり最前面で描画)
@@ -676,9 +813,9 @@ public class DecalEditorScreen extends Screen {
     }
 
     /**
-     * GUI内にRCカーエンティティ（GeckoLib 3Dモデル＋デカールレイヤー）をリアルタイム描画
+     * GUI内にRCエンティティ（GeckoLib 3Dモデル＋デカールレイヤー）をリアルタイム描画
      */
-    private static void renderCarInGui(GuiGraphics graphics, int centerX, int centerY, float scale, float yaw, float pitch, RcCarEntity car) {
+    private static void renderEntityInGui(GuiGraphics graphics, int centerX, int centerY, float scale, float yaw, float pitch, Entity entity) {
         PoseStack poseStack = graphics.pose();
         poseStack.pushPose();
         poseStack.translate(centerX, centerY, 150.0);
@@ -694,7 +831,7 @@ public class DecalEditorScreen extends Screen {
         dispatcher.setRenderShadow(false);
 
         MultiBufferSource.BufferSource bufferSource = Minecraft.getInstance().renderBuffers().bufferSource();
-        dispatcher.render(car, 0.0, 0.0, 0.0, 0.0f, 1.0f, poseStack, bufferSource, LightTexture.FULL_BRIGHT);
+        dispatcher.render(entity, 0.0, 0.0, 0.0, 0.0f, 1.0f, poseStack, bufferSource, LightTexture.FULL_BRIGHT);
         bufferSource.endBatch();
 
         dispatcher.setRenderShadow(true);
@@ -742,4 +879,3 @@ public class DecalEditorScreen extends Screen {
         }
     }
 }
-

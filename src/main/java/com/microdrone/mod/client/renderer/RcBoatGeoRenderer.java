@@ -13,6 +13,7 @@ public class RcBoatGeoRenderer extends GeoEntityRenderer<RcBoatEntity> {
 
     public RcBoatGeoRenderer(EntityRendererProvider.Context context) {
         super(context, new RcBoatGeoModel());
+        this.addRenderLayer(new RcVehicleDecalLayer<>(this));
         this.shadowRadius = 0.35F;
     }
 

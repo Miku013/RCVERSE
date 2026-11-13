@@ -100,8 +100,14 @@ public class RcSubmarineItem extends Item {
 
     private void applyVariant(ItemStack itemStack, RcSubmarineEntity submarine) {
         var customData = itemStack.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA);
-        if (customData != null && customData.contains("Variant")) {
-            submarine.setVariantId(customData.copyTag().getString("Variant"));
+        if (customData != null) {
+            net.minecraft.nbt.CompoundTag tag = customData.copyTag();
+            if (tag.contains("Variant")) {
+                submarine.setVariantId(tag.getString("Variant"));
+            }
+            if (tag.contains("Decals", 10)) {
+                submarine.setDecals(com.microdrone.mod.decal.CarDecalData.deserializeDecals(tag.getCompound("Decals")));
+            }
         } else if (itemStack.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME)) {
             String customName = itemStack.getHoverName().getString().trim().toLowerCase();
             if (com.microdrone.mod.config.submarine.SubmarineConfigManager.getAllConfigs().containsKey(customName)) {

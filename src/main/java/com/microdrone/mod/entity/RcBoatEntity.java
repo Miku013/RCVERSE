@@ -45,11 +45,15 @@ import java.util.UUID;
  * マイクロRCボート（高速パワーボート・スピードボート）
  * 水上浮力物理、ツインスクリュー推進、方向舵ステアリング、プレーニング（滑走滑走）、波しぶきパーティクルをシミュレート
  */
-public class RcBoatEntity extends Entity implements GeoEntity, RcControllable {
+public class RcBoatEntity extends Entity implements GeoEntity, RcControllable, com.microdrone.mod.decal.RcDecalHolder {
 
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
     // バッテリー & モーター同期データ
+    private static final EntityDataAccessor<CompoundTag> DATA_DECALS =
+            SynchedEntityData.defineId(RcBoatEntity.class, EntityDataSerializers.COMPOUND_TAG);
+    private final java.util.List<com.microdrone.mod.decal.CarDecalData> decals = new java.util.ArrayList<>();
+
     private static final EntityDataAccessor<Boolean> DATA_HAS_BATTERY =
             SynchedEntityData.defineId(RcBoatEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Integer> DATA_BATTERY_REMAINING =
@@ -125,6 +129,7 @@ public class RcBoatEntity extends Entity implements GeoEntity, RcControllable {
 
     @Override
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        builder.define(DATA_DECALS, new CompoundTag());
         builder.define(DATA_HAS_BATTERY, false);
         builder.define(DATA_BATTERY_REMAINING, 0);
         builder.define(DATA_BATTERY_MAX, 0);
@@ -463,6 +468,17 @@ public class RcBoatEntity extends Entity implements GeoEntity, RcControllable {
         if (!this.level().isClientSide) {
             ItemStack heldItem = player.getItemInHand(hand);
 
+            // ハサミでステッカー全剥がし
+            if (heldItem.is(net.minecraft.world.item.Items.SHEARS)) {
+                if (!this.getDecals().isEmpty()) {
+                    this.clearDecals();
+                    this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                            net.minecraft.sounds.SoundEvents.SHEEP_SHEAR, net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.0F);
+                    player.sendSystemMessage(net.minecraft.network.chat.Component.translatable("message.microdrone.car_decal_cleared"));
+                    return InteractionResult.SUCCESS;
+                }
+            }
+
             if (heldItem.getItem() instanceof DroneBatteryItem) {
                 if (!this.installedBattery.isEmpty()) {
                     ItemStack old = this.installedBattery.copy();
@@ -506,6 +522,13 @@ public class RcBoatEntity extends Entity implements GeoEntity, RcControllable {
                         drop.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, net.minecraft.network.chat.Component.literal(config.displayName));
                     }
                 }
+                if (!this.decals.isEmpty()) {
+                    net.minecraft.world.item.component.CustomData.update(
+                            net.minecraft.core.component.DataComponents.CUSTOM_DATA,
+                            drop,
+                            tag -> tag.put("Decals", com.microdrone.mod.decal.CarDecalData.serializeDecals(this.decals))
+                    );
+                }
                 if (!player.getInventory().add(drop)) player.drop(drop, false);
                 if (!this.installedBattery.isEmpty()) player.drop(this.installedBattery, false);
                 if (!this.installedMotor.isEmpty()) player.drop(this.installedMotor, false);
@@ -533,6 +556,13 @@ public class RcBoatEntity extends Entity implements GeoEntity, RcControllable {
                     if (config != null && config.displayName != null) {
                         drop.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, net.minecraft.network.chat.Component.literal(config.displayName));
                     }
+                }
+                if (!this.decals.isEmpty()) {
+                    net.minecraft.world.item.component.CustomData.update(
+                            net.minecraft.core.component.DataComponents.CUSTOM_DATA,
+                            drop,
+                            tag -> tag.put("Decals", com.microdrone.mod.decal.CarDecalData.serializeDecals(this.decals))
+                    );
                 }
                     this.spawnAtLocation(drop);
                     if (!this.installedBattery.isEmpty()) this.spawnAtLocation(this.installedBattery);
@@ -573,6 +603,9 @@ public class RcBoatEntity extends Entity implements GeoEntity, RcControllable {
             }
             this.entityData.set(DATA_INSTALLED_MOTOR, this.installedMotor.copy());
         }
+        if (compound.contains("Decals", 10)) {
+            setDecals(com.microdrone.mod.decal.CarDecalData.deserializeDecals(compound.getCompound("Decals")));
+        }
     }
 
     @Override
@@ -591,6 +624,9 @@ public class RcBoatEntity extends Entity implements GeoEntity, RcControllable {
         if (!this.installedMotor.isEmpty()) {
             compound.put("InstalledMotor", this.installedMotor.save(this.registryAccess()));
         }
+        if (!this.decals.isEmpty()) {
+            compound.put("Decals", com.microdrone.mod.decal.CarDecalData.serializeDecals(this.decals));
+        }
     }
 
     @Override
@@ -601,5 +637,41 @@ public class RcBoatEntity extends Entity implements GeoEntity, RcControllable {
     @Override
     public AnimatableInstanceCache getAnimatableInstanceCache() {
         return cache;
+    }
+
+    // === デカール (ステッカー) 管理 ===
+    @Override
+    public java.util.List<com.microdrone.mod.decal.CarDecalData> getDecals() {
+        if (this.level().isClientSide) {
+            CompoundTag syncTag = this.entityData.get(DATA_DECALS);
+            java.util.List<com.microdrone.mod.decal.CarDecalData> list = com.microdrone.mod.decal.CarDecalData.deserializeDecals(syncTag);
+            if (!list.isEmpty()) {
+                this.decals.clear();
+                this.decals.addAll(list);
+            }
+            return list;
+        }
+        return this.decals;
+    }
+
+    @Override
+    public void setDecals(java.util.List<com.microdrone.mod.decal.CarDecalData> newDecals) {
+        this.decals.clear();
+        if (newDecals != null) {
+            this.decals.addAll(newDecals);
+        }
+        this.entityData.set(DATA_DECALS, com.microdrone.mod.decal.CarDecalData.serializeDecals(this.decals));
+    }
+
+    @Override
+    public void addDecal(com.microdrone.mod.decal.CarDecalData decal) {
+        this.decals.add(decal);
+        this.entityData.set(DATA_DECALS, com.microdrone.mod.decal.CarDecalData.serializeDecals(this.decals));
+    }
+
+    @Override
+    public void clearDecals() {
+        this.decals.clear();
+        this.entityData.set(DATA_DECALS, new CompoundTag());
     }
 }

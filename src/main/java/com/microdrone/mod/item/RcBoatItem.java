@@ -100,8 +100,14 @@ public class RcBoatItem extends Item {
 
     private void applyVariant(ItemStack itemStack, RcBoatEntity boat) {
         var customData = itemStack.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA);
-        if (customData != null && customData.contains("Variant")) {
-            boat.setVariantId(customData.copyTag().getString("Variant"));
+        if (customData != null) {
+            net.minecraft.nbt.CompoundTag tag = customData.copyTag();
+            if (tag.contains("Variant")) {
+                boat.setVariantId(tag.getString("Variant"));
+            }
+            if (tag.contains("Decals", 10)) {
+                boat.setDecals(com.microdrone.mod.decal.CarDecalData.deserializeDecals(tag.getCompound("Decals")));
+            }
         } else if (itemStack.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME)) {
             String customName = itemStack.getHoverName().getString().trim().toLowerCase();
             if (com.microdrone.mod.config.boat.BoatConfigManager.getAllConfigs().containsKey(customName)) {

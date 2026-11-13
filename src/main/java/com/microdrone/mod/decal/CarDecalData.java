@@ -109,5 +109,34 @@ public class CarDecalData {
 
     public boolean isMirrorX() { return mirrorX; }
     public void setMirrorX(boolean mirrorX) { this.mirrorX = mirrorX; }
+
+    /**
+     * デカールリストを CompoundTag へシリアライズ
+     */
+    public static CompoundTag serializeDecals(java.util.List<CarDecalData> list) {
+        CompoundTag root = new CompoundTag();
+        net.minecraft.nbt.ListTag listTag = new net.minecraft.nbt.ListTag();
+        if (list != null) {
+            for (CarDecalData d : list) {
+                if (d != null) listTag.add(d.toTag());
+            }
+        }
+        root.put("List", listTag);
+        return root;
+    }
+
+    /**
+     * CompoundTag からデカールリストを復元
+     */
+    public static java.util.List<CarDecalData> deserializeDecals(CompoundTag root) {
+        java.util.List<CarDecalData> list = new java.util.ArrayList<>();
+        if (root != null && root.contains("List", 9)) {
+            net.minecraft.nbt.ListTag listTag = root.getList("List", 10);
+            for (int i = 0; i < listTag.size(); i++) {
+                list.add(CarDecalData.fromTag(listTag.getCompound(i)));
+            }
+        }
+        return list;
+    }
 }
 

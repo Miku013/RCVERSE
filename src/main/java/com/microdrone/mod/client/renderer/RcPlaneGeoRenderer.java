@@ -13,6 +13,7 @@ public class RcPlaneGeoRenderer extends GeoEntityRenderer<RcPlaneEntity> {
 
     public RcPlaneGeoRenderer(EntityRendererProvider.Context context) {
         super(context, new RcPlaneGeoModel());
+        this.addRenderLayer(new RcVehicleDecalLayer<>(this));
         this.shadowRadius = 0.35F;
     }
 

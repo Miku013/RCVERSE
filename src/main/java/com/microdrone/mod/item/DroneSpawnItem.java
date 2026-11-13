@@ -40,8 +40,14 @@ public class DroneSpawnItem extends Item {
         if (drone != null) {
             // アイテムのカスタムデータや金床カスタム名からバリアントIDを適用
             var customData = itemStack.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA);
-            if (customData != null && customData.contains("Variant")) {
-                drone.setVariantId(customData.copyTag().getString("Variant"));
+            if (customData != null) {
+                net.minecraft.nbt.CompoundTag tag = customData.copyTag();
+                if (tag.contains("Variant")) {
+                    drone.setVariantId(tag.getString("Variant"));
+                }
+                if (tag.contains("Decals", 10)) {
+                    drone.setDecals(com.microdrone.mod.decal.CarDecalData.deserializeDecals(tag.getCompound("Decals")));
+                }
             } else if (itemStack.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME)) {
                 String customName = itemStack.getHoverName().getString().trim().toLowerCase();
                 if (com.microdrone.mod.config.drone.DroneConfigManager.getAllConfigs().containsKey(customName)) {

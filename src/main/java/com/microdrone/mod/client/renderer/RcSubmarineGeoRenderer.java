@@ -13,6 +13,7 @@ public class RcSubmarineGeoRenderer extends GeoEntityRenderer<RcSubmarineEntity>
 
     public RcSubmarineGeoRenderer(EntityRendererProvider.Context context) {
         super(context, new RcSubmarineGeoModel());
+        this.addRenderLayer(new RcVehicleDecalLayer<>(this));
         this.shadowRadius = 0.35F;
     }
 

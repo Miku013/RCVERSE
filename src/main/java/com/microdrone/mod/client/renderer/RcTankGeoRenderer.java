@@ -13,6 +13,7 @@ public class RcTankGeoRenderer extends GeoEntityRenderer<RcTankEntity> {
 
     public RcTankGeoRenderer(EntityRendererProvider.Context context) {
         super(context, new RcTankGeoModel());
+        this.addRenderLayer(new RcVehicleDecalLayer<>(this));
         this.shadowRadius = 0.3F; // 1/5 RC戦車の影の半径
     }
 
