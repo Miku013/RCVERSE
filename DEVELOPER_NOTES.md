@@ -1066,3 +1066,13 @@ ull のままとなり、mouseDragged 内でドラッグ計算が実行されて
 - [x] **デカールドラッグ処理のリファクタリング完了 (2026-11-13)**:
   - 3D投影逆行列方式の採用により完全に不要となった旧ヒューリスティック計算用メソッド群（getBaseScale, getEffectiveYaw, getFactor, getConfigScale）を [DecalEditorScreen.java](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/java/com/microdrone/mod/client/gui/DecalEditorScreen.java) から安全に削除・整理。
   - 全6車種（RCカー、ドローン、プレーン、ボート、潜水艦、戦車）において、数学的に統一されたクリーンなステッカー工房システムが完成。
+- [x] **RC工作台（rc_workbench）の実装完了 (2026-11-13)**:
+  - ユーザー提供の Blockbench 3D ホビーワークベンチモデル ([rc_workbench.geo.json](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/resources/assets/microdrone/geo/rc_workbench.geo.json)) およびテクスチャ ([rc_workbench.png](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/resources/assets/microdrone/textures/block/rc_workbench.png)) を適用。
+  - **ブロック・エンティティ・レンダラー**:
+    - [RcWorkbenchBlock.java](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/java/com/microdrone/mod/block/RcWorkbenchBlock.java): 向き（FACING）対応、スニーク右クリックによる展示アイテムの直接設置・回収、通常右クリックによるGUIオープン。
+    - [RcWorkbenchBlockEntity.java](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/java/com/microdrone/mod/block/entity/RcWorkbenchBlockEntity.java): 展示アイテムのNBT保存・パケット同期、およびGUI用 getDisplayContainer() を提供。
+    - [RcWorkbenchBlockEntityRenderer.java](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/java/com/microdrone/mod/client/renderer/RcWorkbenchBlockEntityRenderer.java): 万力やツール壁を備えたワークベンチを3D描画し、天板中央手前 (Y=1.02m) にマシンやアイテムを展示描画。
+  - **専用GUI・クラフトメニュー**:
+    - [RcWorkbenchMenu.java](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/java/com/microdrone/mod/inventory/RcWorkbenchMenu.java): 3x3クラフトグリッド + 完成品スロットに加え、天板展示スロット (Slot 46) を装備。
+    - [RcWorkbenchScreen.java](file:///C:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/java/com/microdrone/mod/client/gui/RcWorkbenchScreen.java): 3x3組み立て画面および「展示」スロットUI。
+    - クリエイティブタブ登録、日・英言語キー設定完了。ビルド動作確認済み。
