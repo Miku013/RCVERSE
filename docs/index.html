@@ -388,7 +388,9 @@
       <!-- デカール工房（リバリーエディター） -->
       <div class="card">
         <div class="card-thumbnail">
-          <img src="images/screenshots/shot_decal_editor.png" alt="RCカー デカール工房（リバリーエディター）画面">
+          <a href="images/screenshots/shot_decal_editor.png" target="_blank" title="クリックして拡大" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+            <img src="images/screenshots/shot_decal_editor.png" alt="RCカー デカール工房（リバリーエディター）画面">
+          </a>
         </div>
         <h3 class="card-title">
           🎨 デカール工房（リバリーエディター）
@@ -408,7 +410,9 @@
       <!-- レースコース作成キット & ドリフト -->
       <div class="card">
         <div class="card-thumbnail">
-          <img src="images/screenshots/shot_drift_action.png" alt="サーキットコースでの本格ドリフト走行シーン">
+          <a href="images/screenshots/shot_drift_action.png" target="_blank" title="クリックして拡大" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+            <img src="images/screenshots/shot_drift_action.png" alt="サーキットコースでの本格ドリフト走行シーン">
+          </a>
         </div>
         <h3 class="card-title">
           🏁 レースコース作成 & ドリフト走行
@@ -514,9 +518,12 @@
 
         <!-- Blockbench作業画面プレビュー -->
         <div style="margin: 16px 0; border-radius: 8px; overflow: hidden; border: 1px solid rgba(56, 189, 248, 0.3); background: #0b0f19; box-shadow: 0 4px 14px rgba(0,0,0,0.4);">
-          <img src="images/blockbench_model_guide.png" alt="Blockbenchでのモデリングおよびボーン構成例 (pzhtank.geo.json)" style="width: 100%; height: auto; display: block;">
-          <div style="padding: 10px 14px; font-size: 0.82rem; color: var(--text-muted); background: rgba(15, 23, 42, 0.85); border-top: 1px solid rgba(255,255,255,0.06); line-height: 1.5;">
-            💡 <strong>Blockbench実際の作業画面例</strong>: 右側のアウトライナー（ツリー）で <code>turret</code>（砲塔）、<code>track_r</code>（履帯）、<code>body</code>（車体）のようにボーン分けして GeckoLib形式（<code>*.geo.json</code>）でエクスポートします。
+          <a href="images/blockbench_model_guide.png" target="_blank" title="クリックして原寸拡大表示" style="display: block; cursor: zoom-in;">
+            <img src="images/blockbench_model_guide.png" alt="Blockbenchでのモデリングおよびボーン構成例 (pzhtank.geo.json)" style="width: 100%; height: auto; display: block; transition: opacity 0.2s;">
+          </a>
+          <div style="padding: 10px 14px; font-size: 0.82rem; color: var(--text-muted); background: rgba(15, 23, 42, 0.85); border-top: 1px solid rgba(255,255,255,0.06); line-height: 1.5; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+            <span>💡 <strong>Blockbench実際の作業画面例</strong>: 右側のアウトライナー（ツリー）で <code>turret</code>（砲塔）、<code>track_r</code>（履帯）、<code>body</code>（車体）のようにボーン分けして GeckoLib形式（<code>*.geo.json</code>）でエクスポートします。</span>
+            <span style="color: var(--accent-cyan); font-size: 0.75rem;">🔍 クリックで拡大</span>
           </div>
         </div>
 
@@ -611,11 +618,13 @@
 
         <div class="card" style="padding: 20px;">
           <div class="card-thumbnail" style="margin: -20px -20px 14px -20px; height: 180px;">
-            <img src="images/screenshots/shot_tank.png" alt="自作ミリタリー戦車（Panzer）">
+            <a href="images/blockbench_model_guide.png" target="_blank" title="クリックして拡大" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+              <img src="images/blockbench_model_guide.png" alt="Blockbenchでの自作戦車モデル設計画面 (pzhtank.geo.json)">
+            </a>
           </div>
-          <h4 style="color: #fff; font-size: 1.05rem; margin-bottom: 6px;">🎖️ 自作戦車（Panzer）</h4>
+          <h4 style="color: #fff; font-size: 1.05rem; margin-bottom: 6px;">🎖️ Blockbench設計モデル（Panzer）</h4>
           <p style="color: var(--text-muted); font-size: 0.88rem; line-height: 1.5;">
-            Blockbenchで設計した <code>pzhtank.geo.json</code> をゲーム内に導入した実例。砲塔旋回（<code>turret</code>）や履帯など、複雑なマルチボーン機構もスムーズに同期・駆動！
+            Blockbenchで設計された <code>pzhtank.geo.json</code>。独立砲塔（<code>turret</code>）や履帯など、複雑なマルチボーン機構もGeckoLibで完全同期！
           </p>
         </div>
       </div>
