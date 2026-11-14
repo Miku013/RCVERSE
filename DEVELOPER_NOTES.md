@@ -1305,3 +1305,19 @@ ull のままとなり、mouseDragged 内でドラッグ計算が実行されて
 - **現象**: シネマティック版のテスト中、自作戦車（`pzhtank.geo.json`）の向きが本来の進行方向と逆（180度反転）になっていた。
 - **原因**: `src/main/resources/assets/microdrone/geo/pzhtank.geo.json` の `root` ボーンに設定されていた `"rotation": [0, 180, 0]`（北=-Z進行方向統一のための定義）がローカルの作業差分で欠落していた。
 - **対策**: `pzhtank.geo.json` の `root` ボーン回転を正しく復元し、他車種と同様に進行方向を正面（北基準）へ一致させた。
+---
+
+## 2026-11-15: ライセンス表記統一 & MOD表示名更新（All Rights Reserved）
+
+### 1. ライセンス表記の完全統一
+- **背景**: CurseForge 上では `All Rights Reserved`（全著作権所有 / 無断転載禁止 / 実況動画・Modpack利用許諾）として公開・保護されていたが、MOD内部設定（`gradle.properties`）に初期値の `MIT` が残っており、リポジトリに正式な `LICENSE` ファイルが未配置だった。
+- **対応**:
+  1. `micro_drone_mod/gradle.properties`:
+     - `mod_license=All Rights Reserved` に更新。
+     - `mod_name=RCVERSE` に更新（マイクラのMODリスト画面で正式名 `RCVERSE` と表示）。
+  2. `LICENSE` & `LICENSE.txt`:
+     - リポジトリ直下に正式な著作権・利用規約テキスト（Copyright (c) 2026 Miku. All rights reserved.）を作成・配置。
+     - ユーザーの個人利用、YouTube/Twitch等の配信・収益化動画での使用、CurseForge上のModpackへの同梱を明示的に許諾しつつ、第三者サイトへの無断転載・再配布・モデル/テクスチャ等の抽出盗用を厳格に禁止する条項を規定。
+  3. **ビルド & 同期**:
+     - `feature/cinematic-mode` および `main` 両ブランチにコミット・プッシュ完了。
+     - 新ライセンスがメタデータに埋め込まれた最新の `rcverse-1.21.1-1.0.0.jar` を再ビルドし、実機環境（`C:\Users\mikum\curseforge\minecraft\Instances\neofor\mods\`）へ配置。
