@@ -327,8 +327,8 @@ public class RcSubmarineEntity extends Entity implements GeoEntity, RcControllab
         // モーター性能値（速度を現在の1/3に調整）
         int tier = getMotorTier();
         double maxForwardSpeed = (0.28 + (tier * 0.08)) / 3.0; // 水中最高速度
-        double maxVerticalSpeed = (0.15 + (tier * 0.05)) / 3.0; // 潜航・浮上最高速度
-        double accel = (0.02 + (tier * 0.01)) / 3.0;
+        double maxVerticalSpeed = (0.18 + (tier * 0.06)) / 2.5; // 潜航・浮上最高速度
+        double accel = (0.025 + (tier * 0.012)) / 2.5;
         double turnSpeed = 4.2f + (tier * 0.4f);
 
         if (inWater) {
@@ -354,26 +354,28 @@ public class RcSubmarineEntity extends Entity implements GeoEntity, RcControllab
             }
 
             // === 2. 垂直潜航・浮上（バラスト＆潜舵制御）===
-            // 水面検出（浮上限界）
-            double waterSurfaceY = pos.getY() + fluid.getHeight(this.level(), pos);
-            if (!fluid.is(FluidTags.WATER)) {
-                FluidState belowFluid = this.level().getFluidState(pos.below());
-                if (belowFluid.is(FluidTags.WATER)) {
-                    waterSurfaceY = pos.below().getY() + belowFluid.getHeight(this.level(), pos.below());
-                }
-            }
+            // 水面検出（真上ブロックに水がある場合は水深の途中なので浮上を妨げない）
+            BlockPos abovePos = pos.above();
+            FluidState aboveFluid = this.level().getFluidState(abovePos);
+            boolean hasWaterAbove = aboveFluid.is(FluidTags.WATER);
 
-            boolean isAtSurface = (this.getY() + 0.1 >= waterSurfaceY);
+            boolean isAtSurface = false;
+            if (!hasWaterAbove) {
+                // 真上が水でない場合のみ、現在のブロックが最上部の水面
+                double surfaceY = pos.getY() + (fluid.is(FluidTags.WATER) ? fluid.getHeight(this.level(), pos) : 0.0);
+                // 潜水艦のセイル（上部）が水面付近に達したら浮上限界
+                isAtSurface = (this.getY() + 0.1 >= surfaceY);
+            }
 
             if (this.inputVertical > 0.05f && !isAtSurface) {
                 // Spaceキー: 浮上（バラストブロー）
-                this.verticalSpeed = (float) Math.min(this.verticalSpeed + accel * 0.8, maxVerticalSpeed);
+                this.verticalSpeed = (float) Math.min(this.verticalSpeed + accel * 1.2, maxVerticalSpeed);
             } else if (this.inputVertical < -0.05f) {
                 // Shiftキー: 潜航（注水）
-                this.verticalSpeed = (float) Math.max(this.verticalSpeed - accel * 0.8, -maxVerticalSpeed);
+                this.verticalSpeed = (float) Math.max(this.verticalSpeed - accel * 1.2, -maxVerticalSpeed);
             } else {
                 // 中性浮力（穏やかにその場に留まる）
-                this.verticalSpeed *= 0.85f;
+                this.verticalSpeed *= 0.88f;
             }
 
             // 水面での自然停止（飛び出し防止）
