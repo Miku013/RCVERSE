@@ -45,7 +45,8 @@ public class ServerPayloadHandler {
                             car.yRotO = payload.yaw();
 
                             // クライアント主導の位置・速度同期 (ステップ2: サーバー追従)
-                            if (payload.hasClientPos()) {
+                            // ※撮影モード(Cinematic)ではサーバー側でmove()を走らせReplayModに移動パケットを届けるため同期スキップ
+                            if (payload.hasClientPos() && !com.microdrone.mod.cinematic.CinematicRecordingManager.isEnabled()) {
                                 car.applyClientPositionSync(
                                         payload.clientX(),
                                         payload.clientY(),

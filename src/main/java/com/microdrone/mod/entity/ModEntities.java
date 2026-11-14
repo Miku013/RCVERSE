@@ -16,7 +16,7 @@ public class ModEntities {
             ENTITIES.register("drone", () -> EntityType.Builder.<DroneEntity>of(DroneEntity::new, MobCategory.MISC)
                     .sized(0.5f, 0.25f)
                     .eyeHeight(0.18f)
-                    .clientTrackingRange(32)
+                    .clientTrackingRange(256)
                     .updateInterval(1)
                     .build("drone"));
 
@@ -24,7 +24,7 @@ public class ModEntities {
             ENTITIES.register("rc_car", () -> EntityType.Builder.<RcCarEntity>of(RcCarEntity::new, MobCategory.MISC)
                     .sized(0.5f, 0.35f)
                     .eyeHeight(0.3f)
-                    .clientTrackingRange(32)
+                    .clientTrackingRange(256)
                     .updateInterval(1)
                     .build("rc_car"));
 
@@ -32,7 +32,7 @@ public class ModEntities {
             ENTITIES.register("rc_tank", () -> EntityType.Builder.<RcTankEntity>of(RcTankEntity::new, MobCategory.MISC)
                     .sized(0.6f, 0.45f)
                     .eyeHeight(0.35f)
-                    .clientTrackingRange(32)
+                    .clientTrackingRange(256)
                     .updateInterval(1)
                     .build("rc_tank"));
 
@@ -40,7 +40,7 @@ public class ModEntities {
             ENTITIES.register("rc_plane", () -> EntityType.Builder.<RcPlaneEntity>of(RcPlaneEntity::new, MobCategory.MISC)
                     .sized(0.8f, 0.45f)
                     .eyeHeight(0.35f)
-                    .clientTrackingRange(32)
+                    .clientTrackingRange(256)
                     .updateInterval(1)
                     .build("rc_plane"));
 
@@ -48,7 +48,7 @@ public class ModEntities {
             ENTITIES.register("rc_boat", () -> EntityType.Builder.<RcBoatEntity>of(RcBoatEntity::new, MobCategory.MISC)
                     .sized(0.6f, 0.4f)
                     .eyeHeight(0.3f)
-                    .clientTrackingRange(32)
+                    .clientTrackingRange(256)
                     .updateInterval(1)
                     .build("rc_boat"));
 
@@ -56,7 +56,7 @@ public class ModEntities {
             ENTITIES.register("rc_submarine", () -> EntityType.Builder.<RcSubmarineEntity>of(RcSubmarineEntity::new, MobCategory.MISC)
                     .sized(0.6f, 0.4f)
                     .eyeHeight(0.3f)
-                    .clientTrackingRange(32)
+                    .clientTrackingRange(256)
                     .updateInterval(1)
                     .build("rc_submarine"));
 
@@ -64,7 +64,7 @@ public class ModEntities {
             ENTITIES.register("rc_pilot_dummy", () -> EntityType.Builder.<RcPilotDummyEntity>of(RcPilotDummyEntity::new, MobCategory.MISC)
                     .sized(0.6f, 1.8f)
                     .eyeHeight(1.62f)
-                    .clientTrackingRange(32)
+                    .clientTrackingRange(256)
                     .updateInterval(1)
                     .build("rc_pilot_dummy"));
 

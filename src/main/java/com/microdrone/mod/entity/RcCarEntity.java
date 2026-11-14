@@ -1033,7 +1033,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
         // 操縦者クライアントが存在し、位置同期パケットを受信中の場合:
         // 車両の座標・姿勢はクライアントで確定・スナップ済みのため、
         // サーバー側での重複move(二重前進)や重複壁衝突(誤スタック)をスキップ
-        if (!this.level().isClientSide && this.clientSyncActive) {
+        // ※撮影モード(Cinematic)ではReplayModに移動パケットを届けるためスキップせずサーバー物理を完全実行
+        if (!this.level().isClientSide && this.clientSyncActive && !com.microdrone.mod.cinematic.CinematicRecordingManager.isEnabled()) {
             // タイヤ回転の積算
             this.wheelRotation += (this.currentSpeed * 144.0f);
 
