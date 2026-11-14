@@ -37,7 +37,7 @@ public class DroneClientController implements RcVehicleClientController {
             DroneCameraController.startViewing(drone.getId());
         }
         if (player != null) {
-            player.setInvisible(true);
+            player.setInvisible(false);
         }
     }
 
@@ -62,13 +62,13 @@ public class DroneClientController implements RcVehicleClientController {
 
         float currentYaw;
         float currentPitch;
+        player.setPos(startX, startY, startZ);
+        player.setDeltaMovement(0, 0, 0);
+
         if (viewMode == RcViewMode.GROUND) {
-            player.setPos(startX, startY, startZ);
-            player.setDeltaMovement(0, 0, 0);
             currentYaw = droneGroundAimYaw;
             currentPitch = 0.0f;
         } else {
-            player.setPos(drone.getX(), drone.getY(), drone.getZ());
             currentYaw = player.getYRot();
             currentPitch = player.getXRot();
         }

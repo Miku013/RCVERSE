@@ -66,7 +66,7 @@ public class RcCarClientController implements RcVehicleClientController {
         }
 
         if (player != null) {
-            player.setInvisible(true);
+            player.setInvisible(false); // ReplayMod用: 立ち位置にプロポを持った操縦者として自然に配置
             Minecraft mc = Minecraft.getInstance();
             if (vehicle != null) {
                 mc.setCameraEntity(vehicle);
@@ -125,11 +125,10 @@ public class RcCarClientController implements RcVehicleClientController {
     public void handleTickInput(LocalPlayer player, Entity vehicle, InputSnapshot input, double startX, double startY, double startZ) {
         if (!(vehicle instanceof RcCarEntity car)) return;
 
-        // 撮影MOD: CHASE視点時は車に追従し、ダミー人形への強制テレポートによるカクつき・視線ブレを排除！
-        if (viewMode == RcViewMode.CHASE) {
-            player.setPos(car.getX(), car.getY(), car.getZ());
-            player.setDeltaMovement(0, 0, 0);
-        }
+        // ReplayMod撮影対応: プレイヤーは操縦開始時の立ち位置(startX, startY, startZ)に静止！
+        // 車にプレイヤーをテレポートさせないため、車にプレイヤーが張り付く現象を完全に根絶！
+        player.setPos(startX, startY, startZ);
+        player.setDeltaMovement(0, 0, 0);
 
         car.inputForward = input.forward();
         car.inputSteer = input.strafe();
@@ -222,7 +221,7 @@ public class RcCarClientController implements RcVehicleClientController {
             isCameraInitialized = false;
             if (player != null) {
                 player.displayClientMessage(Component.literal("§b[RCVERSE 撮影] §aシネマティック追従視点 §7(手ブレゼロ・ジンバル補間カメラ)"), true);
-                player.setInvisible(true);
+                player.setInvisible(false);
                 lastPlayerMouseYaw = player.getYRot();
                 lastPlayerMousePitch = player.getXRot();
             }
