@@ -483,6 +483,15 @@
         <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.6;">
           Blockbenchで「GeckoLib Animated Model」として作成・エクスポートする際、以下のボーン名にしておくとゲーム内のステアリングやタイヤ回転が自動連動します。
         </p>
+
+        <!-- Blockbench作業画面プレビュー -->
+        <div style="margin: 16px 0; border-radius: 8px; overflow: hidden; border: 1px solid rgba(56, 189, 248, 0.3); background: #0b0f19; box-shadow: 0 4px 14px rgba(0,0,0,0.4);">
+          <img src="images/blockbench_model_guide.png" alt="Blockbenchでのモデリングおよびボーン構成例 (pzhtank.geo.json)" style="width: 100%; height: auto; display: block;">
+          <div style="padding: 10px 14px; font-size: 0.82rem; color: var(--text-muted); background: rgba(15, 23, 42, 0.85); border-top: 1px solid rgba(255,255,255,0.06); line-height: 1.5;">
+            💡 <strong>Blockbench実際の作業画面例</strong>: 右側のアウトライナー（ツリー）で <code>turret</code>（砲塔）、<code>track_r</code>（履帯）、<code>body</code>（車体）のようにボーン分けして GeckoLib形式（<code>*.geo.json</code>）でエクスポートします。
+          </div>
+        </div>
+
         <table class="bone-table">
           <thead>
             <tr>
@@ -551,7 +560,7 @@
       <h3 style="color: var(--accent-cyan); font-size: 1.2rem; margin-bottom: 14px; text-align: center;">
         💡 自作・バリエーションマシンの実機登場例
       </h3>
-      <div class="grid-2">
+      <div class="grid-3">
         <div class="card" style="padding: 20px;">
           <div class="card-thumbnail" style="margin: -20px -20px 14px -20px; height: 180px;">
             <img src="images/screenshots/shot_truck.png" alt="自作モンスタートラック">
@@ -569,6 +578,16 @@
           <h4 style="color: #fff; font-size: 1.05rem; margin-bottom: 6px;">🚲 自転車村人（Bicycle）</h4>
           <p style="color: var(--text-muted); font-size: 0.88rem; line-height: 1.5;">
             2輪バイシクルモデルと村人アニメーション。前輪フォーク操舵（<code>fork_and_handle</code>）とペダル連動によるユニークな走行が楽しめます。
+          </p>
+        </div>
+
+        <div class="card" style="padding: 20px;">
+          <div class="card-thumbnail" style="margin: -20px -20px 14px -20px; height: 180px;">
+            <img src="images/screenshots/shot_tank.png" alt="自作ミリタリー戦車（Panzer）">
+          </div>
+          <h4 style="color: #fff; font-size: 1.05rem; margin-bottom: 6px;">🎖️ 自作戦車（Panzer）</h4>
+          <p style="color: var(--text-muted); font-size: 0.88rem; line-height: 1.5;">
+            Blockbenchで設計した <code>pzhtank.geo.json</code> をゲーム内に導入した実例。砲塔旋回（<code>turret</code>）や履帯など、複雑なマルチボーン機構もスムーズに同期・駆動！
           </p>
         </div>
       </div>
