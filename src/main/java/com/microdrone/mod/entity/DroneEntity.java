@@ -369,19 +369,21 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable, co
                 this.startChunkPos.x, this.startChunkPos.z);
 
         // 2. 操縦者プレイヤーの身代わりクローン（RcPilotDummyEntity）の配置
-        RcPilotDummyEntity dummy = new RcPilotDummyEntity(ModEntities.RC_PILOT_DUMMY.get(), serverLevel);
-        dummy.moveTo(this.startX, this.startY, this.startZ, this.startYaw, this.startPitch);
-        dummy.setupFromPlayer(player);
-        serverLevel.addFreshEntity(dummy);
-        this.dummyEntityUUID = dummy.getUUID();
-        this.dummyEntityRef = dummy;
+        if (com.microdrone.mod.cinematic.CinematicRecordingManager.isSpawnDummy()) {
+            RcPilotDummyEntity dummy = new RcPilotDummyEntity(ModEntities.RC_PILOT_DUMMY.get(), serverLevel);
+            dummy.moveTo(this.startX, this.startY, this.startZ, this.startYaw, this.startPitch);
+            dummy.setupFromPlayer(player);
+            serverLevel.addFreshEntity(dummy);
+            this.dummyEntityUUID = dummy.getUUID();
+            this.dummyEntityRef = dummy;
+            DUMMY_TO_DRONE.put(dummy.getUUID(), this);
+            RcVehicleManager.registerDummy(dummy.getUUID(), this);
+            MicroDroneMod.LOGGER.info("[SERVER] [PLAYER_DUMMY_SPAWN] Spawned body dummy {} at [{}, {}, {}]",
+                    this.dummyEntityUUID,
+                    String.format("%.2f", this.startX), String.format("%.2f", this.startY), String.format("%.2f", this.startZ));
+        }
         ACTIVE_PILOTED_DRONES.put(player.getUUID(), this);
         RcVehicleManager.registerPiloting(player.getUUID(), this);
-        DUMMY_TO_DRONE.put(dummy.getUUID(), this);
-        RcVehicleManager.registerDummy(dummy.getUUID(), this);
-        MicroDroneMod.LOGGER.info("[SERVER] [PLAYER_DUMMY_SPAWN] Spawned body dummy {} at [{}, {}, {}]",
-                this.dummyEntityUUID,
-                String.format("%.2f", this.startX), String.format("%.2f", this.startY), String.format("%.2f", this.startZ));
 
         // 3. サーバー側のカメラエンティティをドローンに設定
         player.setCamera(this);

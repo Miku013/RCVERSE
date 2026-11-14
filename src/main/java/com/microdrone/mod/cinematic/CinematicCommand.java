@@ -55,6 +55,33 @@ public class CinematicCommand {
                     })
                 )
             )
+            .then(Commands.literal("dummy")
+                .executes(ctx -> {
+                    boolean cur = CinematicRecordingManager.isSpawnDummy();
+                    ctx.getSource().sendSuccess(() -> Component.literal(
+                        "§b[RCVERSE 撮影モード]§r ダミー人形生成: " + (cur ? "§a有効 (ON)" : "§c無効 (OFF - 視点ロック解除中)")
+                    ), false);
+                    return 1;
+                })
+                .then(Commands.literal("on")
+                    .executes(ctx -> {
+                        CinematicRecordingManager.setSpawnDummy(true);
+                        ctx.getSource().sendSuccess(() -> Component.literal(
+                            "§b[RCVERSE 撮影モード]§r §aダミー人形生成を有効化しました。"
+                        ), true);
+                        return 1;
+                    })
+                )
+                .then(Commands.literal("off")
+                    .executes(ctx -> {
+                        CinematicRecordingManager.setSpawnDummy(false);
+                        ctx.getSource().sendSuccess(() -> Component.literal(
+                            "§b[RCVERSE 撮影モード]§r §cダミー人形生成を無効化（視点ロック完全解除）しました。"
+                        ), true);
+                        return 1;
+                    })
+                )
+            )
         );
     }
 }

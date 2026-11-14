@@ -189,14 +189,16 @@ public class RcBoatEntity extends Entity implements GeoEntity, RcControllable, c
         RcVehicleManager.registerPiloting(player.getUUID(), this);
 
         // 操縦者プレイヤーの身代わりクローン（RcPilotDummyEntity）の生成
-        ServerLevel serverLevel = player.serverLevel();
-        RcPilotDummyEntity dummy = new RcPilotDummyEntity(ModEntities.RC_PILOT_DUMMY.get(), serverLevel);
-        dummy.moveTo(this.startX, this.startY, this.startZ, player.getYRot(), player.getXRot());
-        dummy.setupFromPlayer(player);
-        serverLevel.addFreshEntity(dummy);
-        this.dummyEntityRef = dummy;
-        this.dummyEntityUUID = dummy.getUUID();
-        RcVehicleManager.registerDummy(dummy.getUUID(), this);
+        if (com.microdrone.mod.cinematic.CinematicRecordingManager.isSpawnDummy()) {
+            ServerLevel serverLevel = player.serverLevel();
+            RcPilotDummyEntity dummy = new RcPilotDummyEntity(ModEntities.RC_PILOT_DUMMY.get(), serverLevel);
+            dummy.moveTo(this.startX, this.startY, this.startZ, player.getYRot(), player.getXRot());
+            dummy.setupFromPlayer(player);
+            serverLevel.addFreshEntity(dummy);
+            this.dummyEntityRef = dummy;
+            this.dummyEntityUUID = dummy.getUUID();
+            RcVehicleManager.registerDummy(dummy.getUUID(), this);
+        }
 
         player.setInvisible(true);
 

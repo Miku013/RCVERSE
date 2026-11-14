@@ -17,6 +17,7 @@ public class CinematicRecordingManager {
 
     private static boolean enabled = true; // 撮影用MODではデフォルトで有効
     private static double broadcastRadius = 48.0; // 同調有効半径（ブロック）
+    private static boolean spawnDummy = false; // 撮影用MODではダミー人形（視点ロック）をデフォルトでOFF！
 
     public static boolean isEnabled() {
         return enabled;
@@ -32,6 +33,14 @@ public class CinematicRecordingManager {
 
     public static void setBroadcastRadius(double radius) {
         broadcastRadius = Math.max(5.0, Math.min(256.0, radius));
+    }
+
+    public static boolean isSpawnDummy() {
+        return spawnDummy;
+    }
+
+    public static void setSpawnDummy(boolean value) {
+        spawnDummy = value;
     }
 
     /**

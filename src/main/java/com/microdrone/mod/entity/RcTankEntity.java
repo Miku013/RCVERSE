@@ -677,14 +677,16 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable, c
         this.startY = player.getY();
         this.startZ = player.getZ();
 
-        ServerLevel serverLevel = player.serverLevel();
-        RcPilotDummyEntity dummy = new RcPilotDummyEntity(ModEntities.RC_PILOT_DUMMY.get(), serverLevel);
-        dummy.moveTo(this.startX, this.startY, this.startZ, player.getYRot(), player.getXRot());
-        dummy.setupFromPlayer(player);
-        serverLevel.addFreshEntity(dummy);
-        this.dummyEntityRef = dummy;
-        this.dummyEntityUUID = dummy.getUUID();
-        RcVehicleManager.registerDummy(dummy.getUUID(), this);
+        if (com.microdrone.mod.cinematic.CinematicRecordingManager.isSpawnDummy()) {
+            ServerLevel serverLevel = player.serverLevel();
+            RcPilotDummyEntity dummy = new RcPilotDummyEntity(ModEntities.RC_PILOT_DUMMY.get(), serverLevel);
+            dummy.moveTo(this.startX, this.startY, this.startZ, player.getYRot(), player.getXRot());
+            dummy.setupFromPlayer(player);
+            serverLevel.addFreshEntity(dummy);
+            this.dummyEntityRef = dummy;
+            this.dummyEntityUUID = dummy.getUUID();
+            RcVehicleManager.registerDummy(dummy.getUUID(), this);
+        }
 
         RcVehicleManager.registerPiloting(this.pilotUUID, this);
 
