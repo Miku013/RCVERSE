@@ -126,6 +126,23 @@ body {
   box-shadow: 0 0 20px rgba(56, 189, 248, 0.6);
 }
 
+.btn-lang {
+  padding: 6px 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  color: var(--accent-cyan) !important;
+  border-radius: 6px;
+  font-weight: 600 !important;
+  transition: all 0.2s ease !important;
+}
+
+.btn-lang:hover {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+  transform: translateY(-1px);
+}
+
 .menu-toggle {
   display: none;
   background: none;
