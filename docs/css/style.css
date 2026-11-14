@@ -941,3 +941,77 @@ body {
     flex-direction: column;
   }
 }
+
+/* 自作モデルガイド用スタイル */
+.guide-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 30px;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.tree-block {
+  background: #070b12;
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  border-left: 4px solid var(--accent-cyan);
+  border-radius: 8px;
+  padding: 16px 20px;
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: #94a3b8;
+  overflow-x: auto;
+  margin: 16px 0;
+}
+
+.tree-block .tree-highlight {
+  color: var(--accent-cyan);
+  font-weight: bold;
+}
+
+.tree-block .tree-comment {
+  color: #64748b;
+  font-style: italic;
+}
+
+.code-snippet {
+  background: #070b12;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 16px;
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: #e2e8f0;
+  overflow-x: auto;
+  margin: 12px 0;
+}
+
+.bone-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 14px;
+  font-size: 0.9rem;
+}
+
+.bone-table th, .bone-table td {
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: left;
+}
+
+.bone-table th {
+  background: rgba(0, 240, 255, 0.1);
+  color: var(--accent-cyan);
+  font-weight: 600;
+}
+
+.bone-table td code {
+  color: #f43f5e;
+  background: rgba(244, 63, 94, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+}
