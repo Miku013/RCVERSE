@@ -53,32 +53,45 @@ public class CctvRenderPipeline {
     private static int cameraModeIndex = 0; // 0: Trackside定点, 1: Chase後方, 2: Bumper前方, 3: Side真横
     private static int switchTimerTicks = 0;
     private static String activeCameraLabel = "CAM-01 [TRACK]";
-    private static boolean isInitialized = false;
+    private static volatile boolean isInitialized = false;
+    private static volatile boolean isInitializing = false;
 
     // 滑らかなカメラ位置補間
     private static double smoothCamX = 0, smoothCamY = 0, smoothCamZ = 0;
 
-    public static void init() {
-        if (cctvTarget != null) {
-            cctvTarget.destroyBuffers();
+    public static synchronized void init() {
+        if (isInitializing) {
+            return;
         }
-        cctvTarget = new TextureTarget(FBO_WIDTH, FBO_HEIGHT, true, Minecraft.ON_OSX);
-        cctvTarget.setClearColor(0.40f, 0.65f, 0.92f, 1.0f); // 爽やかなスカイブルー
-
-        if (cctvByteBuffer == null) {
-            cctvByteBuffer = new ByteBufferBuilder(256 * 1024);
-            cctvBufferSource = MultiBufferSource.immediate(cctvByteBuffer);
-        }
-
+        isInitializing = true;
         try {
-            Minecraft.getInstance().getTextureManager().register(CCTV_TEXTURE_LOCATION, new CctvScreenTexture());
-        } catch (Exception ignored) {}
+            if (cctvTarget != null) {
+                try {
+                    cctvTarget.destroyBuffers();
+                } catch (Exception ignored) {}
+                cctvTarget = null;
+            }
+            cctvTarget = new TextureTarget(FBO_WIDTH, FBO_HEIGHT, true, Minecraft.ON_OSX);
+            cctvTarget.setClearColor(0.40f, 0.65f, 0.92f, 1.0f); // 爽やかなスカイブルー
 
-        isInitialized = true;
+            if (cctvByteBuffer == null) {
+                cctvByteBuffer = new ByteBufferBuilder(256 * 1024);
+                cctvBufferSource = MultiBufferSource.immediate(cctvByteBuffer);
+            }
+
+            // register より前に初期化完了フラグを立て、Veil等のmixinによる再帰登録時の二重初期化・StackOverflowを完全に防止
+            isInitialized = true;
+
+            try {
+                Minecraft.getInstance().getTextureManager().register(CCTV_TEXTURE_LOCATION, new CctvScreenTexture());
+            } catch (Exception ignored) {}
+        } finally {
+            isInitializing = false;
+        }
     }
 
     public static int getTextureId() {
-        if (!isInitialized || cctvTarget == null) {
+        if ((!isInitialized || cctvTarget == null) && !isInitializing) {
             init();
         }
         return cctvTarget != null ? cctvTarget.getColorTextureId() : -1;

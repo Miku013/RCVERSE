@@ -21,6 +21,9 @@ public class CctvScreenTexture extends AbstractTexture {
     @Override
     public void bind() {
         int texId = getId();
+        if (texId <= 0) {
+            return;
+        }
         if (!RenderSystem.isOnRenderThread()) {
             RenderSystem.recordRenderCall(() -> GlStateManager._bindTexture(texId));
         } else {
