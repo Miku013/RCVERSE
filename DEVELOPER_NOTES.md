@@ -1229,3 +1229,43 @@ ull のままとなり、mouseDragged 内でドラッグ計算が実行されて
 - `docs/index.html`: 公式紹介ランディングページ
 - `docs/css/style.css`: ゲーミング/RCホビー風ダークテーマスタイルシート
 - `docs/js/main.js`: モバイルメニュートグル、インタラクションスクリプト
+
+---
+
+## 2026-11-15: 撮影専用MOD（Cinematic Mode）完成・ReplayMod完全対応・自作モデル実機導入の確立
+
+### 1. 撮影専用MOD（Cinematic Mode / `rcverse-cinematic-1.0.0.jar`）の実装
+- **複数台同時操作（ブロードキャスト操縦）**:
+  - `/rc cinematic <on|off>` コマンドまたはプロポ操作により、ワールド内の複数台のRCカーや自転車等の車両を一斉に同時操縦（並走・ドリフト・一斉前進）できるように実装。
+  - `CinematicRecordingManager`: 操縦パケットを登録中・近隣の全RCエンティティにブロードキャスト。
+- **ReplayMod (`reforgedplaymod-1.21.1-0.3`) 完全連携と再生停止バグの解決**:
+  - **現象**: 2台並べて走行させた際、操作していない側（Car B）はリプレイで滑らかに動くが、プロポで直接操作した側（Car A）だけがリプレイ上でスポーン位置に停止してしまう問題が発生。
+  - **根本原因**: ReplayModが録画したパケット（`.mcpr`）の中に `DronePilotStatePayload`（操縦開始パケット）が含まれており、リプレイ再生時にビューワー側でCar Aの操縦セッションが発動。その結果、自機操縦中の遅延防止ガード（`lerpTo` のスキップ）とキー入力0のブレーキ摩擦が働き、サーバー移動パケットが破棄されて初期位置に完全停止していた。
+  - **対策**:
+    1. `ReplayHelper`: ReplayMod再生中（ReplayHandler動作中）を検出するユーティリティを追加。
+    2. `ClientPayloadHandler` & `ClientDroneInputHandler`: リプレイ再生中の `DronePilotStatePayload` 受信を破棄・遮断。
+    3. 全RCエンティティ（`RcCarEntity`, `DroneEntity`, `RcTankEntity`, `RcPlaneEntity`, `RcBoatEntity`, `RcSubmarineEntity`）の `lerpTo` および `isLocallyControlled()` において、リプレイ再生中はクライアント予測移動をバイパスし、サーバー移動パケット（`super.lerpTo`）による滑らかな補間描画を100%通すように修正。
+    4. `ServerPayloadHandler`: サーバー側のクライアント位置同期（`applyClientPositionSync`）を正常に復帰させ、サーバーが全車両の移動パケットをReplayModへ確実にブロードキャストするように修正。
+
+### 2. 自作3Dモデル（Blockbench）導入ガイドのWeb公開 & 実環境リソースパック正常化
+- **GitHub Pages（公式LP）へのガイド追加**:
+  - `docs/index.html` および `docs/css/style.css` に、自作モデルのフォルダ階層図（ツリー構造）、設定JSON（`config/microdrone/cars/<id>.json`）の作成例、`pack.mcmeta`、Blockbench推奨ボーン構造（`steer_fl/fr`, `wheel_*`, `body`）、ゲーム内での呼び出し手順（デカール作業台、`/summon` コマンド等）を掲載。
+  - ナビバーに「自作モデル導入」リンクを追加。
+- **CurseForge実プレイ環境（`Instances/neofor`）でのリソースパック認識トラブル解決**:
+  - **原因**: ユーザーが作成した `MyRcPack/pack.mcmeta` が0バイト（中身が空）だったため、Minecraftがリソースパック一覧に表示していなかった。またZip圧縮時に親フォルダの二重化が発生していた。
+  - **対応**: 正しい `pack.mcmeta`（`pack_format: 34`）を書き込み、Zipも直下に `assets` と `pack.mcmeta` が並ぶ正しい構造で再生成し、ゲーム内で正常に認識・適用できることを確認。
+
+---
+
+
+### 3. 潜水艦上昇バグの解消 & ゲームプレイ動画・実機スクショによる公式LPのビジュアル強化 (2026-11-15)
+- **潜水艦上昇のブロック境界停止バグ修正 (RcSubmarineEntity.java)**:
+  - **原因**: 潜水艦が水面付近にあるかを判定する isAtSurface ロジックで pos.getY() + fluid.getHeight(...) を使用していたため、ブロック上面に達するたびに「水面到達」と誤判定され、erticalSpeed = 0 にリセットされていた。
+  - **対策**: 頭上1ブロック（pos.above()）に水ブロック（FluidTags.WATER）が存在するかを判定。頭上に水がある限り isAtSurface = false を維持し、海面まで一気に滑らかに連続上昇できるように修正。
+  - **マルチブランチ反映**: 撮影専用MOD (eature/cinematic-mode) および公開用通常MOD (main) の両方に適用し、JAR再ビルド完了。
+- **公式LP（GitHub Pages）へのゲームプレイ動画埋め込み**:
+  - 実機プレイ動画 c-1.mp4（ドリフト・ジャンプ・戦車射撃シーン）を docs/videos/rc-1.mp4 に配置し、docs/index.html の「ゲームプレイ映像」セクションに動画プレイヤー（<video controls poster>）を設置。
+- **実機スクリーンショット10枚の切り抜き加工 & 公式LP掲載**:
+  - ユーザー提供の実機スクリーンショット10枚（ハチロク、ドローン、戦車、飛行機、ボート、潜水艦、モンスタートラック、自転車村人、デフォルトカー、デフォルト戦車）から、UI・ツールチップ・手持ちプロポ・ホットバー・チャット等をトリミングし、マシンをクローズアップしたサムネイル（4:3 比率）を自動生成。
+  - docs/images/screenshots/ に配置し、マシンスペック紹介カードのヘッダー画像、および「自作・バリエーションマシンの実機登場例」ギャラリーとして docs/index.html に反映。
+  - eature/cinematic-mode および main ブランチにコミット＆プッシュ完了（GitHub Pages 即時反映）。
