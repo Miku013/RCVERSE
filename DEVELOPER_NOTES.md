@@ -1229,3 +1229,31 @@ ull のままとなり、mouseDragged 内でドラッグ計算が実行されて
 - `docs/index.html`: 公式紹介ランディングページ
 - `docs/css/style.css`: ゲーミング/RCホビー風ダークテーマスタイルシート
 - `docs/js/main.js`: モバイルメニュートグル、インタラクションスクリプト
+
+---
+
+## 2026-11-15: 撮影専用MOD（Cinematic Mode）完成・ReplayMod完全対応・自作モデル実機導入の確立
+
+### 1. 撮影専用MOD（Cinematic Mode / `rcverse-cinematic-1.0.0.jar`）の実装
+- **複数台同時操作（ブロードキャスト操縦）**:
+  - `/rc cinematic <on|off>` コマンドまたはプロポ操作により、ワールド内の複数台のRCカーや自転車等の車両を一斉に同時操縦（並走・ドリフト・一斉前進）できるように実装。
+  - `CinematicRecordingManager`: 操縦パケットを登録中・近隣の全RCエンティティにブロードキャスト。
+- **ReplayMod (`reforgedplaymod-1.21.1-0.3`) 完全連携と再生停止バグの解決**:
+  - **現象**: 2台並べて走行させた際、操作していない側（Car B）はリプレイで滑らかに動くが、プロポで直接操作した側（Car A）だけがリプレイ上でスポーン位置に停止してしまう問題が発生。
+  - **根本原因**: ReplayModが録画したパケット（`.mcpr`）の中に `DronePilotStatePayload`（操縦開始パケット）が含まれており、リプレイ再生時にビューワー側でCar Aの操縦セッションが発動。その結果、自機操縦中の遅延防止ガード（`lerpTo` のスキップ）とキー入力0のブレーキ摩擦が働き、サーバー移動パケットが破棄されて初期位置に完全停止していた。
+  - **対策**:
+    1. `ReplayHelper`: ReplayMod再生中（ReplayHandler動作中）を検出するユーティリティを追加。
+    2. `ClientPayloadHandler` & `ClientDroneInputHandler`: リプレイ再生中の `DronePilotStatePayload` 受信を破棄・遮断。
+    3. 全RCエンティティ（`RcCarEntity`, `DroneEntity`, `RcTankEntity`, `RcPlaneEntity`, `RcBoatEntity`, `RcSubmarineEntity`）の `lerpTo` および `isLocallyControlled()` において、リプレイ再生中はクライアント予測移動をバイパスし、サーバー移動パケット（`super.lerpTo`）による滑らかな補間描画を100%通すように修正。
+    4. `ServerPayloadHandler`: サーバー側のクライアント位置同期（`applyClientPositionSync`）を正常に復帰させ、サーバーが全車両の移動パケットをReplayModへ確実にブロードキャストするように修正。
+
+### 2. 自作3Dモデル（Blockbench）導入ガイドのWeb公開 & 実環境リソースパック正常化
+- **GitHub Pages（公式LP）へのガイド追加**:
+  - `docs/index.html` および `docs/css/style.css` に、自作モデルのフォルダ階層図（ツリー構造）、設定JSON（`config/microdrone/cars/<id>.json`）の作成例、`pack.mcmeta`、Blockbench推奨ボーン構造（`steer_fl/fr`, `wheel_*`, `body`）、ゲーム内での呼び出し手順（デカール作業台、`/summon` コマンド等）を掲載。
+  - ナビバーに「自作モデル導入」リンクを追加。
+- **CurseForge実プレイ環境（`Instances/neofor`）でのリソースパック認識トラブル解決**:
+  - **原因**: ユーザーが作成した `MyRcPack/pack.mcmeta` が0バイト（中身が空）だったため、Minecraftがリソースパック一覧に表示していなかった。またZip圧縮時に親フォルダの二重化が発生していた。
+  - **対応**: 正しい `pack.mcmeta`（`pack_format: 34`）を書き込み、Zipも直下に `assets` と `pack.mcmeta` が並ぶ正しい構造で再生成し、ゲーム内で正常に認識・適用できることを確認。
+
+---
+
