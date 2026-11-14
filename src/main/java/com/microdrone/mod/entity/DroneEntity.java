@@ -307,6 +307,9 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable, co
     }
 
     public boolean isLocallyControlled() {
+        if (this.level().isClientSide && com.microdrone.mod.client.ReplayHelper.isReplayActive()) {
+            return false;
+        }
         return this.locallyControlled;
     }
 
@@ -317,7 +320,7 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable, co
      */
     @Override
     public void lerpTo(double x, double y, double z, float yRot, float xRot, int steps) {
-        if (this.locallyControlled) {
+        if (this.locallyControlled && !com.microdrone.mod.client.ReplayHelper.isReplayActive()) {
             double dx = x - this.getX();
             double dy = y - this.getY();
             double dz = z - this.getZ();
@@ -558,9 +561,9 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable, co
             }
         } else {
             // === クライアント側 ===
-            if (this.locallyControlled) {
+            if (this.locallyControlled && !com.microdrone.mod.client.ReplayHelper.isReplayActive()) {
                 tickFlightPhysics();
-            } else if (!this.isNoGravity() && !this.onGround()) {
+            } else if (!this.isNoGravity() && !this.onGround() && !com.microdrone.mod.client.ReplayHelper.isReplayActive()) {
                 tickUnpilotedPhysics();
             }
         }

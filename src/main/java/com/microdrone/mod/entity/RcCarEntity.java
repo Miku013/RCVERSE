@@ -333,6 +333,9 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
     }
 
     public boolean isLocallyControlled() {
+        if (this.level().isClientSide && com.microdrone.mod.client.ReplayHelper.isReplayActive()) {
+            return false;
+        }
         return this.locallyControlled;
     }
 
@@ -349,7 +352,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
      */
     @Override
     public void lerpTo(double x, double y, double z, float yRot, float xRot, int steps) {
-        if (this.locallyControlled) {
+        if (this.locallyControlled && !com.microdrone.mod.client.ReplayHelper.isReplayActive()) {
             double dx = x - this.getX();
             double dy = y - this.getY();
             double dz = z - this.getZ();
@@ -715,7 +718,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
             this.entityData.set(DATA_BRAKING, isBrakingInput());
         } else {
             // クライアント側処理
-            if (this.locallyControlled) {
+            if (this.locallyControlled && !com.microdrone.mod.client.ReplayHelper.isReplayActive()) {
                 // ローカル操縦中はクライアント側で即座に物理演算を行い、遅延ゼロ＆ダイレクトな操作感を実現
                 long startNanos = System.nanoTime();
                 tickCarPhysics();

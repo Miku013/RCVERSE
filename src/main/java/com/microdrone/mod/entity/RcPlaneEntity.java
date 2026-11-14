@@ -152,7 +152,7 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable, 
      */
     @Override
     public void lerpTo(double x, double y, double z, float yRot, float xRot, int steps) {
-        if (this.locallyControlled) {
+        if (this.locallyControlled && !com.microdrone.mod.client.ReplayHelper.isReplayActive()) {
             return;
         }
         super.lerpTo(x, y, z, yRot, xRot, steps);
@@ -282,7 +282,7 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable, 
             this.cinematicTicks--;
         }
 
-        if (this.locallyControlled || (!level().isClientSide && (isPiloted() || isCinematicActive()))) {
+        if ((this.locallyControlled && !com.microdrone.mod.client.ReplayHelper.isReplayActive()) || (!level().isClientSide && (isPiloted() || isCinematicActive()))) {
             tickFlightPhysics();
             emitFlightDebugLog();
         } else if (!level().isClientSide && !isPiloted() && !isCinematicActive()) {
@@ -679,6 +679,13 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable, 
 
     public void setLocallyControlled(boolean local) {
         this.locallyControlled = local;
+    }
+
+    public boolean isLocallyControlled() {
+        if (this.level().isClientSide && com.microdrone.mod.client.ReplayHelper.isReplayActive()) {
+            return false;
+        }
+        return this.locallyControlled;
     }
 
     @Override

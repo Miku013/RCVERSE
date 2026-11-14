@@ -1,6 +1,7 @@
 package com.microdrone.mod.client.input;
 
 import com.microdrone.mod.MicroDroneMod;
+import com.microdrone.mod.client.ReplayHelper;
 import com.microdrone.mod.client.controller.DroneClientController;
 import com.microdrone.mod.client.controller.InputSnapshot;
 import com.microdrone.mod.client.controller.RcBoatClientController;
@@ -152,7 +153,7 @@ public class ClientDroneInputHandler {
     }
 
     public static boolean isPiloting() {
-        return isPiloting;
+        return isPiloting && !ReplayHelper.isReplayActive();
     }
 
     public static int getActiveDroneId() {
@@ -164,6 +165,11 @@ public class ClientDroneInputHandler {
     }
 
     public static void setPiloting(int droneId, boolean state, double sx, double sy, double sz) {
+        if (state && ReplayHelper.isReplayActive()) {
+            MicroDroneMod.LOGGER.info("[CLIENT] [REPLAY] setPiloting ignored because Replay is active. DroneId: {}", droneId);
+            return;
+        }
+
         Minecraft mc = Minecraft.getInstance();
         missingTicks = 0;
         MicroDroneMod.LOGGER.info("[CLIENT] [PILOT_STATE_SET] DroneId: {}, State: {}, PlayerPos: {}",
@@ -239,6 +245,8 @@ public class ClientDroneInputHandler {
 
     @SubscribeEvent
     public void onClientTick(ClientTickEvent.Pre event) {
+        if (ReplayHelper.isReplayActive()) return;
+
         long now = System.currentTimeMillis();
         // 通常の20TPS動作 (50ms) で毎ティック警告が出ないよう、150ms以上の深刻なフレームスタッター時かつ3秒に1回にスロットリング
         if (isPiloting && lastClientTickTime > 0) {

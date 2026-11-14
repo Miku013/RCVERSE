@@ -123,7 +123,7 @@ public class RcSubmarineEntity extends Entity implements GeoEntity, RcControllab
 
     @Override
     public void lerpTo(double x, double y, double z, float yRot, float xRot, int steps) {
-        if (this.locallyControlled) {
+        if (this.locallyControlled && !com.microdrone.mod.client.ReplayHelper.isReplayActive()) {
             double dx = x - this.getX();
             double dy = y - this.getY();
             double dz = z - this.getZ();
@@ -169,6 +169,13 @@ public class RcSubmarineEntity extends Entity implements GeoEntity, RcControllab
 
     public void setLocallyControlled(boolean controlled) {
         this.locallyControlled = controlled;
+    }
+
+    public boolean isLocallyControlled() {
+        if (this.level().isClientSide && com.microdrone.mod.client.ReplayHelper.isReplayActive()) {
+            return false;
+        }
+        return this.locallyControlled;
     }
 
     @Override
@@ -294,7 +301,7 @@ public class RcSubmarineEntity extends Entity implements GeoEntity, RcControllab
             }
             tickSubmarinePhysics();
         } else {
-            if (this.locallyControlled) {
+            if (this.locallyControlled && !com.microdrone.mod.client.ReplayHelper.isReplayActive()) {
                 tickSubmarinePhysics();
             } else {
                 this.rudderAngle = this.entityData.get(DATA_RUDDER_ANGLE);
