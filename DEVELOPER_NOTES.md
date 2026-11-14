@@ -1210,3 +1210,22 @@ ull のままとなり、mouseDragged 内でドラッグ計算が実行されて
 - **実装想定**:
   - `sounds.json` の登録と `SoundEvent` レジストリ（`ModSounds`）の追加
   - ループ再生サウンドインスタンス（`AbstractTickableSoundInstance`）を用いた、Entityの速度・スロットル入力・水没状態に応じた動的ピッチ/音量制御
+
+---
+
+## 2026-11-14: 公開用キービジュアル・ロゴ・32x32アイコンおよびGitHub Pages紹介用LPの実装
+
+### 1. 概要
+- 公開に向け、MODタイトル「**RCVERSE - REMOTE CONTROL HOBBY MOD**」のブランディングアセットおよびGitHub Pages用の紹介サイト一式を `docs/` に実装しました。
+- 32x32の正方形ピクセルアートMODアイコン（ハチロク、プロポ、チェッカーフラッグフレーム）を作成し、`docs/` および画像フォルダに配置しました。
+- GitHub Pages向けに、ダークテーマ基調のレスポンシブなシングルページ紹介サイト（HTML5 / CSS3 / Vanilla JS）を構築しました。
+
+### 2. 生成・配置されたアセット
+- `docs/images/hero_banner.jpg`: 16:9 陸海空6大マシン（ハチロク、ドローン、戦車、飛行機、ボート、潜水艦）集結キービジュアルバナー
+- `docs/images/logo_titleplate.jpg`: スタンドアロンのタイトルプレートロゴ（黒背景、6種ピクトグラム付き）
+- `docs/images/mod_icon_32.png`: 32x32 正方形ピクセルアートMODアイコン
+- `docs/images/mod_icon_64.png`, `mod_icon_256.png`: 高解像度版アイコン
+- `docs/favicon.png`: Webファビコン
+- `docs/index.html`: 公式紹介ランディングページ
+- `docs/css/style.css`: ゲーミング/RCホビー風ダークテーマスタイルシート
+- `docs/js/main.js`: モバイルメニュートグル、インタラクションスクリプト
