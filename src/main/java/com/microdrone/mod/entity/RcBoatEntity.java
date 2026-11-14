@@ -94,6 +94,11 @@ public class RcBoatEntity extends Entity implements GeoEntity, RcControllable, c
     public float inputForward = 0.0f;  // 前進(+1.0) / 後退(-0.6)
     public float inputSteer = 0.0f;    // 左ステア(-1.0) / 右ステア(+1.0)
 
+    // 撮影モード（Cinematic）同調フラグ
+    private int cinematicTicks = 0;
+    public void setCinematicActive(boolean active) { this.cinematicTicks = active ? 4 : 0; }
+    public boolean isCinematicActive() { return this.cinematicTicks > 0; }
+
     // 内部物理パラメータ
     private float currentSpeed = 0.0f;
     private float propellerRotation = 0.0f;
@@ -263,6 +268,9 @@ public class RcBoatEntity extends Entity implements GeoEntity, RcControllable, c
         this.prevPitchAngle = this.pitchAngle;
 
         if (!this.level().isClientSide) {
+            if (this.cinematicTicks > 0) {
+                this.cinematicTicks--;
+            }
             if (this.pilotUUID != null) {
                 ServerPlayer pilot = this.getServer().getPlayerList().getPlayer(this.pilotUUID);
                 if (pilot == null || !pilot.isAlive() || pilot.level() != this.level()) {
@@ -329,7 +337,7 @@ public class RcBoatEntity extends Entity implements GeoEntity, RcControllable, c
             vy *= 0.65;
 
             // === 2. スクリュー推力 (Thrust) & ステアリング (Steering) ===
-            boolean hasPower = hasBattery() && getBatteryRemaining() > 0;
+            boolean hasPower = (hasBattery() && getBatteryRemaining() > 0) || isCinematicActive();
             if (!hasPower) {
                 this.inputForward = 0.0f;
                 this.inputSteer = 0.0f;

@@ -43,6 +43,13 @@ public class MicroDroneMod {
             ClientModEvents.register(modEventBus);
         }
 
+        // コマンド登録 (撮影用モードコマンド等)
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(this::registerCommands);
+
         LOGGER.info("Micro Drone MOD initialized successfully.");
+    }
+
+    private void registerCommands(net.neoforged.neoforge.event.RegisterCommandsEvent event) {
+        com.microdrone.mod.cinematic.CinematicCommand.register(event.getDispatcher());
     }
 }

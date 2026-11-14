@@ -95,6 +95,11 @@ public class RcSubmarineEntity extends Entity implements GeoEntity, RcControllab
     public float inputSteer = 0.0f;    // 左ステア(-1.0) / 右ステア(+1.0)
     public float inputVertical = 0.0f; // 浮上(+1.0) / 潜航(-1.0)
 
+    // 撮影モード（Cinematic）同調フラグ
+    private int cinematicTicks = 0;
+    public void setCinematicActive(boolean active) { this.cinematicTicks = active ? 4 : 0; }
+    public boolean isCinematicActive() { return this.cinematicTicks > 0; }
+
     // 内部物理パラメータ
     private float currentSpeed = 0.0f;
     private float verticalSpeed = 0.0f;
@@ -271,6 +276,9 @@ public class RcSubmarineEntity extends Entity implements GeoEntity, RcControllab
         this.prevRollAngle = this.rollAngle;
 
         if (!this.level().isClientSide) {
+            if (this.cinematicTicks > 0) {
+                this.cinematicTicks--;
+            }
             if (this.pilotUUID != null) {
                 ServerPlayer pilot = this.getServer().getPlayerList().getPlayer(this.pilotUUID);
                 if (pilot == null || !pilot.isAlive() || pilot.level() != this.level()) {
@@ -315,7 +323,7 @@ public class RcSubmarineEntity extends Entity implements GeoEntity, RcControllab
         double turnSpeed = 4.2f + (tier * 0.4f);
 
         if (inWater) {
-            boolean hasPower = hasBattery() && getBatteryRemaining() > 0;
+            boolean hasPower = (hasBattery() && getBatteryRemaining() > 0) || isCinematicActive();
             if (!hasPower) {
                 this.inputForward = 0.0f;
                 this.inputSteer = 0.0f;

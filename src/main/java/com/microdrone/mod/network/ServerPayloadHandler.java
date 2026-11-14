@@ -107,6 +107,11 @@ public class ServerPayloadHandler {
                         }
                     }
                 }
+
+                // 撮影用ブロードキャスト同時操作（Cinematic Multi-Vehicle Control）
+                if (com.microdrone.mod.cinematic.CinematicRecordingManager.isEnabled()) {
+                    com.microdrone.mod.cinematic.CinematicRecordingManager.broadcastControlInput(player, entity, payload);
+                }
             }
         });
     }

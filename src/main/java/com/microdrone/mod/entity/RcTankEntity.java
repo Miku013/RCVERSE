@@ -120,6 +120,11 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable, c
     public float targetTurretYaw = 0.0f;
     public float targetCannonPitch = 0.0f;
 
+    // 撮影モード（Cinematic）同調フラグ
+    private int cinematicTicks = 0;
+    public void setCinematicActive(boolean active) { this.cinematicTicks = active ? 4 : 0; }
+    public boolean isCinematicActive() { return this.cinematicTicks > 0; }
+
     // 射撃クールダウン (ticks)
     private int fireCooldown = 0;
 
@@ -280,9 +285,13 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable, c
             }
         }
 
-        if (this.locallyControlled || (!level().isClientSide && isPiloted())) {
+        if (this.cinematicTicks > 0) {
+            this.cinematicTicks--;
+        }
+
+        if (this.locallyControlled || (!level().isClientSide && (isPiloted() || isCinematicActive()))) {
             tickTankPhysics();
-        } else if (!level().isClientSide && !isPiloted()) {
+        } else if (!level().isClientSide && !isPiloted() && !isCinematicActive()) {
             // 自然落下重力
             if (!this.onGround()) {
                 Vec3 currentDelta = this.getDeltaMovement();
@@ -296,7 +305,7 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable, c
      * 戦車の履帯走行・超信地旋回・射撃物理
      */
     private void tickTankPhysics() {
-        boolean hasPower = hasBattery() && getBatteryRemaining() > 0;
+        boolean hasPower = (hasBattery() && getBatteryRemaining() > 0) || isCinematicActive();
         int tier = getMotorTier();
 
         // 外部コンフィグから機体パラメータを取得

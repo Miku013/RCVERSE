@@ -143,6 +143,11 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable, co
     // 機体のチャンク移動追従用
     private ChunkPos lastChunkPos = null;
 
+    // 撮影モード（Cinematic）同調フラグ
+    private int cinematicTicks = 0;
+    public void setCinematicActive(boolean active) { this.cinematicTicks = active ? 4 : 0; }
+    public boolean isCinematicActive() { return this.cinematicTicks > 0; }
+
     public DroneEntity(EntityType<?> entityType, Level level) {
         super(entityType, level);
         this.blocksBuilding = true;
@@ -534,6 +539,9 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable, co
 
         if (!this.level().isClientSide) {
             // === サーバー側 ===
+            if (this.cinematicTicks > 0) {
+                this.cinematicTicks--;
+            }
             if (this.pilotUUID != null) {
                 ServerPlayer pilot = this.getServer().getPlayerList().getPlayer(this.pilotUUID);
                 if (pilot == null || !pilot.isAlive() || pilot.level() != this.level()) {
@@ -541,7 +549,7 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable, co
                 }
             }
 
-            if (this.isPiloted()) {
+            if (this.isPiloted() || isCinematicActive()) {
                 tickFlightPhysics();
             } else {
                 tickUnpilotedPhysics();
@@ -693,7 +701,7 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable, co
                 }
 
                 // バッテリー切れフェイルセーフ
-                if (this.installedBattery.isEmpty() || this.getBatteryRemaining() <= 0) {
+                if (!isCinematicActive() && (this.installedBattery.isEmpty() || this.getBatteryRemaining() <= 0)) {
                     this.inputForward = 0.0f;
                     this.inputStrafe = 0.0f;
                     this.inputVertical = -0.04f;
