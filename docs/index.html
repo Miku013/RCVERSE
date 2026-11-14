@@ -27,7 +27,7 @@
         <li><a href="items.html">アイテム図鑑</a></li>
         <li><a href="#features">操作・機能</a></li>
         <li><a href="#custom-models">自作モデル導入</a></li>
-        <li><a href="#garage">ガレージ</a></li>
+        <li><a href="#garage">ガレージ・カスタム</a></li>
         <li><a href="#roadmap">開発状況</a></li>
         <li><a href="#changelog">更新履歴</a></li>
         <li><a href="#install">導入方法</a></li>
@@ -360,13 +360,17 @@
   <!-- ガレージ展示 & コース作成 -->
   <section id="garage" class="section">
     <div class="section-header">
-      <span class="section-tag">GARAGE & TRACK</span>
-      <h2 class="section-title">愛車を飾るガレージと本格サーキット作り</h2>
-      <p class="section-desc">走らせるだけでなく、コレクションやコース作りもこのMODの大きな魅力です。</p>
+      <span class="section-tag">GARAGE, CUSTOM & TRACK</span>
+      <h2 class="section-title">愛車を飾るガレージ・デカール工房・本格サーキット</h2>
+      <p class="section-desc">走らせるだけでなく、デカールでの自由なカスタマイズやコレクション展示、コース設計もこのMODの大きな魅力です。</p>
     </div>
 
-    <div class="grid-2">
+    <div class="grid-3">
+      <!-- 4段RCラック & 大型ショーケース -->
       <div class="card">
+        <div class="card-thumbnail" style="display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at center, #1e293b 0%, #090d16 100%);">
+          <img src="images/items/rc_showcase.png" alt="大型RCショーケース" style="width: 120px; height: 120px; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 8px 16px rgba(0,0,0,0.6));">
+        </div>
         <h3 class="card-title">
           🏢 4段RCラック & 大型ショーケース
           <span class="status-badge status-available">🟢 実装済み</span>
@@ -376,14 +380,38 @@
         </p>
         <ul class="card-features">
           <li><strong>4段RCラック</strong>: サイドビュー（真横90度）で愛車をすっきり縦積み展示</li>
-          <li><strong>10スロット大型ショーケース</strong>: 幅3×高さ2のガラス張り。少し斜め（25度）を向いた黄金アングルで展示</li>
+          <li><strong>10スロット大型ショーケース</strong>: 幅3×高さ2のガラス張り。斜め25度の黄金アングルで展示</li>
           <li>空手スニーク右クリックでスムーズに取り出し・入れ替え</li>
         </ul>
       </div>
 
+      <!-- デカール工房（リバリーエディター） -->
       <div class="card">
+        <div class="card-thumbnail">
+          <img src="images/screenshots/shot_decal_editor.png" alt="RCカー デカール工房（リバリーエディター）画面">
+        </div>
         <h3 class="card-title">
-          🏁 レースコース作成キット
+          🎨 デカール工房（リバリーエディター）
+          <span class="status-badge status-available">🟢 実装済み</span>
+        </h3>
+        <p class="card-text">
+          3Dモデルを見ながら直感的にステッカー（文字やバイナル）を貼り付けられる専用GUI！愛車を世界に1台だけのカスタム仕様に仕上げられます。
+        </p>
+        <ul class="card-features">
+          <li><strong>3Dリアルタイムプレビュー</strong>: マウスドラッグで視点回転・ズーム・移動</li>
+          <li><strong>部位別貼り付け</strong>: ボンネット、ルーフ、トランク、左右ドアに対応</li>
+          <li><strong>自由な調整</strong>: 位置、サイズ、回転（面内）、横幅比率、UV左右反転</li>
+          <li>デカール適用マシンはラックやショーケースでもそのまま立体反映</li>
+        </ul>
+      </div>
+
+      <!-- レースコース作成キット & ドリフト -->
+      <div class="card">
+        <div class="card-thumbnail">
+          <img src="images/screenshots/shot_drift_action.png" alt="サーキットコースでの本格ドリフト走行シーン">
+        </div>
+        <h3 class="card-title">
+          🏁 レースコース作成 & ドリフト走行
           <span class="status-badge status-available">🟢 実装済み</span>
         </h3>
         <p class="card-text">
@@ -391,8 +419,8 @@
         </p>
         <ul class="card-features">
           <li><strong>道路生成マーカー</strong>: 始点・終点を指定して滑らかな高速サーキット道路を一括自動生成</li>
-          <li><strong>ギミックパーツ（低速用）</strong>: ブーストジャンプ台、縁石、スロープ、カラーコーン等のブロック型パーツは低速・テクニカル走行向け</li>
-          <li><strong>レース設備</strong>: ゴールゲート、チェックポイントプレート、電光掲示板</li>
+          <li><strong>本格ドリフト</strong>: リアルサスペンションとステアリングカウンターによるテールスライド</li>
+          <li><strong>レース設備</strong>: ブーストジャンプ台、縁石、スロープ、カラーコーン、ゴールゲート</li>
         </ul>
       </div>
     </div>
@@ -794,7 +822,7 @@
       <a href="#about">概要</a>
       <a href="#vehicles">マシン一覧</a>
       <a href="#features">操作</a>
-      <a href="#garage">ガレージ</a>
+      <a href="#garage">ガレージ・カスタム</a>
       <a href="#roadmap">開発状況</a>
       <a href="#changelog">更新履歴</a>
       <a href="#install">導入方法</a>
