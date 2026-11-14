@@ -296,8 +296,9 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
         double movedDist = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
         // マルチプレイ不正対策（簡易バリデーション）:
-        // 1 Tickの移動距離が「最大許容速度(約1.5ブロック) × 2.0」を大幅に超える異常ワープでなければ承認
-        if (movedDist <= 3.0 || !this.clientSyncActive) {
+        // 撮影モード時は閾値を32mに拡大して同期拒否による取り残されテレポートを完全防止
+        double maxLimit = com.microdrone.mod.cinematic.CinematicRecordingManager.isEnabled() ? 32.0 : 3.0;
+        if (movedDist <= maxLimit || !this.clientSyncActive) {
             this.setPos(cx, cy, cz);
             this.setYRot(yaw);
             this.yRotO = yaw;
@@ -367,9 +368,11 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
             }
 
             // 3.5m (distSq > 12.25) 超過の重大な位置ズレ発生時 (壁抜け・スタック等の真の事故)、かつ非点滅時にレスキュー復帰発動
-            // ※通常走行時の自然なネットワーク通信遅延 (1.5m〜2.0m) では誤作動しない安全な適正閾値
-            if (distSq > 12.25 && this.resyncBlinkTicks <= 0) {
-                triggerRescueResync(x, y, z, yRot, deltaDist, "EXCESSIVE_DISTANCE_DESYNC (>3.5m)");
+            // ※撮影モード(Cinematic)では複数台同時操縦・並走撮影での誤爆を防ぐため完全無効化！
+            if (!com.microdrone.mod.cinematic.CinematicRecordingManager.isEnabled()) {
+                if (distSq > 12.25 && this.resyncBlinkTicks <= 0) {
+                    triggerRescueResync(x, y, z, yRot, deltaDist, "EXCESSIVE_DISTANCE_DESYNC (>3.5m)");
+                }
             }
             // 自プレイヤー操縦中はソフト引き寄せターゲットを設定しない
             this.hasServerTarget = false;
