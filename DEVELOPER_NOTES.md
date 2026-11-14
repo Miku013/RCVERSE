@@ -1280,3 +1280,28 @@ ull のままとなり、mouseDragged 内でドラッグ計算が実行されて
   - ドリフト走行シーン（ハチロクのテールスライド・路面・縁石全体）およびデカールエディター画面（部位選択・スライダー・ボタン）が見切れずに完全表示されるよう修正。
   - 自作モデルギャラリーの戦車カードを lockbench_model_guide.png へ正式更新。
   - 各スクリーンショットにクリックで原寸拡大表示できるリンク（	arget="_blank"）を追加。
+---
+
+## 2026-11-15: 電光掲示板（RaceDisplay）設置時クラッシュの根本修正 & 戦車モデル向き復旧
+
+### 1. 電光掲示板（RaceDisplayBlockEntity）設置時クラッシュの解決
+- **現象**: 実クライアント環境（Sinytra Connector / Veil / Iris / ImmediatelyFast 導入環境）にて、電光掲示板（`microdrone:race_display`）を設置した瞬間に `java.lang.StackOverflowError: Rendering Block Entity` が発生しゲームがクラッシュ。
+- **根本原因**:
+  - `CctvRenderPipeline.init()` 内で `TextureManager.register(CCTV_TEXTURE_LOCATION, new CctvScreenTexture())` を実行する際、Veil などの描画最適化 MOD の Mixin (`applyLabel`) が登録時に即座に `CctvScreenTexture.bind()` -> `getId()` -> `CctvRenderPipeline.getTextureId()` を呼び出す。
+  - `getTextureId()` 内の初期化チェック `if (!isInitialized || cctvTarget == null) init();` において、`isInitialized` フラグが `init()` の最後にセットされていたため、まだ `false` の状態であった。
+  - これにより `getTextureId()` が再び `init()` を呼び出し、無限再帰となってスタックオーバーフローを引き起こしていた。
+- **対策**:
+  1. `CctvRenderPipeline.java`:
+     - 再帰防止用フラグ `private static volatile boolean isInitializing = false;` を新設。
+     - `init()` を `synchronized` 化し、開始時に `isInitializing = true;`、終了時に `finally` で解除。
+     - `Minecraft.getInstance().getTextureManager().register(...)` を呼び出す前に `isInitialized = true;` をセット。これにより、登録中に Mixin が `getTextureId()` を叩いても生成済みの `cctvTarget.getColorTextureId()` が即座に返り、再帰が100%防止される。
+  2. `CctvScreenTexture.java`:
+     - `bind()` 内で `texId <= 0` の場合は GL バインドをスキップする安全ガードを追加。
+  3. **ブランチ同期**:
+     - `feature/cinematic-mode` および `main` 両ブランチに本修正をコミット・プッシュ完了。
+     - 実環境配置用 `rcverse-1.21.1-1.0.0.jar` および `rcverse-cinematic-1.0.0.jar` を再ビルドし、`C:\Users\mikum\curseforge\minecraft\Instances\neofor\mods\rcverse-1.21.1-1.0.0.jar` を最新版に更新。
+
+### 2. 戦車（PzH2000）の向き180度反転バグの解消
+- **現象**: シネマティック版のテスト中、自作戦車（`pzhtank.geo.json`）の向きが本来の進行方向と逆（180度反転）になっていた。
+- **原因**: `src/main/resources/assets/microdrone/geo/pzhtank.geo.json` の `root` ボーンに設定されていた `"rotation": [0, 180, 0]`（北=-Z進行方向統一のための定義）がローカルの作業差分で欠落していた。
+- **対策**: `pzhtank.geo.json` の `root` ボーン回転を正しく復元し、他車種と同様に進行方向を正面（北基準）へ一致させた。
