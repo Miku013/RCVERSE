@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>アイテム図鑑・仕様一覧 | RCVERSE - REMOTE CONTROL HOBBY MOD</title>
+  <meta name="description" content="RCVERSE Modに登場する全アイテム・ブロック（車両・プロポ・展示家具・コースギミック・パーツ素材）の一覧と用途・使い方ガイド。">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ナビゲーションバー -->
+  <nav class="navbar">
+    <div class="nav-container">
+      <a href="index.html" class="nav-logo">
+        <img src="images/mod_icon_32.png" alt="RCVERSE Icon">
+        <span>RCVERSE</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="index.html#about">概要</a></li>
+        <li><a href="index.html#vehicles">マシン一覧</a></li>
+        <li><a href="items.html" style="color: var(--accent-cyan); text-shadow: 0 0 8px rgba(56, 189, 248, 0.6);">アイテム図鑑</a></li>
+        <li><a href="index.html#features">操作・機能</a></li>
+        <li><a href="index.html#garage">ガレージ</a></li>
+        <li><a href="index.html#roadmap">開発状況</a></li>
+        <li><a href="index.html#install">導入方法</a></li>
+        <li><a href="index.html#download" class="btn-nav">ダウンロード</a></li>
+      </ul>
+      <button class="menu-toggle" aria-label="Toggle Menu">☰</button>
+    </div>
+  </nav>
+
+  <!-- ヘッダー -->
+  <header style="padding: 130px 20px 40px; text-align: center; max-width: 1100px; margin: 0 auto;">
+    <span class="section-tag">ITEM CATALOG</span>
+    <h1 class="section-title">RCVERSE アイテム図鑑・仕様一覧</h1>
+    <p class="section-desc">Modに実装されている全アイテム・ブロックの用途や特徴、使い方をカテゴリ別にご紹介します。</p>
+  </header>
+
+  <!-- アイテム一覧 -->
+  <main class="section" style="padding-top: 20px;">
+    <!-- 絞り込みフィルターボタン -->
+    <div class="item-filter-bar">
+      <button class="filter-btn active" data-filter="all">すべて表示</button>
+      <button class="filter-btn" data-filter="vehicle">RCマシン</button>
+      <button class="filter-btn" data-filter="tool">送信機・作業台</button>
+      <button class="filter-btn" data-filter="furniture">展示家具</button>
+      <button class="filter-btn" data-filter="track">コース・ギミック</button>
+      <button class="filter-btn" data-filter="performance">バッテリー・モーター</button>
+      <button class="filter-btn" data-filter="material">クラフト素材</button>
+    </div>
+
+    <!-- アイテムグリッド -->
+    <div class="item-grid" id="itemGrid">
+
+      <!-- 1. RCマシン -->
+      <div class="item-card" data-category="vehicle">
+        <span class="item-category-tag">RCマシン</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/rc_car_item.png" alt="マイクロRCカー">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">マイクロRCカー</h3>
+            <span class="item-id">microdrone:rc_car_item</span>
+          </div>
+        </div>
+        <p class="item-desc">本格的なサスペンションとステアリング機構を持つドリフトカー。ハチロク等の名車ボディに対応。</p>
+        <div class="item-usage">
+          <strong>用途:</strong> 右クリックで地面に配置。プロポを持って右クリックでペアリング・操縦。
+        </div>
+      </div>
+
+      <div class="item-card" data-category="vehicle">
+        <span class="item-category-tag">RCマシン</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/drone_item.png" alt="マイクロドローン">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">マイクロドローン</h3>
+            <span class="item-id">microdrone:drone_item</span>
+          </div>
+        </div>
+        <p class="item-desc">4つのローターと青色LEDを搭載したクアッドコプター。3次元アクロバットフライトとFPV飛行が可能。</p>
+        <div class="item-usage">
+          <strong>用途:</strong> 右クリックで配置。プロポで操縦。CキーでFPVカメラ（ドローン目線）切り替え。
+        </div>
+      </div>
+
+      <div class="item-card" data-category="vehicle">
+        <span class="item-category-tag">RCマシン</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/rc_tank_item.png" alt="マイクロRC戦車">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">マイクロRC戦車</h3>
+            <span class="item-id">microdrone:rc_tank_item</span>
+          </div>
+        </div>
+        <p class="item-desc">左右独立履帯（クローラー）駆動による超信地旋回が可能なミリタリーRC。主砲発射ギミック搭載。</p>
+        <div class="item-usage">
+          <strong>用途:</strong> 右クリックで配置。左右クローラー旋回や、右クリックで主砲を発射。
+        </div>
+      </div>
+
+      <div class="item-card" data-category="vehicle">
+        <span class="item-category-tag">RCマシン</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/rc_plane_item.png" alt="マイクロRCプレーン">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">マイクロRCプレーン</h3>
+            <span class="item-id">microdrone:rc_plane_item</span>
+          </div>
+        </div>
+        <p class="item-desc">主翼の空力揚力とプロペラ推進で大空を駆ける固定翼機。バンク旋回や宙返り滑空が可能。</p>
+        <div class="item-usage">
+          <strong>用途:</strong> 空中または滑走路で配置して発進。プロポでピッチ・ロール・スロットルを操作。
+        </div>
+      </div>
+
+      <div class="item-card" data-category="vehicle">
+        <span class="item-category-tag">RCマシン</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/rc_boat_item.png" alt="マイクロRCボート">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">マイクロRCボート</h3>
+            <span class="item-id">microdrone:rc_boat_item</span>
+          </div>
+        </div>
+        <p class="item-desc">水面を滑るように疾走する高速ハイドロプレーンボート。水しぶきを上げながらクルージング。</p>
+        <div class="item-usage">
+          <strong>用途:</strong> 水面に右クリックで配置。プロポで前進・旋回ラダーを操舵。
+        </div>
+      </div>
+
+      <div class="item-card" data-category="vehicle">
+        <span class="item-category-tag">RCマシン</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/rc_submarine_item.png" alt="マイクロRC潜水艇">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">マイクロRC潜水艇</h3>
+            <span class="item-id">microdrone:rc_submarine_item</span>
+          </div>
+        </div>
+        <p class="item-desc">バラストタンク制御による潜航・浮上が可能な探査潜水艇。サーチライトで海底を探索。</p>
+        <div class="item-usage">
+          <strong>用途:</strong> 水中に配置。Space/Shiftキーで潜航・浮上深度をコントロール。
+        </div>
+      </div>
+
+      <!-- 2. 送信機・作業台 -->
+      <div class="item-card" data-category="tool">
+        <span class="item-category-tag">送信機・作業台</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/drone_controller.png" alt="ドローンコントローラー">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">ドローンコントローラー（プロポ）</h3>
+            <span class="item-id">microdrone:drone_controller</span>
+          </div>
+        </div>
+        <p class="item-desc">2.4GHz無線の多機能送信機。全RCマシンのペアリングと遠隔操縦を司る重要アイテム。</p>
+        <div class="item-usage">
+          <strong>用途:</strong> 手に持ってマシンを右クリックで操縦開始。HUDにバッテリーやスロットルを表示。
+        </div>
+      </div>
+
+      <div class="item-card" data-category="tool">
+        <span class="item-category-tag">送信機・作業台</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/decal_table.png" alt="デカール作業台">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">デカール作業台</h3>
+            <span class="item-id">microdrone:decal_table</span>
+          </div>
+        </div>
+        <p class="item-desc">RCカーの塗装やステッカー貼りを行う専門工房。RGBカラーパレットとリバリーエディタ搭載。</p>
+        <div class="item-usage">
+          <strong>用途:</strong> 右クリックでGUIを開き、車体をセットしてボディカラー変更やデカールを適用。
+        </div>
+      </div>
+
+      <div class="item-card" data-category="tool">
+        <span class="item-category-tag">送信機・作業台</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/rc_workbench.png" alt="RC工作台">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">RC工作台</h3>
+            <span class="item-id">microdrone:rc_workbench</span>
+          </div>
+        </div>
+        <p class="item-desc">RCマシン本体やコントローラー、精密パーツ類をクラフト・組み立てするための専用作業台。</p>
+        <div class="item-usage">
+          <strong>用途:</strong> 右クリックでクラフトメニューを開き、素材を組み合わせて機体を製作。
+        </div>
+      </div>
+
+      <div class="item-card" data-category="tool">
+        <span class="item-category-tag">送信機・作業台</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/drone_charger.png" alt="急速充電ステーション">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">急速充電ステーション</h3>
+            <span class="item-id">microdrone:drone_charger</span>
+          </div>
+        </div>
+        <p class="item-desc">消耗したドローンバッテリーを急速チャージする基地局ブロック。残量パーセントを表示。</p>
+        <div class="item-usage">
+          <strong>用途:</strong> バッテリーを持って右クリックでセット。自動充電され満充電で取り出し可能。
+        </div>
+      </div>
+
+      <!-- 3. 展示家具 -->
+      <div class="item-card" data-category="furniture">
+        <span class="item-category-tag">展示家具</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/rc_rack.png" alt="RC展示ラック">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">RC展示ラック（4段）</h3>
+            <span class="item-id">microdrone:rc_rack</span>
+          </div>
+        </div>
+        <p class="item-desc">高さ2ブロック・4段構造のガレージ用展示棚。愛車を真横（90度）のサイドビューで3D立体展示。</p>
+        <div class="item-usage">
+          <strong>用途:</strong> 車両を持って各棚を右クリックで展示。空手スニーク右クリックで取り出し。
+        </div>
+      </div>
+
+      <div class="item-card" data-category="furniture">
+        <span class="item-category-tag">展示家具</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/rc_showcase.png" alt="RC大型ショウケース">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">RC大型ショウケース（10スロット）</h3>
+            <span class="item-id">microdrone:rc_showcase</span>
+          </div>
+        </div>
+        <p class="item-desc">幅3×高さ2のガラス張り大型ケース。最大10台を斜め25度の黄金アングルで立体ディスプレイ。</p>
+        <div class="item-usage">
+          <strong>用途:</strong> 狙ったスロットを右クリックで展示。空手スニーク右クリックで個別回収。
+        </div>
+      </div>
+
+      <!-- 4. コース設備・ギミック -->
+      <div class="item-card" data-category="track">
+        <span class="item-category-tag">コース・ギミック</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/road_start.png" alt="道路生成 始点マーカー">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">道路生成 始点マーカー</h3>
+            <span class="item-id">microdrone:road_start</span>
+          </div>
+        </div>
+        <p class="item-desc">スムーズなアスファルトサーキットを自動敷設する起点ブロック。曲率や幅を設定可能。</p>
+        <div class="item-usage">
+          <strong>用途:</strong> コースの起点に設置。終点マーカーとリンクさせて道路を一括自動生成。
+        </div>
+      </div>
+
+      <div class="item-card" data-category="track">
+        <span class="item-category-tag">コース・ギミック</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/road_end.png" alt="道路生成 終点マーカー">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">道路生成 終点マーカー</h3>
+            <span class="item-id">microdrone:road_end</span>
+          </div>
+        </div>
+        <p class="item-desc">道路生成のゴール地点ブロック。チェッカーフラッグアイコンで視認性抜群。</p>
+        <div class="item-usage">
+          <strong>用途:</strong> コースの終点に設置。右クリックで始点マーカーとの接続状態を確認。
+        </div>
+      </div>
+
+      <div class="item-card" data-category="track">
+        <span class="item-category-tag">コース・ギミック</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/boost_ramp.png" alt="ブーストジャンプ台">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">ブーストジャンプ台</h3>
+            <span class="item-id">microdrone:boost_ramp</span>
+          </div>
+        </div>
+        <p class="item-desc">踏むと瞬時に超加速し、空高く跳躍するハイテクスロープ。ネオン発光エフェクト付き。</p>
+        <div class="item-usage">
+          <strong>用途:</strong> サーキットのストレートや障害物手前に配置。マシンを大ジャンプさせる。
+        </div>
+      </div>
+
+      <div class="item-card" data-category="track">
+        <span class="item-category-tag">コース・ギミック</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/racing_slope.png" alt="レーシングスロープ">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">レーシングスロープ</h3>
+            <span class="item-id">microdrone:racing_slope</span>
+          </div>
+        </div>
+        <p class="item-desc">適度な角度で飛び出せるキッカーランプ。スムーズなジャンプアクションに最適。</p>
+        <div class="item-usage">
+          <strong>用途:</strong> コースのアクセントや立体交差の手前に配置。
+        </div>
+      </div>
+
+      <div class="item-card" data-category="track">
+        <span class="item-category-tag">コース・ギミック</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/traffic_cone.png" alt="カラーコーン">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">カラーコーン（パイロン）</h3>
+            <span class="item-id">microdrone:traffic_cone</span>
+          </div>
+        </div>
+        <p class="item-desc">スラローム競技やコース境界を示すパイロン。1ブロック内に最大25個まで自由に配置可能。</p>
+        <div class="item-usage">
+          <strong>用途:</strong> 右クリックで配置、スニーク右クリックで角度調整。衝突すると倒れる物理判定。
+        </div>
+      </div>
+
+      <div class="item-card" data-category="track">
+        <span class="item-category-tag">コース・ギミック</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/racing_curb.png" alt="レーシング縁石">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">レーシング縁石（赤白）</h3>
+            <span class="item-id">microdrone:racing_curb</span>
+          </div>
+        </div>
+        <p class="item-desc">コーナーの内側・外側に敷設する本格的な縁石。サスペンションがリアルに追従。</p>
+        <div class="item-usage">
+          <strong>用途:</strong> カーブのイン側やアウト側に連続配置して本格サーキットを演出。
+        </div>
+      </div>
+
+      <div class="item-card" data-category="track">
+        <span class="item-category-tag">コース・ギミック</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/race_display.png" alt="レース電光掲示板">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">レース電光掲示板</h3>
+            <span class="item-id">microdrone:race_display</span>
+          </div>
+        </div>
+        <p class="item-desc">並べて置くと自動で巨大スクリーン化。ラップタイムや中継カメラ映像をリアルタイム表示。</p>
+        <div class="item-usage">
+          <strong>用途:</strong> コース脇に配置。ゴールゲートや中継カメラと連動してタイムを表示。
+        </div>
+      </div>
+
+      <!-- 5. バッテリー・モーター -->
+      <div class="item-card" data-category="performance">
+        <span class="item-category-tag">バッテリー・モーター</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/battery_tier_1.png" alt="ドローンバッテリー">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">バッテリー (Tier 1〜4)</h3>
+            <span class="item-id">microdrone:battery_tier_1〜4</span>
+          </div>
+        </div>
+        <p class="item-desc">マシンの稼働時間を決めるLiPoバッテリー。Tier 1(3000m)からTier 4(6000m)まで存在。</p>
+        <div class="item-usage">
+          <strong>用途:</strong> 手に持ってマシンを右クリックで装着。充電ステーションで繰り返し充電可能。
+        </div>
+      </div>
+
+      <div class="item-card" data-category="performance">
+        <span class="item-category-tag">バッテリー・モーター</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/motor_tier_1.png" alt="モーター">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">モーター (Tier 1〜4)</h3>
+            <span class="item-id">microdrone:motor_tier_1〜4</span>
+          </div>
+        </div>
+        <p class="item-desc">マシンの最高速度と加速度をグレードアップする換装モーター。Std/Sport/High/Raceの4段階。</p>
+        <div class="item-usage">
+          <strong>用途:</strong> 手に持ってマシンを右クリックでエンジン・モーターを換装。
+        </div>
+      </div>
+
+      <!-- 6. クラフト素材 -->
+      <div class="item-card" data-category="material">
+        <span class="item-category-tag">クラフト素材</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/drone_frame.png" alt="ドローンフレーム">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">各種クラフトコンポーネント</h3>
+            <span class="item-id">microdrone:drone_frame 他</span>
+          </div>
+        </div>
+        <p class="item-desc">プロペラ、ESC基板、M2精密ねじ、液晶画面、アンテナ、ジンバルスティック等の製作素材。</p>
+        <div class="item-usage">
+          <strong>用途:</strong> RC工作台でマシンやプロポ、高性能モーターを組み立てる材料として使用。
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- フッター -->
+  <footer class="footer">
+    <div class="footer-links">
+      <a href="index.html#about">概要</a>
+      <a href="index.html#vehicles">マシン一覧</a>
+      <a href="items.html">アイテム図鑑</a>
+      <a href="index.html#features">操作</a>
+      <a href="index.html#garage">ガレージ</a>
+      <a href="index.html#install">導入方法</a>
+      <a href="https://github.com/Miku013/RCVERSE" target="_blank">GitHub</a>
+    </div>
+    <p>&copy; 2026 RCVERSE - Remote Control Hobby Mod. Developed for Minecraft NeoForge 1.21.1.</p>
+  </footer>
+
+  <script src="js/main.js"></script>
+  <script>
+    // アイテムカテゴリー絞り込み
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        const filter = btn.getAttribute('data-filter');
+        document.querySelectorAll('.item-card').forEach(card => {
+          if (filter === 'all' || card.getAttribute('data-category') === filter) {
+            card.style.display = 'flex';
+          } else {
+            card.style.display = 'none';
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>
