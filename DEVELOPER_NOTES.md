@@ -1321,3 +1321,26 @@ ull のままとなり、mouseDragged 内でドラッグ計算が実行されて
   3. **ビルド & 同期**:
      - `feature/cinematic-mode` および `main` 両ブランチにコミット・プッシュ完了。
      - 新ライセンスがメタデータに埋め込まれた最新の `rcverse-1.21.1-1.0.0.jar` を再ビルドし、実機環境（`C:\Users\mikum\curseforge\minecraft\Instances\neofor\mods\`）へ配置。
+---
+
+## 2026-11-15: CurseForge正式申請完了・次回引き継ぎタスク
+
+### 1. 本日完了した全作業
+- **CurseForge公開申請完了**:
+  - プロジェクト作成（Primary Category: Technology / License: All Rights Reserved）。
+  - アイコン（512px / 1024px）および公式説明文（AI共同開発エピソード含む）登録。
+  - 最新修正版 `rcverse-1.21.1-1.0.0.jar` のアップロード申請完了（自動スキャン・審査中）。
+- **重大バグの根本解消**:
+  - 電光掲示板（Race Display）設置時の描画MOD競合による `StackOverflowError` を完全解決。
+  - 自作戦車（PzH2000）の180度向き反転をボーン回転復元により解消。
+  - ライセンスを `All Rights Reserved` に統一し、ゲーム内表示名を `RCVERSE` に最適化。
+- **グローバル向けドキュメント整備**:
+  - GitHub リポジトリトップ `README.md` を英語＆日本語で美麗に作成。
+  - 公式Webサイトの英語版（`docs/index_en.html`）を開設し、日英切り替えボタンを実装。
+  - ナビゲーションバーの改行崩れ・レスポンシブ崩れ・画像リンク切れを完全修正。
+
+### 2. 次回セッションの引き継ぎタスク
+- **アイテム図鑑（`docs/items.html`）の英語版（`docs/items_en.html`）の作成**:
+  - 全アイテム・ブロック（車両、プロポ、バッテリー、モーター、コースブロック、家具等）の英語解説ページの作成とリンク繋ぎ込み。
+- **CurseForge審査通過後の古いファイル整理**:
+  - 審査承認後、最初にあげた旧ファイル2件の削除（Delete）またはアーカイブ（Archive）。
