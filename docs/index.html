@@ -21,7 +21,9 @@
         <li><a href="#about">概要</a></li>
         <li><a href="#vehicles">マシン一覧</a></li>
         <li><a href="#features">操作・機能</a></li>
-        <li><a href="#garage">ガレージ・コース</a></li>
+        <li><a href="#garage">ガレージ</a></li>
+        <li><a href="#roadmap">開発状況</a></li>
+        <li><a href="#changelog">更新履歴</a></li>
         <li><a href="#install">導入方法</a></li>
         <li><a href="#download" class="btn-nav">ダウンロード</a></li>
       </ul>
@@ -39,8 +41,9 @@
       <div class="hero-content">
         <div class="hero-badges">
           <span class="badge badge-version">Minecraft 1.21.1</span>
-          <span class="badge">NeoForge</span>
-          <span class="badge">GeckoLib Required</span>
+          <span class="badge">Java 21</span>
+          <span class="badge">NeoForge 21.1.x</span>
+          <span class="badge">GeckoLib 4 Required</span>
         </div>
         <h1 class="hero-title">マインクラフトの世界を、<span>本格ラジコン</span>で駆け巡ろう！</h1>
         <p class="hero-subtitle">
@@ -69,9 +72,9 @@
     <div class="grid-3">
       <div class="card">
         <div class="card-icon">🎮</div>
-        <h3 class="card-title">プロポ＆FPVカメラ</h3>
+        <h3 class="card-title">プロポ＆FPV操縦</h3>
         <p class="card-text">
-          送信機（プロポ）を持った状態でのリアルタイム操縦。ワンボタンでラジコン目線のFPVカメラに切り替え、まるで自分がマシンに乗り込んだようなスリリングな走行が可能です。
+          送信機（プロポ）を持った状態でのリアルタイム遠隔操縦。ワンボタンでマシンの目線（FPVカメラ）に切り替え、まるでドライバーになったような迫力ある視点を楽しめます。
         </p>
       </div>
 
@@ -96,82 +99,148 @@
   <!-- 6大ビークル紹介 -->
   <section id="vehicles" class="section">
     <div class="section-header">
-      <span class="section-tag">LINEUP</span>
+      <span class="section-tag">LINEUP & CONTROLS</span>
       <h2 class="section-title">陸・海・空を制覇する 6大RCマシン</h2>
-      <p class="section-desc">多彩な挙動と魅力を持ったマシンたちが登場。あなたのスタイルに合わせて選びましょう。</p>
+      <p class="section-desc">現在実装されているマシンと開発中のマシン一覧。各マシンの操作方法もこちらで確認できます。</p>
     </div>
 
     <div class="grid-3">
       <!-- RCカー -->
       <div class="card">
         <div class="card-icon"><img src="images/vehicle_car.png" alt="RCカー"></div>
-        <h3 class="card-title">RCカー（ハチロク等） <span class="tag">LAND</span></h3>
+        <h3 class="card-title">
+          RCカー（ハチロク等）
+          <span class="status-badge status-available">🟢 実装済み</span>
+        </h3>
         <p class="card-text">本格的なサスペンションとステアリング機構を搭載したドリフトカー。タイトコーナーを白煙を上げて滑らかに滑り抜けます。</p>
         <ul class="card-features">
           <li>リアルサスペンション＆ロール・ピッチ挙動</li>
           <li>ドリフト慣性コントロール</li>
           <li>デカール＆ボディカラー塗装対応</li>
         </ul>
+        <div class="controls-box">
+          <div class="controls-title">🕹 基本操作方法</div>
+          <ul class="controls-list">
+            <li><span class="key-badge">W</span> / <span class="key-badge">S</span> アクセル / ブレーキ・バック</li>
+            <li><span class="key-badge">A</span> / <span class="key-badge">D</span> ステアリング（左右旋回）</li>
+            <li><span class="key-badge">Shift</span> ドリフト（スライド）</li>
+          </ul>
+        </div>
       </div>
 
       <!-- マイクロドローン -->
       <div class="card">
         <div class="card-icon"><img src="images/vehicle_drone.png" alt="マイクロドローン"></div>
-        <h3 class="card-title">マイクロドローン <span class="tag">AIR</span></h3>
+        <h3 class="card-title">
+          マイクロドローン
+          <span class="status-badge status-available">🟢 実装済み</span>
+        </h3>
         <p class="card-text">4つのローターと青色LEDを備えたクアッドコプター。3次元空間をアクロバティックに飛行し、狭い洞窟や障害物コースを攻略できます。</p>
         <ul class="card-features">
           <li>直感的なホバリング＆3次元操縦</li>
-          <li>FPVカメラでの高速レース</li>
+          <li>FPVカメラ（Cキー）での高速レース</li>
           <li>バッテリー充電システム対応</li>
         </ul>
+        <div class="controls-box">
+          <div class="controls-title">🕹 基本操作方法</div>
+          <ul class="controls-list">
+            <li><span class="key-badge">Space</span> / <span class="key-badge">Shift</span> 上昇 / 下降</li>
+            <li><span class="key-badge">W</span> / <span class="key-badge">S</span> 前進 / 後退（ピッチ傾斜）</li>
+            <li><span class="key-badge">A</span> / <span class="key-badge">D</span> 左右旋回（ヨー）</li>
+            <li><span class="key-badge">C</span> FPVカメラ視線切り替え</li>
+          </ul>
+        </div>
       </div>
 
       <!-- RC戦車 -->
       <div class="card">
         <div class="card-icon"><img src="images/vehicle_tank.png" alt="RC戦車"></div>
-        <h3 class="card-title">RC戦車 <span class="tag">LAND</span></h3>
+        <h3 class="card-title">
+          RC戦車
+          <span class="status-badge status-dev">🟡 開発中</span>
+        </h3>
         <p class="card-text">左右独立履帯（クローラー）駆動による超信地旋回が可能。独立砲塔旋回と主砲発射ギミックを搭載したミリタリーRC。</p>
         <ul class="card-features">
           <li>左右クローラー独立駆動（超信地旋回）</li>
-          <li>独立砲塔旋回＆主砲発射</li>
+          <li>砲塔旋回＆主砲発射ギミック</li>
           <li>悪路走破性能</li>
         </ul>
+        <div class="controls-box">
+          <div class="controls-title">🕹 基本操作方法</div>
+          <ul class="controls-list">
+            <li><span class="key-badge">W</span> / <span class="key-badge">S</span> 前進 / 後退</li>
+            <li><span class="key-badge">A</span> / <span class="key-badge">D</span> 左右独立履帯旋回</li>
+            <li><span class="key-badge">右クリック</span> 主砲発射</li>
+          </ul>
+        </div>
       </div>
 
       <!-- RC飛行機 -->
       <div class="card">
         <div class="card-icon"><img src="images/vehicle_plane.png" alt="RC飛行機"></div>
-        <h3 class="card-title">RC飛行機 <span class="tag">AIR</span></h3>
+        <h3 class="card-title">
+          RC飛行機
+          <span class="status-badge status-dev">🟡 開発中</span>
+        </h3>
         <p class="card-text">主翼の揚力とプロペラ推進で大空を駆ける固定翼機。バンク旋回やループ飛行など、ダイナミックな空力飛行が楽しめます。</p>
         <ul class="card-features">
-          <li>空力揚力演算と滑空</li>
+          <li>空力揚力演算と滑空（現在調整中）</li>
           <li>アクロバット旋回・ロール飛行</li>
           <li>広大なマイクラ世界の空中散歩</li>
         </ul>
+        <div class="controls-box">
+          <div class="controls-title">🕹 基本操作方法</div>
+          <ul class="controls-list">
+            <li><span class="key-badge">W</span> / <span class="key-badge">S</span> ピッチ（機首上げ / 機首下げ）</li>
+            <li><span class="key-badge">A</span> / <span class="key-badge">D</span> ロール（バンク傾き）</li>
+            <li><span class="key-badge">Space</span> スロットル出力アップ</li>
+          </ul>
+        </div>
       </div>
 
       <!-- RCボート -->
       <div class="card">
         <div class="card-icon"><img src="images/vehicle_boat.png" alt="RCボート"></div>
-        <h3 class="card-title">RCボート <span class="tag">SEA</span></h3>
+        <h3 class="card-title">
+          RCボート
+          <span class="status-badge status-dev">🟡 開発中</span>
+        </h3>
         <p class="card-text">水面を滑るように疾走する高速ボート。水しぶきを上げながら川や海をハイスピードでクルージングできます。</p>
         <ul class="card-features">
           <li>水面滑走＆リアル水流エフェクト</li>
           <li>軽快なスラローム旋回</li>
-          <li>水上レースコース対応</li>
+          <li>動作音・銃火器ギミック実装中</li>
         </ul>
+        <div class="controls-box">
+          <div class="controls-title">🕹 基本操作方法</div>
+          <ul class="controls-list">
+            <li><span class="key-badge">W</span> / <span class="key-badge">S</span> スロットル前進 / 後退</li>
+            <li><span class="key-badge">A</span> / <span class="key-badge">D</span> ラダー舵角（左右旋回）</li>
+          </ul>
+        </div>
       </div>
 
       <!-- RC潜水艦 -->
       <div class="card">
         <div class="card-icon"><img src="images/vehicle_submarine.png" alt="RC潜水艦"></div>
-        <h3 class="card-title">RC潜水艦 <span class="tag">SEA</span></h3>
+        <h3 class="card-title">
+          RC潜水艦
+          <span class="status-badge status-dev">🟡 開発中</span>
+        </h3>
         <p class="card-text">バラスト制御による自由な潜航・浮上が可能な探査用潜水艦。サーチライトで薄暗い深海や海底遺跡を安全に探索できます。</p>
         <ul class="card-features">
           <li>潜航・浮上深度コントロール</li>
           <li>水中サーチライト＆ソナー</li>
-          <li>海底洞窟・海底遺跡の探査</li>
+          <li>水中推進音・銃火器ギミック実装中</li>
         </ul>
+        <div class="controls-box">
+          <div class="controls-title">🕹 基本操作方法</div>
+          <ul class="controls-list">
+            <li><span class="key-badge">Space</span> / <span class="key-badge">Shift</span> バラスト浮上 / 潜航</li>
+            <li><span class="key-badge">W</span> / <span class="key-badge">S</span> 前進 / 後退</li>
+            <li><span class="key-badge">A</span> / <span class="key-badge">D</span> 左右旋回</li>
+          </ul>
+        </div>
       </div>
     </div>
   </section>
@@ -187,10 +256,11 @@
       <div class="feature-box">
         <div class="feature-box-icon">📡</div>
         <div class="feature-box-content">
-          <h3>多機能プロポ（送信機）＆FPVカメラ</h3>
+          <h3>多機能プロポ（送信機）＆FPVカメラ <span class="status-badge status-available">🟢 実装済み</span></h3>
           <p>
             プロポを手に持ち、設置したラジコンを右クリックして瞬時にペアリング。
-            画面左下にはバッテリー残量やスロットル状況がリアルタイム表示され、離れた場所からでも自由自在に操縦できます。ワンボタンでマシンの目線（FPV）への切り替えも可能です。
+            画面左下にはバッテリー残量やスロットル状況がリアルタイム表示され、離れた場所からでも自由自在に操縦できます。
+            <strong>マイクロドローンでは「Cキー」でラジコン視点（FPV）に即時切り替え可能</strong>です。（※車載FPVカメラは今後のアップデートで他マシンにも順次対応予定）
           </p>
         </div>
       </div>
@@ -198,7 +268,7 @@
       <div class="feature-box">
         <div class="feature-box-icon">🏎️</div>
         <div class="feature-box-content">
-          <h3>爽快なドリフト走行＆リアル物理挙動</h3>
+          <h3>爽快なドリフト走行＆リアル物理挙動 <span class="status-badge status-available">🟢 実装済み</span></h3>
           <p>
             繊細なスロットルワークとカウンターステアによる本格的なドリフト走行を完全再現。
             独立サスペンションの沈み込みや車体のロール・ピッチ、滑走時の白煙エフェクトなど、走る歓びを追求しています。（※スキール音や走行音は今後のアップデートで実装予定）
@@ -209,7 +279,7 @@
       <div class="feature-box">
         <div class="feature-box-icon">🎨</div>
         <div class="feature-box-content">
-          <h3>デカール作業台でのカラーカスタム</h3>
+          <h3>デカール作業台でのカラーカスタム <span class="status-badge status-available">🟢 実装済み</span></h3>
           <p>
             デカール作業台を使えば、愛車のボディカラーをRGBカラーパレットで自由に変更可能。
             さらに、オリジナルステッカーやレーシングデカールを車体の好きな位置に貼り付けて、世界に一台だけのカスタムマシンを作り上げられます。
@@ -220,7 +290,7 @@
       <div class="feature-box">
         <div class="feature-box-icon">🧩</div>
         <div class="feature-box-content">
-          <h3>自作3Dモデル（Blockbench）の導入</h3>
+          <h3>自作3Dモデル（Blockbench）の導入 <span class="status-badge status-available">🟢 実装済み</span></h3>
           <p>
             Blockbenchで自作した3Dモデル（<code>.geo.json</code>）やテクスチャをそのままModへ導入・差し替え可能。
             憧れの実車やアニメの劇中車、完全オリジナルのカスタムボディをモデリングして、自分だけの愛車をマイクラの世界で走らせることができます。
@@ -240,19 +310,25 @@
 
     <div class="grid-2">
       <div class="card">
-        <h3 class="card-title">🏢 4段RCラック & 大型ショーケース</h3>
+        <h3 class="card-title">
+          🏢 4段RCラック & 大型ショーケース
+          <span class="status-badge status-available">🟢 実装済み</span>
+        </h3>
         <p class="card-text">
           スロットごとにピボットが設定された専用家具。置いたマシンは2Dアイコンではなく、<strong>実物の3Dモデル（デカール・カラー維持）</strong>として美しく展示されます。
         </p>
         <ul class="card-features">
-          <li><strong>4段RCラック</strong>: サイドビュー（真横）で愛車をすっきり縦積み展示</li>
-          <li><strong>10スロット大型ショーケース</strong>: 幅3×高さ2のガラス張り。少し斜めを向いた黄金アングルで展示</li>
+          <li><strong>4段RCラック</strong>: サイドビュー（真横90度）で愛車をすっきり縦積み展示</li>
+          <li><strong>10スロット大型ショーケース</strong>: 幅3×高さ2のガラス張り。少し斜め（25度）を向いた黄金アングルで展示</li>
           <li>空手スニーク右クリックでスムーズに取り出し・入れ替え</li>
         </ul>
       </div>
 
       <div class="card">
-        <h3 class="card-title">🏁 レースコース作成キット</h3>
+        <h3 class="card-title">
+          🏁 レースコース作成キット
+          <span class="status-badge status-available">🟢 実装済み</span>
+        </h3>
         <p class="card-text">
           道路生成マーカーを使えば、始点と終点を置くだけでスムーズなアスファルトコースが自動敷設されます。
         </p>
@@ -265,12 +341,82 @@
     </div>
   </section>
 
+  <!-- 開発ロードマップ（現在進行中・予定） -->
+  <section id="roadmap" class="section">
+    <div class="section-header">
+      <span class="section-tag">ROADMAP</span>
+      <h2 class="section-title">開発状況 & 今後のアップデート予定</h2>
+      <p class="section-desc">RCVERSEは現在精力的にアップデートを進めています。直近の開発内容と将来の構想です。</p>
+    </div>
+
+    <div class="roadmap-grid">
+      <!-- 開発中 -->
+      <div class="roadmap-card dev">
+        <h3 class="card-title" style="color: #facc15;">🟡 開発中 (In Development)</h3>
+        <ul class="roadmap-list">
+          <li><strong>RC戦車</strong>: 射撃時の砲塔リコイルアニメーション</li>
+          <li><strong>RC飛行機</strong>: 空力揚力滑空（挙動調整中）</li>
+          <li><strong>RCボート & RC潜水艦</strong>: 動作音および銃火器実装</li>
+          <li><strong>サウンドシステム</strong>: スロットル連動エンジン音、スキール音（タイヤ摩擦音）</li>
+        </ul>
+      </div>
+
+      <!-- 今後実装予定 -->
+      <div class="roadmap-card planned">
+        <h3 class="card-title" style="color: #c084fc;">🔵 今後のアップデート予定 (Planned)</h3>
+        <ul class="roadmap-list">
+          <li><strong>全車両への動作音</strong>: 各マシンの専用エンジン・モーター・推進音</li>
+          <li><strong>スタートランプ</strong>: レース開始カウントダウンシグナル</li>
+          <li><strong>多脚戦車 他</strong>: ユニークな新カテゴリRCマシンの追加</li>
+          <li><strong>車載カメラの全車対応</strong>: RCカーやボートへのFPV視線切り替え拡張</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 更新履歴 (Changelog) -->
+  <section id="changelog" class="section">
+    <div class="section-header">
+      <span class="section-tag">CHANGELOG</span>
+      <h2 class="section-title">更新履歴</h2>
+    </div>
+
+    <div class="changelog-box">
+      <div class="changelog-entry">
+        <div class="changelog-header">
+          <span class="changelog-version">v0.5.0-beta</span>
+          <span class="status-badge status-available">Latest Release</span>
+          <span class="changelog-date">2026-11-14</span>
+        </div>
+        <ul class="changelog-items">
+          <li><strong>10スロット大型RCショーケース追加</strong>: 幅3×高さ2のガラス張り展示ケースを実装。斜め25度の展示アングルに対応。</li>
+          <li><strong>家具上での3D実体モデル描画</strong>: RCラックおよびショーケースに展示した際、2Dアイコンではなく実物のGeckoLib 3Dモデル（デカール・ボディカラー保持）で立体描画されるよう大幅刷新。</li>
+          <li><strong>4段RCラックの展示向き調整</strong>: 棚の突き出しに合わせて、真横（90度）のサイドビュー展示に対応。</li>
+          <li><strong>プロポの2D/3Dモデル分離</strong>: インベントリやGUI内では16x16の2Dアイコン、手持ち時はリアルな3Dモデルを両立して描画。</li>
+          <li><strong>道路生成マーカーの視認性改善</strong>: 始点（緑矢印）および終点（チェッカーフラッグ）のアイコンデザインを刷新。</li>
+        </ul>
+      </div>
+
+      <div class="changelog-entry">
+        <div class="changelog-header">
+          <span class="changelog-version">v0.4.0-alpha</span>
+          <span class="changelog-date">2026-11-12</span>
+        </div>
+        <ul class="changelog-items">
+          <li><strong>RCカーのドリフト・物理演算強化</strong>: 独立サスペンションのストロークとロール・ピッチ挙動、カウンター当てによる慣性ドリフトを実装。</li>
+          <li><strong>デカール作業台の実装</strong>: RGBカラーパレットによるボディカラー塗装と、オリジナルデカールの貼り付け・保存に対応。</li>
+          <li><strong>マイクロドローン FPV機能</strong>: Cキーによるラジコン視点カメラへの切り替えと、HUD（バッテリー残量・スロットル）表示を実装。</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
   <!-- インストール手順 -->
   <section id="install" class="section">
     <div class="section-header">
       <span class="section-tag">GET STARTED</span>
-      <h2 class="section-title">導入方法・必要環境</h2>
-      <p class="section-desc">わずか数ステップで簡単に導入できます。</p>
+      <h2 class="section-title">導入方法・動作環境</h2>
+      <p class="section-desc">以下の対応バージョン・前提Modをご確認の上、導入してください。</p>
     </div>
 
     <div class="install-card">
@@ -279,15 +425,22 @@
           <div class="step-number">1</div>
           <div class="step-info">
             <h4>Minecraft & NeoForge の準備</h4>
-            <p><strong>Minecraft 1.21.1</strong> に対応する最新の <strong>NeoForge</strong> をインストールします。</p>
+            <p>
+              <strong>Minecraft: 1.21.1</strong><br>
+              <strong>Java: Java 21</strong>（Minecraft 1.20.5+ の必須ランタイム）<br>
+              <strong>Mod Loader: NeoForge 21.1.x</strong>（最新推奨）
+            </p>
           </div>
         </div>
 
         <div class="step-item">
           <div class="step-number">2</div>
           <div class="step-info">
-            <h4>前提Mod「GeckoLib」の導入</h4>
-            <p>3Dアニメーションおよびモデル描画のため、<strong>GeckoLib 4 (NeoForge 1.21.1対応版)</strong> を <code>mods</code> フォルダに入れます。</p>
+            <h4>前提Mod「GeckoLib」の導入（必須）</h4>
+            <p>
+              3Dアニメーションおよびモデル描画のため、<strong>GeckoLib 4 (NeoForge 1.21.1対応版)</strong> が必須となります。
+              <code>.minecraft/mods</code> フォルダに配置してください。
+            </p>
           </div>
         </div>
 
@@ -295,7 +448,9 @@
           <div class="step-number">3</div>
           <div class="step-info">
             <h4>RCVERSE Mod の配置</h4>
-            <p>本ModのJARファイルを <code>.minecraft/mods</code> フォルダに配置してゲームを起動します。</p>
+            <p>
+              本ModのJARファイルを <code>.minecraft/mods</code> フォルダに配置してゲームを起動します。
+            </p>
           </div>
         </div>
       </div>
@@ -307,12 +462,12 @@
     <div class="section-header">
       <span class="section-tag">DOWNLOAD</span>
       <h2 class="section-title">さあ、RCVERSEの世界へ！</h2>
-      <p class="section-desc">MODのダウンロード・最新アップデートは CurseForge にて公開予定です。</p>
+      <p class="section-desc">最新ビルドは以下のプラットフォームより入手可能です。</p>
     </div>
 
     <div class="hero-buttons">
+      <a href="https://github.com/Miku013/RCVERSE/releases" target="_blank" class="btn btn-primary">📦 GitHub Releases（最新ビルド）</a>
       <a href="https://curseforge.com" target="_blank" class="btn btn-curseforge">🔥 CurseForge でダウンロード（準備中）</a>
-      <a href="https://github.com" target="_blank" class="btn btn-secondary">📦 GitHub Releases</a>
     </div>
   </section>
 
@@ -323,7 +478,10 @@
       <a href="#vehicles">マシン一覧</a>
       <a href="#features">操作</a>
       <a href="#garage">ガレージ</a>
+      <a href="#roadmap">開発状況</a>
+      <a href="#changelog">更新履歴</a>
       <a href="#install">導入方法</a>
+      <a href="https://github.com/Miku013/RCVERSE" target="_blank">GitHub</a>
     </div>
     <p>&copy; 2026 RCVERSE - Remote Control Hobby Mod. Developed for Minecraft NeoForge 1.21.1.</p>
   </footer>
