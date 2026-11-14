@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>RCVERSE - REMOTE CONTROL HOBBY MOD | Minecraft 1.21.1 NeoForge</title>
+  <meta name="description" content="Bring the ultimate adult RC hobby experience into Minecraft! Drive, fly, sail, and customize drift cars, micro drones, tanks, airplanes, boats, and submarines.">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="stylesheet" href="css/style.css?v=3">
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <nav class="navbar">
+    <div class="nav-container">
+      <a href="#" class="nav-logo">
+        <img src="images/mod_icon_32.png" alt="RCVERSE Icon">
+        <span>RCVERSE</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="#about">Overview</a></li>
+        <li><a href="#movie">Trailer</a></li>
+        <li><a href="#vehicles">Vehicles</a></li>
+        <li><a href="items.html">Items</a></li>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#custom-models">Custom 3D Models</a></li>
+        <li><a href="#garage">Garage & Custom</a></li>
+        <li><a href="#roadmap">Roadmap</a></li>
+        <li><a href="#changelog">Changelog</a></li>
+        <li><a href="#install">Install</a></li>
+        <li><a href="#download" class="btn-nav">Download</a></li>
+        <li><a href="index.html" class="btn-lang" title="日本語ページへ切り替え">🌐 日本語</a></li>
+      </ul>
+      <button class="menu-toggle" aria-label="Toggle Menu">☰</button>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <header class="hero">
+    <div class="hero-banner-container">
+      <div class="hero-image-wrapper">
+        <img src="images/hero_banner.jpg" alt="RCVERSE - Remote Control Hobby Mod Key Visual">
+      </div>
+      
+      <div class="hero-content">
+        <div class="hero-badges">
+          <span class="badge badge-version">Minecraft 1.21.1</span>
+          <span class="badge">Java 21</span>
+          <span class="badge">NeoForge 21.1.x</span>
+          <span class="badge">GeckoLib 4 Required</span>
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 8px; margin-bottom: 20px;">
+          * Built from absolute scratch with zero prior coding knowledge, co-created step-by-step with AI.
+        </p>
+        <h1 class="hero-title"><span class="title-chunk">Explore Minecraft with </span><span class="title-chunk"><span class="title-highlight">Authentic Remote Control</span> Vehicles!</span></h1>
+        <p class="hero-subtitle">
+          From drift cars (Hachiroku) and acrobatic micro drones to battle tanks, airplanes, speedboats, and submarines...<br>
+          Experience real transmitter controls, live FPV cockpit cameras, authentic physics, and in-depth garage customization in the ultimate Minecraft RC hobby MOD.
+        </p>
+        <div class="hero-buttons">
+          <a href="#download" class="btn btn-primary">⚡ Download Now</a>
+          <a href="#vehicles" class="btn btn-secondary">🏎️ View Vehicle Roster</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Gameplay Trailer Section -->
+  <section id="movie" class="section">
+    <div class="section-header">
+      <span class="section-tag">GAMEPLAY TRAILER</span>
+      <h2 class="section-title">Gameplay Footage & Action Highlights</h2>
+      <p class="section-desc">Watch actual in-game footage showing realistic suspension dynamics, counter-steer drifting, and high-speed drone acrobatics across vast Minecraft worlds.</p>
+    </div>
+
+    <div class="video-container">
+      <div class="video-wrapper">
+        <video src="videos/rc-1.mp4" controls autoplay muted loop playsinline poster="images/hero_banner.jpg">
+          Your browser does not support the video tag.
+        </video>
+      </div>
+    </div>
+  </section>
+
+  <!-- MOD Overview -->
+  <section id="about" class="section">
+    <div class="section-header">
+      <span class="section-tag">OVERVIEW</span>
+      <h2 class="section-title">What is RCVERSE?</h2>
+      <p class="section-desc">
+        A complete, authentic reproduction of the adult RC hobby world inside Minecraft.  
+        Control palm-sized micro machines using handheld transmitters across land, sea, and air — race friends, execute stunt flips, and build massive custom tracks!
+      </p>
+    </div>
+
+    <div class="grid-3">
+      <div class="card">
+        <div class="card-icon">🎮</div>
+        <h3 class="card-title">Transmitter & Live FPV Cockpit</h3>
+        <p class="card-text">
+          Operate your vehicles in real-time with an in-hand transmitter featuring dual-rate adjustments. Switch instantly to the vehicle's onboard cockpit camera (FPV) for immersive, first-person driving thrills!
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">⚙️</div>
+        <h3 class="card-title">Realistic Physics & Suspension</h3>
+        <p class="card-text">
+          Features authentic vehicle physics including independent multi-link suspension travel, inertia-based drift counter-steering, quadcopter aerodynamics, and hydrodynamic water resistance.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">🌐</div>
+        <h3 class="card-title">Land, Sea & Air — 6 Major Categories</h3>
+        <p class="card-text">
+          Cars, drones, tanks, airplanes, boats, and submarines. Every vehicle class has unique controls, specialized tuning parameters, and interactive 3D model animations powered by GeckoLib 4.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Vehicle Roster -->
+  <section id="vehicles" class="section">
+    <div class="section-header">
+      <span class="section-tag">ROSTER</span>
+      <h2 class="section-title">6 Major Vehicle Categories</h2>
+      <p class="section-desc">Each machine is engineered with authentic scale physics and unique specialized mechanics.</p>
+    </div>
+
+    <div class="grid-3">
+      <!-- 1. RC Car -->
+      <div class="card vehicle-card">
+        <div class="card-thumbnail">
+          <a href="images/screenshots/shot_car.png" target="_blank" title="Click to view full size">
+            <img src="images/screenshots/shot_car.png" alt="RC Drift Car (Hachiroku)">
+          </a>
+        </div>
+        <div class="card-badge">LAND / DRIFT</div>
+        <h3 class="card-title">RC Drift Car (Hachiroku & Touring)</h3>
+        <p class="card-text">
+          Features realistic counter-steering, trail braking, handbrake slides, and tire smoke. Customize liveries with the 3D Decal Editor and race on procedural banked tracks!
+        </p>
+        <ul class="spec-list">
+          <li><strong>Controls:</strong> W/A/S/D + Spacebar (Handbrake)</li>
+          <li><strong>Physics:</strong> Multi-link suspension & drift dynamics</li>
+          <li><strong>Tuning:</strong> High-RPM motors & custom livery decals</li>
+        </ul>
+      </div>
+
+      <!-- 2. Micro Drone -->
+      <div class="card vehicle-card">
+        <div class="card-thumbnail">
+          <a href="images/screenshots/shot_drone.png" target="_blank" title="Click to view full size">
+            <img src="images/screenshots/shot_drone.png" alt="FPV Micro Drone">
+          </a>
+        </div>
+        <div class="card-badge">AIR / ACROBATICS</div>
+        <h3 class="card-title">FPV Micro Drone (Quadcopter)</h3>
+        <p class="card-text">
+          Ultra-responsive 4-propeller micro drone. Switch between self-leveling Angle mode and full freestyle Acro mode. Capable of instant 3D flips, power loops, and smooth camera tilt adjustments.
+        </p>
+        <ul class="spec-list">
+          <li><strong>Controls:</strong> Throttle, Yaw, Pitch, Roll</li>
+          <li><strong>Features:</strong> 3D Stunt Flips & Acro/Angle flight modes</li>
+          <li><strong>Camera:</strong> Adjustable FPV tilt angle (0° - 60°)</li>
+        </ul>
+      </div>
+
+      <!-- 3. Battle Tank -->
+      <div class="card vehicle-card">
+        <div class="card-thumbnail">
+          <a href="images/screenshots/shot_tank.png" target="_blank" title="Click to view full size">
+            <img src="images/screenshots/shot_tank.png" alt="RC Battle Tank">
+          </a>
+        </div>
+        <div class="card-badge">LAND / HEAVY</div>
+        <h3 class="card-title">RC Panzer Battle Tank</h3>
+        <p class="card-text">
+          Authentic caterpillar track physics with dual-stick skid steering and neutral pivot turns. Equipped with a 360° independently rotating cannon turret with realistic firing recoil!
+        </p>
+        <ul class="spec-list">
+          <li><strong>Controls:</strong> Independent dual-tread skid steering</li>
+          <li><strong>Armament:</strong> 360° turret traverse & cannon recoil</li>
+          <li><strong>Mobility:</strong> Outstanding all-terrain rough ground climbing</li>
+        </ul>
+      </div>
+
+      <!-- 4. RC Airplane -->
+      <div class="card vehicle-card">
+        <div class="card-thumbnail">
+          <a href="images/screenshots/shot_plane.png" target="_blank" title="Click to view full size">
+            <img src="images/screenshots/shot_plane.png" alt="RC Airplane">
+          </a>
+        </div>
+        <div class="card-badge">AIR / FLIGHT</div>
+        <h3 class="card-title">RC Propeller Airplane</h3>
+        <p class="card-text">
+          Engineered with aerodynamic lift formulas, elevator/aileron/rudder control surfaces, propeller thrust curves, and realistic stall aerodynamics. Cruise high above your Minecraft builds!
+        </p>
+        <ul class="spec-list">
+          <li><strong>Controls:</strong> Pitch, Roll, Yaw, Propeller Throttle</li>
+          <li><strong>Aerodynamics:</strong> Genuine wing lift & stall physics</li>
+          <li><strong>Gear:</strong> Retractable / functional landing gear</li>
+        </ul>
+      </div>
+
+      <!-- 5. Speedboat -->
+      <div class="card vehicle-card">
+        <div class="card-thumbnail">
+          <a href="images/screenshots/shot_boat.png" target="_blank" title="Click to view full size">
+            <img src="images/screenshots/shot_boat.png" alt="RC Speedboat">
+          </a>
+        </div>
+        <div class="card-badge">WATER / SPEED</div>
+        <h3 class="card-title">RC High-Speed Racing Boat</h3>
+        <p class="card-text">
+          Features hydrodynamic surface resistance, bow lift planing, and realistic wake spray particles. Blast across oceans, rivers, and custom water race channels at extreme speeds.
+        </p>
+        <ul class="spec-list">
+          <li><strong>Controls:</strong> Throttle & High-speed rudder turn</li>
+          <li><strong>Hydrodynamics:</strong> Hull planing & bow lift</li>
+          <li><strong>Visuals:</strong> High-speed water wake foam particles</li>
+        </ul>
+      </div>
+
+      <!-- 6. Submarine -->
+      <div class="card vehicle-card">
+        <div class="card-thumbnail">
+          <a href="images/screenshots/shot_submarine.png" target="_blank" title="Click to view full size">
+            <img src="images/screenshots/shot_submarine.png" alt="RC Submarine">
+          </a>
+        </div>
+        <div class="card-badge">UNDERWATER / EXPLORATION</div>
+        <h3 class="card-title">RC Exploration Submarine</h3>
+        <p class="card-text">
+          Full 6-DOF ballast buoyancy system. Dive silently into deep ocean trenches and underwater caves with high-intensity searchlights, live depth gauges, and neutral buoyancy trim.
+        </p>
+        <ul class="spec-list">
+          <li><strong>Controls:</strong> Ballast blow/fill diving & 3D thrusters</li>
+          <li><strong>Features:</strong> High-powered underwater floodlights</li>
+          <li><strong>Instruments:</strong> Live depth gauge & neutral buoyancy</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Custom Models Showcase Gallery -->
+    <div style="margin-top: 50px;">
+      <div class="section-header" style="margin-bottom: 25px;">
+        <span class="section-tag" style="background: rgba(168, 85, 247, 0.15); color: #c084fc; border-color: rgba(168, 85, 247, 0.3);">COMMUNITY & CUSTOM</span>
+        <h3 style="font-size: 1.8rem; font-weight: 700; color: #fff; margin-bottom: 8px;">User Custom Vehicle Showcase</h3>
+        <p class="section-desc" style="max-width: 700px; margin: 0 auto;">
+          Thanks to our unified Blockbench GeckoLib architecture, you can import and pilot completely custom 3D models with identical physics!
+        </p>
+      </div>
+
+      <div class="grid-3">
+        <!-- Showcase 1: Monster Truck -->
+        <div class="card vehicle-card" style="border-color: rgba(168, 85, 247, 0.3);">
+          <div class="card-thumbnail">
+            <a href="images/screenshots/shot_truck.png" target="_blank" title="Click to view full size">
+              <img src="images/screenshots/shot_truck.png" alt="Bigfoot Monster Truck">
+            </a>
+          </div>
+          <div class="card-badge" style="background: rgba(168, 85, 247, 0.2); color: #c084fc;">CUSTOM / OFFROAD</div>
+          <h4 class="card-title">Bigfoot Monster Truck</h4>
+          <p class="card-text">
+            Massive high-tread tires and long-travel suspension allow this beast to crush obstacles and crawl steep rocky hills with ease.
+          </p>
+        </div>
+
+        <!-- Showcase 2: Bicycle Rider -->
+        <div class="card vehicle-card" style="border-color: rgba(168, 85, 247, 0.3);">
+          <div class="card-thumbnail">
+            <a href="images/screenshots/shot_bicycle.png" target="_blank" title="Click to view full size">
+              <img src="images/screenshots/shot_bicycle.png" alt="Bicycle Rider Custom Model">
+            </a>
+          </div>
+          <div class="card-badge" style="background: rgba(168, 85, 247, 0.2); color: #c084fc;">CUSTOM / BICYCLE</div>
+          <h4 class="card-title">Bicycle & Rider Model</h4>
+          <p class="card-text">
+            An innovative 2-wheel design featuring animated pedaling legs, turning handlebars, and leaning physics when navigating tight street corners.
+          </p>
+        </div>
+
+        <!-- Showcase 3: Custom Military Tank -->
+        <div class="card vehicle-card" style="border-color: rgba(168, 85, 247, 0.3);">
+          <div class="card-thumbnail">
+            <a href="images/blockbench_model_guide.png" target="_blank" title="Click to view full size">
+              <img src="images/blockbench_model_guide.png" alt="Blockbench Custom Tank Design">
+            </a>
+          </div>
+          <div class="card-badge" style="background: rgba(168, 85, 247, 0.2); color: #c084fc;">CUSTOM / MILITARY</div>
+          <h4 class="card-title">Custom Heavy Tank (PzH2000)</h4>
+          <p class="card-text">
+            Engineered in Blockbench with independent multi-bone structures (`turret`, `barrel`, `track_l/r`) syncing perfectly with GeckoLib animations!
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Key Features -->
+  <section id="features" class="section">
+    <div class="section-header">
+      <span class="section-tag">CORE SYSTEMS</span>
+      <h2 class="section-title">Authentic Controls & Immersion</h2>
+      <p class="section-desc">Experience genuine RC transmitters, electronic race monitors, and dynamic spline tracks.</p>
+    </div>
+
+    <div class="grid-2">
+      <div class="feature-box">
+        <h3 class="feature-title">🎮 Handheld Transmitter with Dual-Rate Controls</h3>
+        <p class="feature-text">
+          Hold the transmitter in your hand with 3D animated sticks mirroring your controls in real-time. Shift + Right-click to open the tuning GUI and calibrate dual-rate steering sensitivity, exponential throttle curves, and FPV camera angles to match your driving style!
+        </p>
+      </div>
+
+      <div class="feature-box">
+        <h3 class="feature-title">📹 Live FPV Cockpit & In-World CCTV Displays</h3>
+        <p class="feature-text">
+          Press `C` to switch instantly from third-person chase cam to the pilot's cockpit FPV view! Place **Race Display** block monitors around your circuit to broadcast live picture-in-picture CCTV camera feeds of active racing cars in real-time.
+        </p>
+      </div>
+
+      <div class="feature-box">
+        <h3 class="feature-title">🏁 Dynamic Mesh Spline Track Generator</h3>
+        <p class="feature-text">
+          Place **Road Generation Markers** to automatically render smooth asphalt roads, banked high-speed corners, kerbs, and even **360° vertical stunt loops** using procedural polygon mesh rendering. Build mountain pass touge courses or professional race circuits with zero hassle!
+        </p>
+      </div>
+
+      <div class="feature-box">
+        <h3 class="feature-title">🎬 Cinematic Broadcast & ReplayMod Compatibility</h3>
+        <p class="feature-text">
+          Broadcast synchronized control inputs to multiple vehicles simultaneously (`/rc cinematic on`) for choreographed drift videos or multi-car convoy shots. Fully compatible with ReplayMod recordings (`.mcpr`) for cinematic movie rendering!
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Blockbench Custom Models Section -->
+  <section id="custom-models" class="section">
+    <div class="section-header">
+      <span class="section-tag">CUSTOMIZATION & EXTENSION</span>
+      <h2 class="section-title">Import Custom Blockbench Models</h2>
+      <p class="section-desc">
+        Designed from day one to support custom community models. Export your 3D models from Blockbench as GeckoLib entities and import them directly into Minecraft!
+      </p>
+    </div>
+
+    <div class="grid-2" style="align-items: stretch; margin-bottom: 30px;">
+      <!-- Guide Step 1 -->
+      <div class="feature-box" style="display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+          <span style="font-size: 0.85rem; font-weight: 700; color: var(--accent-cyan); letter-spacing: 0.1em; text-transform: uppercase;">Step 1: Bone Hierarchies</span>
+          <h3 class="feature-title" style="margin-top: 6px;">Follow Standard Bone Naming</h3>
+          <p class="feature-text">
+            Structure your model in Blockbench using standard bone names:
+          </p>
+          <ul style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.8; margin-left: 20px; margin-top: 10px;">
+            <li><code>root</code>: Master root bone (Rot Y: 180° for North forward alignment)</li>
+            <li><code>chassis</code> / <code>body</code>: Main vehicle body (connects to suspension & tilt)</li>
+            <li><code>wheel_fl</code> / <code>wheel_fr</code>: Front wheels (steers and rolls)</li>
+            <li><code>wheel_rl</code> / <code>wheel_rr</code>: Rear wheels (drive axle rolling)</li>
+            <li><code>turret</code> / <code>barrel</code>: Tank turret traverse & cannon recoil</li>
+            <li><code>propeller_1..4</code>: High-speed drone & aircraft propeller rotation</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Guide Step 2 -->
+      <div class="feature-box" style="display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+          <span style="font-size: 0.85rem; font-weight: 700; color: var(--accent-cyan); letter-spacing: 0.1em; text-transform: uppercase;">Step 2: Export & Deploy</span>
+          <h3 class="feature-title" style="margin-top: 6px;">GeckoLib Export & Config Registration</h3>
+          <p class="feature-text">
+            Export directly from Blockbench as a GeckoLib Model (<code>.geo.json</code>) and place the texture in your resource pack:
+          </p>
+          <ul style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.8; margin-left: 20px; margin-top: 10px;">
+            <li><code>assets/microdrone/geo/&lt;name&gt;.geo.json</code></li>
+            <li><code>assets/microdrone/textures/entity/&lt;name&gt;.png</code></li>
+          </ul>
+          <p class="feature-text" style="margin-top: 10px;">
+            Once placed, your custom model inherits all suspension kinematics, steering, and drift mechanics automatically!
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Blockbench Modeling Guide Card -->
+    <div class="feature-box" style="margin-top: 20px; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px; padding: 25px;">
+      <span style="font-size: 0.85rem; font-weight: 700; color: var(--accent-cyan); letter-spacing: 0.1em; text-transform: uppercase;">Step 3: Recommended Bone Layout</span>
+      <h3 class="feature-title" style="margin-top: 6px; margin-bottom: 15px;">Blockbench Modeling Blueprint Example</h3>
+      <p class="feature-text" style="margin-bottom: 20px;">
+        Inspect the actual bone hierarchy of our custom battle tank (<code>pzhtank.geo.json</code>) designed in Blockbench. Multi-bone structures like independent turrets and tracks sync seamlessly with GeckoLib!
+      </p>
+      <div style="border-radius: 8px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.1); background: #000; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);">
+        <a href="images/blockbench_model_guide.png" target="_blank" title="Click to view full size">
+          <img src="images/blockbench_model_guide.png" alt="Blockbench Modeling Blueprint Example" style="width: 100%; height: auto; display: block; transition: opacity 0.2s;">
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Garage & Customization Section -->
+  <section id="garage" class="section">
+    <div class="section-header">
+      <span class="section-tag">GARAGE & TUNING</span>
+      <h2 class="section-title">Garage Workshop, Custom Decals & Display Racks</h2>
+      <p class="section-desc">
+        Store your vehicles in custom 4-tier display racks, apply transparent PNG liveries in the 3D Decal Editor, and tune your fleet.
+      </p>
+    </div>
+
+    <div class="grid-3">
+      <!-- 1. Display Racks -->
+      <div class="feature-box" style="display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+          <div style="border-radius: 8px; overflow: hidden; margin-bottom: 15px; background: #0b0f19; border: 1px solid rgba(255, 255, 255, 0.08);">
+            <a href="images/screenshots/shot_car_default.png" target="_blank" title="Click to view full size">
+              <img src="images/screenshots/shot_car_default.png" alt="RC Display Rack" style="width: 100%; height: 180px; object-fit: contain; display: block;">
+            </a>
+          </div>
+          <h3 class="feature-title">🏎️ 4-Tier RC Rack & Showcases</h3>
+          <p class="feature-text">
+            Place **RC Display Racks** and glass **Showcases** in your workshop. Right-click with any RC vehicle to display it as an authentic 3D miniature model!
+          </p>
+        </div>
+      </div>
+
+      <!-- 2. 3D Decal Editor -->
+      <div class="feature-box" style="display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+          <div style="border-radius: 8px; overflow: hidden; margin-bottom: 15px; background: #0b0f19; border: 1px solid rgba(255, 255, 255, 0.08);">
+            <a href="images/screenshots/shot_decal_editor.png" target="_blank" title="Click to view full size">
+              <img src="images/screenshots/shot_decal_editor.png" alt="3D Decal Editor GUI" style="width: 100%; height: 180px; object-fit: contain; display: block;">
+            </a>
+          </div>
+          <h3 class="feature-title">🎨 3D Decal Editor (Livery Workshop)</h3>
+          <p class="feature-text">
+            Use the **Decal Workshop Table** to apply transparent PNG stickers directly to vehicle bodies. Real-time 3D rotation, scaling, and position sliders make custom liveries effortless!
+          </p>
+        </div>
+      </div>
+
+      <!-- 3. Circuit Racing -->
+      <div class="feature-box" style="display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+          <div style="border-radius: 8px; overflow: hidden; margin-bottom: 15px; background: #0b0f19; border: 1px solid rgba(255, 255, 255, 0.08);">
+            <a href="images/screenshots/shot_drift_action.png" target="_blank" title="Click to view full size">
+              <img src="images/screenshots/shot_drift_action.png" alt="Circuit Racing & Drifting" style="width: 100%; height: 180px; object-fit: contain; display: block;">
+            </a>
+          </div>
+          <h3 class="feature-title">🏁 Circuit Racing & Drifting</h3>
+          <p class="feature-text">
+            Design professional circuits with procedural asphalt roads, red-and-white kerbs, and traffic cones. Throw your car into aggressive counter-steer drifts with realistic tire smoke!
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Future Roadmap -->
+  <section id="roadmap" class="section">
+    <div class="section-header">
+      <span class="section-tag">ROADMAP</span>
+      <h2 class="section-title">Development Roadmap</h2>
+      <p class="section-desc">Active development is ongoing. Here is what is planned for upcoming updates:</p>
+    </div>
+
+    <div class="grid-3">
+      <div class="card">
+        <div class="card-badge">PLANNED</div>
+        <h3 class="card-title">⏱️ Lap Timer & Race Checkpoints</h3>
+        <p class="card-text">
+          Interactive start/finish timing gates with sensor triggers to record best lap times and broadcast live split times to in-world electronic billboards.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-badge">PLANNED</div>
+        <h3 class="card-title">🔋 Smart Battery Chargers & Pits</h3>
+        <p class="card-text">
+          Automatic pit-stop recharge pads and fast-charging balancer docks to simulate endurance racing and battery management.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-badge">PLANNED</div>
+        <h3 class="card-title">🌐 Multi-Channel Transmitter Frequencies</h3>
+        <p class="card-text">
+          Multi-channel frequency pairing (2.4GHz) to allow large-scale multiplayer races without signal interference between pilots.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Changelog -->
+  <section id="changelog" class="section">
+    <div class="section-header">
+      <span class="section-tag">CHANGELOG</span>
+      <h2 class="section-title">Release Notes & Updates</h2>
+      <p class="section-desc">Track recent improvements, optimizations, and bug fixes.</p>
+    </div>
+
+    <div class="feature-box" style="margin-bottom: 20px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h3 class="feature-title" style="margin-bottom: 0;">v1.0.0 (Official Release & Hotfix)</h3>
+        <span class="badge badge-version">Latest</span>
+      </div>
+      <ul style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.8; margin-left: 20px;">
+        <li><strong>[Critical Fix]</strong> Resolved a <code>StackOverflowError</code> crash when placing the Race Display block entity in environments with rendering mods (Veil, Iris, ImmediatelyFast, Sinytra Connector).</li>
+        <li><strong>[Model Fix]</strong> Restored proper bone rotation for the custom tank (PzH2000) model to face forward (+Z forward alignment).</li>
+        <li><strong>[Stabilization]</strong> Reinforced CCTV off-screen rendering pipeline initialization guards to prevent re-entrant loops.</li>
+        <li><strong>[Release]</strong> Official launch on CurseForge with all 6 major vehicle categories and dynamic spline road generation.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Installation Guide -->
+  <section id="install" class="section">
+    <div class="section-header">
+      <span class="section-tag">GETTING STARTED</span>
+      <h2 class="section-title">Installation Guide</h2>
+      <p class="section-desc">Get up and running in just a few simple steps.</p>
+    </div>
+
+    <div class="grid-3">
+      <div class="card">
+        <div class="card-icon">1️⃣</div>
+        <h3 class="card-title">Step 1: Install NeoForge</h3>
+        <p class="card-text">
+          Install Minecraft 1.21.1 and the latest **NeoForge 21.1.244+** modloader for your launcher.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">2️⃣</div>
+        <h3 class="card-title">Step 2: Install GeckoLib 4</h3>
+        <p class="card-text">
+          Download **GeckoLib 4 (v4.7.0+)** for 1.21.1 and place it in your <code>.minecraft/mods</code> folder.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">3️⃣</div>
+        <h3 class="card-title">Step 3: Install RCVERSE</h3>
+        <p class="card-text">
+          Download <code>rcverse-1.21.1-1.0.0.jar</code>, drop it into <code>.minecraft/mods</code>, and launch the game!
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Download Section -->
+  <section id="download" class="section" style="text-align: center;">
+    <div class="section-header">
+      <span class="section-tag">DOWNLOAD</span>
+      <h2 class="section-title">Ready to Take the Controls?</h2>
+      <p class="section-desc">Download RCVERSE and start building your ultimate RC garage today!</p>
+    </div>
+
+    <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 20px;">
+      <a href="https://www.curseforge.com/minecraft/mc-mods/rcverse" target="_blank" class="btn btn-primary" style="font-size: 1.1rem; padding: 14px 32px;">
+        🔥 Download on CurseForge
+      </a>
+      <a href="https://github.com/Miku013/RCVERSE" target="_blank" class="btn btn-secondary" style="font-size: 1.1rem; padding: 14px 32px;">
+        ⭐ GitHub Repository
+      </a>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-container">
+      <div class="footer-logo">
+        <img src="images/mod_icon_32.png" alt="RCVERSE Icon">
+        <span>RCVERSE</span>
+      </div>
+      <p class="footer-text">
+        RCVERSE is a fan-made Minecraft modification. Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.<br>
+        Co-created with AI (Google Antigravity / Gemini) from zero prior coding knowledge. All rights reserved.
+      </p>
+      <div class="footer-links">
+        <a href="#about">Overview</a>
+        <a href="#vehicles">Vehicles</a>
+        <a href="items.html">Items</a>
+        <a href="#install">Install</a>
+        <a href="index.html">🌐 日本語</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
