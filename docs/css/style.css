@@ -24,6 +24,7 @@
 
 html {
   scroll-behavior: smooth;
+  scroll-padding-top: 85px;
 }
 
 body {
@@ -100,6 +101,11 @@ body {
   flex-wrap: nowrap;
 }
 
+.nav-links li {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 .nav-links a {
   text-decoration: none;
   color: var(--text-sub);
@@ -123,6 +129,9 @@ body {
   font-weight: 600 !important;
   font-size: 0.85rem !important;
   white-space: nowrap;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
   box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);
   transition: transform 0.2s, box-shadow 0.2s !important;
 }
@@ -141,6 +150,12 @@ body {
   font-weight: 600 !important;
   font-size: 0.82rem !important;
   white-space: nowrap;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  line-height: 1.2;
   transition: all 0.2s ease !important;
 }
 
