@@ -405,11 +405,13 @@
   <!-- 更新履歴 (Changelog) -->
   <section id="changelog" class="section">
     <div class="section-header">
-      <span class="section-tag">CHANGELOG</span>
-      <h2 class="section-title">更新履歴</h2>
+      <span class="section-tag">CHANGELOG & TIMELINE</span>
+      <h2 class="section-title">RCVERSE 開発タイムライン（開発当初からの歩み）</h2>
+      <p class="section-desc">2026年10月のプロジェクト発足から今日に至るまでの開発の軌跡とアップデート履歴です。</p>
     </div>
 
     <div class="changelog-box">
+      <!-- v0.5.0 -->
       <div class="changelog-entry">
         <div class="changelog-header">
           <span class="changelog-version">v0.5.0-beta</span>
@@ -422,18 +424,80 @@
           <li><strong>4段RCラックの展示向き調整</strong>: 棚の突き出しに合わせて、真横（90度）のサイドビュー展示に対応。</li>
           <li><strong>プロポの2D/3Dモデル分離</strong>: インベントリやGUI内では16x16の2Dアイコン、手持ち時はリアルな3Dモデルを両立して描画。</li>
           <li><strong>道路生成マーカーの視認性改善</strong>: 始点（緑矢印）および終点（チェッカーフラッグ）のアイコンデザインを刷新。</li>
+          <li><strong>公式Webサイト＆アイテム図鑑の公開</strong>: 全マシンの解説、32x32ピクセルアイコン、全アイテム仕様図鑑を公開。</li>
         </ul>
       </div>
 
+      <!-- v0.4.0 -->
       <div class="changelog-entry">
         <div class="changelog-header">
           <span class="changelog-version">v0.4.0-alpha</span>
-          <span class="changelog-date">2026-11-12</span>
+          <span class="status-badge status-dev">Phase 5</span>
+          <span class="changelog-date">2026-11-13</span>
         </div>
         <ul class="changelog-items">
-          <li><strong>RCカーのドリフト・物理演算強化</strong>: 独立サスペンションのストロークとロール・ピッチ挙動、カウンター当てによる慣性ドリフトを実装。</li>
-          <li><strong>デカール作業台の実装</strong>: RGBカラーパレットによるボディカラー塗装と、オリジナルデカールの貼り付け・保存に対応。</li>
-          <li><strong>マイクロドローン FPV機能</strong>: Cキーによるラジコン視点カメラへの切り替えと、HUD（バッテリー残量・スロットル）表示を実装。</li>
+          <li><strong>デカール作業台（3Dリバリー工房）の実装</strong>: RGBカラーパレットによるボディカラー塗装と、オリジナルデカールの3D配置・保存に対応。</li>
+          <li><strong>全ビークルへのデカールシステム共通化</strong>: 車・飛行機・ボート・潜水艇・戦車・ドローン全機体にステッカー適用が可能に。</li>
+          <li><strong>RC工作台の追加</strong>: マシンや送信機、精密コンポーネントを組み立てる専用の作業台を実装。</li>
+        </ul>
+      </div>
+
+      <!-- v0.3.0 -->
+      <div class="changelog-entry">
+        <div class="changelog-header">
+          <span class="changelog-version">v0.3.0-alpha</span>
+          <span class="status-badge status-dev">Phase 4</span>
+          <span class="changelog-date">2026-11-09 〜 11-12</span>
+        </div>
+        <ul class="changelog-items">
+          <li><strong>RCカーのドリフト物理演算</strong>: 独立サスペンションのストロークと車体ロール・ピッチ挙動、カウンターステアによる慣性スライドを実装。</li>
+          <li><strong>スプライン曲線による道路自動生成</strong>: 始点マーカーと終点マーカーを置くだけで滑らかな高速サーキット道路を自動敷設するシステムを開発。</li>
+          <li><strong>コースギミックの実装</strong>: ブーストジャンプ台、縁石、電光掲示板、カラーコーンなどのレース機材を追加。</li>
+        </ul>
+      </div>
+
+      <!-- v0.2.0 -->
+      <div class="changelog-entry">
+        <div class="changelog-header">
+          <span class="changelog-version">v0.2.0-alpha</span>
+          <span class="status-badge status-dev">Phase 3</span>
+          <span class="changelog-date">2026-11-03 〜 11-08</span>
+        </div>
+        <ul class="changelog-items">
+          <li><strong>陸・海・空 6大ビークルへの大拡張</strong>: マイクロRCカー（ハチロク等）を皮切りに、マイクロRC戦車、RC飛行機、RCボート、RC潜水艇を連続実装。</li>
+          <li><strong>RC戦車の超信地旋回＆砲塔旋回</strong>: 左右独立履帯クローラー駆動と主砲発射ギミックを実装。</li>
+          <li><strong>RC飛行機の空力滑空</strong>: 固定翼の揚力計算によるダイナミックなアクロバット飛行を実装。</li>
+          <li><strong>RCボートの水面滑走＆潜水艇の潜航浮上</strong>: 水上ハイドロプレーン挙動とバラスト深度制御を実装。</li>
+        </ul>
+      </div>
+
+      <!-- v0.1.5 -->
+      <div class="changelog-entry">
+        <div class="changelog-header">
+          <span class="changelog-version">v0.1.5-alpha</span>
+          <span class="status-badge status-dev">Phase 2</span>
+          <span class="changelog-date">2026-10-31 〜 11-02</span>
+        </div>
+        <ul class="changelog-items">
+          <li><strong>ブラシレスモーター換装システム</strong>: Tier 1（Std）〜 Tier 4（Race）の4段階モーターを実装。最高速度と加速度のチューニングが可能に。</li>
+          <li><strong>詳細クラフトコンポーネント</strong>: プロペラ、カーボンフレーム、ESC基板、M2精密ねじ、シリコン配線など、リアルなラジコン組み立て素材を追加。</li>
+          <li><strong>送信機（プロポ）製作素材</strong>: アンテナ、外装ケース、ジンバルスティック、制御基板、液晶ディスプレイ部品を追加。</li>
+        </ul>
+      </div>
+
+      <!-- v0.1.0 -->
+      <div class="changelog-entry">
+        <div class="changelog-header">
+          <span class="changelog-version">v0.1.0-alpha</span>
+          <span class="status-badge status-dev">Phase 1 (Origin)</span>
+          <span class="changelog-date">2026-10-27 〜 10-30</span>
+        </div>
+        <ul class="changelog-items">
+          <li><strong>プロジェクト発足</strong>: マインクラフト内でリアルタイムに手のひらサイズのマシンを遠隔操縦する基本アーキテクチャを確立。</li>
+          <li><strong>プレイヤーアバター分離技術</strong>: 操縦時にダミーアーマースタンドを生成し、安全に遠隔操作できるパイロットシステムを開発。</li>
+          <li><strong>144Hzウルトラスムーズ操縦＆FPV HUD</strong>: マウス追従カメラとテレメトリHUD（バッテリー残量・スロットル）を実装。</li>
+          <li><strong>4段階LiPoバッテリー＆急速充電ステーション</strong>: リアルなバッテリー着脱・消耗と、GeckoLibアニメーション連動の充電台を開発。</li>
+          <li><strong>初代GeckoLib 3Dモデル適用</strong>: ドローン本体、送信機プロポ、バッテリー、充電器の3Dモデルをゲーム内へ完全統合。</li>
         </ul>
       </div>
     </div>
