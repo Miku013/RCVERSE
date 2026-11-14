@@ -1,0 +1,30 @@
+Copyright (c) 2026 Miku. All rights reserved.
+
+This software, along with all associated source code, 3D models, textures, animations, 
+audio files, and documentation (collectively referred to as "the Software"), 
+is the proprietary property of the author (Miku).
+
+TERMS AND CONDITIONS:
+
+1. USAGE
+   You are free to play and use this Software for personal, non-commercial entertainment.
+
+2. CONTENT CREATION & STREAMING
+   You are fully permitted and warmly encouraged to record, stream, broadcast, and monetize 
+   gameplay videos of this Software (e.g., YouTube, Twitch, etc.).
+
+3. MODPACKS
+   Inclusion of this Software in publicly distributed modpacks hosted on CurseForge, 
+   Modrinth, or official launchers is permitted, provided that proper attribution and links 
+   to the original CurseForge project are maintained, and no charge is levied specifically 
+   for access to this Software.
+
+4. REDISTRIBUTION
+   Direct re-uploading, mirroring, repackaging, or redistributing the Software (JAR files, 
+   source code, assets, or compiled binaries) on external third-party websites or platforms 
+   without prior written permission from the author is strictly prohibited.
+
+5. ASSET USAGE & REVERSE ENGINEERING
+   Extracting, decompiling, or repurposing the Software's unique assets (including but not 
+   limited to 3D GeckoLib models, blockbench JSON files, textures, and custom sound effects) 
+   for use in other standalone commercial or non-commercial projects is strictly prohibited.
