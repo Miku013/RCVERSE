@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Items & Blocks Catalog | RCVERSE - REMOTE CONTROL HOBBY MOD</title>
+  <meta name="description" content="Explore all items, blocks, vehicles, transmitters, display furniture, track gimmicks, and tuning parts in the RCVERSE Mod for Minecraft.">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="stylesheet" href="css/style.css?v=5">
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <nav class="navbar">
+    <div class="nav-container">
+      <a href="index_en.html" class="nav-logo">
+        <img src="images/mod_icon_32.png" alt="RCVERSE Icon">
+        <span>RCVERSE</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="index_en.html#about">Overview</a></li>
+        <li><a href="index_en.html#vehicles">Vehicles</a></li>
+        <li><a href="items_en.html" style="color: var(--accent-cyan); text-shadow: 0 0 8px rgba(56, 189, 248, 0.6);">Items</a></li>
+        <li><a href="index_en.html#features">Features</a></li>
+        <li><a href="index_en.html#custom-models">Custom Models</a></li>
+        <li><a href="index_en.html#garage">Garage</a></li>
+        <li><a href="index_en.html#install">Install</a></li>
+        <li><a href="index_en.html#download" class="btn-nav">Download</a></li>
+        <li><a href="items.html" class="btn-lang" title="日本語ページへ切り替え">🌐 日本語</a></li>
+      </ul>
+      <button class="menu-toggle" aria-label="Toggle Menu">☰</button>
+    </div>
+  </nav>
+
+  <!-- Header -->
+  <header style="padding: 130px 20px 40px; text-align: center; max-width: 1100px; margin: 0 auto;">
+    <span class="section-tag">ITEM CATALOG</span>
+    <h1 class="section-title">RCVERSE Items & Blocks Catalog</h1>
+    <p class="section-desc">A comprehensive guide to all vehicles, transmitters, garage furniture, track gimmicks, and tuning components available in the mod.</p>
+  </header>
+
+  <!-- Items Main Section -->
+  <main class="section" style="padding-top: 20px;">
+    <!-- Category Filter Bar -->
+    <div class="item-filter-bar">
+      <button class="filter-btn active" data-filter="all">All Items</button>
+      <button class="filter-btn" data-filter="vehicle">RC Vehicles</button>
+      <button class="filter-btn" data-filter="tool">Transmitters & Stations</button>
+      <button class="filter-btn" data-filter="furniture">Display Furniture</button>
+      <button class="filter-btn" data-filter="track">Track & Stunts</button>
+      <button class="filter-btn" data-filter="performance">Batteries & Motors</button>
+      <button class="filter-btn" data-filter="material">Crafting Materials</button>
+    </div>
+
+    <!-- Items Grid -->
+    <div class="item-grid" id="itemGrid">
+
+      <!-- 1. RC Vehicles -->
+      <div class="item-card" data-category="vehicle">
+        <span class="item-category-tag">RC Vehicles</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/rc_car_item.png" alt="Micro RC Car">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">Micro RC Drift Car</h3>
+            <span class="item-id">microdrone:rc_car_item</span>
+          </div>
+        </div>
+        <p class="item-desc">A high-performance drift car equipped with realistic suspension kinematics and steering geometry. Compatible with legendary vehicle bodies such as the Hachiroku.</p>
+        <div class="item-usage">
+          <strong>Usage:</strong> Right-click on the ground to deploy. Right-click while holding the transmitter to bind and pilot.
+        </div>
+      </div>
+
+      <div class="item-card" data-category="vehicle">
+        <span class="item-category-tag">RC Vehicles</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/drone_item.png" alt="Micro Drone">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">FPV Micro Drone</h3>
+            <span class="item-id">microdrone:drone_item</span>
+          </div>
+        </div>
+        <p class="item-desc">An acrobatic 4-propeller quadcopter. Supports both self-leveling Angle mode and full aerobatic Acro mode, capable of instant 3D flips and power loops.</p>
+        <div class="item-usage">
+          <strong>Usage:</strong> Deploy on the ground and bind with the transmitter. Use Spacebar for lift throttle and W/A/S/D for pitch and roll.
+        </div>
+      </div>
+
+      <div class="item-card" data-category="vehicle">
+        <span class="item-category-tag">RC Vehicles</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/rc_tank_item.png" alt="RC Tank">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">RC Battle Tank</h3>
+            <span class="item-id">microdrone:rc_tank_item</span>
+          </div>
+        </div>
+        <p class="item-desc">A heavy tracked vehicle with independent caterpillar skid steering and 360° turret traverse. Features genuine cannon firing recoil physics.</p>
+        <div class="item-usage">
+          <strong>Usage:</strong> Drive across rugged terrain with dual-tread controls. Hold Right-Click or dedicated key to rotate the turret and fire cannon rounds.
+        </div>
+      </div>
+
+      <div class="item-card" data-category="vehicle">
+        <span class="item-category-tag">RC Vehicles</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/rc_plane_item.png" alt="RC Airplane">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">RC Propeller Airplane</h3>
+            <span class="item-id">microdrone:rc_plane_item</span>
+          </div>
+        </div>
+        <p class="item-desc">A scale model airplane engineered with aerodynamic wing lift equations, functional control surfaces, and realistic stall aerodynamics.</p>
+        <div class="item-usage">
+          <strong>Usage:</strong> Accelerate along a runway to take off. Control pitch, roll, and yaw surfaces to navigate gracefully through the skies.
+        </div>
+      </div>
+
+      <div class="item-card" data-category="vehicle">
+        <span class="item-category-tag">RC Vehicles</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/rc_boat_item.png" alt="RC Speedboat">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">RC High-Speed Boat</h3>
+            <span class="item-id">microdrone:rc_boat_item</span>
+          </div>
+        </div>
+        <p class="item-desc">A racing boat designed for high-speed water skimming. Features hydrodynamic hull planing, bow lift, and dynamic wake foam spray particles.</p>
+        <div class="item-usage">
+          <strong>Usage:</strong> Deploy on water surfaces. Cruise at high speeds across rivers, oceans, and custom water channels.
+        </div>
+      </div>
+
+      <div class="item-card" data-category="vehicle">
+        <span class="item-category-tag">RC Vehicles</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/rc_submarine_item.png" alt="RC Submarine">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">RC Exploration Submarine</h3>
+            <span class="item-id">microdrone:rc_submarine_item</span>
+          </div>
+        </div>
+        <p class="item-desc">An underwater probe with full 6-DOF ballast buoyancy control and high-intensity searchlights for deep ocean cave exploration.</p>
+        <div class="item-usage">
+          <strong>Usage:</strong> Place in water. Use Spacebar / Shift keys to submerge or surface while monitoring the live depth gauge.
+        </div>
+      </div>
+
+      <!-- 2. Transmitters & Stations -->
+      <div class="item-card" data-category="tool">
+        <span class="item-category-tag">Transmitters & Stations</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/drone_controller.png" alt="RC Transmitter">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">RC Transmitter (Propo)</h3>
+            <span class="item-id">microdrone:drone_controller</span>
+          </div>
+        </div>
+        <p class="item-desc">A 2.4GHz multi-function handheld transmitter. The essential tool for binding and remotely controlling all RC vehicles in real-time.</p>
+        <div class="item-usage">
+          <strong>Usage:</strong> Hold in main hand and right-click a vehicle to start driving. Shift + Right-Click to open the Dual-Rate & FPV tuning GUI.
+        </div>
+      </div>
+
+      <div class="item-card" data-category="tool">
+        <span class="item-category-tag">Transmitters & Stations</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/decal_table.png" alt="Decal Workshop Table">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">Decal Workshop Table</h3>
+            <span class="item-id">microdrone:decal_table</span>
+          </div>
+        </div>
+        <p class="item-desc">A specialized workstation for vehicle body painting and custom sticker livery design. Includes an interactive 3D decal positioning GUI.</p>
+        <div class="item-usage">
+          <strong>Usage:</strong> Right-click to open GUI. Place a vehicle inside to adjust paint colors, stickers, rotation, scale, and placement coordinates.
+        </div>
+      </div>
+
+      <div class="item-card" data-category="tool">
+        <span class="item-category-tag">Transmitters & Stations</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/rc_workbench.png" alt="RC Workbench">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">RC Workbench</h3>
+            <span class="item-id">microdrone:rc_workbench</span>
+          </div>
+        </div>
+        <p class="item-desc">A dedicated crafting bench for assembling vehicle chassis, precision micro components, controllers, and tuning gear.</p>
+        <div class="item-usage">
+          <strong>Usage:</strong> Right-click to open the RC crafting menu and combine materials into vehicles and accessories.
+        </div>
+      </div>
+
+      <div class="item-card" data-category="tool">
+        <span class="item-category-tag">Transmitters & Stations</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/drone_charger.png" alt="Fast Charging Station">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">Fast Charging Station</h3>
+            <span class="item-id">microdrone:drone_charger</span>
+          </div>
+        </div>
+        <p class="item-desc">A dock station block for rapidly replenishing depleted RC LiPo batteries. Displays live charging status and battery percentages.</p>
+        <div class="item-usage">
+          <strong>Usage:</strong> Right-click with a battery to insert. Automatically charges and can be retrieved once fully powered.
+        </div>
+      </div>
+
+      <!-- 3. Display Furniture -->
+      <div class="item-card" data-category="furniture">
+        <span class="item-category-tag">Display Furniture</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/rc_rack.png" alt="RC Display Rack">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">RC Display Rack (4-Tier)</h3>
+            <span class="item-id">microdrone:rc_rack</span>
+          </div>
+        </div>
+        <p class="item-desc">A 2-block-tall, 4-tier garage display shelf. Displays vehicles in a neat 3D side profile (90° horizontal alignment).</p>
+        <div class="item-usage">
+          <strong>Usage:</strong> Right-click each shelf tier with a vehicle to place. Shift + Right-Click with an empty hand to retrieve.
+        </div>
+      </div>
+
+      <div class="item-card" data-category="furniture">
+        <span class="item-category-tag">Display Furniture</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/rc_showcase.png" alt="RC Showcase">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">RC Showcase (10 Slots)</h3>
+            <span class="item-id">microdrone:rc_showcase</span>
+          </div>
+        </div>
+        <p class="item-desc">A large 2x2 glass display cabinet storing up to 10 vehicles in a stylish 25° angled perspective showcase.</p>
+        <div class="item-usage">
+          <strong>Usage:</strong> Right-click an empty slot to place a vehicle. Shift + Right-Click with an empty hand to retrieve individually.
+        </div>
+      </div>
+
+      <!-- 4. Track & Stunt Gimmicks -->
+      <div class="item-card" data-category="track">
+        <span class="item-category-tag">Track & Stunts</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/road_start.png" alt="Road Marker Start">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">Road Marker (Start)</h3>
+            <span class="item-id">microdrone:road_start</span>
+          </div>
+        </div>
+        <p class="item-desc">The origin block for procedural asphalt circuit road generation. Allows configuring curve curvature, track width, and banking angles.</p>
+        <div class="item-usage">
+          <strong>Usage:</strong> Place at the track start point. Link to a Finish Marker to instantly render a seamless spline road mesh.
+        </div>
+      </div>
+
+      <div class="item-card" data-category="track">
+        <span class="item-category-tag">Track & Stunts</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/road_end.png" alt="Road Marker Finish">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">Road Marker (Finish)</h3>
+            <span class="item-id">microdrone:road_end</span>
+          </div>
+        </div>
+        <p class="item-desc">The destination block for road generation, marked with a distinctive checkered flag icon for easy track layout visibility.</p>
+        <div class="item-usage">
+          <strong>Usage:</strong> Place at the track segment endpoint. Right-click to inspect connection status with the Start Marker.
+        </div>
+      </div>
+
+      <div class="item-card" data-category="track">
+        <span class="item-category-tag">Track & Stunts</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/boost_ramp.png" alt="Boost Jump Ramp">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">Boost Jump Ramp</h3>
+            <span class="item-id">microdrone:boost_ramp</span>
+          </div>
+        </div>
+        <p class="item-desc">A stunt ramp block that provides high-speed launch acceleration when driven over, propelling RC cars into dramatic mid-air jumps.</p>
+        <div class="item-usage">
+          <strong>Usage:</strong> Place along straightaways or gap-crossing jump sections to give cars immense aerial launch velocity.
+        </div>
+      </div>
+
+      <div class="item-card" data-category="track">
+        <span class="item-category-tag">Track & Stunts</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/vertical_loop.png" alt="Vertical Loop">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">360° Vertical Loop Block</h3>
+            <span class="item-id">microdrone:vertical_loop</span>
+          </div>
+        </div>
+        <p class="item-desc">A vertical stunt loop block. Built-in centrifugal downforce physics allow RC cars to speed through the loop completely upside down without falling!</p>
+        <div class="item-usage">
+          <strong>Usage:</strong> Place on flat road sections. Enter at full throttle to execute a thrilling 360-degree loop-the-loop stunt.
+        </div>
+      </div>
+
+      <div class="item-card" data-category="track">
+        <span class="item-category-tag">Track & Stunts</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/modular_slope.png" alt="Modular Slope">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">Modular Slope</h3>
+            <span class="item-id">microdrone:modular_slope</span>
+          </div>
+        </div>
+        <p class="item-desc">A modular road elevation block. Seamlessly connects slopes to create multi-level overpasses, mountain passes, and highway ramps.</p>
+        <div class="item-usage">
+          <strong>Usage:</strong> Place consecutively to construct smooth uphill and downhill grade transitions for circuit courses.
+        </div>
+      </div>
+
+      <div class="item-card" data-category="track">
+        <span class="item-category-tag">Track & Stunts</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/traffic_cone.png" alt="Traffic Cone">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">Traffic Cone (Pylon)</h3>
+            <span class="item-id">microdrone:traffic_cone</span>
+          </div>
+        </div>
+        <p class="item-desc">Realistic orange traffic pylons. Perfect for laying out temporary gymkhana drift slalom courses and corner apex markers.</p>
+        <div class="item-usage">
+          <strong>Usage:</strong> Place freely on surfaces. Vehicles that collide with pylons push them with dynamic physical impact.
+        </div>
+      </div>
+
+      <div class="item-card" data-category="track">
+        <span class="item-category-tag">Track & Stunts</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/race_display.png" alt="Race Display">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">Electronic Race Display</h3>
+            <span class="item-id">microdrone:race_display</span>
+          </div>
+        </div>
+        <p class="item-desc">An electronic LED monitor billboard that broadcasts real-time CCTV camera footage of running RC vehicles in picture-in-picture video.</p>
+        <div class="item-usage">
+          <strong>Usage:</strong> Place around grandstands or pit areas. Broadcasts trackside fixed camera and chase camera footage of active racing cars.
+        </div>
+      </div>
+
+      <!-- 5. Batteries & Motors -->
+      <div class="item-card" data-category="performance">
+        <span class="item-category-tag">Batteries & Motors</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/battery_tier_1.png" alt="LiPo Battery">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">LiPo Battery (Tier 1 - 4)</h3>
+            <span class="item-id">microdrone:battery_tier_1..4</span>
+          </div>
+        </div>
+        <p class="item-desc">High-discharge lithium polymer batteries that determine vehicle operating run-time. Available from Tier 1 (3000mAh) up to Tier 4 (6000mAh).</p>
+        <div class="item-usage">
+          <strong>Usage:</strong> Right-click a vehicle while holding the battery to equip. Recharge depleted batteries at a Fast Charging Station.
+        </div>
+      </div>
+
+      <div class="item-card" data-category="performance">
+        <span class="item-category-tag">Batteries & Motors</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/motor_tier_1.png" alt="Tuning Motor">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">Tuning Motor (Tier 1 - 4)</h3>
+            <span class="item-id">microdrone:motor_tier_1..4</span>
+          </div>
+        </div>
+        <p class="item-desc">Upgradable electric motors that enhance top speed and throttle acceleration across 4 performance tiers: Standard, Sport, High, and Race.</p>
+        <div class="item-usage">
+          <strong>Usage:</strong> Right-click a vehicle while holding the motor to install and upgrade vehicle drivetrain performance.
+        </div>
+      </div>
+
+      <!-- 6. Crafting Materials -->
+      <div class="item-card" data-category="material">
+        <span class="item-category-tag">Crafting Materials</span>
+        <div class="item-card-header">
+          <div class="item-icon-box">
+            <img src="images/items/drone_frame.png" alt="Drone Frame & Parts">
+          </div>
+          <div class="item-info">
+            <h3 class="item-name">Crafting Components & Parts</h3>
+            <span class="item-id">microdrone:drone_frame etc.</span>
+          </div>
+        </div>
+        <p class="item-desc">Essential building materials including carbon fiber frames, propellers, ESC circuits, M2 precision screws, LCD displays, antennas, and gimbal sticks.</p>
+        <div class="item-usage">
+          <strong>Usage:</strong> Used at the RC Workbench to craft and assemble vehicles, transmitters, and upgraded high-tier components.
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-links">
+      <a href="index_en.html#about">Overview</a>
+      <a href="index_en.html#vehicles">Vehicles</a>
+      <a href="items_en.html">Items</a>
+      <a href="index_en.html#features">Features</a>
+      <a href="index_en.html#garage">Garage</a>
+      <a href="index_en.html#install">Install</a>
+      <a href="https://github.com/Miku013/RCVERSE" target="_blank">GitHub</a>
+      <a href="items.html">🌐 日本語</a>
+    </div>
+    <p>&copy; 2026 RCVERSE - Remote Control Hobby Mod. Developed for Minecraft NeoForge 1.21.1.</p>
+  </footer>
+
+  <script src="js/main.js?v=5"></script>
+  <script>
+    // Item Category Filtering
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        const filter = btn.getAttribute('data-filter');
+        document.querySelectorAll('.item-card').forEach(card => {
+          if (filter === 'all' || card.getAttribute('data-category') === filter) {
+            card.style.display = 'flex';
+          } else {
+            card.style.display = 'none';
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>
