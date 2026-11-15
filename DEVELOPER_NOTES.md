@@ -1,4 +1,4 @@
-# ⚠️【最優先・厳守事項】AI開発運用ルール（次回以降の全AI必読）
+﻿# ⚠️【最優先・厳守事項】AI開発運用ルール（次回以降の全AI必読）
 
 > [!CAUTION]
 > ### 🚨 要求以上の改変を行う場合は、事前に必ずユーザーに確認を取ること！
@@ -15,7 +15,9 @@
 > 4. **教訓（2026-11-06のインシデント）**:
 >    - ユーザーから「コントローラーの画像を差し替えてほしい（アイコンのみ）」という指示を受けた際、AIが勝手に models/item/drone_controller.json を minecraft:item/generated に書き換えてしまい、手持ち時の立体的な GeckoLib 3D プロポモデルを板ポリゴンに破壊してしまうという重大な越権が発生した。
 >    - **二度と同じ過ちを繰り返さないこと。要求以上の改変は必ず事前に確認すること。**
-
+5. **本番環境JARの保護とテスト環境の完全分離（2026-11-16追加・最重要厳守事項）**:
+   - **本番環境（ユーザーのプレイ環境・`rcverse-1.21.1-1.0.0.jar` 等）は、ユーザーから明確に「本番に反映して」「リリースjarを更新して」と指示が出るまで、絶対に自動上書き・更新してはならない。**
+   - 開発・テスト時のビルド成果物はプロジェクト内（`build/libs/` や `rcverse-test.jar` 等）に留め、本番プレイ用JARとは完全に分離すること。テスト検証が必要な場合も、本番JARを勝手に上書きせず、事前の確認と合意を得ること。
 ---
 # Micro Drone MOD - 開発引き継ぎノート (DEVELOPER_NOTES.md)
 
@@ -621,7 +623,8 @@ acing_slope と drone_charger のPNGがJPEGからの変換で Format24bppRgb（�
 - **目的**: 急旋回・ドリフト・ジャンプ・高速移動・チャンク境界通過時のクライアントと統合サーバーの位置ずれ・挙動差を詳細に可視化・数値計測。
 - **実装内容**:
   - RcCarEntity.lerpTo: サーバーから位置同期パケットを受信した際の乖離距離（deltaDist）を算出し、30cm以上の乖離または20tickごとに [SYNC_DELTA] ログを出力。
-  - RcCarEntity.triggerRescueResync: 3.5m超過レスキュー発動時に理由（eason）や接地状態、チャンク座標を出力するように強化。
+  - RcCarEntity.triggerRescueResync: 3.5m超過レスキュー発動時に理由（
+eason）や接地状態、チャンク座標を出力するように強化。
   - RcCarEntity.tick:
     - サーバー側（[SYNC_TRACK_SERVER]）: Tick、XYZ座標、速度ベクトル、実速度、Yaw、Pitch、接地、チャンク座標を毎秒（20tick）出力。
     - クライアント側（[SYNC_TRACK_CLIENT]）: Tick、XYZ座標、速度ベクトル、実速度、Yaw、Pitch、接地、チャンク座標、ドリフト方向を毎秒（20tick）出力。
@@ -745,7 +748,8 @@ acing_slope と drone_charger のPNGがJPEGからの変換で Format24bppRgb（�
 2. **登坂時のガタつき・跳ね上がり解消**:
    - RcCarEntity 内の登坂速度計算で、ジャンプ台急坂用の Math.max(0.38, slopeSinTheta) を撤廃。実際の緩傾斜サイン値そのままを適用。
    - スロープ走行中の路面吸着処理を強化し、登坂時に車体がピョンピョン跳ね上がらず、下りと同様にレールに乗ったようにスムーズに駆け上がるよう改善。
-   - スロープ境界通過時の微小な浮動小数点誤差による判定抜けを防ぐため、aycastSlopeMesh に境界マージン（-0.05〜1.20）を付与。
+   - スロープ境界通過時の微小な浮動小数点誤差による判定抜けを防ぐため、
+aycastSlopeMesh に境界マージン（-0.05〜1.20）を付与。
 3. **登頂後の空中走行バグ修正（自然な着地移行）**:
    - スロープ登頂時にセットされた onGround=true が空中に飛び出しても解除されず無重力（motionY=0）になっていた問題を修正。
    - 4輪サスペンションの真の接地状態（wheelGrounded）と重力落下を完全連動化。
@@ -930,12 +934,14 @@ acing_slope と drone_charger のPNGがJPEGからの変換で Format24bppRgb（�
 - **要望**: RCカーのみに対応していたデカール（ステッカー）工房・3Dリバリーエディターおよび機体への描画・保存システムを、全ビークル（RC飛行機、RCボート、RC潜水艦、RC戦車、ドローン）にも汎用化して一括対応する。
 - **実装内容**:
   1. **汎用インターフェース (RcDecalHolder.java) の新設**:
-     - getDecals(), setDecals(List<CarDecalData>), ddDecal(CarDecalData), emoveDecal(int) を定義。
+     - getDecals(), setDecals(List<CarDecalData>), ddDecal(CarDecalData), 
+emoveDecal(int) を定義。
      - RcCarEntity, RcPlaneEntity, RcBoatEntity, RcSubmarineEntity, RcTankEntity, DroneEntity がすべて実装。
      - 各エンティティで DATA_DECALS_NBT (EntityDataSerializers.COMPOUND_TAG) による自動同期およびNBT（Decals タグ）永続化を実装。
   2. **汎用GeckoLib描画レイヤー (RcVehicleDecalLayer.java) の新設**:
      - <T extends Entity & GeoAnimatable & RcDecalHolder> に対応した汎用レイヤー。
-     - ボーン名指定マッチング（指定ボーンがない場合は ody, chassis, oot, 先頭ボーンへ安全にフォールバック）。
+     - ボーン名指定マッチング（指定ボーンがない場合は ody, chassis, 
+oot, 先頭ボーンへ安全にフォールバック）。
      - 各機体のレンダラー（RcCarGeoRenderer, RcPlaneGeoRenderer, RcBoatGeoRenderer, RcSubmarineGeoRenderer, RcTankGeoRenderer, DroneGeoRenderer）に登録。
   3. **デカール作業台 (DecalTableBlock.java) の拡張**:
      - isDecalApplicableItem メソッドを新設し、全6種類のビークルアイテム（カー、ドローン、プレーン、ボート、潜水艦、タンク）を作業台に載せて編集可能に。
@@ -1024,10 +1030,13 @@ acing_slope と drone_charger のPNGがJPEGからの変換で Format24bppRgb（�
   - DecalTableBlockEntity.hasCar() が RcCarItem のみを判定していたため、ドローン・潜水艦・飛行機・ボート・戦車で hasCar() == false となり、サーバー側でのデカール保存（handleUpdateDecals）およびキャンセル返還（handleCancelDecal）が無視されていた根本原因を解消。
   - ServerPayloadHandler、DecalTableBlock、DecalTableBlockEntityRenderer の判定を !table.getStoredCar().isEmpty() に強化し、作業台上の展示描画、保存、キャンセル返還、スニーク回収のすべてが全6車種で完全に動作するように修復。
 - [x] **RC戦車デカール移動の左右逆現象修正 (2026-11-13)**:
-  - RC戦車モデル（c_tank.geo.json）は他の5車種と異なりモデリング座標系（Blockbench空間の左右X軸および前後Z軸）が反転しているため、エディターでの左右ドラッグ（dxCam）の符号が戦車だけ逆転していた問題を修正。dxSign による車種別符号補正を導入し、戦車でも真上・水平・側面すべての視点でカーソルに完全に追従するよう最適化。
+  - RC戦車モデル（
+c_tank.geo.json）は他の5車種と異なりモデリング座標系（Blockbench空間の左右X軸および前後Z軸）が反転しているため、エディターでの左右ドラッグ（dxCam）の符号が戦車だけ逆転していた問題を修正。dxSign による車種別符号補正を導入し、戦車でも真上・水平・側面すべての視点でカーソルに完全に追従するよう最適化。
 - [x] **全車種モデル向き・レンダラー基準の完全統一 (2026-11-13)**:
   - 変更前の安全チェックポイントとして checkpoint-pre-tank-unify タグおよび ackup-pre-tank-unify ブランチを作成。
-  - c_tank.geo.json の root ボーンに otation: [0, 180, 0] を設定し、PzH2000（pzhtank.geo.json）や他全車種と同じ「北（-Z）＝正面（進行方向）」基準に統一。
+  - 
+c_tank.geo.json の root ボーンに 
+otation: [0, 180, 0] を設定し、PzH2000（pzhtank.geo.json）や他全車種と同じ「北（-Z）＝正面（進行方向）」基準に統一。
   - RcTankGeoRenderer のレンダラー回転を他全車種と完全に同じ Axis.YP(180.0F - yaw)、ピッチ・ロール符号を統一。
   - DecalEditorScreen の getEffectiveYaw およびドラッグ計算から戦車専用の例外分岐（if (TANK) ...）を完全撤去し、全6車種共通の堅牢なパイプラインに一本化。
 - [x] **真上視点時のステッカー左右逆ドラッグ移動の数学的解消 (2026-11-13)**:
@@ -1264,7 +1273,8 @@ ull のままとなり、mouseDragged 内でドラッグ計算が実行されて
   - **対策**: 頭上1ブロック（pos.above()）に水ブロック（FluidTags.WATER）が存在するかを判定。頭上に水がある限り isAtSurface = false を維持し、海面まで一気に滑らかに連続上昇できるように修正。
   - **マルチブランチ反映**: 撮影専用MOD (eature/cinematic-mode) および公開用通常MOD (main) の両方に適用し、JAR再ビルド完了。
 - **公式LP（GitHub Pages）へのゲームプレイ動画埋め込み**:
-  - 実機プレイ動画 c-1.mp4（ドリフト・ジャンプ・戦車射撃シーン）を docs/videos/rc-1.mp4 に配置し、docs/index.html の「ゲームプレイ映像」セクションに動画プレイヤー（<video controls poster>）を設置。
+  - 実機プレイ動画 
+c-1.mp4（ドリフト・ジャンプ・戦車射撃シーン）を docs/videos/rc-1.mp4 に配置し、docs/index.html の「ゲームプレイ映像」セクションに動画プレイヤー（<video controls poster>）を設置。
 - **実機スクリーンショット10枚の切り抜き加工 & 公式LP掲載**:
   - ユーザー提供の実機スクリーンショット10枚（ハチロク、ドローン、戦車、飛行機、ボート、潜水艦、モンスタートラック、自転車村人、デフォルトカー、デフォルト戦車）から、UI・ツールチップ・手持ちプロポ・ホットバー・チャット等をトリミングし、マシンをクローズアップしたサムネイル（4:3 比率）を自動生成。
   - docs/images/screenshots/ に配置し、マシンスペック紹介カードのヘッダー画像、および「自作・バリエーションマシンの実機登場例」ギャラリーとして docs/index.html に反映。
@@ -1364,3 +1374,17 @@ ull のままとなり、mouseDragged 内でドラッグ計算が実行されて
 - `docs/items.html` ⇄ `docs/items_en.html`
 - 図鑑閲覧中は直接日英の図鑑同士でワンクリック切り替えが可能。
 - `feature/cinematic-mode` および `main`（GitHub Pages公開ブランチ）へコミット・プッシュ完了。
+
+
+### F. RC工作台新GUI (Ver 2.1) ＆ 潜水艦モデル・テクスチャ刷新 (2026-11-16)
+- [x] **本番環境JARの明示的更新**:
+  - ユーザーからの明示指示に基づき、本番用JAR（`C:\Users\mikum\curseforge\minecraft\Instances\neofor\mods\rcverse-1.21.1-1.0.0.jar`）へデプロイ完了。
+  - デプロイ直前バックアップ（`rcverse-1.21.1-1.0.0-pre-sub-update.jar.bak`）を作成・保全済み。
+- [x] **潜水艦新モデル＆テクスチャ (512x512)**:
+  - ジオメトリ: `rc_submarine.geo.json` (滑らかな球体分割メッシュ、512x512テクスチャ対応)。
+  - テクスチャ: `rc_submarine.png` (512x512 ARGB)。
+  - ボーン整合性: `rudder`（方向舵）、`dive_plane`（潜舵）、`propeller`（スクリュー）のボーン定義が一致しており、GeckoLib操舵アニメーションと完全連動。
+- [x] **RC工作台新GUI (Ver 2.1)**:
+  - 左側セレクターラックのワイド化（幅80px、ゆったりスロット、上下マウスホイールスクロール）。
+  - タイトル「RC WORKBENCH」の完全センタリング配置。
+  - 全27種類の公式クラフトパーツを完全網羅。
