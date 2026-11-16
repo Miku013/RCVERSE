@@ -37,21 +37,31 @@ public class RcTankItem extends Item {
 
         RcTankEntity tank = ModEntities.RC_TANK.get().create(serverLevel);
         if (tank != null) {
-            // アイテムのカスタムデータや金床カスタム名からバリアントIDを適用
+            String variantToSet = null;
+
+            // 1. 金床でのカスタム名によるバリアント指定（ユーザーが名前を変えた場合を最優先で適用）
+            if (itemStack.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME)) {
+                String customName = itemStack.getHoverName().getString().trim();
+                com.microdrone.mod.config.tank.TankConfig config = com.microdrone.mod.config.tank.TankConfigManager.getConfig(customName);
+                if (config != null && !"default".equalsIgnoreCase(config.id)) {
+                    variantToSet = config.id;
+                }
+            }
+
+            // 2. アイテムのカスタムデータ内の明示的な Variant タグ（金床で未指定の場合）
             var customData = itemStack.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA);
             if (customData != null) {
                 net.minecraft.nbt.CompoundTag tag = customData.copyTag();
-                if (tag.contains("Variant")) {
-                    tank.setVariantId(tag.getString("Variant"));
+                if (variantToSet == null && tag.contains("Variant")) {
+                    variantToSet = tag.getString("Variant");
                 }
                 if (tag.contains("Decals", 10)) {
                     tank.setDecals(com.microdrone.mod.decal.CarDecalData.deserializeDecals(tag.getCompound("Decals")));
                 }
-            } else if (itemStack.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME)) {
-                String customName = itemStack.getHoverName().getString().trim().toLowerCase();
-                if (com.microdrone.mod.config.tank.TankConfigManager.getAllConfigs().containsKey(customName)) {
-                    tank.setVariantId(customName);
-                }
+            }
+
+            if (variantToSet != null) {
+                tank.setVariantId(variantToSet);
             }
 
             tank.moveTo(x, y, z, context.getRotation(), 0.0F);

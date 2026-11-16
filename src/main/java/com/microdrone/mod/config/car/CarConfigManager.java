@@ -45,6 +45,16 @@ public class CarConfigManager {
                         if (config != null && config.id != null && !config.id.isBlank()) {
                             String key = config.id.toLowerCase();
                             CONFIGS.put(key, config);
+
+                            // ファイル名（拡張子なし）もエイリアス登録
+                            String fileBase = file.getName().substring(0, file.getName().lastIndexOf('.')).toLowerCase();
+                            CONFIGS.put(fileBase, config);
+
+                            // 表示名（displayName）も小文字で登録
+                            if (config.displayName != null && !config.displayName.isBlank()) {
+                                CONFIGS.put(config.displayName.toLowerCase().trim(), config);
+                            }
+
                             if ("default.json".equalsIgnoreCase(file.getName())) {
                                 CONFIGS.put("default", config);
                             }

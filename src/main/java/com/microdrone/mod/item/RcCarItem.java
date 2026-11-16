@@ -37,12 +37,23 @@ public class RcCarItem extends Item {
 
         RcCarEntity car = ModEntities.RC_CAR.get().create(serverLevel);
         if (car != null) {
-            // アイテムのカスタムデータや金床カスタム名からバリアントIDや塗装色を適用
+            String variantToSet = null;
+
+            // 1. 金床でのカスタム名によるバリアント指定（最優先で適用）
+            if (itemStack.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME)) {
+                String customName = itemStack.getHoverName().getString().trim();
+                var config = com.microdrone.mod.config.car.CarConfigManager.getConfig(customName);
+                if (config != null && !"default".equalsIgnoreCase(config.id)) {
+                    variantToSet = config.id;
+                }
+            }
+
+            // 2. アイテムのカスタムデータ内の明示的な Variant タグや塗装色
             var customData = itemStack.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA);
             if (customData != null) {
                 net.minecraft.nbt.CompoundTag tag = customData.copyTag();
-                if (tag.contains("Variant")) {
-                    car.setVariantId(tag.getString("Variant"));
+                if (variantToSet == null && tag.contains("Variant")) {
+                    variantToSet = tag.getString("Variant");
                 }
                 if (tag.contains("BodyColor")) {
                     car.setBodyColor(tag.getInt("BodyColor"));
@@ -50,11 +61,10 @@ public class RcCarItem extends Item {
                 if (tag.contains("Decals", 10)) {
                     car.setDecals(RcCarEntity.deserializeDecals(tag.getCompound("Decals")));
                 }
-            } else if (itemStack.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME)) {
-                String customName = itemStack.getHoverName().getString().trim().toLowerCase();
-                if (com.microdrone.mod.config.car.CarConfigManager.getAllConfigs().containsKey(customName)) {
-                    car.setVariantId(customName);
-                }
+            }
+
+            if (variantToSet != null) {
+                car.setVariantId(variantToSet);
             }
 
             car.moveTo(x, y, z, context.getRotation(), 0.0F);

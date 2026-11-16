@@ -45,6 +45,23 @@ public class TankConfigManager {
                         if (config != null && config.id != null && !config.id.isBlank()) {
                             String key = config.id.toLowerCase();
                             CONFIGS.put(key, config);
+
+                            // ファイル名（拡張子なし）もエイリアス登録（例: "pz_h_tank"）
+                            String fileBase = file.getName().substring(0, file.getName().lastIndexOf('.')).toLowerCase();
+                            CONFIGS.put(fileBase, config);
+
+                            // "_tank" や "tank" 抜きの短縮名もエイリアス登録（例: "pz.h", "pzh"）
+                            String shortKey = key.replaceAll("(_tank|tank|戦車)", "");
+                            if (!shortKey.isBlank()) {
+                                CONFIGS.put(shortKey, config);
+                                CONFIGS.put(shortKey.replaceAll("[._\\-\\s]", ""), config);
+                            }
+
+                            // 表示名（displayName）も小文字で登録
+                            if (config.displayName != null && !config.displayName.isBlank()) {
+                                CONFIGS.put(config.displayName.toLowerCase().trim(), config);
+                            }
+
                             // default.json の場合は "default" のキーとしても登録（通常設置時に即座に反映されるようにする）
                             if ("default.json".equalsIgnoreCase(file.getName())) {
                                 CONFIGS.put("default", config);
@@ -90,13 +107,26 @@ public class TankConfigManager {
         if (CONFIGS.containsKey(cleanId)) {
             return CONFIGS.get(cleanId);
         }
-        // ドットやアンダースコアを除去した曖昧一致（例: "pzh_tank" と "pz.h_tank"）
-        String strippedId = cleanId.replaceAll("[._-]", "");
+
+        // ドットやアンダースコア、スペースを除去した比較（例: "pzh_tank" と "pz.h_tank"）
+        String strippedId = cleanId.replaceAll("[._\\-\\s]", "");
         for (Map.Entry<String, TankConfig> entry : CONFIGS.entrySet()) {
-            if (entry.getKey().replaceAll("[._-]", "").equalsIgnoreCase(strippedId)) {
+            if (entry.getKey().replaceAll("[._\\-\\s]", "").equalsIgnoreCase(strippedId)) {
                 return entry.getValue();
             }
         }
+
+        // "tank", "rc", "戦車" などの単語を除去したコア名での比較（例: "pzh" と "pz.h_tank"）
+        String coreId = strippedId.replaceAll("(tank|rc|戦車)", "");
+        if (!coreId.isEmpty()) {
+            for (Map.Entry<String, TankConfig> entry : CONFIGS.entrySet()) {
+                String entryCore = entry.getKey().replaceAll("[._\\-\\s]", "").replaceAll("(tank|rc|戦車)", "");
+                if (!entryCore.isEmpty() && entryCore.equalsIgnoreCase(coreId)) {
+                    return entry.getValue();
+                }
+            }
+        }
+
         return CONFIGS.getOrDefault("default", DEFAULT_CONFIG);
     }
 

@@ -1505,3 +1505,23 @@ c-1.mp4（ドリフト・ジャンプ・戦車射撃シーン）を docs/videos/
 - [x] **ビルド検証**:
   - `./gradlew compileJava` および `./gradlew jar --rerun-tasks` にて正常コンパイル＆テストJARビルドを確認済み。
   - 本番環境JARは最重要厳守ルールに従い未適用のまま保護。
+
+
+### O. 金床での名前変更によるRC戦車（Pz.h等）・RCカーのバリアント解決強化 (2026-11-16)
+- [x] **調査結果と原因特定**:
+  - 先ほどの「着火時消失・画面ガタつき修正」そのものはエンティティの破壊・カメラ周りの修正であり、名前読み込み処理自体を直接壊したわけではありませんでした。
+  - しかし、従来のバリアント解決処理において以下の構造的欠陥が存在していたことが判明しました：
+    1. **厳密一致（`containsKey`）による不一致**:
+       - `pz_h_tank.json` のIDが `"Pz.h_tank"` であるため、`TankConfigManager` のキーは `"pz.h_tank"` のみでした。
+       - `RcTankItem.java` では `getAllConfigs().containsKey(customName)` による厳密一致判定を行っていたため、プレイヤーが金床で自然に名付ける「`Pz.h`」「`pz.h`」「`pzh`」「`pzhtank`」「`Pz.h RC戦車`」などの名前ではキーが一致せず、常にデフォルト戦車（`default`）として扱われてしまっていました。
+    2. **`else if` による金床カスタム名無視**:
+       - アイテムに一度でも `CUSTOM_DATA`（NBTタグ）が付与されていると、`customData != null` が true となり、金床で名前を変更（`CUSTOM_NAME`）しても `else if` がスキップされてバリアントが再認識されなくなっていました。
+- [x] **修正・恒久対策内容**:
+  - `TankConfigManager.java` & `CarConfigManager.java`:
+    - JSON読み込み時にIDだけでなく、ファイル名ベース（`pz_h_tank`）、短縮名（`pz.h` / `pzh`）、全記号除去名（`pzhtank`）、表示名（`Pz.h RC戦車`）を自動的にエイリアスとして登録。
+    - `getConfig(variantId)` において、記号除去（`[._-\s]`）や単語除去（`tank`/`rc`/`戦車`）を用いたコア名ファジー一致を実装。
+  - `RcTankItem.java` & `RcCarItem.java`:
+    - `CUSTOM_NAME`（金床の名前変更）を最優先で検出し、`TankConfigManager.getConfig(customName)` を通じて柔軟にバリアントIDへ解決するよう修正。
+- [x] **ビルド検証**:
+  - `./gradlew compileJava` および `./gradlew jar --rerun-tasks` にて正常コンパイル＆テストJARビルドを確認済み。
+  - 本番環境JARは最重要厳守ルールに従い未適用のまま保護。
