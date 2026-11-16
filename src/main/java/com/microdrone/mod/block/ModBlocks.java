@@ -40,6 +40,14 @@ public class ModBlocks {
                     .strength(2.0f, 3.0f)
                     .noOcclusion()));
 
+    // レース用スタートブロック（スタートシグナル）
+    public static final DeferredBlock<StartBlock> START_BLOCK = BLOCKS.register("start_block",
+            () -> new StartBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_BLACK)
+                    .strength(1.5f, 2.0f)
+                    .noOcclusion()
+                    .lightLevel(state -> state.hasProperty(StartBlock.LIT) && state.getValue(StartBlock.LIT) ? 15 : 0)));
+
     // レーシングスロープ（ハーフブロック式ジャンプ台）
     public static final DeferredBlock<RacingSlopeBlock> RACING_SLOPE = BLOCKS.register("racing_slope",
             () -> new RacingSlopeBlock(BlockBehaviour.Properties.of()

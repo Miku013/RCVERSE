@@ -46,6 +46,10 @@ public class ModItems {
     public static final DeferredHolder<Item, BlockItem> RACE_DISPLAY_ITEM =
             ITEMS.register("race_display", () -> new BlockItem(ModBlocks.RACE_DISPLAY.get(), new Item.Properties()));
 
+    // スタートブロック (BlockItem)
+    public static final DeferredHolder<Item, BlockItem> START_BLOCK_ITEM =
+            ITEMS.register("start_block", () -> new BlockItem(ModBlocks.START_BLOCK.get(), new Item.Properties()));
+
     // レーシングスロープ (BlockItem)
     public static final DeferredHolder<Item, BlockItem> RACING_SLOPE_ITEM =
             ITEMS.register("racing_slope", () -> new BlockItem(ModBlocks.RACING_SLOPE.get(), new Item.Properties()));
