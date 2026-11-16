@@ -47,7 +47,7 @@ public class RcShowcaseDisplayLayer extends GeoRenderLayer<RcShowcaseBlockEntity
 
                         this.itemRenderer.renderStatic(
                                 stack,
-                                ItemDisplayContext.FIXED,
+                                ItemDisplayContext.GROUND,
                                 packedLight,
                                 packedOverlay,
                                 poseStack,

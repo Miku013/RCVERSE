@@ -47,7 +47,7 @@ public class RcRackDisplayLayer extends GeoRenderLayer<RcRackBlockEntity> {
 
                         this.itemRenderer.renderStatic(
                                 stack,
-                                ItemDisplayContext.FIXED,
+                                ItemDisplayContext.GROUND,
                                 packedLight,
                                 packedOverlay,
                                 poseStack,
