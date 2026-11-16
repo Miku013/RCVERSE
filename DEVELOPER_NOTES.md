@@ -1426,3 +1426,9 @@ c-1.mp4（ドリフト・ジャンプ・戦車射撃シーン）を docs/videos/
 - [x] **ビルド検証**:
   - ./gradlew compileJava および ./gradlew jar --rerun-tasks にて正常コンパイル＆テストJARビルドを確認済み。
   - 本番環境JARは最重要厳守ルールに従い未適用のまま保護。
+### J. 本番環境JAR（リリース環境）への指定項目適用 (2026-11-16)
+- [x] **ユーザー指示に基づく本番環境JARの更新**:
+  - 指示範囲: 「峠スロープ坂の削除」「コース中継カメラ＆電光掲示板CCTVの削除」「プロポの額縁のみ2D変更」。
+  - 本番JAR（C:\Users\mikum\curseforge\minecraft\Instances\neofor\mods\rcverse-1.21.1-1.0.0.jar）へ安全にデプロイ完了。
+  - デプロイ直前バックアップとして cverse-1.21.1-1.0.0-pre-cleanup-and-controller-2d.jar.bak を作成・保全済み。
+  - 潜水艦新モデル（512x512）およびRC工作台新GUIも包含された状態で、不要開発アイテムの削除と額縁2D化が正常反映されています。
