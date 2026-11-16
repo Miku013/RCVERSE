@@ -14,13 +14,14 @@ import net.minecraft.util.RandomSource;
 public class RcCarSkidSound extends AbstractTickableSoundInstance {
 
     private final RcCarEntity car;
+    private int fadeOutTicks = 0;
 
     public RcCarSkidSound(RcCarEntity car) {
-        super(ModSounds.RC_CAR_SKID.get(), SoundSource.NEUTRAL, RandomSource.create());
+        super(ModSounds.RC_CAR_SKID.get(), SoundSource.PLAYERS, RandomSource.create());
         this.car = car;
         this.looping = true;
         this.delay = 0;
-        this.volume = 0.0F; // ドリフト発生まで消音
+        this.volume = 0.35F; // ドリフト開始と同時に即座にしっかり発音
         this.pitch = 1.0F;
         this.x = car.getX();
         this.y = car.getY();
@@ -29,6 +30,11 @@ public class RcCarSkidSound extends AbstractTickableSoundInstance {
 
     public void stopSound() {
         this.stop();
+    }
+
+    @Override
+    public boolean canStartSilent() {
+        return true;
     }
 
     @Override
@@ -48,34 +54,28 @@ public class RcCarSkidSound extends AbstractTickableSoundInstance {
         boolean isGrounded = this.car.onGround() || this.car.isWheelGrounded();
         float speed = Math.abs(this.car.getCurrentSpeed());
 
-        // ドリフト状態の判定:
-        // 1. レースモード: driftDirection != 0
-        // 2. リアルモード: realPhysics.isDrifting()
-        // 3. ハンドブレーキ急旋回: inputHandbrake && ステアリング入力あり
+        // ドリフト状態判定
         boolean isRaceDrift = this.car.getDriftDirection() != 0;
         boolean isRealDrift = this.car.isRealMode() && this.car.getRealPhysics() != null && this.car.getRealPhysics().isDrifting();
-        boolean isHandbrakeSlide = this.car.inputHandbrake && Math.abs(this.car.inputSteer) > 0.25F && speed > 0.10F;
+        boolean isHandbrakeSlide = this.car.inputHandbrake && Math.abs(this.car.inputSteer) > 0.20F && speed > 0.10F;
 
         boolean isSkidding = isGrounded && speed > 0.08F && (isRaceDrift || isRealDrift || isHandbrakeSlide);
 
-        if (isSkidding) {
-            // スキール音量: 速度および横滑りに応じて 0.28F 〜 0.65F
-            float targetVolume = Mth.clamp(0.28F + speed * 0.40F, 0.25F, 0.65F);
-            // ピッチ: 速度に応じて甲高いスキール音へ変化 (0.95F 〜 1.25F)
+        if (isSkidding && !this.car.isInWater()) {
+            fadeOutTicks = 0;
+            // スキール音量: 速度および横滑りに応じて 0.30F 〜 0.65F
+            float targetVolume = Mth.clamp(0.30F + speed * 0.40F, 0.28F, 0.65F);
+            // ピッチ: 速度に応じて少し高くなる (0.95F 〜 1.25F)
             float targetPitch = Mth.clamp(0.95F + speed * 0.30F, 0.90F, 1.25F);
 
-            // 水没時はスキール音無効化
-            if (this.car.isInWater()) {
-                targetVolume = 0.0F;
-            }
-
-            this.volume = Mth.lerp(0.25F, this.volume, targetVolume);
+            this.volume = Mth.lerp(0.30F, this.volume, targetVolume);
             this.pitch = Mth.lerp(0.20F, this.pitch, targetPitch);
         } else {
-            // ドリフト解除・グリップ復帰時は素早くフェードアウト
+            // ドリフト解除・グリップ復帰時は素早くフェードアウトして自然に終了
+            fadeOutTicks++;
             this.volume = Mth.lerp(0.35F, this.volume, 0.0F);
-            if (this.volume < 0.01F) {
-                this.volume = 0.0F;
+            if (this.volume < 0.03F || fadeOutTicks > 8) {
+                this.stop();
             }
         }
     }

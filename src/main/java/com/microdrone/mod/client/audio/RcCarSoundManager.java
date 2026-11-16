@@ -27,7 +27,7 @@ public class RcCarSoundManager {
     }
 
     /**
-     * 操縦開始時のサウンド初期化（モーター回転音 ＋ スキール音インスタンス登録）
+     * 操縦開始時のサウンド初期化（モーター回転音 ＋ ESC起動チャイム）
      */
     public static void startPilotingSound(RcCarEntity car) {
         Minecraft mc = Minecraft.getInstance();
@@ -38,11 +38,9 @@ public class RcCarSoundManager {
         // 既存サウンドがあれば停止
         stopPilotingSound();
 
-        // 2. モーター走行音＆スキール音のループ再生開始
+        // 2. モーター走行音のループ再生開始
         activeDriveSound = new RcCarDriveSound(car);
-        activeSkidSound = new RcCarSkidSound(car);
         mc.getSoundManager().play(activeDriveSound);
-        mc.getSoundManager().play(activeSkidSound);
     }
 
     /**
@@ -60,7 +58,7 @@ public class RcCarSoundManager {
     }
 
     /**
-     * 毎tickのサウンド状態監視・フェイルセーフ
+     * 毎tickのサウンド状態監視・フェイルセーフおよびスキール音の動的トリガー
      */
     @SubscribeEvent
     public void onClientTick(ClientTickEvent.Pre event) {
@@ -80,14 +78,25 @@ public class RcCarSoundManager {
             return;
         }
 
-        // サウンドが何らかの理由で停止していた場合は再開
+        // 1. モーター音が何らかの理由で停止していた場合は再開
         if (activeDriveSound == null || activeDriveSound.isStopped()) {
             activeDriveSound = new RcCarDriveSound(car);
             mc.getSoundManager().play(activeDriveSound);
         }
-        if (activeSkidSound == null || activeSkidSound.isStopped()) {
-            activeSkidSound = new RcCarSkidSound(car);
-            mc.getSoundManager().play(activeSkidSound);
+
+        // 2. ドリフト状態の判定（スキール音のオンデマンド再生）
+        boolean isGrounded = car.onGround() || car.isWheelGrounded();
+        float speed = Math.abs(car.getCurrentSpeed());
+        boolean isRaceDrift = car.getDriftDirection() != 0;
+        boolean isRealDrift = car.isRealMode() && car.getRealPhysics() != null && car.getRealPhysics().isDrifting();
+        boolean isHandbrakeSlide = car.inputHandbrake && Math.abs(car.inputSteer) > 0.20F && speed > 0.10F;
+        boolean isSkidding = isGrounded && speed > 0.08F && (isRaceDrift || isRealDrift || isHandbrakeSlide) && !car.isInWater();
+
+        if (isSkidding) {
+            if (activeSkidSound == null || activeSkidSound.isStopped()) {
+                activeSkidSound = new RcCarSkidSound(car);
+                mc.getSoundManager().play(activeSkidSound);
+            }
         }
     }
 }

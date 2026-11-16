@@ -1569,3 +1569,17 @@ c-1.mp4（ドリフト・ジャンプ・戦車射撃シーン）を docs/videos/
 - [x] **ビルド検証**:
   - `./gradlew compileJava` および `./gradlew jar --rerun-tasks` にてコンパイル成功を確認。
   - テストビルド: `micro_drone_mod/build/libs/rcverse-cinematic-1.0.0.jar`
+
+
+### R. RCカーのブラシレスモーター音最適化およびスキール音発音不具合の修正 (2026-11-16)
+- [x] **スキール音が鳴らなかった原因と対策**:
+  - **原因**: `RcCarSkidSound` の初期音量が `0.0F` であったため、Minecraftの `SoundEngine.play` 内の判定（`f2 == 0.0F && !canStartSilent()`）によって無駄なサウンドと判定され、チャンネル割り当ておよび毎tickの `tick()` 登録（`tickingSounds`）がスキップされて破棄されていた。
+  - **対策**:
+    - `RcCarSkidSound` に `@Override public boolean canStartSilent() { return true; }` を実装。
+    - 常時無音で回す方式から、**「ドリフト検知時（レース/リアル/サイドターン）に音量 0.35F で即時発音開始し、グリップ復帰時に素早くフェードアウト停止（`stop()`）する」** オンデマンド再生方式に切り替え。確実な発音とメモリ・チャンネル負荷の完全削減を実現。
+- [x] **モーター走行音のブラシレス高回転音への最適化**:
+  - ドローンの飛行音と同様に `SoundEvents.BEE_LOOP` をベース音源に採用。
+  - アイドリング時（停止中）: ピッチ約0.85F、音量0.18Fで低めのブラシレス通電待機音。
+  - スロットル操作・加速時: スロットル入力（W/Sキー）への即時レスポンスと最高速時（ピッチ最大1.95F〜2.0F・音量0.42F）の甲高いブラシレス高回転唸り音を滑らかに表現。
+- [x] **ビルド検証**:
+  - `./gradlew compileJava` および `./gradlew jar --rerun-tasks` にて正常ビルド完了。
