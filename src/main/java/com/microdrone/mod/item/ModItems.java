@@ -62,10 +62,6 @@ public class ModItems {
     public static final DeferredHolder<Item, BlockItem> MODULAR_SLOPE_ITEM =
             ITEMS.register("modular_slope", () -> new BlockItem(ModBlocks.MODULAR_SLOPE.get(), new Item.Properties()));
 
-    // 峠スロープ (BlockItem)
-    public static final DeferredHolder<Item, BlockItem> TOUGE_SLOPE_ITEM =
-            ITEMS.register("touge_slope", () -> new BlockItem(ModBlocks.TOUGE_SLOPE.get(), new Item.Properties()));
-
     // 道路・ヘアピンカーブ生成 始点マーカー (BlockItem)
     public static final DeferredHolder<Item, BlockItem> ROAD_START_ITEM =
             ITEMS.register("road_start", () -> new BlockItem(ModBlocks.ROAD_START.get(), new Item.Properties()));

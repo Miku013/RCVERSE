@@ -41,7 +41,6 @@ public class ModCreativeTabs {
                         output.accept(ModItems.BOOST_RAMP_ITEM.get());
                         output.accept(ModItems.JUMP_PAD_ITEM.get());
                         output.accept(ModItems.MODULAR_SLOPE_ITEM.get());
-                        output.accept(ModItems.TOUGE_SLOPE_ITEM.get());
                         output.accept(ModItems.VERTICAL_LOOP_ITEM.get());
                         output.accept(ModItems.ROAD_START_ITEM.get());
                         output.accept(ModItems.ROAD_END_ITEM.get());

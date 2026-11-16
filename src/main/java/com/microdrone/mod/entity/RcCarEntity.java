@@ -1999,10 +1999,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                     if (this.level().getBlockState(bp).getBlock() instanceof com.microdrone.mod.block.RacingSlopeBlock
                             ||
                             this.level().getBlockState(bp)
-                                    .getBlock() instanceof com.microdrone.mod.block.ModularSlopeBlock
-                            ||
-                            this.level().getBlockState(bp)
-                                    .getBlock() instanceof com.microdrone.mod.block.TougeSlopeBlock) {
+                                    .getBlock() instanceof com.microdrone.mod.block.ModularSlopeBlock) {
                         continue;
                     }
 
@@ -2347,8 +2344,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
         BlockPos pos = BlockPos.containing(x, y, z);
         net.minecraft.world.level.block.state.BlockState st = level().getBlockState(pos);
         if (!(st.getBlock() instanceof com.microdrone.mod.block.RacingSlopeBlock)
-                && !(st.getBlock() instanceof com.microdrone.mod.block.ModularSlopeBlock)
-                && !(st.getBlock() instanceof com.microdrone.mod.block.TougeSlopeBlock)) {
+                && !(st.getBlock() instanceof com.microdrone.mod.block.ModularSlopeBlock)) {
             pos = pos.below();
             st = level().getBlockState(pos);
         }
@@ -2369,16 +2365,6 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                     .raycastSlopeMesh(level(), pos, st, relX, relZ);
             if (hit.hit) {
                 Direction facing = st.getValue(com.microdrone.mod.block.ModularSlopeBlock.FACING);
-                return new WheelRaycastHit(pos.getY() + hit.height, hit.normal, true, hit.isLip, false, hit.progress,
-                        facing);
-            }
-        } else if (st.getBlock() instanceof com.microdrone.mod.block.TougeSlopeBlock) {
-            double relX = x - pos.getX();
-            double relZ = z - pos.getZ();
-            com.microdrone.mod.block.RacingSlopeBlock.RampHitResult hit = com.microdrone.mod.block.TougeSlopeBlock
-                    .raycastSlopeMesh(st, relX, relZ);
-            if (hit.hit) {
-                Direction facing = st.getValue(com.microdrone.mod.block.TougeSlopeBlock.FACING);
                 return new WheelRaycastHit(pos.getY() + hit.height, hit.normal, true, hit.isLip, false, hit.progress,
                         facing);
             }
