@@ -115,22 +115,33 @@ public class MiniaturePlacementBlock extends BaseEntityBlock {
         double localZ = hitResult.getLocation().z - pos.getZ();
         int slotId = MiniaturePlacementData.getSlotFromHit(localX, localZ);
 
-        if (player.isShiftKeyDown()) {
-            // スニーク右クリック: スロットの小物を回転
-            if (placementBe.hasSlot(slotId)) {
-                if (!level.isClientSide) {
-                    placementBe.rotateMiniature(slotId, 45.0f);
-                    level.playSound(null, pos, SoundEvents.DISPENSER_DISPENSE, SoundSource.BLOCKS, 0.5f, 1.5f);
+        // クリック判定アシスト: 直撃スロットが空の場合、近傍（約0.4m以内）の配置済み小物を自動補正
+        if (!placementBe.hasSlot(slotId) && placementBe.getSlotCount() > 0) {
+            int nearestSlot = -1;
+            double nearestDistSq = Double.MAX_VALUE;
+            for (MiniaturePlacementData slotData : placementBe.getAllSlots()) {
+                double cx = MiniaturePlacementData.getSlotCenterX(slotData.getSlotId());
+                double cz = MiniaturePlacementData.getSlotCenterZ(slotData.getSlotId());
+                double distSq = (localX - cx) * (localX - cx) + (localZ - cz) * (localZ - cz);
+                if (distSq < nearestDistSq) {
+                    nearestDistSq = distSq;
+                    nearestSlot = slotData.getSlotId();
                 }
-                return InteractionResult.sidedSuccess(level.isClientSide);
             }
-        } else {
-            // 素手右クリック（スニークなし）: スロットに小物があれば撤去してアイテムドロップ
-            if (player.getItemInHand(InteractionHand.MAIN_HAND).isEmpty() && placementBe.hasSlot(slotId)) {
+            if (nearestSlot != -1 && nearestDistSq <= 0.16) {
+                slotId = nearestSlot;
+            }
+        }
+
+        boolean isMainHandEmpty = player.getMainHandItem().isEmpty();
+
+        if (player.isShiftKeyDown()) {
+            // 空手シフト右クリック: 狙った小物を個別に回収
+            if (isMainHandEmpty && placementBe.hasSlot(slotId)) {
                 if (!level.isClientSide) {
                     MiniaturePlacementData removed = placementBe.removeMiniature(slotId);
                     if (removed != null) {
-                        // 該当のコース小物をドロップ
+                        // 該当のコース小物をインベントリに追加（満杯ならドロップ）
                         ItemStack drop = new ItemStack(ModItems.getItemForMiniature(removed.getMiniatureId()));
                         if (!player.getInventory().add(drop)) {
                             player.drop(drop, false);
@@ -142,6 +153,15 @@ public class MiniaturePlacementBlock extends BaseEntityBlock {
                             level.removeBlock(pos, false);
                         }
                     }
+                }
+                return InteractionResult.sidedSuccess(level.isClientSide);
+            }
+        } else {
+            // 素手通常右クリック（スニークなし）: スロットの小物を45度回転
+            if (isMainHandEmpty && placementBe.hasSlot(slotId)) {
+                if (!level.isClientSide) {
+                    placementBe.rotateMiniature(slotId, 45.0f);
+                    level.playSound(null, pos, SoundEvents.DISPENSER_DISPENSE, SoundSource.BLOCKS, 0.5f, 1.5f);
                 }
                 return InteractionResult.sidedSuccess(level.isClientSide);
             }
