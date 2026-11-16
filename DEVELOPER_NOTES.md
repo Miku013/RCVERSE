@@ -1391,3 +1391,14 @@ c-1.mp4（ドリフト・ジャンプ・戦車射撃シーン）を docs/videos/
   - タイトル「RC WORKBENCH」の完全センタリング配置。
   - 全27種類の公式クラフトパーツを完全網羅。
 
+
+
+### G. 開発用ブロック「峠スロープ坂」の安全な完全削除 (2026-11-16)
+- [x] **ブロック・アイテム・モデルのクリーンアップ**:
+  - モジュラースロープ坂（`modular_slope`）で代用可能なため、不要となった「峠スロープ坂」（`touge_slope`）をソースコードおよびリソースから完全削除。
+  - 削除ファイル: `TougeSlopeBlock.java`, `blockstates/touge_slope.json`, `models/item/touge_slope.json`, `models/block/touge_slope*.json`（旧ファイルは `backup_assets/` に安全退避）。
+  - クラス登録解除: `ModBlocks.java`, `ModItems.java`, `ModCreativeTabs.java`。
+  - 車両物理判定のクリーンアップ: `RcCarEntity.java` 内のスロープ激突除外判定および登坂Raycast処理から `TougeSlopeBlock` の分岐を削除（`ModularSlopeBlock` と `RacingSlopeBlock` はそのまま正常稼働）。
+  - 言語ファイル整理: `ja_jp.json`, `en_us.json` からキーを削除。
+- [x] **ビルド検証**:
+  - `./gradlew compileJava` および `./gradlew jar --rerun-tasks` にて正常コンパイル・テストJARビルドを確認済み。
