@@ -1525,3 +1525,19 @@ c-1.mp4（ドリフト・ジャンプ・戦車射撃シーン）を docs/videos/
 - [x] **ビルド検証**:
   - `./gradlew compileJava` および `./gradlew jar --rerun-tasks` にて正常コンパイル＆テストJARビルドを確認済み。
   - 本番環境JARは最重要厳守ルールに従い未適用のまま保護。
+
+
+### P. 本番環境JAR（リリース環境）への指定2件（カメラ対策・金床バリアント解決）の限定デプロイ完了 (2026-11-16)
+- [x] **厳守ルールに基づく限定ビルドとデプロイ**:
+  - ユーザーからの明示的な指示（「カメラ対策と金床による自作モデル名の修正の2件を適用」）に基づき、現在テスト・開発中の機能（スタートブロック新機能、コース小物個別回収機能）を本番に巻き込まないよう、直前の本番リリース状態（`6d7322e`）をベースに指定された2件のみを厳密にチェリーピックして限定ビルドを実施。
+- [x] **適用された対象範囲**:
+  1. **カメラ対策・消失防止**:
+     - `RcTankEntity.java`: 完全火炎耐性（`fireImmune`）付与、被弾・破壊時の安全ドロップ（`dropVehicle`）、エンティティ消滅時（`remove`）の操縦・ダミー自動解除。
+     - `ClientDroneInputHandler.java`: 機体消滅時の即座脱出、入力抑制即時解除、カメラ角度計算バイパス（画面ガタつき防止）、操縦終了時の100%確実なプレイヤーカメラ・可視性復元。
+     - `RcTankClientController.java` / `ServerPayloadHandler.java` / 全RC機体の `remove` 安全保護。
+  2. **金床による自作モデル名（Pz.h等）のバリアント解決強化**:
+     - `TankConfigManager.java` & `CarConfigManager.java`: エイリアス登録（ファイル名、短縮名、記号除去名、表示名）およびコア名（tank/rc/戦車除去）ファジー照合。
+     - `RcTankItem.java` & `RcCarItem.java`: 金床カスタム名（`CUSTOM_NAME`）を最優先で検出し、`getConfig(customName)` を通じて確実にバリアントIDへバインド。
+- [x] **バックアップと本番配備**:
+  - 更新前本番JARのバックアップ `rcverse-1.21.1-1.0.0-pre-camera-and-name-fix.jar.bak` を作成・保全済み。
+  - 本番環境 `C:\Users\mikum\curseforge\minecraft\Instances\neofor\mods\rcverse-1.21.1-1.0.0.jar` を限定ビルド成果物で更新完了。
