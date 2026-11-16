@@ -1460,3 +1460,19 @@ c-1.mp4（ドリフト・ジャンプ・戦車射撃シーン）を docs/videos/
 - [x] **ビルド検証**:
   - ./gradlew compileJava および ./gradlew jar --rerun-tasks にて正常コンパイル＆テストJARビルドを確認済み。
   - 本番環境JARは最重要厳守ルールに従い未適用のまま保護。
+
+
+### M. コース小物ベースの重複スタック不具合修正＆回収判定強化 (2026-11-16)
+- [x] **不具合の原因特定**:
+  - `MiniaturePlacementBlock.useWithoutItem` において `isMainHandEmpty`（素手）チェックがあったため、アイテム回収後に手持ちスロットにアイテムが入ると素手判定から外れ、Minecraft標準の挙動でアイテム使用（`itemstack.useOn`）が呼ばれていた。
+  - `MiniatureItem.java` のケース2（`clickedFace == Direction.UP`）に土台ブロック除外チェックが抜けていたため、配置済み土台の上をクリックした際に上の空間へ新たな土台ブロック（`MiniaturePlacementBlock`）が設置され、土台が上に多重複製・スタックしてしまっていた。
+- [x] **修正・改善内容**:
+  - `MiniaturePlacementBlock.java`:
+    - `useItemOn`（アイテム所持時の右クリック）にも `player.isShiftKeyDown()` のインターセプト判定を追加。小物を手に持っている状態や他アイテムを持っている状態でも、Shift＋右クリックすればMinecraftのアイテム設置を完全にキャンセルし、最優先で小物の個別回収を実行するように修正。
+    - 空の土台（孤立した不要ベースプレート）が残っている場合、Shift＋右クリックで土台自体を即座に安全消去する保護処理を追加。
+  - `MiniatureItem.java`:
+    - 土台ブロッククリック時（ケース1）でスロットが埋まっている場合、`InteractionResult.PASS` ではなく `InteractionResult.FAIL` を返すよう変更し、後続の処理へのフォールスルーを遮断。
+    - 通常ブロック上面への土台設置判定（ケース2）に `!clickedState.is(ModBlocks.MINIATURE_PLACEMENT.get())` ガードを追加し、土台ブロックの上に土台が複製・スタックされる現象を完全に防止。
+- [x] **ビルド検証**:
+  - `./gradlew compileJava` および `./gradlew jar --rerun-tasks` にて正常コンパイル＆テストJARビルドを確認済み。
+  - 本番環境JARは最重要厳守ルールに従い未適用のまま保護。
