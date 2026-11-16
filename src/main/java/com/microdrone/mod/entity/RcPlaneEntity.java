@@ -689,6 +689,19 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable, 
     }
 
     @Override
+    public void remove(RemovalReason reason) {
+        if (!this.level().isClientSide && this.pilotUUID != null) {
+            ServerPlayer pilot = this.getServer() != null ? this.getServer().getPlayerList().getPlayer(this.pilotUUID) : null;
+            if (pilot != null) {
+                this.stopPiloting(pilot);
+            } else {
+                RcVehicleManager.unregisterPiloting(this.pilotUUID);
+            }
+        }
+        super.remove(reason);
+    }
+
+    @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
         if (tag.contains("InstalledBattery")) {
             this.installedBattery = ItemStack.parseOptional(this.registryAccess(), tag.getCompound("InstalledBattery"));

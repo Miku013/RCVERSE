@@ -600,6 +600,22 @@ public class RcSubmarineEntity extends Entity implements GeoEntity, RcControllab
     }
 
     @Override
+    public void remove(RemovalReason reason) {
+        if (!this.level().isClientSide && this.pilotUUID != null) {
+            ServerPlayer pilot = this.getServer() != null ? this.getServer().getPlayerList().getPlayer(this.pilotUUID) : null;
+            if (pilot != null) {
+                this.stopPiloting(pilot);
+            } else {
+                RcVehicleManager.unregisterPiloting(this.pilotUUID);
+                if (this.dummyEntityUUID != null) {
+                    RcVehicleManager.unregisterDummy(this.dummyEntityUUID);
+                }
+            }
+        }
+        super.remove(reason);
+    }
+
+    @Override
     public boolean isPickable() { return !this.isRemoved(); }
 
     @Override

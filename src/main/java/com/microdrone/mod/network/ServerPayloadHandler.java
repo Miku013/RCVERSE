@@ -17,6 +17,15 @@ public class ServerPayloadHandler {
     public static void handleDroneControl(DroneControlPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             if (context.player() instanceof ServerPlayer player) {
+                if (payload.stop()) {
+                    // フェイルセーフ: 機体が破壊・消失等で既に存在しない場合でも、マネージャー上の操縦状態を確実に解除
+                    com.microdrone.mod.entity.RcControllable active = com.microdrone.mod.entity.RcVehicleManager.getByPilot(player.getUUID());
+                    if (active != null) {
+                        active.stopPiloting(player);
+                        return;
+                    }
+                }
+
                 Entity entity = player.level().getEntity(payload.droneId());
                 if (entity instanceof DroneEntity drone) {
                     if (drone.isPilotedBy(player)) {

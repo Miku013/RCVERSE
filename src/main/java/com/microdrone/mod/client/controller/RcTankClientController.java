@@ -80,7 +80,7 @@ public class RcTankClientController implements RcVehicleClientController {
 
     @Override
     public void computeCameraAngles(ViewportEvent.ComputeCameraAngles event, Entity vehicle, double startX, double startY, double startZ) {
-        if (!(vehicle instanceof RcTankEntity tank)) return;
+        if (!(vehicle instanceof RcTankEntity tank) || tank.isRemoved()) return;
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
 

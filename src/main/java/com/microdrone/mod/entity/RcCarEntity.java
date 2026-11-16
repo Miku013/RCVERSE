@@ -2956,6 +2956,17 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
     @Override
     public void remove(RemovalReason reason) {
         clearHeadlight();
+        if (!this.level().isClientSide && this.pilotUUID != null) {
+            ServerPlayer pilot = this.getServer() != null ? this.getServer().getPlayerList().getPlayer(this.pilotUUID) : null;
+            if (pilot != null) {
+                this.stopPiloting(pilot);
+            } else {
+                RcVehicleManager.unregisterPiloting(this.pilotUUID);
+                if (this.dummyEntityUUID != null) {
+                    RcVehicleManager.unregisterDummy(this.dummyEntityUUID);
+                }
+            }
+        }
         super.remove(reason);
     }
 }

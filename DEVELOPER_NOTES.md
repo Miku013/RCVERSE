@@ -1476,3 +1476,32 @@ c-1.mp4（ドリフト・ジャンプ・戦車射撃シーン）を docs/videos/
 - [x] **ビルド検証**:
   - `./gradlew compileJava` および `./gradlew jar --rerun-tasks` にて正常コンパイル＆テストJARビルドを確認済み。
   - 本番環境JARは最重要厳守ルールに従い未適用のまま保護。
+
+
+### N. RC戦車（pztank等）着火時・機体破壊時の視点ガタつき・操作不能不具合の調査と完全修正 (2026-11-16)
+- [x] **不具合現象の調査結果と根本原因の特定**:
+  1. **着火による即死・消失（サーバー側）**:
+     - RC戦車が主砲（`SmallFireball`）を発射した際、着弾地点のブロックに着火。戦車がその炎ブロックに入ると、Minecraftの仕様により `hurt(DamageSources.inFire, 1.0f)` が発生。
+     - 従来の `RcTankEntity.hurt` にはダメージ種別のフィルタがなく、1tickでも火炎ダメージを受けると即座に `this.discard()` が呼ばれ、アイテム化もされず瞬時に消滅（消失）していた。
+  2. **サーバー側操縦終了処理の欠落**:
+     - `RcTankEntity.hurt` やエンティティ消滅時に `stopPiloting` が呼ばれず、また `remove(RemovalReason)` のオーバーライドもなかったため、サーバー上の操縦登録（`RcVehicleManager`）や身代わりダミー人形が解除されず取り残されていた。
+  3. **クライアント側カメラ復帰失敗と画面ガタつき（最重要原因）**:
+     - サーバーから機体消滅が通知された際、従来の `ClientDroneInputHandler` はパケット遅延対策として `missingTicks` を40tick（2秒間）カウントするまで `stopPiloting()` を呼ばなかった。
+     - その2秒間、プレイヤーの移動入力がゼロ固定され、さらに消滅した機体を参照しながら `computeCameraAngles` やカメラ補間が行われたため、カメラ座標が消失位置と自位置の間で激しくブレて「画面がガタつく」現象が発生していた。
+     - さらに、40tick後に `stopPiloting()` -> `setPiloting(-1, false)` が呼ばれた際、消滅済みの機体IDからはコントローラー（`RcVehicleClientController`）が取得できず `null` となり、`controller.onStop(...)` 内の `mc.setCameraEntity(player)` や `player.setInvisible(false)` がスキップされ、カメラが消滅機体（死亡エンティティ）に取り残され自プレイヤーへ操作権・視点が戻らなくなっていた。
+- [x] **修正・恒久対策内容**:
+  - `RcTankEntity.java`:
+    - `fireImmune() { return true; }` を実装。重装甲RC戦車として火炎・延焼・地面の火に対する完全耐性を付与し、自弾の着火による即死・消失を防止。
+    - `hurt()` にてサフォケーション（壁埋まり）を無効化し、万が一破壊された場合も確実に `stopPiloting` を呼び出し、戦車本体（バリアント・デカール・カスタム名維持）および装着中のバッテリー・モーターを安全にドロップする `dropVehicle()` を実装。
+    - `remove(RemovalReason)` をオーバーライドし、いかなる要因（/killやワールドアンロード等含む）で機体が消去された場合でも確実にサーバー側操縦解除・ダミー消去を行うよう保護。
+  - `ClientDroneInputHandler.java`:
+    - `setPiloting(..., false)` にコントローラー有無に関わらない**絶対保証フェイルセーフ**を追加。操縦終了時は必ず `mc.setCameraEntity(mc.player)`, `mc.player.setInvisible(false)`, `mc.options.setCameraType(FIRST_PERSON)` を直接呼び出して100%プレイヤーに視点と可視性を復元。
+    - `onClientTick`: 機体が `isRemoved()`（消滅・破壊）された場合は40tick待機せず即座に脱出・視点復元を実行。`null` の場合もタイムアウトを5tick（250ms）に短縮。
+    - `onMovementInput` / `onComputeCameraAngles`: 機体が消滅・削除されている場合は即座に入力抑制を解除し、カメラアングル計算をスキップして画面のガタつきを完全に防止。
+  - `RcCarEntity.java` / `RcBoatEntity.java` / `RcSubmarineEntity.java` / `RcPlaneEntity.java`:
+    - 全RC機体に `remove(RemovalReason)` による操縦解除の安全保護を追加。
+  - `ServerPayloadHandler.java`:
+    - `payload.stop()` 受信時、機体エンティティが既に消失していても `RcVehicleManager.getByPilot(player.getUUID())` から確実に操縦解除を実行するフェイルセーフを追加。
+- [x] **ビルド検証**:
+  - `./gradlew compileJava` および `./gradlew jar --rerun-tasks` にて正常コンパイル＆テストJARビルドを確認済み。
+  - 本番環境JARは最重要厳守ルールに従い未適用のまま保護。

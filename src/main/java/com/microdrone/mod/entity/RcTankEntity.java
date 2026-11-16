@@ -575,40 +575,8 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable, c
 
         // 1. スニーク右クリック: 回収
         if (player.isShiftKeyDown() && !isPiloted()) {
-            ItemStack dropStack = new ItemStack(ModItems.RC_TANK_ITEM.get());
-            if (!"default".equalsIgnoreCase(getVariantId())) {
-                net.minecraft.world.item.component.CustomData.update(
-                        net.minecraft.core.component.DataComponents.CUSTOM_DATA,
-                        dropStack,
-                        tag -> tag.putString("Variant", getVariantId())
-                );
-                var config = com.microdrone.mod.config.tank.TankConfigManager.getConfig(getVariantId());
-                if (config != null && config.displayName != null) {
-                    dropStack.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal(config.displayName));
-                }
-            }
-            if (!this.decals.isEmpty()) {
-                net.minecraft.world.item.component.CustomData.update(
-                        net.minecraft.core.component.DataComponents.CUSTOM_DATA,
-                        dropStack,
-                        tag -> tag.put("Decals", com.microdrone.mod.decal.CarDecalData.serializeDecals(this.decals))
-                );
-            }
-            ItemEntity drop = new ItemEntity(level(), getX(), getY() + 0.2, getZ(), dropStack);
-            level().addFreshEntity(drop);
-
-            // バッテリーとモーターも返却
-            if (!this.installedBattery.isEmpty()) {
-                level().addFreshEntity(new ItemEntity(level(), getX(), getY() + 0.2, getZ(), this.installedBattery));
-                this.installedBattery = ItemStack.EMPTY;
-            }
-            if (!this.installedMotor.isEmpty()) {
-                level().addFreshEntity(new ItemEntity(level(), getX(), getY() + 0.2, getZ(), this.installedMotor));
-                this.installedMotor = ItemStack.EMPTY;
-            }
-
+            dropVehicle(player.getAbilities().instabuild);
             level().playSound(null, blockPosition(), SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 0.8f, 1.2f);
-            this.discard();
             return InteractionResult.SUCCESS;
         }
 
@@ -764,13 +732,85 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable, c
     }
 
     @Override
+    public boolean fireImmune() {
+        // 重装甲RC戦車は火炎・延焼・地面の火に対して完全耐性を持つ（自弾の着火による即死を防止）
+        return true;
+    }
+
+    @Override
     public boolean hurt(DamageSource source, float amount) {
         if (this.isInvulnerableTo(source)) return false;
+        // 壁埋まり（サフォケーション）ダメージは無効化
+        if (source.is(net.minecraft.world.damagesource.DamageTypes.IN_WALL)) {
+            return false;
+        }
         if (!level().isClientSide && !this.isRemoved()) {
+            if (this.pilotUUID != null && this.level() instanceof ServerLevel sl) {
+                ServerPlayer p = (ServerPlayer) sl.getPlayerByUUID(this.pilotUUID);
+                if (p != null) {
+                    this.stopPiloting(p);
+                }
+            }
+            dropVehicle(source.getEntity() instanceof Player p && p.getAbilities().instabuild);
+            return true;
+        }
+        return false;
+    }
+
+    public void dropVehicle(boolean isCreativePlayer) {
+        if (!level().isClientSide && !this.isRemoved()) {
+            if (!isCreativePlayer) {
+                ItemStack dropStack = new ItemStack(ModItems.RC_TANK_ITEM.get());
+                if (!"default".equalsIgnoreCase(getVariantId())) {
+                    net.minecraft.world.item.component.CustomData.update(
+                            net.minecraft.core.component.DataComponents.CUSTOM_DATA,
+                            dropStack,
+                            tag -> tag.putString("Variant", getVariantId())
+                    );
+                    var config = com.microdrone.mod.config.tank.TankConfigManager.getConfig(getVariantId());
+                    if (config != null && config.displayName != null) {
+                        dropStack.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal(config.displayName));
+                    }
+                }
+                if (!this.decals.isEmpty()) {
+                    net.minecraft.world.item.component.CustomData.update(
+                            net.minecraft.core.component.DataComponents.CUSTOM_DATA,
+                            dropStack,
+                            tag -> tag.put("Decals", com.microdrone.mod.decal.CarDecalData.serializeDecals(this.decals))
+                    );
+                }
+                ItemEntity drop = new ItemEntity(level(), getX(), getY() + 0.2, getZ(), dropStack);
+                level().addFreshEntity(drop);
+
+                // バッテリーとモーターも返却
+                if (!this.installedBattery.isEmpty()) {
+                    level().addFreshEntity(new ItemEntity(level(), getX(), getY() + 0.2, getZ(), this.installedBattery));
+                    this.installedBattery = ItemStack.EMPTY;
+                }
+                if (!this.installedMotor.isEmpty()) {
+                    level().addFreshEntity(new ItemEntity(level(), getX(), getY() + 0.2, getZ(), this.installedMotor));
+                    this.installedMotor = ItemStack.EMPTY;
+                }
+            }
             level().playSound(null, blockPosition(), SoundEvents.ITEM_BREAK, SoundSource.PLAYERS, 0.8f, 1.0f);
             this.discard();
         }
-        return true;
+    }
+
+    @Override
+    public void remove(RemovalReason reason) {
+        if (!this.level().isClientSide && this.pilotUUID != null) {
+            ServerPlayer pilot = this.getServer() != null ? this.getServer().getPlayerList().getPlayer(this.pilotUUID) : null;
+            if (pilot != null) {
+                this.stopPiloting(pilot);
+            } else {
+                RcVehicleManager.unregisterPiloting(this.pilotUUID);
+                if (this.dummyEntityUUID != null) {
+                    RcVehicleManager.unregisterDummy(this.dummyEntityUUID);
+                }
+            }
+        }
+        super.remove(reason);
     }
 
     @Override
