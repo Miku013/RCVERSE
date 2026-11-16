@@ -1417,3 +1417,12 @@ c-1.mp4（ドリフト・ジャンプ・戦車射撃シーン）を docs/videos/
 - [x] **ビルド検証**:
   - ./gradlew compileJava および ./gradlew jar --rerun-tasks にて正常コンパイルおよびテストJARビルドを確認済み。
   - 本番環境JAR（CurseForge環境等）は最重要厳守ルールに従い、ユーザーからの指示があるまで未適用で安全に維持。
+### I. プロポの額縁2Dアイコン表示対応 (2026-11-16)
+- [x] **額縁装着時の2Dアイコン描画 & 他コンテキストの3Dモデル維持**:
+  - DroneControllerItemRenderer.java: 表示コンテキストが ItemDisplayContext.GUI および ItemDisplayContext.FIXED（額縁）の場合に、16x16の2Dドット絵アイコン（drone_controller_gui）を描画するよう拡張。
+  - 額縁特有の向き（ItemDisplayContext.FIXED の Y軸180度反転トランスフォーム）を guiModel.getTransforms().getTransform(...) で正確に適用し、壁面の額縁上で正面を向いてジャストフィット描画されるよう調整。
+  - RcRackDisplayLayer.java および RcShowcaseDisplayLayer.java: RCラック・ショーケースでの通常アイテム描画コンテキストを ItemDisplayContext.GROUND に指定。これにより家具上にプロポを飾った際は立体的な3Dモデルのまま美しく展示されます。
+  - 手持ち時（一人称・三人称）のGeckoLib 3Dモデル・アニメーション・操作系は完全無傷で維持。
+- [x] **ビルド検証**:
+  - ./gradlew compileJava および ./gradlew jar --rerun-tasks にて正常コンパイル＆テストJARビルドを確認済み。
+  - 本番環境JARは最重要厳守ルールに従い未適用のまま保護。
