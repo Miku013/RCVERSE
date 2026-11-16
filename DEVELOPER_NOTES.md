@@ -1,4 +1,4 @@
-﻿# ⚠️【最優先・厳守事項】AI開発運用ルール（次回以降の全AI必読）
+# ⚠️【最優先・厳守事項】AI開発運用ルール（次回以降の全AI必読）
 
 > [!CAUTION]
 > ### 🚨 要求以上の改変を行う場合は、事前に必ずユーザーに確認を取ること！
@@ -1402,3 +1402,18 @@ c-1.mp4（ドリフト・ジャンプ・戦車射撃シーン）を docs/videos/
   - 言語ファイル整理: `ja_jp.json`, `en_us.json` からキーを削除。
 - [x] **ビルド検証**:
   - `./gradlew compileJava` および `./gradlew jar --rerun-tasks` にて正常コンパイル・テストJARビルドを確認済み。
+
+### H. 開発用アイテム「コース中継カメラ」および電光掲示板のCCTV中継機能の完全削除 (2026-11-16)
+- [x] **コース中継カメラ (	rackside_camera) の完全削除**:
+  - 不要となったコース中継カメラブロック・アイテム・エンティティを安全に完全削除（全関連コードおよびリソースは ackup_assets/cctv_and_camera_backup/ に退避・保全済み）。
+  - 削除ファイル: TracksideCameraBlock.java, TracksideCameraBlockEntity.java, lockstates/trackside_camera.json, models/block/trackside_camera.json, models/item/trackside_camera.json。
+  - レジストリ登録解除: ModBlocks.java, ModBlockEntities.java, ModItems.java, ModCreativeTabs.java。
+  - 言語ファイル整理: ja_jp.json, en_us.json から 	rackside_camera 関連キーを完全削除。
+- [x] **電光掲示板 (ace_display) からのCCTV中継機能の安全な分離・削除**:
+  - CCTV描画パイプライン (CctvRenderPipeline.java, CctvScreenTexture.java) を削除。
+  - RaceDisplayBlockEntityRenderer.java: CCTVテクスチャ描画およびOSD描画を完全削除。本来の電光掲示板機能（パイロット名、ベストラップ、セクター別スプリットタイム、順位リーダーボード）のフォント描画・クアッドレンダリングを100%保持。
+  - RaceDisplayBlockEntity.java: DisplayMode.CCTV_LIVE モード、CCTVカメラ接続ロジック、トグル切り替え、NBT同期をクリーンアップ。
+  - RaceDisplayBlock.java: 右クリック時のCCTVモード切り替えを削除し、掲示板のパイロット名とベストタイムのチャット表示に変更。
+- [x] **ビルド検証**:
+  - ./gradlew compileJava および ./gradlew jar --rerun-tasks にて正常コンパイルおよびテストJARビルドを確認済み。
+  - 本番環境JAR（CurseForge環境等）は最重要厳守ルールに従い、ユーザーからの指示があるまで未適用で安全に維持。

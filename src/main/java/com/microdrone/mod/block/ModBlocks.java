@@ -40,13 +40,6 @@ public class ModBlocks {
                     .strength(2.0f, 3.0f)
                     .noOcclusion()));
 
-    // コース中継カメラブロック（CCTV中継・サーキット映像）
-    public static final DeferredBlock<TracksideCameraBlock> TRACKSIDE_CAMERA = BLOCKS.register("trackside_camera",
-            () -> new TracksideCameraBlock(BlockBehaviour.Properties.of()
-                    .mapColor(MapColor.COLOR_BLACK)
-                    .strength(1.5f, 2.0f)
-                    .noOcclusion()));
-
     // レーシングスロープ（ハーフブロック式ジャンプ台）
     public static final DeferredBlock<RacingSlopeBlock> RACING_SLOPE = BLOCKS.register("racing_slope",
             () -> new RacingSlopeBlock(BlockBehaviour.Properties.of()

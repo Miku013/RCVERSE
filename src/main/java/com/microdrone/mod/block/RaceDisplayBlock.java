@@ -98,14 +98,11 @@ public class RaceDisplayBlock extends HorizontalDirectionalBlock implements Enti
                 BlockPos masterPos = displayBe.getMasterPos();
                 BlockEntity mBe = level.getBlockEntity(masterPos);
                 if (mBe instanceof RaceDisplayBlockEntity masterDisplay) {
-                    masterDisplay.toggleDisplayMode();
-                    boolean isCctv = masterDisplay.getDisplayMode() == RaceDisplayBlockEntity.DisplayMode.CCTV_LIVE;
-                    if (isCctv) {
-                        player.displayClientMessage(Component.literal("§a[レースビジョン] §e🔴 CCTVリアルタイム中継モード (256x144 / 30fps)§f に切り替えました！"), true);
-                    } else {
-                        player.displayClientMessage(Component.literal("§a[レースビジョン] §b🏁 リーダーボード(順位・タイム)§f に切り替えました！"), true);
-                    }
-                    level.playSound(null, pos, net.minecraft.sounds.SoundEvents.UI_BUTTON_CLICK.value(), net.minecraft.sounds.SoundSource.BLOCKS, 0.7f, 1.2f);
+                    String pilot = masterDisplay.getPilotName();
+                    long bestTime = masterDisplay.getBestLapTimeMs();
+                    String timeStr = bestTime > 0 ? String.format("%02d'%02d\"%03d", (bestTime / 60000), (bestTime % 60000) / 1000, bestTime % 1000) : "--'--\"---";
+                    player.displayClientMessage(Component.literal("§a[電光掲示板] §fパイロット: §e" + pilot + " §7| §fベストタイム: §d" + timeStr), true);
+                    level.playSound(null, pos, net.minecraft.sounds.SoundEvents.UI_BUTTON_CLICK.value(), net.minecraft.sounds.SoundSource.BLOCKS, 0.5f, 1.2f);
                 }
             }
         }

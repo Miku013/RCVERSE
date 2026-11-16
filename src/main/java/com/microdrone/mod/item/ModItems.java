@@ -46,10 +46,6 @@ public class ModItems {
     public static final DeferredHolder<Item, BlockItem> RACE_DISPLAY_ITEM =
             ITEMS.register("race_display", () -> new BlockItem(ModBlocks.RACE_DISPLAY.get(), new Item.Properties()));
 
-    // コース中継カメラ (BlockItem)
-    public static final DeferredHolder<Item, BlockItem> TRACKSIDE_CAMERA_ITEM =
-            ITEMS.register("trackside_camera", () -> new BlockItem(ModBlocks.TRACKSIDE_CAMERA.get(), new Item.Properties()));
-
     // レーシングスロープ (BlockItem)
     public static final DeferredHolder<Item, BlockItem> RACING_SLOPE_ITEM =
             ITEMS.register("racing_slope", () -> new BlockItem(ModBlocks.RACING_SLOPE.get(), new Item.Properties()));
