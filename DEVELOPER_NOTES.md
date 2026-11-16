@@ -1432,3 +1432,21 @@ c-1.mp4（ドリフト・ジャンプ・戦車射撃シーン）を docs/videos/
   - 本番JAR（C:\Users\mikum\curseforge\minecraft\Instances\neofor\mods\rcverse-1.21.1-1.0.0.jar）へ安全にデプロイ完了。
   - デプロイ直前バックアップとして cverse-1.21.1-1.0.0-pre-cleanup-and-controller-2d.jar.bak を作成・保全済み。
   - 潜水艦新モデル（512x512）およびRC工作台新GUIも包含された状態で、不要開発アイテムの削除と額縁2D化が正常反映されています。
+### K. スタートブロック（スタートシグナル）の新規実装 (2026-11-16)
+- [x] **GeckoLibモデル・テクスチャ導入**:
+  - ジオメトリ: start_block.geo.json (本体 ody、消灯レンズ led_off_1~3、赤色灯 led_red_1~3、緑色全灯 led_green)。
+  - テクスチャ: start_block.png (128x128 ARGB)。
+- [x] **カウントダウンシグナル動作仕様の実装**:
+  - StartBlockModel.java: アニメーションプロセッサによるボーン可視性制御。
+    - **待機状態 (State 0)**: led_off_1~3 を表示、赤・緑は非表示。
+    - **カウント1 (State 1: 3秒前)**: led_off_1 が消え led_red_1 が点灯。高音ビープ音。
+    - **カウント2 (State 2: 2秒前)**: led_off_2 が消え led_red_1 + led_red_2 が点灯。高音ビープ音。
+    - **カウント3 (State 3: 1秒前)**: led_off_3 が消え led_red_1~3 の全赤が点灯。高音ビープ音。
+    - **スタート (State 4: GO!!)**: 赤が全消灯し、切り替わりで led_green が全灯。スタートホーン＋歓声サウンド、アクションバー案内（「GO!!!!!」）。
+    - **復帰**: グリーン点灯後2秒（計5秒）で自動的に待機状態（全消灯レンズ）に戻る。
+- [x] **操作・起動インターフェース**:
+  - StartBlock.java: プレイヤーによる右クリック、またはレッドストーン信号入力（ボタン・レバー・ディテクターレール等）でカウントダウン開始。
+  - 点灯中はブロックの自発光レベル15（StartBlock.LIT）が発動し、モデル描画もフルブライト発光。
+- [x] **ビルド検証**:
+  - ./gradlew compileJava および ./gradlew jar --rerun-tasks にて正常コンパイル＆テストJARビルドを確認済み。
+  - 本番環境JARは最重要厳守ルールに従い未適用のまま保護。
