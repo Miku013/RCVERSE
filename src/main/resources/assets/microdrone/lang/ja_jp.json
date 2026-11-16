@@ -135,6 +135,8 @@
   "message.microdrone.boat_pilot_start": "§a[RCボート] 操縦開始！(W/S: 前進/後退, A/D: ラダー操舵, F5: 視点切替, コントローラー再使用: 終了)",
   "message.microdrone.submarine_pilot_start": "§a[RC潜水艇] 操縦開始！(W/S: 前後進, A/D: 旋回舵, Space/Shift: 浮上/潜航, F5: 視点切替, コントローラー再使用: 終了)",
   "subtitles.microdrone.checkpoint_pass": "チェックポイント通過",
+  "subtitles.microdrone.rc_car_drive": "RCカーのモーター回転音",
+  "subtitles.microdrone.rc_car_skid": "RCカーのタイヤスキール音",
   "block.microdrone.vertical_loop": "360°縦ループコース",
   "item.microdrone.vertical_loop": "360°縦ループコース",
   "block.microdrone.road_start": "道路生成 始点マーカー",

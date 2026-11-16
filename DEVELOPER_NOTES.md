@@ -1541,3 +1541,31 @@ c-1.mp4（ドリフト・ジャンプ・戦車射撃シーン）を docs/videos/
 - [x] **バックアップと本番配備**:
   - 更新前本番JARのバックアップ `rcverse-1.21.1-1.0.0-pre-camera-and-name-fix.jar.bak` を作成・保全済み。
   - 本番環境 `C:\Users\mikum\curseforge\minecraft\Instances\neofor\mods\rcverse-1.21.1-1.0.0.jar` を限定ビルド成果物で更新完了。
+
+
+### Q. マイクロRCカーの走行モーター音およびドリフトスキール音の実装 (2026-11-16)
+- [x] **音源ファイル（.ogg）の生成と配置**:
+  - `rc_car_drive.ogg`: 高回転ブラシレスモーターのPWM高周波音（220Hz/440Hz/660Hz/880Hz倍音）およびギアボックス噛合音（ピンクノイズ/バンドパス）を合成した4秒間のシームレスループ音源を生成。
+  - `rc_car_skid.ogg`: アスファルトでのタイヤスキール・スクリーチ音（2200Hz〜2750Hz周波数変調スクリーチ＋2400Hzホワイトノイズ共振）を合成した4秒間のシームレスループ音源を生成。
+  - `src/main/resources/assets/microdrone/sounds/` に配置。
+- [x] **サウンドイベントおよび字幕の登録**:
+  - `ModSounds.java`: `RC_CAR_DRIVE` および `RC_CAR_SKID` を `DeferredRegister` に追加。
+  - `sounds.json`: `"rc_car_drive"` および `"rc_car_skid"`（カテゴリ: neutral）を登録。
+  - `ja_jp.json` / `en_us.json`: 字幕（"RCカーのモーター回転音" / "RCカーのタイヤスキール音"）を追加。
+- [x] **動的TickableSoundInstanceの実装**:
+  - `RcCarDriveSound.java`:
+    - 車両座標に毎tick追従。
+    - アイドリング時（停止中）: ピッチ約0.78F、音量0.20Fで静かに待機。
+    - 走行・加速時: スロットル入力と実速度（`currentSpeed`）に連動してピッチが0.78F〜1.85Fへダイナミックに上昇。
+    - 水没時は音量およびピッチが減衰。
+  - `RcCarSkidSound.java`:
+    - レースモードでのドリフト（`driftDirection != 0`）、リアルモードでのドリフト（`realPhysics.isDrifting()`）、または高速時のハンドブレーキ急旋回時に発音。
+    - 車両接地（`onGround || wheelGrounded`）かつ速度 > 0.08F でのみ発音。
+    - ドリフト速度に合わせて音量（0.25F〜0.65F）およびピッチ（0.90F〜1.25F）が変動し、グリップ復帰時に素早くフェードアウト。
+- [x] **サウンドマネージャー連携**:
+  - `RcCarSoundManager.java`: 操縦開始時にESC接続チャイムと共に駆動音・スキール音インスタンスを生成・再生開始。操縦終了時や機体消失・破壊時に安全に完全停止。
+  - `ClientModEvents.java`: `RcCarSoundManager.register()` を初期化時に登録。
+  - `RcCarClientController.java`: `onStart` / `onStop` にサウンドマネージャーのライフサイクルを接続。
+- [x] **ビルド検証**:
+  - `./gradlew compileJava` および `./gradlew jar --rerun-tasks` にてコンパイル成功を確認。
+  - テストビルド: `micro_drone_mod/build/libs/rcverse-cinematic-1.0.0.jar`

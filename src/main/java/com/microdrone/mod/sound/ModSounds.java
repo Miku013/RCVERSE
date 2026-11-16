@@ -21,6 +21,14 @@ public class ModSounds {
             SOUND_EVENTS.register("checkpoint_pass",
                     () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, "checkpoint_pass")));
 
+    public static final DeferredHolder<SoundEvent, SoundEvent> RC_CAR_DRIVE =
+            SOUND_EVENTS.register("rc_car_drive",
+                    () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, "rc_car_drive")));
+
+    public static final DeferredHolder<SoundEvent, SoundEvent> RC_CAR_SKID =
+            SOUND_EVENTS.register("rc_car_skid",
+                    () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, "rc_car_skid")));
+
     public static void register(IEventBus eventBus) {
         SOUND_EVENTS.register(eventBus);
     }

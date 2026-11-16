@@ -2,6 +2,7 @@ package com.microdrone.mod.client;
 
 import com.microdrone.mod.block.entity.ModBlockEntities;
 import com.microdrone.mod.client.audio.DroneSoundManager;
+import com.microdrone.mod.client.audio.RcCarSoundManager;
 import com.microdrone.mod.client.camera.DroneCameraController;
 import com.microdrone.mod.client.gui.DroneHudOverlay;
 import com.microdrone.mod.client.gui.PlaneFlightHudOverlay;
@@ -64,6 +65,7 @@ public class ClientModEvents {
         TankGunnerHudOverlay.register();
         PlaneFlightHudOverlay.register();
         DroneSoundManager.register();
+        RcCarSoundManager.register();
     }
 
     private static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {

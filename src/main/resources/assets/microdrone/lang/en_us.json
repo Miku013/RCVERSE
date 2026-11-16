@@ -135,6 +135,8 @@
   "message.microdrone.boat_pilot_start": "§a[RC Boat] Piloting started! (W/S: Forward/Reverse, A/D: Rudder, F5: Toggle View, Use Controller again to exit)",
   "message.microdrone.submarine_pilot_start": "§a[RC Submarine] Piloting started! (W/S: Forward/Reverse, A/D: Turn, Space/Shift: Surface/Dive, F5: Toggle View, Use Controller again to exit)",
   "subtitles.microdrone.checkpoint_pass": "Checkpoint Passed",
+  "subtitles.microdrone.rc_car_drive": "RC Car Motor Whines",
+  "subtitles.microdrone.rc_car_skid": "RC Car Tires Screech",
   "block.microdrone.vertical_loop": "360° Vertical Loop Track",
   "item.microdrone.vertical_loop": "360° Vertical Loop Track",
   "block.microdrone.road_start": "Road Start Marker",

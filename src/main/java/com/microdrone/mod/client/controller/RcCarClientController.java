@@ -2,6 +2,7 @@ package com.microdrone.mod.client.controller;
 
 import com.microdrone.mod.MicroDroneMod;
 import com.microdrone.mod.client.ClientModEvents;
+import com.microdrone.mod.client.audio.RcCarSoundManager;
 import com.microdrone.mod.entity.RcCarEntity;
 import com.microdrone.mod.network.CarHeadlightTogglePayload;
 import com.microdrone.mod.network.DroneControlPayload;
@@ -63,6 +64,7 @@ public class RcCarClientController implements RcVehicleClientController {
             car.setLocallyControlled(true);
             smoothCamYaw = car.getYRot();
             smoothCamPitch = 20.0f;
+            RcCarSoundManager.startPilotingSound(car);
         }
 
         if (player != null) {
@@ -81,6 +83,7 @@ public class RcCarClientController implements RcVehicleClientController {
 
     @Override
     public void onStop(Entity vehicle, LocalPlayer player) {
+        RcCarSoundManager.stopPilotingSound();
         camDistance = DEFAULT_CAM_DISTANCE;
         fovMultiplier = DEFAULT_FOV_MULTIPLIER;
         orbitYawOffset = 0.0f;
