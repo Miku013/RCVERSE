@@ -1601,3 +1601,13 @@ c-1.mp4（ドリフト・ジャンプ・戦車射撃シーン）を docs/videos/
   - イニシャルD等の峠を駆け抜けるスポーツカーのような、甲高く突き抜ける迫真のスキール音を実現。
 - [x] **ビルド検証**:
   - `./gradlew jar --rerun-tasks` にて正常パッケージ完了。
+
+
+### U. 実車サンプリング音源（ユーザー提供WAV）の定常ループ化と適用 (2026-11-17)
+- [x] **音響解析と処理**:
+  - SoundEngine Freeにて調整されたユーザー提供の生録音スキール音（1.91秒）を解析。
+  - 音量が均一で実車タイヤ摩擦エネルギーが充満しているコア区間に対し、スワップ・クロスフェード（150ms）を適用。
+  - Minecraftの3D定位音響に最適化したモノラル（44,100Hz）形式で書き出し、音圧（+13.0dB）を適正化して [rc_car_skid.ogg](file:///c:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/resources/assets/microdrone/sounds/rc_car_skid.ogg) に配置。
+  - 数式合成の電子音ではなく、本物のゴムと路面が摩擦する生々しいリアルスキール音の定常ループ化を完了。
+- [x] **ビルド検証**:
+  - `./gradlew jar --rerun-tasks` にて正常パッケージ完了。
