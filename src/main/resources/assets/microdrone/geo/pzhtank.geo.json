@@ -13,8 +13,7 @@
 			"bones": [
 				{
 					"name": "root",
-					"pivot": [0, 0, 0],
-					"rotation": [0, 180, 0]
+					"pivot": [0, 0, 0]
 				},
 				{
 					"name": "chassis",
@@ -6050,8 +6049,6 @@
 						{
 							"origin": [-5, 19.5, -9],
 							"size": [8, 1, 2],
-							"pivot": [0, 27, -7],
-							"rotation": [0, 0, 0],
 							"uv": {
 								"north": {"uv": [134, 110], "uv_size": [8, 1]},
 								"east": {"uv": [30, 146], "uv_size": [2, 1]},
