@@ -24,7 +24,7 @@ public class RcCarTuningScreen extends Screen {
     private boolean realMode;
 
     public RcCarTuningScreen(RcCarEntity car) {
-        super(Component.literal("RCカー セッティング"));
+        super(Component.translatable("gui.microdrone.tuning.title"));
         this.car = car;
         this.realMode = car.isRealMode();
     }
@@ -58,21 +58,21 @@ public class RcCarTuningScreen extends Screen {
         this.addRenderableWidget(this.weightSlider);
 
         // 4. プリセットボタン (1行目: 0.80kg / 1.10kg)
-        this.addRenderableWidget(Button.builder(Component.literal("軽量 (0.80kg)"), btn -> setPreset(0.80f))
+        this.addRenderableWidget(Button.builder(Component.translatable("gui.microdrone.tuning.preset_light"), btn -> setPreset(0.80f))
                 .bounds(centerX - 120, centerY + 24, 115, 20).build());
 
-        this.addRenderableWidget(Button.builder(Component.literal("標準 (1.10kg)"), btn -> setPreset(1.10f))
+        this.addRenderableWidget(Button.builder(Component.translatable("gui.microdrone.tuning.preset_std"), btn -> setPreset(1.10f))
                 .bounds(centerX + 5, centerY + 24, 115, 20).build());
 
         // 5. プリセットボタン (2行目: 1.60kg / 2.20kg)
-        this.addRenderableWidget(Button.builder(Component.literal("重量級 (1.60kg)"), btn -> setPreset(1.60f))
+        this.addRenderableWidget(Button.builder(Component.translatable("gui.microdrone.tuning.preset_heavy"), btn -> setPreset(1.60f))
                 .bounds(centerX - 120, centerY + 48, 115, 20).build());
 
-        this.addRenderableWidget(Button.builder(Component.literal("超重量 (2.20kg)"), btn -> setPreset(2.20f))
+        this.addRenderableWidget(Button.builder(Component.translatable("gui.microdrone.tuning.preset_ultra"), btn -> setPreset(2.20f))
                 .bounds(centerX + 5, centerY + 48, 115, 20).build());
 
         // 6. 完了ボタン & デバッグHUD切替
-        this.addRenderableWidget(Button.builder(Component.literal("設定完了"), btn -> onClose())
+        this.addRenderableWidget(Button.builder(Component.translatable("gui.microdrone.tuning.done"), btn -> onClose())
                 .bounds(centerX - 120, centerY + 76, 115, 20).build());
 
         this.debugButton = Button.builder(getDebugButtonText(), btn -> toggleDebugHud())
@@ -82,8 +82,8 @@ public class RcCarTuningScreen extends Screen {
 
     private Component getDebugButtonText() {
         return RcCarHudOverlay.showPhysicsDebug
-                ? Component.literal("数値HUD: §bON")
-                : Component.literal("数値HUD: §7OFF");
+                ? Component.translatable("gui.microdrone.tuning.debug_hud_on")
+                : Component.translatable("gui.microdrone.tuning.debug_hud_off");
     }
 
     private void toggleDebugHud() {
@@ -93,8 +93,8 @@ public class RcCarTuningScreen extends Screen {
 
     private Component getModeButtonText() {
         return this.realMode
-                ? Component.literal("走行モード: §b§lREAL (可変グリップ物理)")
-                : Component.literal("走行モード: §a§lRACE (標準ドリフト補助)");
+                ? Component.translatable("gui.microdrone.tuning.mode_real")
+                : Component.translatable("gui.microdrone.tuning.mode_race");
     }
 
     private void toggleDrivingMode() {
@@ -124,25 +124,25 @@ public class RcCarTuningScreen extends Screen {
         int centerY = this.height / 2;
 
         // タイトル
-        graphics.drawCenteredString(this.font, "§6§l=== RCカー 走行モード＆物理セッティング ===", centerX, centerY - 118, 0xFFFFFF);
+        graphics.drawCenteredString(this.font, Component.translatable("gui.microdrone.tuning.header").getString(), centerX, centerY - 118, 0xFFFFFF);
 
         // モード説明
         String modeDesc = this.realMode
-                ? "§b[REAL] §7前後/横速度分離・可変グリップ・荷重移動・カウンター制御"
-                : "§a[RACE] §7Spaceホップドリフト・扱いやすい標準アシスト";
+                ? Component.translatable("gui.microdrone.tuning.mode_desc_real").getString()
+                : Component.translatable("gui.microdrone.tuning.mode_desc_race").getString();
         graphics.drawCenteredString(this.font, modeDesc, centerX, centerY - 74, 0xDDDDDD);
 
         // 現在車重設定の解説
         float w = this.weightSlider.getWeightKg();
         String desc;
         if (w < 0.90f) {
-            desc = "§b【軽量・トリック仕様】 §7ジャンプが高くフワッと遠くまで飛びます";
+            desc = Component.translatable("gui.microdrone.tuning.desc_light").getString();
         } else if (w <= 1.35f) {
-            desc = "§a【標準・実車1/10バギー】 §7自然な放物線と手応えのある推奨バランス";
+            desc = Component.translatable("gui.microdrone.tuning.desc_std").getString();
         } else if (w <= 1.85f) {
-            desc = "§6【重量級・高速レーン】 §7低空を鋭く突き抜け、ドスッと素早く着地";
+            desc = Component.translatable("gui.microdrone.tuning.desc_heavy").getString();
         } else {
-            desc = "§c【超重量級・地面吸着】 §7超重厚。地面に張り付き段差やジャンプを極小化";
+            desc = Component.translatable("gui.microdrone.tuning.desc_ultra").getString();
         }
         graphics.drawCenteredString(this.font, desc, centerX, centerY + 10, 0xEEEEEE);
     }
@@ -169,7 +169,7 @@ public class RcCarTuningScreen extends Screen {
         @Override
         protected void updateMessage() {
             float deg = getAngleDeg();
-            setMessage(Component.literal(String.format("カウンター最大角 (REAL): §b%.0f°", deg)));
+            setMessage(Component.translatable("gui.microdrone.tuning.counter_angle", String.format("%.0f", deg)));
         }
 
         @Override
@@ -197,7 +197,7 @@ public class RcCarTuningScreen extends Screen {
         @Override
         protected void updateMessage() {
             float deg = getAngleDeg();
-            setMessage(Component.literal(String.format("滑り始め角度 (REAL): §e%.0f°", deg)));
+            setMessage(Component.translatable("gui.microdrone.tuning.drift_start_angle", String.format("%.0f", deg)));
         }
 
         @Override
@@ -231,7 +231,7 @@ public class RcCarTuningScreen extends Screen {
         @Override
         protected void updateMessage() {
             float w = getWeightKg();
-            setMessage(Component.literal(String.format("車重設定: §e%.2f kg", w)));
+            setMessage(Component.translatable("gui.microdrone.tuning.weight", String.format("%.2f", w)));
         }
 
         @Override
