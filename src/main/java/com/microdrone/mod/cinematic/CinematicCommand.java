@@ -17,10 +17,10 @@ public class CinematicCommand {
                 .executes(ctx -> {
                     boolean enabled = CinematicRecordingManager.isEnabled();
                     double radius = CinematicRecordingManager.getBroadcastRadius();
-                    ctx.getSource().sendSuccess(() -> Component.literal(
-                        "§b[RCVERSE 撮影モード]§r 現在: " + (enabled ? "§a有効 (ON)" : "§c無効 (OFF)")
-                        + " §7(同調半径: " + String.format("%.0f", radius) + "m)§r\n"
-                        + "§7使い方: /rc cinematic <on|off> [radius]"
+                    ctx.getSource().sendSuccess(() -> Component.translatable(
+                        "chat.microdrone.cinematic.status",
+                        enabled ? "§aON" : "§cOFF",
+                        radius
                     ), false);
                     return 1;
                 })
@@ -28,8 +28,9 @@ public class CinematicCommand {
                     .executes(ctx -> {
                         CinematicRecordingManager.setEnabled(true);
                         double radius = CinematicRecordingManager.getBroadcastRadius();
-                        ctx.getSource().sendSuccess(() -> Component.literal(
-                            "§b[RCVERSE 撮影モード]§r §a複数台同時操作 (ブロードキャスト) を有効化しました！§7 (同調半径: " + String.format("%.0f", radius) + "m)"
+                        ctx.getSource().sendSuccess(() -> Component.translatable(
+                            "chat.microdrone.cinematic.broadcast_on",
+                            radius
                         ), true);
                         return 1;
                     })
@@ -38,8 +39,9 @@ public class CinematicCommand {
                             double r = DoubleArgumentType.getDouble(ctx, "radius");
                             CinematicRecordingManager.setEnabled(true);
                             CinematicRecordingManager.setBroadcastRadius(r);
-                            ctx.getSource().sendSuccess(() -> Component.literal(
-                                "§b[RCVERSE 撮影モード]§r §a有効化 (同調半径を " + String.format("%.0f", r) + "m に設定しました)"
+                            ctx.getSource().sendSuccess(() -> Component.translatable(
+                                "chat.microdrone.cinematic.broadcast_radius",
+                                r
                             ), true);
                             return 1;
                         })
@@ -48,8 +50,8 @@ public class CinematicCommand {
                 .then(Commands.literal("off")
                     .executes(ctx -> {
                         CinematicRecordingManager.setEnabled(false);
-                        ctx.getSource().sendSuccess(() -> Component.literal(
-                            "§b[RCVERSE 撮影モード]§r §c通常操作（単独操縦）に戻しました。"
+                        ctx.getSource().sendSuccess(() -> Component.translatable(
+                            "chat.microdrone.cinematic.broadcast_off"
                         ), true);
                         return 1;
                     })
@@ -58,16 +60,17 @@ public class CinematicCommand {
             .then(Commands.literal("dummy")
                 .executes(ctx -> {
                     boolean cur = CinematicRecordingManager.isSpawnDummy();
-                    ctx.getSource().sendSuccess(() -> Component.literal(
-                        "§b[RCVERSE 撮影モード]§r ダミー人形生成: " + (cur ? "§a有効 (ON)" : "§c無効 (OFF - 視点ロック解除中)")
+                    ctx.getSource().sendSuccess(() -> Component.translatable(
+                        "chat.microdrone.cinematic.dummy_status",
+                        cur ? "§aON" : "§cOFF"
                     ), false);
                     return 1;
                 })
                 .then(Commands.literal("on")
                     .executes(ctx -> {
                         CinematicRecordingManager.setSpawnDummy(true);
-                        ctx.getSource().sendSuccess(() -> Component.literal(
-                            "§b[RCVERSE 撮影モード]§r §aダミー人形生成を有効化しました。"
+                        ctx.getSource().sendSuccess(() -> Component.translatable(
+                            "chat.microdrone.cinematic.dummy_on"
                         ), true);
                         return 1;
                     })
@@ -75,8 +78,8 @@ public class CinematicCommand {
                 .then(Commands.literal("off")
                     .executes(ctx -> {
                         CinematicRecordingManager.setSpawnDummy(false);
-                        ctx.getSource().sendSuccess(() -> Component.literal(
-                            "§b[RCVERSE 撮影モード]§r §cダミー人形生成を無効化（視点ロック完全解除）しました。"
+                        ctx.getSource().sendSuccess(() -> Component.translatable(
+                            "chat.microdrone.cinematic.dummy_off"
                         ), true);
                         return 1;
                     })

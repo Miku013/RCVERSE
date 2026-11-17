@@ -211,7 +211,7 @@ public class RcCarClientController implements RcVehicleClientController {
             // CHASE -> TRIPOD FREE (三脚フリーカメラ)
             viewMode = RcViewMode.GROUND;
             if (player != null) {
-                player.displayClientMessage(Component.literal("§b[RCVERSE 撮影] §e三脚フリー視点 §7(マウスで自由にアングルを操作して定点撮影)"), true);
+                player.displayClientMessage(Component.translatable("chat.microdrone.camera.tripod"), true);
                 player.setInvisible(false);
             }
             mc.setCameraEntity(player);
@@ -223,7 +223,7 @@ public class RcCarClientController implements RcVehicleClientController {
             orbitPitchOffset = 0.0f;
             isCameraInitialized = false;
             if (player != null) {
-                player.displayClientMessage(Component.literal("§b[RCVERSE 撮影] §aシネマティック追従視点 §7(手ブレゼロ・ジンバル補間カメラ)"), true);
+                player.displayClientMessage(Component.translatable("chat.microdrone.camera.cinematic"), true);
                 player.setInvisible(false);
                 lastPlayerMouseYaw = player.getYRot();
                 lastPlayerMousePitch = player.getXRot();
@@ -269,7 +269,7 @@ public class RcCarClientController implements RcVehicleClientController {
 
         if (player != null) {
             float zoomX = 1.0f / fovMultiplier;
-            player.displayClientMessage(Component.literal(String.format("§6[RC Camera] §f距離: §e%.1fm §f| レンズ: §e%.2fx §7(中クリックでリセット)", camDistance, zoomX)), true);
+            player.displayClientMessage(Component.translatable("chat.microdrone.camera.zoom", camDistance, zoomX), true);
         }
         return true;
     }
@@ -286,7 +286,7 @@ public class RcCarClientController implements RcVehicleClientController {
             orbitPitchOffset = 0.0f;
             isCameraInitialized = false;
             if (player != null) {
-                player.displayClientMessage(Component.literal(String.format("§a[RC Camera] §fアングルとズームをリセットしました §7(距離: %.1fm, レンズ: 1.00x)", camDistance)), true);
+                player.displayClientMessage(Component.translatable("chat.microdrone.camera.reset", camDistance), true);
             }
             return true;
         }

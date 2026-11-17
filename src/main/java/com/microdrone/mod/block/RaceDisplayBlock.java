@@ -101,7 +101,7 @@ public class RaceDisplayBlock extends HorizontalDirectionalBlock implements Enti
                     String pilot = masterDisplay.getPilotName();
                     long bestTime = masterDisplay.getBestLapTimeMs();
                     String timeStr = bestTime > 0 ? String.format("%02d'%02d\"%03d", (bestTime / 60000), (bestTime % 60000) / 1000, bestTime % 1000) : "--'--\"---";
-                    player.displayClientMessage(Component.literal("§a[電光掲示板] §fパイロット: §e" + pilot + " §7| §fベストタイム: §d" + timeStr), true);
+                    player.displayClientMessage(Component.translatable("chat.microdrone.race_display.record", pilot, timeStr), true);
                     level.playSound(null, pos, net.minecraft.sounds.SoundEvents.UI_BUTTON_CLICK.value(), net.minecraft.sounds.SoundSource.BLOCKS, 0.5f, 1.2f);
                 }
             }

@@ -60,16 +60,20 @@ import java.util.function.Consumer;
 public class DecalEditorScreen extends Screen {
 
     public enum VehicleCategory {
-        CAR("ボンネット", "ルーフ", "トランク", "左ドア", "右ドア"),
-        PLANE("機首", "胴体上面", "尾翼", "左主翼", "右主翼"),
-        BOAT("船首", "甲板", "船尾", "左舷", "右舷"),
-        SUBMARINE("艦首", "艦橋上", "艦尾", "左舷", "右舷"),
-        TANK("前面装甲", "砲塔天板", "車体後部", "左側面", "右側面"),
-        DRONE("前部", "上面", "後部", "左側", "右側");
+        CAR("car"),
+        PLANE("plane"),
+        BOAT("boat"),
+        SUBMARINE("submarine"),
+        TANK("tank"),
+        DRONE("drone");
 
-        public final String p1, p2, p3, p4, p5;
-        VehicleCategory(String p1, String p2, String p3, String p4, String p5) {
-            this.p1 = p1; this.p2 = p2; this.p3 = p3; this.p4 = p4; this.p5 = p5;
+        private final String keyPrefix;
+        VehicleCategory(String keyPrefix) {
+            this.keyPrefix = keyPrefix;
+        }
+
+        public Component getPartName(int index) {
+            return Component.translatable("gui.microdrone.decal.part." + keyPrefix + ".p" + index);
         }
     }
 
@@ -179,14 +183,7 @@ public class DecalEditorScreen extends Screen {
 
     private Component getEditorTitle() {
         VehicleCategory cat = getVehicleCategory();
-        return switch (cat) {
-            case PLANE -> Component.literal("RC飛行機 デカール工房（リバリーエディター）");
-            case BOAT -> Component.literal("RCボート デカール工房（リバリーエディター）");
-            case SUBMARINE -> Component.literal("RC潜水艦 デカール工房（リバリーエディター）");
-            case TANK -> Component.literal("RC戦車 デカール工房（リバリーエディター）");
-            case DRONE -> Component.literal("マイクロドローン デカール工房（リバリーエディター）");
-            default -> Component.literal("RCカー デカール工房（リバリーエディター）");
-        };
+        return Component.translatable("gui.microdrone.decal_editor.title." + cat.name().toLowerCase(java.util.Locale.ROOT));
     }
 
     @Override
@@ -276,18 +273,18 @@ public class DecalEditorScreen extends Screen {
         // --- [固定ヘッダー] 部位プリセットボタン (乗り物カテゴリ別ラベル) ---
         VehicleCategory cat = getVehicleCategory();
         int pw = (panelWidth - 4) / 3;
-        this.addRenderableWidget(Button.builder(Component.literal(cat.p1), b -> applyPreset("P1"))
+        this.addRenderableWidget(Button.builder(cat.getPartName(1), b -> applyPreset("P1"))
                 .bounds(panelX, y, pw, 18).build());
-        this.addRenderableWidget(Button.builder(Component.literal(cat.p2), b -> applyPreset("P2"))
+        this.addRenderableWidget(Button.builder(cat.getPartName(2), b -> applyPreset("P2"))
                 .bounds(panelX + pw + 2, y, pw, 18).build());
-        this.addRenderableWidget(Button.builder(Component.literal(cat.p3), b -> applyPreset("P3"))
+        this.addRenderableWidget(Button.builder(cat.getPartName(3), b -> applyPreset("P3"))
                 .bounds(panelX + (pw + 2) * 2, y, pw, 18).build());
         y += 20;
 
         int pw2 = (panelWidth - 2) / 2;
-        this.addRenderableWidget(Button.builder(Component.literal(cat.p4), b -> applyPreset("P4"))
+        this.addRenderableWidget(Button.builder(cat.getPartName(4), b -> applyPreset("P4"))
                 .bounds(panelX, y, pw2, 18).build());
-        this.addRenderableWidget(Button.builder(Component.literal(cat.p5), b -> applyPreset("P5"))
+        this.addRenderableWidget(Button.builder(cat.getPartName(5), b -> applyPreset("P5"))
                 .bounds(panelX + pw2 + 2, y, pw2, 18).build());
         y += 22;
 
@@ -306,22 +303,22 @@ public class DecalEditorScreen extends Screen {
         float curScale = cur != null ? cur.getScale() : 6.0f;
         float curAspect = cur != null ? cur.getAspect() : 1.0f;
 
-        this.posXSlider = addScrollable(new FloatSlider(panelX, y, panelWidth, 16, Component.literal("X (左右)"), curX, -30.0f, 30.0f, val -> {
+        this.posXSlider = addScrollable(new FloatSlider(panelX, y, panelWidth, 16, Component.translatable("gui.microdrone.decal.pos_x"), curX, -30.0f, 30.0f, val -> {
             if (getCurrentDecal() != null) getCurrentDecal().setPosX(val);
         }), y);
         y += 18;
 
-        this.posYSlider = addScrollable(new FloatSlider(panelX, y, panelWidth, 16, Component.literal("Y (高さ)"), curY, 0.0f, 50.0f, val -> {
+        this.posYSlider = addScrollable(new FloatSlider(panelX, y, panelWidth, 16, Component.translatable("gui.microdrone.decal.pos_y"), curY, 0.0f, 50.0f, val -> {
             if (getCurrentDecal() != null) getCurrentDecal().setPosY(val);
         }), y);
         y += 18;
 
-        this.posZSlider = addScrollable(new FloatSlider(panelX, y, panelWidth, 16, Component.literal("Z (前後)"), curZ, -55.0f, 55.0f, val -> {
+        this.posZSlider = addScrollable(new FloatSlider(panelX, y, panelWidth, 16, Component.translatable("gui.microdrone.decal.pos_z"), curZ, -55.0f, 55.0f, val -> {
             if (getCurrentDecal() != null) getCurrentDecal().setPosZ(val);
         }), y);
         y += 18;
 
-        this.rotXSlider = addScrollable(new FloatSlider(panelX, y, panelWidth, 16, Component.literal("傾き (ピッチ)"), curRotX, -180.0f, 180.0f, val -> {
+        this.rotXSlider = addScrollable(new FloatSlider(panelX, y, panelWidth, 16, Component.translatable("gui.microdrone.decal.rot_x"), curRotX, -180.0f, 180.0f, val -> {
             if (getCurrentDecal() != null) getCurrentDecal().setRotX(val);
         }), y);
         y += 18;
@@ -331,12 +328,12 @@ public class DecalEditorScreen extends Screen {
         }), y);
         y += 18;
 
-        this.rotSlider = addScrollable(new FloatSlider(panelX, y, panelWidth, 16, Component.literal("回転 (面内)"), curRot, -180.0f, 180.0f, val -> {
+        this.rotSlider = addScrollable(new FloatSlider(panelX, y, panelWidth, 16, Component.translatable("gui.microdrone.decal.rot_z"), curRot, -180.0f, 180.0f, val -> {
             if (getCurrentDecal() != null) getCurrentDecal().setRotZ(val);
         }), y);
         y += 18;
 
-        this.scaleSlider = addScrollable(new FloatSlider(panelX, y, panelWidth, 16, Component.literal("サイズ"), curScale, 1.0f, 20.0f, val -> {
+        this.scaleSlider = addScrollable(new FloatSlider(panelX, y, panelWidth, 16, Component.translatable("gui.microdrone.decal.scale"), curScale, 1.0f, 20.0f, val -> {
             if (getCurrentDecal() != null) getCurrentDecal().setScale(val);
         }), y);
         y += 18;
@@ -365,13 +362,13 @@ public class DecalEditorScreen extends Screen {
 
         // --- [固定フッター] ステッカーレイヤー管理 (追加・削除・切替) ---
         int layerY = this.height - 66;
-        this.prevDecalLayerBtn = Button.builder(Component.literal("◀ 前"), b -> selectDecalLayer(-1))
+        this.prevDecalLayerBtn = Button.builder(Component.translatable("gui.microdrone.decal.btn_prev"), b -> selectDecalLayer(-1))
                 .bounds(panelX, layerY, 36, 18).build();
-        this.addDecalBtn = Button.builder(Component.literal("+ 追加"), b -> addNewDecal())
+        this.addDecalBtn = Button.builder(Component.translatable("gui.microdrone.decal.btn_add"), b -> addNewDecal())
                 .bounds(panelX + 38, layerY, 38, 18).build();
-        this.removeDecalBtn = Button.builder(Component.literal("- 削除"), b -> removeCurrentDecal())
+        this.removeDecalBtn = Button.builder(Component.translatable("gui.microdrone.decal.btn_remove"), b -> removeCurrentDecal())
                 .bounds(panelX + 78, layerY, 38, 18).build();
-        this.nextDecalLayerBtn = Button.builder(Component.literal("次 ▶"), b -> selectDecalLayer(1))
+        this.nextDecalLayerBtn = Button.builder(Component.translatable("gui.microdrone.decal.btn_next"), b -> selectDecalLayer(1))
                 .bounds(panelX + panelWidth - 36, layerY, 36, 18).build();
 
         this.addRenderableWidget(this.prevDecalLayerBtn);
@@ -381,13 +378,13 @@ public class DecalEditorScreen extends Screen {
 
         // --- [固定フッター] 適用して回収 / 適用 / キャンセル ---
         int actionBtnY = this.height - 44;
-        this.addRenderableWidget(Button.builder(Component.literal("適用して回収"), b -> save(true))
+        this.addRenderableWidget(Button.builder(Component.translatable("gui.microdrone.decal.save_and_take"), b -> save(true))
                 .bounds(panelX, actionBtnY, panelWidth, 18).build());
 
         int bottomY = this.height - 24;
-        this.addRenderableWidget(Button.builder(Component.literal("適用"), b -> save(false))
+        this.addRenderableWidget(Button.builder(Component.translatable("gui.microdrone.decal.save"), b -> save(false))
                 .bounds(panelX, bottomY, 74, 18).build());
-        this.addRenderableWidget(Button.builder(Component.literal("キャンセル"), b -> onClose())
+        this.addRenderableWidget(Button.builder(Component.translatable("gui.microdrone.decal.cancel"), b -> onClose())
                 .bounds(panelX + 78, bottomY, 77, 18).build());
 
         updateScrollablePositions();
@@ -759,7 +756,7 @@ public class DecalEditorScreen extends Screen {
 
         // 4. タイトルと情報テキスト
         graphics.drawString(this.font, getEditorTitle(), 18, 16, 0xFFE0E0E0);
-        graphics.drawString(this.font, Component.literal("ドラッグ: 視点回転 / Shift+ドラッグ: ステッカー移動 / 右ドラッグ: モデル移動 / ホイール: ズーム"), 18, this.height - 24, 0xFFA0A0B0);
+        graphics.drawString(this.font, Component.translatable("gui.microdrone.decal.help"), 18, this.height - 24, 0xFFA0A0B0);
 
         // ステッカーファイル名表示
         CarDecalData cur = getCurrentDecal();
@@ -768,8 +765,8 @@ public class DecalEditorScreen extends Screen {
         graphics.drawCenteredString(this.font, Component.literal(stickerLabel), panelX + panelWidth / 2, 27, 0xFFFFFF);
 
         // デカールレイヤー表示 (固定フッター上部: スライダーとは絶対に被らない)
-        String layerText = String.format("デカール %d / %d", this.selectedDecalIndex + 1, Math.max(1, this.editingDecals.size()));
-        graphics.drawCenteredString(this.font, Component.literal(layerText), panelX + panelWidth / 2, this.height - 78, 0xFFE0E0E0);
+        Component layerText = Component.translatable("gui.microdrone.decal.layer", this.selectedDecalIndex + 1, Math.max(1, this.editingDecals.size()));
+        graphics.drawCenteredString(this.font, layerText, panelX + panelWidth / 2, this.height - 78, 0xFFE0E0E0);
 
         // 5. 3D RC乗り物モデルのリアルタイムプレビュー描画
         if (this.previewEntity != null && this.decalHolder != null) {
@@ -783,7 +780,7 @@ public class DecalEditorScreen extends Screen {
 
         // 6. ドラッグ中のステータス表示 (3D枠自体はステッカー表面に100%直接描画)
         if (this.isDraggingDecal) {
-            graphics.drawCenteredString(this.font, Component.literal("✦ ステッカー移動中 (Shift+ドラッグ)"), (10 + viewportWidth) / 2, 28, 0xFFFFEE44);
+            graphics.drawCenteredString(this.font, Component.translatable("gui.microdrone.decal.dragging"), (10 + viewportWidth) / 2, 28, 0xFFFFEE44);
         }
     }
 

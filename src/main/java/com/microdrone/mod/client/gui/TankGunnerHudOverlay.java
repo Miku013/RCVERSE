@@ -6,6 +6,7 @@ import com.microdrone.mod.entity.RcTankEntity;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
@@ -134,7 +135,7 @@ public class TankGunnerHudOverlay {
         graphics.fill(x - 4, y - 10, x + 56, y + barHeight + 14, 0x40000000);
 
         // ヘッダー
-        graphics.drawString(font, "ELEV 仰角", x, y - 8, 0xFFB0B0B0, true);
+        graphics.drawString(font, Component.translatable("hud.microdrone.tank.elevation"), x, y - 8, 0xFFB0B0B0, true);
 
         // 垂直基準スケール線
         graphics.fill(x + 2, y + 4, x + 3, y + 4 + barHeight, 0x80888888);

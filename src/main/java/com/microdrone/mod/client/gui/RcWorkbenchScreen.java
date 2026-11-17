@@ -48,25 +48,32 @@ public class RcWorkbenchScreen extends AbstractContainerScreen<RcWorkbenchMenu> 
 
     // レシピカテゴリ
     public enum RecipeCategory {
-        VEHICLES("車両"),
-        STATIONS("設備"),
-        PARTS("部品");
+        VEHICLES("gui.micro_drone_mod.workbench.category.vehicles"),
+        STATIONS("gui.micro_drone_mod.workbench.category.stations"),
+        PARTS("gui.micro_drone_mod.workbench.category.parts");
 
-        private final String label;
-        RecipeCategory(String label) {
-            this.label = label;
+        private final String translationKey;
+        RecipeCategory(String translationKey) {
+            this.translationKey = translationKey;
         }
-        public String getLabel() {
-            return label;
+        public Component getLabel() {
+            return Component.translatable(translationKey);
         }
     }
 
     // レシピカタログ定義
     public record RecipeCatalogEntry(
             ItemStack resultItem,
-            Component title,
             ItemStack[] gridIngredients // 長さ9の配列 (3x3)
-    ) {}
+    ) {
+        public RecipeCatalogEntry(ItemStack resultItem, Component ignoredTitle, ItemStack[] gridIngredients) {
+            this(resultItem, gridIngredients);
+        }
+
+        public Component title() {
+            return resultItem.getHoverName();
+        }
+    }
 
     private final Map<RecipeCategory, List<RecipeCatalogEntry>> categorizedRecipes = new EnumMap<>(RecipeCategory.class);
     private RecipeCategory currentCategory = RecipeCategory.VEHICLES;
@@ -529,7 +536,7 @@ public class RcWorkbenchScreen extends AbstractContainerScreen<RcWorkbenchMenu> 
         graphics.drawString(this.font, this.playerInventoryTitle, this.inventoryLabelX, this.inventoryLabelY, 0x94A3B8, false);
 
         // 天板展示スロットのラベル（完成品スロットの右隣 x=151, y=24）
-        graphics.drawString(this.font, Component.literal("展示"), 151, 24, 0xF59E0B, false);
+        graphics.drawString(this.font, Component.translatable("gui.micro_drone_mod.workbench.display"), 151, 24, 0xF59E0B, false);
 
         // 左側パネルのタブ文字表示 (幅23pxに合わせて配置)
         int panelLeft = -PANEL_OFFSET_X;
@@ -639,17 +646,17 @@ public class RcWorkbenchScreen extends AbstractContainerScreen<RcWorkbenchMenu> 
         int panelY = this.topPos;
 
         int[] tabXs = new int[] { panelX + 5, panelX + 29, panelX + 53 };
-        String[] fullLabels = new String[] {
-                "車両・機体 (" + categorizedRecipes.get(RecipeCategory.VEHICLES).size() + "種)",
-                "設備・コース (" + categorizedRecipes.get(RecipeCategory.STATIONS).size() + "種)",
-                "パーツ・素材 (" + categorizedRecipes.get(RecipeCategory.PARTS).size() + "種)"
+        Component[] fullLabels = new Component[] {
+                Component.translatable("gui.micro_drone_mod.workbench.category.vehicles.full", categorizedRecipes.get(RecipeCategory.VEHICLES).size()),
+                Component.translatable("gui.micro_drone_mod.workbench.category.stations.full", categorizedRecipes.get(RecipeCategory.STATIONS).size()),
+                Component.translatable("gui.micro_drone_mod.workbench.category.parts.full", categorizedRecipes.get(RecipeCategory.PARTS).size())
         };
 
         for (int i = 0; i < 3; i++) {
             int tx = tabXs[i];
             int ty = panelY + 8;
             if (mouseX >= tx && mouseX <= tx + 23 && mouseY >= ty && mouseY <= ty + 13) {
-                graphics.renderTooltip(this.font, Component.literal(fullLabels[i]), mouseX, mouseY);
+                graphics.renderTooltip(this.font, fullLabels[i], mouseX, mouseY);
                 break;
             }
         }
