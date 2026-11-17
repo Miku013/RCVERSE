@@ -447,9 +447,6 @@ public class RcSubmarineEntity extends Entity implements GeoEntity, RcControllab
             if (this.pilotUUID != null && this.getServer() != null) {
                 ServerPlayer pilot = this.getServer().getPlayerList().getPlayer(this.pilotUUID);
                 if (pilot != null && pilot.isAlive()) {
-                    pilot.absMoveTo(this.getX(), this.getY(), this.getZ(), this.getYRot(), this.getXRot());
-                    pilot.serverLevel().getChunkSource().move(pilot);
-
                     ChunkPos currentChunk = new ChunkPos(this.blockPosition());
                     if (this.lastChunkPos == null || !this.lastChunkPos.equals(currentChunk)) {
                         com.microdrone.mod.chunk.DroneChunkManager.updateDroneChunks(pilot, this);

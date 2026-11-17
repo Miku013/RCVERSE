@@ -1639,3 +1639,14 @@ c-1.mp4（ドリフト・ジャンプ・戦車射撃シーン）を docs/videos/
 - [x] **日時付きバックアップフォルダへの出力と本番配置（最重要ルール第4項厳守）**:
   - 更新前JARを日時フォルダ `backup/20261117_204620/` および `curseforge/.../backup/20261117_204620/` に完全バックアップ出力。
   - 本番環境（CurseForge mods）へ `rcverse-1.21.1-1.0.1.jar` を配置・更新完了。
+### X. 操縦中プレイヤーの機体追従テレポート（absMoveTo）完全撤廃と本番更新 (2026-11-17)
+- [x] **ボート・潜水艦・ドローンにおける操縦者テレポート追従の撤廃**:
+  - `RcBoatEntity.java`, `RcSubmarineEntity.java`, `DroneEntity.java` において、毎tickサーバー側で操縦者プレイヤー本体（`pilot`）を機体座標へ移動させていた `pilot.absMoveTo(...)` および `getChunkSource().move(pilot)` を完全削除。
+  - RCカー（`RcCarEntity`）と同様に、プレイヤー本体は操縦開始地点（陸地・初期位置）に静止したままにし、視界・遠距離描画は `DroneChunkManager.updateDroneChunks(pilot, this)` でのみ管理する設計へ統一。
+  - これにより、機体（ボート等）の真上に操縦者プレイヤー（スキンや手持ちプロポ）が二重に浮いて追従移動する現象を根本から完全根絶。
+- [x] **ビルド番号インクリメントとビルドフォルダ書き出し（最重要ルール第4項厳守）**:
+  - `gradle.properties` の `mod_version` を `1.0.2` にインクリメント。
+  - `./gradlew jar --rerun-tasks` を実行し、開発フォルダのビルドフォルダ（`micro_drone_mod/build/libs/`）に `rcverse-1.21.1-1.0.2.jar`（1,305,832 bytes）を出力。
+- [x] **日時付きバックアップフォルダへの出力と本番配置（最重要ルール第4項厳守）**:
+  - 更新前JARを日時フォルダ `backup/20261117_213744/` および `curseforge/.../backup/20261117_213744/` に完全バックアップ出力。
+  - 本番環境（CurseForge mods）へ `rcverse-1.21.1-1.0.2.jar` を配置・更新完了。

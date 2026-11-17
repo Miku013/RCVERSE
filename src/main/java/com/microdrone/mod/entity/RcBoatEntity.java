@@ -436,13 +436,10 @@ public class RcBoatEntity extends Entity implements GeoEntity, RcControllable, c
             this.entityData.set(DATA_ROLL_ANGLE, this.rollAngle);
             this.entityData.set(DATA_PITCH_ANGLE, this.pitchAngle);
 
-            // サーバー側操縦プレイヤー追従 & チャンク保護
+            // サーバー側操縦プレイヤー追従 & チャンク保護 (RCカーと同様にプレイヤー本体は開始地点に静止させ、遠距離チャンクのみ配信)
             if (this.pilotUUID != null && this.getServer() != null) {
                 ServerPlayer pilot = this.getServer().getPlayerList().getPlayer(this.pilotUUID);
                 if (pilot != null && pilot.isAlive()) {
-                    pilot.absMoveTo(this.getX(), this.getY(), this.getZ(), this.getYRot(), this.getXRot());
-                    pilot.serverLevel().getChunkSource().move(pilot);
-
                     ChunkPos currentChunk = new ChunkPos(this.blockPosition());
                     if (this.lastChunkPos == null || !this.lastChunkPos.equals(currentChunk)) {
                         com.microdrone.mod.chunk.DroneChunkManager.updateDroneChunks(pilot, this);

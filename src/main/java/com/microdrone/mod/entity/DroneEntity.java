@@ -652,13 +652,10 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable, co
         this.setDeltaMovement(fixedVx, fixedVy, fixedVz);
         checkAndResolveSuffocation();
 
-        // サーバー側処理: 操縦中プレイヤーの実体をドローン座標へ追従移動 & チャンク更新
+        // サーバー側処理: チャンク更新 (RCカーと同様にプレイヤー本体は開始地点に静止させ、遠距離チャンクのみ配信)
         if (!this.level().isClientSide && this.pilotUUID != null && this.getServer() != null) {
             ServerPlayer pilot = this.getServer().getPlayerList().getPlayer(this.pilotUUID);
             if (pilot != null && pilot.isAlive()) {
-                pilot.absMoveTo(this.getX(), this.getY(), this.getZ(), this.getYRot(), this.getXRot());
-                pilot.serverLevel().getChunkSource().move(pilot);
-
                 ChunkPos currentChunk = new ChunkPos(this.blockPosition());
                 boolean chunkChanged = (this.lastChunkPos == null || !this.lastChunkPos.equals(currentChunk));
                 if (chunkChanged || (this.hoverTicks % 10 == 0)) {
