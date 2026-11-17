@@ -223,8 +223,8 @@ public class PlaneFlightHudOverlay {
         graphics.drawCenteredString(font, thrText, cx, y + 8, 0xFFFFFFFF);
 
         // 操作ヒント
-        graphics.drawString(font, "[Space] 加速", bx - 45, y - 1, 0x99AAAAAA, false);
-        graphics.drawString(font, "[Shift] 減速", bx + barW + 6, y - 1, 0x99AAAAAA, false);
+        graphics.drawString(font, net.minecraft.network.chat.Component.translatable("hud.microdrone.plane.throttle_up").getString(), bx - 45, y - 1, 0x99AAAAAA, false);
+        graphics.drawString(font, net.minecraft.network.chat.Component.translatable("hud.microdrone.plane.throttle_down").getString(), bx + barW + 6, y - 1, 0x99AAAAAA, false);
     }
 
     /**
@@ -241,15 +241,15 @@ public class PlaneFlightHudOverlay {
         if (mode == 0) {
             // ASSIST (直感アシスト)
             graphics.renderOutline(bx, y, badgeW, 14, 0xFF00FF66);
-            graphics.drawCenteredString(font, "MODE: 直感アシスト [ASSIST]", cx, y + 3, 0xFF00FF66);
+            graphics.drawCenteredString(font, net.minecraft.network.chat.Component.translatable("hud.microdrone.plane.mode_assist").getString(), cx, y + 3, 0xFF00FF66);
         } else {
             // ACRO (本格アクロバット)
             graphics.renderOutline(bx, y, badgeW, 14, 0xFFFF3333);
-            graphics.drawCenteredString(font, "MODE: 本格アクロバット [ACRO]", cx, y + 3, 0xFFFF5555);
+            graphics.drawCenteredString(font, net.minecraft.network.chat.Component.translatable("hud.microdrone.plane.mode_acro").getString(), cx, y + 3, 0xFFFF5555);
         }
 
         // 切替キーガイド
-        graphics.drawCenteredString(font, "[R] キーで操縦モード切替", cx, y + 18, 0xCCDDDDDD);
+        graphics.drawCenteredString(font, net.minecraft.network.chat.Component.translatable("hud.microdrone.plane.mode_toggle_guide").getString(), cx, y + 18, 0xCCDDDDDD);
 
         // 2. 上部方位コンパス (Minecraft Yaw -> 航空方位角 Heading への変換)
         // Minecraft: 0=南, 90=西, 180=北, 270=東
@@ -328,7 +328,9 @@ public class PlaneFlightHudOverlay {
         graphics.drawString(font, "SIG: [" + sigBars + "]", x, y + 10, sigColor, false);
 
         // カメラモード
-        String camName = (mode == ClientDroneInputHandler.RcCameraMode.GUNNER_AIM) ? "COCKPIT (FPV)" : "CHASE (追従)";
+        String camName = (mode == ClientDroneInputHandler.RcCameraMode.GUNNER_AIM) 
+                ? net.minecraft.network.chat.Component.translatable("hud.microdrone.plane.cam_cockpit").getString() 
+                : net.minecraft.network.chat.Component.translatable("hud.microdrone.plane.cam_chase").getString();
         graphics.drawString(font, "CAM: " + camName, x, y + 20, 0xFFAAAAAA, false);
     }
 }

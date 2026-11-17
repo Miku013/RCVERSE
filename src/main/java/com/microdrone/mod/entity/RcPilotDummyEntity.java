@@ -82,7 +82,7 @@ public class RcPilotDummyEntity extends LivingEntity {
         this.setItemSlot(EquipmentSlot.MAINHAND, player.getMainHandItem().copy());
 
         // 頭上のネームタグ設定
-        this.setCustomName(Component.literal(player.getName().getString() + " [RC操縦中]"));
+        this.setCustomName(Component.translatable("entity.microdrone.pilot_dummy_name", player.getName().getString()));
         this.setCustomNameVisible(true);
     }
 

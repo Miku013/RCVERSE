@@ -65,8 +65,7 @@ public class DroneBatteryItem extends Item implements GeoItem {
 
         ChatFormatting color = percent > 50 ? ChatFormatting.GREEN : (percent > 20 ? ChatFormatting.YELLOW : ChatFormatting.RED);
 
-        tooltipComponents.add(Component.literal("§7航続可能残量: ")
-                .append(Component.literal(remaining + " / " + this.maxFlightBlocks + " ブロック (" + percent + "%)").withStyle(color)));
+        tooltipComponents.add(Component.translatable("tooltip.microdrone.battery_remaining", remaining, this.maxFlightBlocks, percent).withStyle(color));
         tooltipComponents.add(Component.translatable("tooltip.microdrone.battery_desc").withStyle(ChatFormatting.DARK_GRAY));
     }
 }

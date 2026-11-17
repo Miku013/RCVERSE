@@ -429,7 +429,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
 
             net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
             if (mc.player != null) {
-                mc.player.displayClientMessage(Component.literal("§e⚡ [位置同期レスキュー発動]"), true);
+                mc.player.displayClientMessage(Component.translatable("message.microdrone.car_resync"), true);
             }
         }
     }
@@ -2480,7 +2480,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                 if (pilot != null) {
                     long remainSec = (10000L - lapTimeMs + 999) / 1000;
                     pilot.displayClientMessage(
-                            Component.literal("§c§l[LAP INVALID] §e10秒未満のため無効 §7(あと " + remainSec + "秒)"), true);
+                            Component.translatable("message.microdrone.lap_invalid", remainSec), true);
                 }
                 return;
             }
