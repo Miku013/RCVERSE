@@ -377,26 +377,36 @@ public class ClientDroneInputHandler {
 
     @SubscribeEvent
     public void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
+        if (!event.getLevel().isClientSide()) return;
+        if (event.getEntity() != Minecraft.getInstance().player) return;
         if (isPiloting) event.setCanceled(true);
     }
 
     @SubscribeEvent
     public void onLeftClickBlock(PlayerInteractEvent.LeftClickBlock event) {
+        if (!event.getLevel().isClientSide()) return;
+        if (event.getEntity() != Minecraft.getInstance().player) return;
         if (isPiloting) event.setCanceled(true);
     }
 
     @SubscribeEvent
     public void onEntityInteract(PlayerInteractEvent.EntityInteract event) {
+        if (!event.getLevel().isClientSide()) return;
+        if (event.getEntity() != Minecraft.getInstance().player) return;
         if (isPiloting) event.setCanceled(true);
     }
 
     @SubscribeEvent
     public void onEntityInteractSpecific(PlayerInteractEvent.EntityInteractSpecific event) {
+        if (!event.getLevel().isClientSide()) return;
+        if (event.getEntity() != Minecraft.getInstance().player) return;
         if (isPiloting) event.setCanceled(true);
     }
 
     @SubscribeEvent
     public void onAttackEntity(AttackEntityEvent event) {
+        if (!event.getEntity().level().isClientSide()) return;
+        if (event.getEntity() != Minecraft.getInstance().player) return;
         if (isPiloting) event.setCanceled(true);
     }
 
