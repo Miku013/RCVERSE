@@ -15,9 +15,9 @@ import java.util.List;
  */
 public class CinematicRecordingManager {
 
-    private static boolean enabled = true; // 撮影用MODではデフォルトで有効
+    private static boolean enabled = false; // デフォルトは通常モード（1台のみ操縦）
     private static double broadcastRadius = 48.0; // 同調有効半径（ブロック）
-    private static boolean spawnDummy = false; // 撮影用MODではダミー人形（視点ロック）をデフォルトでOFF！
+    private static boolean spawnDummy = true; // 通常操縦時はダミー人形をスポーン
 
     public static boolean isEnabled() {
         return enabled;
