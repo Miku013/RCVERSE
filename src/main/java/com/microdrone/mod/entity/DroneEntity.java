@@ -388,10 +388,6 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable, co
         ACTIVE_PILOTED_DRONES.put(player.getUUID(), this);
         RcVehicleManager.registerPiloting(player.getUUID(), this);
 
-        // 3. サーバー側のカメラエンティティをドローンに設定
-        player.setCamera(this);
-        player.setInvisible(true);
-
         MicroDroneMod.LOGGER.info("[SERVER] [PILOT_START] Pilot: {} ({}), PlayerPos: [{}, {}, {}], DronePos: [{}, {}, {}], DroneChunk: [{}, {}]",
                 player.getName().getString(), player.getUUID(),
                 String.format("%.2f", player.getX()), String.format("%.2f", player.getY()), String.format("%.2f", player.getZ()),
