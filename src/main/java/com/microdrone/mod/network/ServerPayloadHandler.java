@@ -205,10 +205,42 @@ public class ServerPayloadHandler {
                 if (be instanceof com.microdrone.mod.block.entity.DecalTableBlockEntity table) {
                     if (!table.getStoredCar().isEmpty()) {
                         ItemStack carStack = table.getStoredCar();
+
+                        String variantToPreserve = null;
+                        if (carStack.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME)) {
+                            String customName = carStack.getHoverName().getString().trim();
+                            net.minecraft.world.item.Item item = carStack.getItem();
+                            if (item instanceof com.microdrone.mod.item.RcCarItem) {
+                                var cfg = com.microdrone.mod.config.car.CarConfigManager.getConfig(customName);
+                                if (cfg != null && !"default".equalsIgnoreCase(cfg.id)) variantToPreserve = cfg.id;
+                            } else if (item instanceof com.microdrone.mod.item.RcPlaneItem) {
+                                var cfg = com.microdrone.mod.config.plane.PlaneConfigManager.getConfig(customName);
+                                if (cfg != null && !"default".equalsIgnoreCase(cfg.id)) variantToPreserve = cfg.id;
+                            } else if (item instanceof com.microdrone.mod.item.RcBoatItem) {
+                                var cfg = com.microdrone.mod.config.boat.BoatConfigManager.getConfig(customName);
+                                if (cfg != null && !"default".equalsIgnoreCase(cfg.id)) variantToPreserve = cfg.id;
+                            } else if (item instanceof com.microdrone.mod.item.RcSubmarineItem) {
+                                var cfg = com.microdrone.mod.config.submarine.SubmarineConfigManager.getConfig(customName);
+                                if (cfg != null && !"default".equalsIgnoreCase(cfg.id)) variantToPreserve = cfg.id;
+                            } else if (item instanceof com.microdrone.mod.item.RcTankItem) {
+                                var cfg = com.microdrone.mod.config.tank.TankConfigManager.getConfig(customName);
+                                if (cfg != null && !"default".equalsIgnoreCase(cfg.id)) variantToPreserve = cfg.id;
+                            } else if (item instanceof com.microdrone.mod.item.DroneSpawnItem) {
+                                var cfg = com.microdrone.mod.config.drone.DroneConfigManager.getConfig(customName);
+                                if (cfg != null && !"default".equalsIgnoreCase(cfg.id)) variantToPreserve = cfg.id;
+                            }
+                        }
+                        final String finalVariant = variantToPreserve;
+
                         net.minecraft.world.item.component.CustomData.update(
                                 net.minecraft.core.component.DataComponents.CUSTOM_DATA,
                                 carStack,
-                                tag -> tag.put("Decals", payload.decalsTag()));
+                                tag -> {
+                                    tag.put("Decals", payload.decalsTag());
+                                    if (finalVariant != null && !tag.contains("Variant")) {
+                                        tag.putString("Variant", finalVariant);
+                                    }
+                                });
                         table.setStoredCar(carStack);
                         table.setChanged();
                         player.level().sendBlockUpdated(payload.tablePos(), table.getBlockState(), table.getBlockState(), 3);

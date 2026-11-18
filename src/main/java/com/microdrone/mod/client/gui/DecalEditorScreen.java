@@ -226,12 +226,12 @@ public class DecalEditorScreen extends Screen {
 
             if (this.previewEntity instanceof RcDecalHolder holder) {
                 this.decalHolder = holder;
+                String resolvedVariant = resolveVariantFromStack(this.carStack);
+                holder.setVariantId(resolvedVariant);
+
                 var customData = this.carStack.get(DataComponents.CUSTOM_DATA);
                 if (customData != null) {
                     CompoundTag tag = customData.copyTag();
-                    if (tag.contains("Variant")) {
-                        holder.setVariantId(tag.getString("Variant"));
-                    }
                     if (tag.contains("BodyColor") && this.previewEntity instanceof RcCarEntity car) {
                         car.setBodyColor(tag.getInt("BodyColor"));
                     }
@@ -389,6 +389,64 @@ public class DecalEditorScreen extends Screen {
 
         updateScrollablePositions();
         syncSlidersFromCurrentDecal();
+    }
+
+    private String resolveVariantFromStack(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return "default";
+
+        String variantToSet = null;
+
+        // 1. 金床で名付けたカスタム名（CUSTOM_NAME）からのバリアント検索
+        if (stack.has(DataComponents.CUSTOM_NAME)) {
+            String customName = stack.getHoverName().getString().trim();
+            Item item = stack.getItem();
+            if (item instanceof RcCarItem) {
+                var config = CarConfigManager.getConfig(customName);
+                if (config != null && !"default".equalsIgnoreCase(config.id)) {
+                    variantToSet = config.id;
+                }
+            } else if (item instanceof RcPlaneItem) {
+                var config = PlaneConfigManager.getConfig(customName);
+                if (config != null && !"default".equalsIgnoreCase(config.id)) {
+                    variantToSet = config.id;
+                }
+            } else if (item instanceof RcBoatItem) {
+                var config = BoatConfigManager.getConfig(customName);
+                if (config != null && !"default".equalsIgnoreCase(config.id)) {
+                    variantToSet = config.id;
+                }
+            } else if (item instanceof RcSubmarineItem) {
+                var config = SubmarineConfigManager.getConfig(customName);
+                if (config != null && !"default".equalsIgnoreCase(config.id)) {
+                    variantToSet = config.id;
+                }
+            } else if (item instanceof RcTankItem) {
+                var config = TankConfigManager.getConfig(customName);
+                if (config != null && !"default".equalsIgnoreCase(config.id)) {
+                    variantToSet = config.id;
+                }
+            } else if (item instanceof DroneSpawnItem) {
+                var config = DroneConfigManager.getConfig(customName);
+                if (config != null && !"default".equalsIgnoreCase(config.id)) {
+                    variantToSet = config.id;
+                }
+            }
+        }
+
+        // 2. アイテム内のカスタムデータ（Variant / VariantId タグ）からの検索
+        if (variantToSet == null) {
+            var customData = stack.get(DataComponents.CUSTOM_DATA);
+            if (customData != null) {
+                CompoundTag tag = customData.copyTag();
+                if (tag.contains("Variant")) {
+                    variantToSet = tag.getString("Variant");
+                } else if (tag.contains("VariantId")) {
+                    variantToSet = tag.getString("VariantId");
+                }
+            }
+        }
+
+        return (variantToSet != null && !variantToSet.isBlank()) ? variantToSet : "default";
     }
 
     private CarDecalData createInitialDecalForCategory(String tex, float aspect) {
