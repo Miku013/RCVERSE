@@ -1,9 +1,0 @@
-{
-  "variants": {
-    "facing=north": { "model": "microdrone:block/trackside_camera" },
-    "facing=east":  { "model": "microdrone:block/trackside_camera", "y": 90 },
-    "facing=south": { "model": "microdrone:block/trackside_camera", "y": 180 },
-    "facing=west":  { "model": "microdrone:block/trackside_camera", "y": 270 }
-  }
-}
-

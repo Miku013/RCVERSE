@@ -6,6 +6,7 @@ import com.microdrone.mod.entity.RcTankEntity;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
@@ -134,7 +135,7 @@ public class TankGunnerHudOverlay {
         graphics.fill(x - 4, y - 10, x + 56, y + barHeight + 14, 0x40000000);
 
         // ヘッダー
-        graphics.drawString(font, "ELEV 仰角", x, y - 8, 0xFFB0B0B0, true);
+        graphics.drawString(font, Component.translatable("hud.microdrone.tank.elevation"), x, y - 8, 0xFFB0B0B0, true);
 
         // 垂直基準スケール線
         graphics.fill(x + 2, y + 4, x + 3, y + 4 + barHeight, 0x80888888);
@@ -172,16 +173,16 @@ public class TankGunnerHudOverlay {
         // 車体方位 (0〜360°)
         float hullYaw = ((tank.getYRot() % 360) + 360) % 360;
         String hullDir = getCardinal(hullYaw);
-        String hullText = String.format("車体: %03.0f° %s", hullYaw, hullDir);
+        String hullText = net.minecraft.network.chat.Component.translatable("hud.microdrone.tank.hull_dir", String.format("%03.0f", hullYaw), hullDir).getString();
 
         // 主砲方位 (車体Yaw + 砲塔相対Yaw)
         float relYaw = tank.getTurretYaw();
         float gunYaw = (((tank.getYRot() + relYaw) % 360) + 360) % 360;
         String gunDir = getCardinal(gunYaw);
-        String gunText = String.format("主砲: %03.0f° %s", gunYaw, gunDir);
+        String gunText = net.minecraft.network.chat.Component.translatable("hud.microdrone.tank.gun_dir", String.format("%03.0f", gunYaw), gunDir).getString();
 
         // 砲塔相対旋回角
-        String relText = String.format("砲塔旋回: %+4.0f°", relYaw);
+        String relText = net.minecraft.network.chat.Component.translatable("hud.microdrone.tank.turret_yaw", String.format("%+4.0f", relYaw)).getString();
 
         int pad = 8;
         int hW = font.width(hullText);
@@ -216,7 +217,7 @@ public class TankGunnerHudOverlay {
 
         // 半透明円形背景
         graphics.fill(x - 2, y - 2, x + size + 2, y + size + 11, 0x40000000);
-        graphics.drawString(font, "RADAR 方位", x, y - 1, 0xFFB0B0B0, false);
+        graphics.drawString(font, net.minecraft.network.chat.Component.translatable("hud.microdrone.tank.radar").getString(), x, y - 1, 0xFFB0B0B0, false);
 
         // 方位ラベル (N/S/E/W)
         graphics.drawString(font, "N", cx - 2, y + 7, 0xFFFF4444, false); // 北: 赤
@@ -313,7 +314,7 @@ public class TankGunnerHudOverlay {
 
         if (reloadTicks > 0) {
             float remainingSec = reloadTicks / 20.0f;
-            String text = String.format("装填中 [%.1fs]", remainingSec);
+            String text = net.minecraft.network.chat.Component.translatable("hud.microdrone.tank.reloading", String.format("%.1f", remainingSec)).getString();
             int textWidth = font.width(text);
             graphics.drawString(font, text, cx - (textWidth / 2), y, 0xFFFF5555, true);
 
@@ -322,7 +323,7 @@ public class TankGunnerHudOverlay {
             int fillW = (int) (barWidth * progress);
             graphics.fill(barX, barY, barX + fillW, barY + barHeight, 0xFFFF8800);
         } else {
-            String text = "[ READY / 装填完了 ]";
+            String text = net.minecraft.network.chat.Component.translatable("hud.microdrone.tank.ready").getString();
             int textWidth = font.width(text);
             graphics.drawString(font, text, cx - (textWidth / 2), y, 0xFF55FF55, true);
 
@@ -351,7 +352,7 @@ public class TankGunnerHudOverlay {
             batColor = 0xFF55FF55;
         }
 
-        String batText = String.format("動力  %d%%", batPct);
+        String batText = net.minecraft.network.chat.Component.translatable("hud.microdrone.tank.power", batPct).getString();
         graphics.drawString(font, batText, x, y, batColor, true);
 
         int barX = x + 50;
@@ -362,15 +363,15 @@ public class TankGunnerHudOverlay {
         int fillW = (int) (barW * Math.min(1.0f, batRatio));
         graphics.fill(barX, barY, barX + fillW, barY + barH, batColor);
 
-        String motorText = String.format("機関  TIER %d", tank.getMotorTier());
+        String motorText = net.minecraft.network.chat.Component.translatable("hud.microdrone.tank.engine", tank.getMotorTier()).getString();
         graphics.drawString(font, motorText, x, y + 11, 0xFFE0E0E0, true);
 
         Vec3 vel = tank.getDeltaMovement();
         double speedKmh = Math.sqrt(vel.x * vel.x + vel.z * vel.z) * 20.0 * 3.6;
-        String speedText = String.format("車速  %.1f km/h", speedKmh);
+        String speedText = net.minecraft.network.chat.Component.translatable("hud.microdrone.tank.speed", String.format("%.1f", speedKmh)).getString();
         graphics.drawString(font, speedText, x, y + 22, 0xFFB0B0B0, true);
 
-        String fireGuide = "Space: 主砲発射";
+        String fireGuide = net.minecraft.network.chat.Component.translatable("hud.microdrone.tank.fire_guide").getString();
         graphics.drawString(font, fireGuide, x, y + 33, 0xFFFFCC00, true);
     }
 
@@ -396,20 +397,20 @@ public class TankGunnerHudOverlay {
         String statusText;
         if (dist > maxRange) {
             sigColor = (tank.tickCount % 10 < 5) ? 0xFFFF2222 : 0x50FF2222;
-            statusText = "通信  切断";
+            statusText = net.minecraft.network.chat.Component.translatable("hud.microdrone.signal_lost").getString();
         } else if (dist > critRange) {
             sigColor = 0xFFFF4444;
-            statusText = "通信  限界";
+            statusText = net.minecraft.network.chat.Component.translatable("hud.microdrone.signal_crit").getString();
         } else if (dist > warnRange) {
             sigColor = 0xFFFFFF44;
-            statusText = "通信  減衰";
+            statusText = net.minecraft.network.chat.Component.translatable("hud.microdrone.signal_warn").getString();
         } else {
             sigColor = 0xFF55FF55;
-            statusText = "通信  良好";
+            statusText = net.minecraft.network.chat.Component.translatable("hud.microdrone.signal_good").getString();
         }
 
-        String distText = String.format("距離  %.1f m", dist);
-        String rssiText = String.format("電波  %d%%", rssi);
+        String distText = net.minecraft.network.chat.Component.translatable("hud.microdrone.distance", String.format("%.1f", dist)).getString();
+        String rssiText = net.minecraft.network.chat.Component.translatable("hud.microdrone.rssi", rssi).getString();
 
         graphics.drawString(font, distText, x, y, 0xFFE0E0E0, true);
         graphics.drawString(font, rssiText, x, y + 11, sigColor, true);
@@ -427,20 +428,22 @@ public class TankGunnerHudOverlay {
 
         graphics.drawString(font, statusText, x, y + 22, sigColor, true);
 
-        String viewName = (mode == ClientDroneInputHandler.RcCameraMode.CHASE_CAR) ? "視点  CHASE" : "視点  GUNNER";
+        String viewName = (mode == ClientDroneInputHandler.RcCameraMode.CHASE_CAR) 
+                ? net.minecraft.network.chat.Component.translatable("hud.microdrone.tank.view_chase").getString() 
+                : net.minecraft.network.chat.Component.translatable("hud.microdrone.tank.view_gunner").getString();
         int viewColor = (mode == ClientDroneInputHandler.RcCameraMode.CHASE_CAR) ? 0xFFFFAA00 : 0xFF88CCFF;
         graphics.drawString(font, viewName, x, y + 33, viewColor, true);
     }
 
     private static String getCardinal(float yaw) {
         float normalizedYaw = ((yaw % 360) + 360) % 360;
-        if (normalizedYaw >= 337.5 || normalizedYaw < 22.5) return "南";
-        if (normalizedYaw < 67.5) return "南西";
-        if (normalizedYaw < 112.5) return "西";
-        if (normalizedYaw < 157.5) return "北西";
-        if (normalizedYaw < 202.5) return "北";
-        if (normalizedYaw < 247.5) return "北東";
-        if (normalizedYaw < 292.5) return "東";
-        return "南東";
+        if (normalizedYaw >= 337.5 || normalizedYaw < 22.5) return net.minecraft.network.chat.Component.translatable("hud.microdrone.cardinal.s").getString();
+        if (normalizedYaw < 67.5) return net.minecraft.network.chat.Component.translatable("hud.microdrone.cardinal.sw").getString();
+        if (normalizedYaw < 112.5) return net.minecraft.network.chat.Component.translatable("hud.microdrone.cardinal.w").getString();
+        if (normalizedYaw < 157.5) return net.minecraft.network.chat.Component.translatable("hud.microdrone.cardinal.nw").getString();
+        if (normalizedYaw < 202.5) return net.minecraft.network.chat.Component.translatable("hud.microdrone.cardinal.n").getString();
+        if (normalizedYaw < 247.5) return net.minecraft.network.chat.Component.translatable("hud.microdrone.cardinal.ne").getString();
+        if (normalizedYaw < 292.5) return net.minecraft.network.chat.Component.translatable("hud.microdrone.cardinal.e").getString();
+        return net.minecraft.network.chat.Component.translatable("hud.microdrone.cardinal.se").getString();
     }
 }

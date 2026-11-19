@@ -46,9 +46,9 @@ public class ModItems {
     public static final DeferredHolder<Item, BlockItem> RACE_DISPLAY_ITEM =
             ITEMS.register("race_display", () -> new BlockItem(ModBlocks.RACE_DISPLAY.get(), new Item.Properties()));
 
-    // コース中継カメラ (BlockItem)
-    public static final DeferredHolder<Item, BlockItem> TRACKSIDE_CAMERA_ITEM =
-            ITEMS.register("trackside_camera", () -> new BlockItem(ModBlocks.TRACKSIDE_CAMERA.get(), new Item.Properties()));
+    // スタートブロック (BlockItem)
+    public static final DeferredHolder<Item, BlockItem> START_BLOCK_ITEM =
+            ITEMS.register("start_block", () -> new BlockItem(ModBlocks.START_BLOCK.get(), new Item.Properties()));
 
     // レーシングスロープ (BlockItem)
     public static final DeferredHolder<Item, BlockItem> RACING_SLOPE_ITEM =
@@ -61,10 +61,6 @@ public class ModItems {
     // モジュラースロープ坂 (BlockItem)
     public static final DeferredHolder<Item, BlockItem> MODULAR_SLOPE_ITEM =
             ITEMS.register("modular_slope", () -> new BlockItem(ModBlocks.MODULAR_SLOPE.get(), new Item.Properties()));
-
-    // 峠スロープ (BlockItem)
-    public static final DeferredHolder<Item, BlockItem> TOUGE_SLOPE_ITEM =
-            ITEMS.register("touge_slope", () -> new BlockItem(ModBlocks.TOUGE_SLOPE.get(), new Item.Properties()));
 
     // 道路・ヘアピンカーブ生成 始点マーカー (BlockItem)
     public static final DeferredHolder<Item, BlockItem> ROAD_START_ITEM =

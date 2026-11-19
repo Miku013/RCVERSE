@@ -296,8 +296,9 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
         double movedDist = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
         // マルチプレイ不正対策（簡易バリデーション）:
-        // 1 Tickの移動距離が「最大許容速度(約1.5ブロック) × 2.0」を大幅に超える異常ワープでなければ承認
-        if (movedDist <= 3.0 || !this.clientSyncActive) {
+        // 撮影モード時は閾値を32mに拡大して同期拒否による取り残されテレポートを完全防止
+        double maxLimit = com.microdrone.mod.cinematic.CinematicRecordingManager.isEnabled() ? 32.0 : 3.0;
+        if (movedDist <= maxLimit || !this.clientSyncActive) {
             this.setPos(cx, cy, cz);
             this.setYRot(yaw);
             this.yRotO = yaw;
@@ -332,6 +333,9 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
     }
 
     public boolean isLocallyControlled() {
+        if (this.level().isClientSide && com.microdrone.mod.client.ReplayHelper.isReplayActive()) {
+            return false;
+        }
         return this.locallyControlled;
     }
 
@@ -348,7 +352,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
      */
     @Override
     public void lerpTo(double x, double y, double z, float yRot, float xRot, int steps) {
-        if (this.locallyControlled) {
+        if (this.locallyControlled && !com.microdrone.mod.client.ReplayHelper.isReplayActive()) {
             double dx = x - this.getX();
             double dy = y - this.getY();
             double dz = z - this.getZ();
@@ -367,9 +371,11 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
             }
 
             // 3.5m (distSq > 12.25) 超過の重大な位置ズレ発生時 (壁抜け・スタック等の真の事故)、かつ非点滅時にレスキュー復帰発動
-            // ※通常走行時の自然なネットワーク通信遅延 (1.5m〜2.0m) では誤作動しない安全な適正閾値
-            if (distSq > 12.25 && this.resyncBlinkTicks <= 0) {
-                triggerRescueResync(x, y, z, yRot, deltaDist, "EXCESSIVE_DISTANCE_DESYNC (>3.5m)");
+            // ※撮影モード(Cinematic)では複数台同時操縦・並走撮影での誤爆を防ぐため完全無効化！
+            if (!com.microdrone.mod.cinematic.CinematicRecordingManager.isEnabled()) {
+                if (distSq > 12.25 && this.resyncBlinkTicks <= 0) {
+                    triggerRescueResync(x, y, z, yRot, deltaDist, "EXCESSIVE_DISTANCE_DESYNC (>3.5m)");
+                }
             }
             // 自プレイヤー操縦中はソフト引き寄せターゲットを設定しない
             this.hasServerTarget = false;
@@ -423,7 +429,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
 
             net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
             if (mc.player != null) {
-                mc.player.displayClientMessage(Component.literal("§e⚡ [位置同期レスキュー発動]"), true);
+                mc.player.displayClientMessage(Component.translatable("message.microdrone.car_resync"), true);
             }
         }
     }
@@ -506,15 +512,17 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
         this.startY = player.getY();
         this.startZ = player.getZ();
 
-        // 本物のラジコン感覚: 操縦者プレイヤーの身代わりクローン（RcPilotDummyEntity）の配置
-        ServerLevel serverLevel = player.serverLevel();
-        RcPilotDummyEntity dummy = new RcPilotDummyEntity(ModEntities.RC_PILOT_DUMMY.get(), serverLevel);
-        dummy.moveTo(this.startX, this.startY, this.startZ, player.getYRot(), player.getXRot());
-        dummy.setupFromPlayer(player);
-        serverLevel.addFreshEntity(dummy);
-        this.dummyEntityRef = dummy;
-        this.dummyEntityUUID = dummy.getUUID();
-        RcVehicleManager.registerDummy(dummy.getUUID(), this);
+        // 本物のラジコン感覚: 操縦者プレイヤーの身代わりクローン（RcPilotDummyEntity）の配置（撮影MODで無効化可能）
+        if (com.microdrone.mod.cinematic.CinematicRecordingManager.isSpawnDummy()) {
+            ServerLevel serverLevel = player.serverLevel();
+            RcPilotDummyEntity dummy = new RcPilotDummyEntity(ModEntities.RC_PILOT_DUMMY.get(), serverLevel);
+            dummy.moveTo(this.startX, this.startY, this.startZ, player.getYRot(), player.getXRot());
+            dummy.setupFromPlayer(player);
+            serverLevel.addFreshEntity(dummy);
+            this.dummyEntityRef = dummy;
+            this.dummyEntityUUID = dummy.getUUID();
+            RcVehicleManager.registerDummy(dummy.getUUID(), this);
+        }
 
         RcVehicleManager.registerPiloting(player.getUUID(), this);
 
@@ -710,7 +718,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
             this.entityData.set(DATA_BRAKING, isBrakingInput());
         } else {
             // クライアント側処理
-            if (this.locallyControlled) {
+            if (this.locallyControlled && !com.microdrone.mod.client.ReplayHelper.isReplayActive()) {
                 // ローカル操縦中はクライアント側で即座に物理演算を行い、遅延ゼロ＆ダイレクトな操作感を実現
                 long startNanos = System.nanoTime();
                 tickCarPhysics();
@@ -1028,7 +1036,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
         // 操縦者クライアントが存在し、位置同期パケットを受信中の場合:
         // 車両の座標・姿勢はクライアントで確定・スナップ済みのため、
         // サーバー側での重複move(二重前進)や重複壁衝突(誤スタック)をスキップ
-        if (!this.level().isClientSide && this.clientSyncActive) {
+        // ※撮影モード(Cinematic)ではReplayModに移動パケットを届けるためスキップせずサーバー物理を完全実行
+        if (!this.level().isClientSide && this.clientSyncActive && !com.microdrone.mod.cinematic.CinematicRecordingManager.isEnabled()) {
             // タイヤ回転の積算
             this.wheelRotation += (this.currentSpeed * 144.0f);
 
@@ -1990,10 +1999,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                     if (this.level().getBlockState(bp).getBlock() instanceof com.microdrone.mod.block.RacingSlopeBlock
                             ||
                             this.level().getBlockState(bp)
-                                    .getBlock() instanceof com.microdrone.mod.block.ModularSlopeBlock
-                            ||
-                            this.level().getBlockState(bp)
-                                    .getBlock() instanceof com.microdrone.mod.block.TougeSlopeBlock) {
+                                    .getBlock() instanceof com.microdrone.mod.block.ModularSlopeBlock) {
                         continue;
                     }
 
@@ -2338,8 +2344,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
         BlockPos pos = BlockPos.containing(x, y, z);
         net.minecraft.world.level.block.state.BlockState st = level().getBlockState(pos);
         if (!(st.getBlock() instanceof com.microdrone.mod.block.RacingSlopeBlock)
-                && !(st.getBlock() instanceof com.microdrone.mod.block.ModularSlopeBlock)
-                && !(st.getBlock() instanceof com.microdrone.mod.block.TougeSlopeBlock)) {
+                && !(st.getBlock() instanceof com.microdrone.mod.block.ModularSlopeBlock)) {
             pos = pos.below();
             st = level().getBlockState(pos);
         }
@@ -2360,16 +2365,6 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                     .raycastSlopeMesh(level(), pos, st, relX, relZ);
             if (hit.hit) {
                 Direction facing = st.getValue(com.microdrone.mod.block.ModularSlopeBlock.FACING);
-                return new WheelRaycastHit(pos.getY() + hit.height, hit.normal, true, hit.isLip, false, hit.progress,
-                        facing);
-            }
-        } else if (st.getBlock() instanceof com.microdrone.mod.block.TougeSlopeBlock) {
-            double relX = x - pos.getX();
-            double relZ = z - pos.getZ();
-            com.microdrone.mod.block.RacingSlopeBlock.RampHitResult hit = com.microdrone.mod.block.TougeSlopeBlock
-                    .raycastSlopeMesh(st, relX, relZ);
-            if (hit.hit) {
-                Direction facing = st.getValue(com.microdrone.mod.block.TougeSlopeBlock.FACING);
                 return new WheelRaycastHit(pos.getY() + hit.height, hit.normal, true, hit.isLip, false, hit.progress,
                         facing);
             }
@@ -2485,7 +2480,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                 if (pilot != null) {
                     long remainSec = (10000L - lapTimeMs + 999) / 1000;
                     pilot.displayClientMessage(
-                            Component.literal("§c§l[LAP INVALID] §e10秒未満のため無効 §7(あと " + remainSec + "秒)"), true);
+                            Component.translatable("message.microdrone.lap_invalid", remainSec), true);
                 }
                 return;
             }
@@ -2961,6 +2956,17 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
     @Override
     public void remove(RemovalReason reason) {
         clearHeadlight();
+        if (!this.level().isClientSide && this.pilotUUID != null) {
+            ServerPlayer pilot = this.getServer() != null ? this.getServer().getPlayerList().getPlayer(this.pilotUUID) : null;
+            if (pilot != null) {
+                this.stopPiloting(pilot);
+            } else {
+                RcVehicleManager.unregisterPiloting(this.pilotUUID);
+                if (this.dummyEntityUUID != null) {
+                    RcVehicleManager.unregisterDummy(this.dummyEntityUUID);
+                }
+            }
+        }
         super.remove(reason);
     }
 }

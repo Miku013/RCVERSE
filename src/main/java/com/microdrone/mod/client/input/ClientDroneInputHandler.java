@@ -1,6 +1,7 @@
 package com.microdrone.mod.client.input;
 
 import com.microdrone.mod.MicroDroneMod;
+import com.microdrone.mod.client.ReplayHelper;
 import com.microdrone.mod.client.controller.DroneClientController;
 import com.microdrone.mod.client.controller.InputSnapshot;
 import com.microdrone.mod.client.controller.RcBoatClientController;
@@ -152,7 +153,7 @@ public class ClientDroneInputHandler {
     }
 
     public static boolean isPiloting() {
-        return isPiloting;
+        return isPiloting && !ReplayHelper.isReplayActive();
     }
 
     public static int getActiveDroneId() {
@@ -164,6 +165,11 @@ public class ClientDroneInputHandler {
     }
 
     public static void setPiloting(int droneId, boolean state, double sx, double sy, double sz) {
+        if (state && ReplayHelper.isReplayActive()) {
+            MicroDroneMod.LOGGER.info("[CLIENT] [REPLAY] setPiloting ignored because Replay is active. DroneId: {}", droneId);
+            return;
+        }
+
         Minecraft mc = Minecraft.getInstance();
         missingTicks = 0;
         MicroDroneMod.LOGGER.info("[CLIENT] [PILOT_STATE_SET] DroneId: {}, State: {}, PlayerPos: {}",
@@ -194,11 +200,21 @@ public class ClientDroneInputHandler {
             if (controller != null) {
                 controller.onStop(entity, mc.player);
             }
+            // 確実なフェイルセーフ: コントローラー取得可否やエンティティ消滅に関わらず、
+            // 操縦終了時は必ずカメラ・可視性・視点を100%自プレイヤーに完全復元する！
+            if (mc.player != null) {
+                mc.player.setInvisible(false);
+                if (mc.getCameraEntity() != mc.player) {
+                    mc.setCameraEntity(mc.player);
+                }
+                mc.options.setCameraType(CameraType.FIRST_PERSON);
+            }
             isPiloting = false;
             activeDroneId = -1;
             capturedForward = 0.0f;
             capturedStrafe = 0.0f;
             capturedVertical = 0.0f;
+            missingTicks = 0;
         }
     }
 
@@ -213,6 +229,15 @@ public class ClientDroneInputHandler {
     @SubscribeEvent
     public void onMovementInput(MovementInputUpdateEvent event) {
         if (!isPiloting) return;
+
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level != null && activeDroneId != -1) {
+            Entity entity = mc.level.getEntity(activeDroneId);
+            // 機体が消滅・削除済みの場合は入力を抑制せずプレイヤーに即時操作権を解放
+            if (entity == null || entity.isRemoved()) {
+                return;
+            }
+        }
 
         capturedForward = event.getInput().forwardImpulse;
         capturedStrafe = event.getInput().leftImpulse;
@@ -239,6 +264,8 @@ public class ClientDroneInputHandler {
 
     @SubscribeEvent
     public void onClientTick(ClientTickEvent.Pre event) {
+        if (ReplayHelper.isReplayActive()) return;
+
         long now = System.currentTimeMillis();
         // 通常の20TPS動作 (50ms) で毎ティック警告が出ないよう、150ms以上の深刻なフレームスタッター時かつ3秒に1回にスロットリング
         if (isPiloting && lastClientTickTime > 0) {
@@ -261,8 +288,13 @@ public class ClientDroneInputHandler {
 
         Entity entity = mc.level.getEntity(activeDroneId);
         if (entity == null || entity.isRemoved() || !(entity instanceof RcControllable)) {
+            // エンティティが消滅・削除された場合は2秒待機せず、即座に操縦終了してプレイヤー視点へ復帰！
+            if (entity != null && entity.isRemoved()) {
+                stopPiloting();
+                return;
+            }
             missingTicks++;
-            if (missingTicks > 40) {
+            if (missingTicks > 5) {
                 stopPiloting();
             }
             return;
@@ -293,6 +325,10 @@ public class ClientDroneInputHandler {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null && mc.level != null) {
             Entity entity = mc.level.getEntity(activeDroneId);
+            if (entity == null || entity.isRemoved()) {
+                // 機体消滅・削除時はカメラアングル操作を即時停止（画面ガタつき防止）
+                return;
+            }
             RcVehicleClientController controller = getControllerForEntity(entity);
             if (controller != null) {
                 controller.computeCameraAngles(event, entity, startX, startY, startZ);
@@ -341,26 +377,36 @@ public class ClientDroneInputHandler {
 
     @SubscribeEvent
     public void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
+        if (!event.getLevel().isClientSide()) return;
+        if (event.getEntity() != Minecraft.getInstance().player) return;
         if (isPiloting) event.setCanceled(true);
     }
 
     @SubscribeEvent
     public void onLeftClickBlock(PlayerInteractEvent.LeftClickBlock event) {
+        if (!event.getLevel().isClientSide()) return;
+        if (event.getEntity() != Minecraft.getInstance().player) return;
         if (isPiloting) event.setCanceled(true);
     }
 
     @SubscribeEvent
     public void onEntityInteract(PlayerInteractEvent.EntityInteract event) {
+        if (!event.getLevel().isClientSide()) return;
+        if (event.getEntity() != Minecraft.getInstance().player) return;
         if (isPiloting) event.setCanceled(true);
     }
 
     @SubscribeEvent
     public void onEntityInteractSpecific(PlayerInteractEvent.EntityInteractSpecific event) {
+        if (!event.getLevel().isClientSide()) return;
+        if (event.getEntity() != Minecraft.getInstance().player) return;
         if (isPiloting) event.setCanceled(true);
     }
 
     @SubscribeEvent
     public void onAttackEntity(AttackEntityEvent event) {
+        if (!event.getEntity().level().isClientSide()) return;
+        if (event.getEntity() != Minecraft.getInstance().player) return;
         if (isPiloting) event.setCanceled(true);
     }
 

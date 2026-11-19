@@ -124,6 +124,11 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable, 
     // 累積垂直速度
     public double verticalVelocity = 0.0;
 
+    // 撮影モード（Cinematic）同調フラグ
+    private int cinematicTicks = 0;
+    public void setCinematicActive(boolean active) { this.cinematicTicks = active ? 4 : 0; }
+    public boolean isCinematicActive() { return this.cinematicTicks > 0; }
+
     // デバッグログ用
     private int logTimer = 0;
 
@@ -147,7 +152,7 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable, 
      */
     @Override
     public void lerpTo(double x, double y, double z, float yRot, float xRot, int steps) {
-        if (this.locallyControlled) {
+        if (this.locallyControlled && !com.microdrone.mod.client.ReplayHelper.isReplayActive()) {
             return;
         }
         super.lerpTo(x, y, z, yRot, xRot, steps);
@@ -273,10 +278,14 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable, 
             }
         }
 
-        if (this.locallyControlled || (!level().isClientSide && isPiloted())) {
+        if (this.cinematicTicks > 0) {
+            this.cinematicTicks--;
+        }
+
+        if ((this.locallyControlled && !com.microdrone.mod.client.ReplayHelper.isReplayActive()) || (!level().isClientSide && (isPiloted() || isCinematicActive()))) {
             tickFlightPhysics();
             emitFlightDebugLog();
-        } else if (!level().isClientSide && !isPiloted()) {
+        } else if (!level().isClientSide && !isPiloted() && !isCinematicActive()) {
             // 無操縦時の自然落下
             if (!this.onGround()) {
                 Vec3 curDelta = this.getDeltaMovement();
@@ -323,7 +332,7 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable, 
      * 固定翼航空力学・失速急降下・バンク旋回物理シミュレーション
      */
     private void tickFlightPhysics() {
-        boolean hasPower = hasBattery() && getBatteryRemaining() > 0;
+        boolean hasPower = (hasBattery() && getBatteryRemaining() > 0) || isCinematicActive();
         int tier = getMotorTier();
 
         // 1. スロットル調整 (0.0 〜 1.0)
@@ -670,6 +679,26 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable, 
 
     public void setLocallyControlled(boolean local) {
         this.locallyControlled = local;
+    }
+
+    public boolean isLocallyControlled() {
+        if (this.level().isClientSide && com.microdrone.mod.client.ReplayHelper.isReplayActive()) {
+            return false;
+        }
+        return this.locallyControlled;
+    }
+
+    @Override
+    public void remove(RemovalReason reason) {
+        if (!this.level().isClientSide && this.pilotUUID != null) {
+            ServerPlayer pilot = this.getServer() != null ? this.getServer().getPlayerList().getPlayer(this.pilotUUID) : null;
+            if (pilot != null) {
+                this.stopPiloting(pilot);
+            } else {
+                RcVehicleManager.unregisterPiloting(this.pilotUUID);
+            }
+        }
+        super.remove(reason);
     }
 
     @Override

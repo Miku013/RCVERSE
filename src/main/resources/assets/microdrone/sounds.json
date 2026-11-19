@@ -12,6 +12,20 @@
     "sounds": [
       "microdrone:checkpoint_pass"
     ]
+  },
+  "rc_car_drive": {
+    "category": "player",
+    "subtitle": "subtitles.microdrone.rc_car_drive",
+    "sounds": [
+      "microdrone:rc_car_drive"
+    ]
+  },
+  "rc_car_skid": {
+    "category": "player",
+    "subtitle": "subtitles.microdrone.rc_car_skid",
+    "sounds": [
+      "microdrone:rc_car_skid"
+    ]
   }
 }
 

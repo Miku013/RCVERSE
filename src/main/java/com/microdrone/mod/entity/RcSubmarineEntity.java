@@ -95,6 +95,11 @@ public class RcSubmarineEntity extends Entity implements GeoEntity, RcControllab
     public float inputSteer = 0.0f;    // 左ステア(-1.0) / 右ステア(+1.0)
     public float inputVertical = 0.0f; // 浮上(+1.0) / 潜航(-1.0)
 
+    // 撮影モード（Cinematic）同調フラグ
+    private int cinematicTicks = 0;
+    public void setCinematicActive(boolean active) { this.cinematicTicks = active ? 4 : 0; }
+    public boolean isCinematicActive() { return this.cinematicTicks > 0; }
+
     // 内部物理パラメータ
     private float currentSpeed = 0.0f;
     private float verticalSpeed = 0.0f;
@@ -118,7 +123,7 @@ public class RcSubmarineEntity extends Entity implements GeoEntity, RcControllab
 
     @Override
     public void lerpTo(double x, double y, double z, float yRot, float xRot, int steps) {
-        if (this.locallyControlled) {
+        if (this.locallyControlled && !com.microdrone.mod.client.ReplayHelper.isReplayActive()) {
             double dx = x - this.getX();
             double dy = y - this.getY();
             double dz = z - this.getZ();
@@ -166,6 +171,13 @@ public class RcSubmarineEntity extends Entity implements GeoEntity, RcControllab
         this.locallyControlled = controlled;
     }
 
+    public boolean isLocallyControlled() {
+        if (this.level().isClientSide && com.microdrone.mod.client.ReplayHelper.isReplayActive()) {
+            return false;
+        }
+        return this.locallyControlled;
+    }
+
     @Override
     public boolean isPiloted() { return this.pilotUUID != null; }
 
@@ -189,14 +201,16 @@ public class RcSubmarineEntity extends Entity implements GeoEntity, RcControllab
         RcVehicleManager.registerPiloting(player.getUUID(), this);
 
         // 操縦者プレイヤーの身代わりクローン（RcPilotDummyEntity）の生成
-        ServerLevel serverLevel = player.serverLevel();
-        RcPilotDummyEntity dummy = new RcPilotDummyEntity(ModEntities.RC_PILOT_DUMMY.get(), serverLevel);
-        dummy.moveTo(this.startX, this.startY, this.startZ, player.getYRot(), player.getXRot());
-        dummy.setupFromPlayer(player);
-        serverLevel.addFreshEntity(dummy);
-        this.dummyEntityRef = dummy;
-        this.dummyEntityUUID = dummy.getUUID();
-        RcVehicleManager.registerDummy(dummy.getUUID(), this);
+        if (com.microdrone.mod.cinematic.CinematicRecordingManager.isSpawnDummy()) {
+            ServerLevel serverLevel = player.serverLevel();
+            RcPilotDummyEntity dummy = new RcPilotDummyEntity(ModEntities.RC_PILOT_DUMMY.get(), serverLevel);
+            dummy.moveTo(this.startX, this.startY, this.startZ, player.getYRot(), player.getXRot());
+            dummy.setupFromPlayer(player);
+            serverLevel.addFreshEntity(dummy);
+            this.dummyEntityRef = dummy;
+            this.dummyEntityUUID = dummy.getUUID();
+            RcVehicleManager.registerDummy(dummy.getUUID(), this);
+        }
 
         player.setInvisible(true);
 
@@ -271,6 +285,9 @@ public class RcSubmarineEntity extends Entity implements GeoEntity, RcControllab
         this.prevRollAngle = this.rollAngle;
 
         if (!this.level().isClientSide) {
+            if (this.cinematicTicks > 0) {
+                this.cinematicTicks--;
+            }
             if (this.pilotUUID != null) {
                 ServerPlayer pilot = this.getServer().getPlayerList().getPlayer(this.pilotUUID);
                 if (pilot == null || !pilot.isAlive() || pilot.level() != this.level()) {
@@ -284,7 +301,7 @@ public class RcSubmarineEntity extends Entity implements GeoEntity, RcControllab
             }
             tickSubmarinePhysics();
         } else {
-            if (this.locallyControlled) {
+            if (this.locallyControlled && !com.microdrone.mod.client.ReplayHelper.isReplayActive()) {
                 tickSubmarinePhysics();
             } else {
                 this.rudderAngle = this.entityData.get(DATA_RUDDER_ANGLE);
@@ -315,7 +332,7 @@ public class RcSubmarineEntity extends Entity implements GeoEntity, RcControllab
         double turnSpeed = 4.2f + (tier * 0.4f);
 
         if (inWater) {
-            boolean hasPower = hasBattery() && getBatteryRemaining() > 0;
+            boolean hasPower = (hasBattery() && getBatteryRemaining() > 0) || isCinematicActive();
             if (!hasPower) {
                 this.inputForward = 0.0f;
                 this.inputSteer = 0.0f;
@@ -430,9 +447,6 @@ public class RcSubmarineEntity extends Entity implements GeoEntity, RcControllab
             if (this.pilotUUID != null && this.getServer() != null) {
                 ServerPlayer pilot = this.getServer().getPlayerList().getPlayer(this.pilotUUID);
                 if (pilot != null && pilot.isAlive()) {
-                    pilot.absMoveTo(this.getX(), this.getY(), this.getZ(), this.getYRot(), this.getXRot());
-                    pilot.serverLevel().getChunkSource().move(pilot);
-
                     ChunkPos currentChunk = new ChunkPos(this.blockPosition());
                     if (this.lastChunkPos == null || !this.lastChunkPos.equals(currentChunk)) {
                         com.microdrone.mod.chunk.DroneChunkManager.updateDroneChunks(pilot, this);
@@ -580,6 +594,22 @@ public class RcSubmarineEntity extends Entity implements GeoEntity, RcControllab
             }
         }
         return super.hurt(source, amount);
+    }
+
+    @Override
+    public void remove(RemovalReason reason) {
+        if (!this.level().isClientSide && this.pilotUUID != null) {
+            ServerPlayer pilot = this.getServer() != null ? this.getServer().getPlayerList().getPlayer(this.pilotUUID) : null;
+            if (pilot != null) {
+                this.stopPiloting(pilot);
+            } else {
+                RcVehicleManager.unregisterPiloting(this.pilotUUID);
+                if (this.dummyEntityUUID != null) {
+                    RcVehicleManager.unregisterDummy(this.dummyEntityUUID);
+                }
+            }
+        }
+        super.remove(reason);
     }
 
     @Override

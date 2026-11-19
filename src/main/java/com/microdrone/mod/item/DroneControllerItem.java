@@ -67,7 +67,7 @@ public class DroneControllerItem extends Item implements GeoItem {
                 if (nearestCar != null) {
                     com.microdrone.mod.client.gui.ClientGuiOpener.openRcCarTuningScreen(nearestCar);
                 } else {
-                    player.displayClientMessage(Component.literal("§c周囲32m以内にRCカーが見つかりません"), true);
+                    player.displayClientMessage(Component.translatable("message.microdrone.no_car_nearby_tuning"), true);
                 }
             }
             return InteractionResultHolder.sidedSuccess(itemStack, level.isClientSide);
@@ -109,5 +109,11 @@ public class DroneControllerItem extends Item implements GeoItem {
         }
 
         return InteractionResultHolder.sidedSuccess(itemStack, level.isClientSide);
+    }
+
+    @Override
+    public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltipComponents, net.minecraft.world.item.TooltipFlag tooltipFlag) {
+        tooltipComponents.add(Component.translatable("tooltip.microdrone.drone_controller_desc_1").withStyle(net.minecraft.ChatFormatting.GRAY));
+        tooltipComponents.add(Component.translatable("tooltip.microdrone.drone_controller_desc_2").withStyle(net.minecraft.ChatFormatting.DARK_GRAY));
     }
 }

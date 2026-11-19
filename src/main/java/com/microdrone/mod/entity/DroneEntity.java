@@ -143,6 +143,11 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable, co
     // 機体のチャンク移動追従用
     private ChunkPos lastChunkPos = null;
 
+    // 撮影モード（Cinematic）同調フラグ
+    private int cinematicTicks = 0;
+    public void setCinematicActive(boolean active) { this.cinematicTicks = active ? 4 : 0; }
+    public boolean isCinematicActive() { return this.cinematicTicks > 0; }
+
     public DroneEntity(EntityType<?> entityType, Level level) {
         super(entityType, level);
         this.blocksBuilding = true;
@@ -302,6 +307,9 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable, co
     }
 
     public boolean isLocallyControlled() {
+        if (this.level().isClientSide && com.microdrone.mod.client.ReplayHelper.isReplayActive()) {
+            return false;
+        }
         return this.locallyControlled;
     }
 
@@ -312,7 +320,7 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable, co
      */
     @Override
     public void lerpTo(double x, double y, double z, float yRot, float xRot, int steps) {
-        if (this.locallyControlled) {
+        if (this.locallyControlled && !com.microdrone.mod.client.ReplayHelper.isReplayActive()) {
             double dx = x - this.getX();
             double dy = y - this.getY();
             double dz = z - this.getZ();
@@ -364,23 +372,21 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable, co
                 this.startChunkPos.x, this.startChunkPos.z);
 
         // 2. 操縦者プレイヤーの身代わりクローン（RcPilotDummyEntity）の配置
-        RcPilotDummyEntity dummy = new RcPilotDummyEntity(ModEntities.RC_PILOT_DUMMY.get(), serverLevel);
-        dummy.moveTo(this.startX, this.startY, this.startZ, this.startYaw, this.startPitch);
-        dummy.setupFromPlayer(player);
-        serverLevel.addFreshEntity(dummy);
-        this.dummyEntityUUID = dummy.getUUID();
-        this.dummyEntityRef = dummy;
+        if (com.microdrone.mod.cinematic.CinematicRecordingManager.isSpawnDummy()) {
+            RcPilotDummyEntity dummy = new RcPilotDummyEntity(ModEntities.RC_PILOT_DUMMY.get(), serverLevel);
+            dummy.moveTo(this.startX, this.startY, this.startZ, this.startYaw, this.startPitch);
+            dummy.setupFromPlayer(player);
+            serverLevel.addFreshEntity(dummy);
+            this.dummyEntityUUID = dummy.getUUID();
+            this.dummyEntityRef = dummy;
+            DUMMY_TO_DRONE.put(dummy.getUUID(), this);
+            RcVehicleManager.registerDummy(dummy.getUUID(), this);
+            MicroDroneMod.LOGGER.info("[SERVER] [PLAYER_DUMMY_SPAWN] Spawned body dummy {} at [{}, {}, {}]",
+                    this.dummyEntityUUID,
+                    String.format("%.2f", this.startX), String.format("%.2f", this.startY), String.format("%.2f", this.startZ));
+        }
         ACTIVE_PILOTED_DRONES.put(player.getUUID(), this);
         RcVehicleManager.registerPiloting(player.getUUID(), this);
-        DUMMY_TO_DRONE.put(dummy.getUUID(), this);
-        RcVehicleManager.registerDummy(dummy.getUUID(), this);
-        MicroDroneMod.LOGGER.info("[SERVER] [PLAYER_DUMMY_SPAWN] Spawned body dummy {} at [{}, {}, {}]",
-                this.dummyEntityUUID,
-                String.format("%.2f", this.startX), String.format("%.2f", this.startY), String.format("%.2f", this.startZ));
-
-        // 3. サーバー側のカメラエンティティをドローンに設定
-        player.setCamera(this);
-        player.setInvisible(true);
 
         MicroDroneMod.LOGGER.info("[SERVER] [PILOT_START] Pilot: {} ({}), PlayerPos: [{}, {}, {}], DronePos: [{}, {}, {}], DroneChunk: [{}, {}]",
                 player.getName().getString(), player.getUUID(),
@@ -534,6 +540,9 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable, co
 
         if (!this.level().isClientSide) {
             // === サーバー側 ===
+            if (this.cinematicTicks > 0) {
+                this.cinematicTicks--;
+            }
             if (this.pilotUUID != null) {
                 ServerPlayer pilot = this.getServer().getPlayerList().getPlayer(this.pilotUUID);
                 if (pilot == null || !pilot.isAlive() || pilot.level() != this.level()) {
@@ -541,16 +550,16 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable, co
                 }
             }
 
-            if (this.isPiloted()) {
+            if (this.isPiloted() || isCinematicActive()) {
                 tickFlightPhysics();
             } else {
                 tickUnpilotedPhysics();
             }
         } else {
             // === クライアント側 ===
-            if (this.locallyControlled) {
+            if (this.locallyControlled && !com.microdrone.mod.client.ReplayHelper.isReplayActive()) {
                 tickFlightPhysics();
-            } else if (!this.isNoGravity() && !this.onGround()) {
+            } else if (!this.isNoGravity() && !this.onGround() && !com.microdrone.mod.client.ReplayHelper.isReplayActive()) {
                 tickUnpilotedPhysics();
             }
         }
@@ -639,13 +648,10 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable, co
         this.setDeltaMovement(fixedVx, fixedVy, fixedVz);
         checkAndResolveSuffocation();
 
-        // サーバー側処理: 操縦中プレイヤーの実体をドローン座標へ追従移動 & チャンク更新
+        // サーバー側処理: チャンク更新 (RCカーと同様にプレイヤー本体は開始地点に静止させ、遠距離チャンクのみ配信)
         if (!this.level().isClientSide && this.pilotUUID != null && this.getServer() != null) {
             ServerPlayer pilot = this.getServer().getPlayerList().getPlayer(this.pilotUUID);
             if (pilot != null && pilot.isAlive()) {
-                pilot.absMoveTo(this.getX(), this.getY(), this.getZ(), this.getYRot(), this.getXRot());
-                pilot.serverLevel().getChunkSource().move(pilot);
-
                 ChunkPos currentChunk = new ChunkPos(this.blockPosition());
                 boolean chunkChanged = (this.lastChunkPos == null || !this.lastChunkPos.equals(currentChunk));
                 if (chunkChanged || (this.hoverTicks % 10 == 0)) {
@@ -693,7 +699,7 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable, co
                 }
 
                 // バッテリー切れフェイルセーフ
-                if (this.installedBattery.isEmpty() || this.getBatteryRemaining() <= 0) {
+                if (!isCinematicActive() && (this.installedBattery.isEmpty() || this.getBatteryRemaining() <= 0)) {
                     this.inputForward = 0.0f;
                     this.inputStrafe = 0.0f;
                     this.inputVertical = -0.04f;

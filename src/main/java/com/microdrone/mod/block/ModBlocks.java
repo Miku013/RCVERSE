@@ -40,12 +40,13 @@ public class ModBlocks {
                     .strength(2.0f, 3.0f)
                     .noOcclusion()));
 
-    // コース中継カメラブロック（CCTV中継・サーキット映像）
-    public static final DeferredBlock<TracksideCameraBlock> TRACKSIDE_CAMERA = BLOCKS.register("trackside_camera",
-            () -> new TracksideCameraBlock(BlockBehaviour.Properties.of()
+    // レース用スタートブロック（スタートシグナル）
+    public static final DeferredBlock<StartBlock> START_BLOCK = BLOCKS.register("start_block",
+            () -> new StartBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.COLOR_BLACK)
                     .strength(1.5f, 2.0f)
-                    .noOcclusion()));
+                    .noOcclusion()
+                    .lightLevel(state -> state.hasProperty(StartBlock.LIT) && state.getValue(StartBlock.LIT) ? 15 : 0)));
 
     // レーシングスロープ（ハーフブロック式ジャンプ台）
     public static final DeferredBlock<RacingSlopeBlock> RACING_SLOPE = BLOCKS.register("racing_slope",
@@ -65,14 +66,6 @@ public class ModBlocks {
     // モジュラースロープ坂（つなげるほど長く緩やかになる坂道）
     public static final DeferredBlock<ModularSlopeBlock> MODULAR_SLOPE = BLOCKS.register("modular_slope",
             () -> new ModularSlopeBlock(BlockBehaviour.Properties.of()
-                    .mapColor(MapColor.COLOR_BLACK)
-                    .strength(1.5f, 2.0f)
-                    .lightLevel(state -> 5)
-                    .noOcclusion()));
-
-    // 峠スロープ（どこまでも階段状に伸ばせる連続峠道）
-    public static final DeferredBlock<TougeSlopeBlock> TOUGE_SLOPE = BLOCKS.register("touge_slope",
-            () -> new TougeSlopeBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.COLOR_BLACK)
                     .strength(1.5f, 2.0f)
                     .lightLevel(state -> 5)

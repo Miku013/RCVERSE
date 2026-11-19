@@ -28,21 +28,28 @@ public class DroneControllerItemRenderer extends GeoItemRenderer<DroneController
     @Override
     public void renderByItem(ItemStack stack, ItemDisplayContext transformType, PoseStack poseStack,
                              MultiBufferSource bufferSource, int packedLight, int packedOverlay) {
-        // インベントリやホットバーなどのGUI表示では16x16の2Dドット絵アイコンを描画
-        if (transformType == ItemDisplayContext.GUI) {
+        // インベントリやホットバーなどのGUI表示、および額縁（Item Frame: FIXED）では16x16の2Dドット絵アイコンを描画
+        if (transformType == ItemDisplayContext.GUI || transformType == ItemDisplayContext.FIXED) {
             BakedModel guiModel = Minecraft.getInstance().getModelManager().getModel(GUI_MODEL);
             if (guiModel != null && guiModel != Minecraft.getInstance().getModelManager().getMissingModel()) {
+                poseStack.pushPose();
+                if (transformType == ItemDisplayContext.FIXED) {
+                    poseStack.translate(0.5F, 0.5F, 0.5F);
+                    guiModel.getTransforms().getTransform(transformType).apply(false, poseStack);
+                    poseStack.translate(-0.5F, -0.5F, -0.5F);
+                }
                 for (BakedModel pass : guiModel.getRenderPasses(stack, true)) {
                     for (RenderType renderType : pass.getRenderTypes(stack, true)) {
                         VertexConsumer vertexConsumer = ItemRenderer.getFoilBufferDirect(bufferSource, renderType, true, stack.hasFoil());
                         Minecraft.getInstance().getItemRenderer().renderModelLists(pass, stack, packedLight, packedOverlay, poseStack, vertexConsumer);
                     }
                 }
+                poseStack.popPose();
                 return;
             }
         }
 
-        // 一人称・三人称・手持ち・地面設置等では従来のリアルなGeckoLib 3Dモデルを描画
+        // 一人称・三人称・手持ち・地面設置・家具展示等では従来のリアルなGeckoLib 3Dモデルを描画
         super.renderByItem(stack, transformType, poseStack, bufferSource, packedLight, packedOverlay);
     }
 }

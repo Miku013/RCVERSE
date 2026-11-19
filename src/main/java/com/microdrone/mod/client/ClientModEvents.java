@@ -2,6 +2,7 @@ package com.microdrone.mod.client;
 
 import com.microdrone.mod.block.entity.ModBlockEntities;
 import com.microdrone.mod.client.audio.DroneSoundManager;
+import com.microdrone.mod.client.audio.RcCarSoundManager;
 import com.microdrone.mod.client.camera.DroneCameraController;
 import com.microdrone.mod.client.gui.DroneHudOverlay;
 import com.microdrone.mod.client.gui.PlaneFlightHudOverlay;
@@ -64,6 +65,7 @@ public class ClientModEvents {
         TankGunnerHudOverlay.register();
         PlaneFlightHudOverlay.register();
         DroneSoundManager.register();
+        RcCarSoundManager.register();
     }
 
     private static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
@@ -78,6 +80,7 @@ public class ClientModEvents {
         event.registerBlockEntityRenderer(ModBlockEntities.TEST_PIVOT_BE.get(), TestPivotBlockEntityRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.MINIATURE_PLACEMENT_BE.get(), com.microdrone.mod.client.renderer.MiniaturePlacementBlockEntityRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.RACE_DISPLAY_BE.get(), com.microdrone.mod.client.renderer.RaceDisplayBlockEntityRenderer::new);
+        event.registerBlockEntityRenderer(ModBlockEntities.START_BLOCK_BE.get(), com.microdrone.mod.client.renderer.StartBlockEntityRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.VERTICAL_LOOP_BE.get(), com.microdrone.mod.client.renderer.VerticalLoopBlockEntityRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.MODULAR_SLOPE_BE.get(), com.microdrone.mod.client.renderer.ModularSlopeBlockEntityRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.ROAD_START_BE.get(), com.microdrone.mod.client.renderer.RoadStartBlockEntityRenderer::new);

@@ -2,6 +2,7 @@ package com.microdrone.mod.client.controller;
 
 import com.microdrone.mod.MicroDroneMod;
 import com.microdrone.mod.client.ClientModEvents;
+import com.microdrone.mod.client.audio.RcCarSoundManager;
 import com.microdrone.mod.entity.RcCarEntity;
 import com.microdrone.mod.network.CarHeadlightTogglePayload;
 import com.microdrone.mod.network.DroneControlPayload;
@@ -28,7 +29,7 @@ public class RcCarClientController implements RcVehicleClientController {
 
     public static final double DEFAULT_CAM_DISTANCE = 1.8;
     public static final double MIN_CAM_DISTANCE = 0.5;
-    public static final double MAX_CAM_DISTANCE = 6.0;
+    public static final double MAX_CAM_DISTANCE = 8.0;
 
     public static final float DEFAULT_FOV_MULTIPLIER = 1.0f;
     public static final float MIN_FOV_MULTIPLIER = 0.35f;
@@ -37,30 +38,58 @@ public class RcCarClientController implements RcVehicleClientController {
     private double camDistance = DEFAULT_CAM_DISTANCE;
     private float fovMultiplier = DEFAULT_FOV_MULTIPLIER;
 
+    // シネマティックカメラ補間用変数 (ジンバル＆オービット)
+    private float smoothCamYaw = 0.0f;
+    private float smoothCamPitch = 20.0f;
+    private float orbitYawOffset = 0.0f;
+    private float orbitPitchOffset = 0.0f;
+    private float lastPlayerMouseYaw = 0.0f;
+    private float lastPlayerMousePitch = 0.0f;
+    private boolean isCameraInitialized = false;
+
     private static Method cameraMoveMethod = null;
     private static boolean cameraMoveResolved = false;
 
     @Override
     public void onStart(Entity vehicle, LocalPlayer player, double startX, double startY, double startZ) {
-        viewMode = RcViewMode.GROUND;
+        // 撮影MODではデフォルトでシネマティックスムーズ追従視点
+        viewMode = RcViewMode.CHASE;
         camDistance = DEFAULT_CAM_DISTANCE;
         fovMultiplier = DEFAULT_FOV_MULTIPLIER;
+        orbitYawOffset = 0.0f;
+        orbitPitchOffset = 0.0f;
+        isCameraInitialized = false;
+
         if (vehicle instanceof RcCarEntity car) {
             car.setLocallyControlled(true);
+            smoothCamYaw = car.getYRot();
+            smoothCamPitch = 20.0f;
+            RcCarSoundManager.startPilotingSound(car);
         }
+
         if (player != null) {
-            player.setInvisible(false);
-            Minecraft.getInstance().setCameraEntity(player);
-            Minecraft.getInstance().options.setCameraType(CameraType.FIRST_PERSON);
-            MicroDroneMod.LOGGER.info("[CAMERA_SWITCH] Event: START_PILOTING, VehicleUUID: {}, InitialViewMode: GROUND, PlayerPos: [{}, {}, {}]",
-                    vehicle.getUUID(), String.format("%.2f", player.getX()), String.format("%.2f", player.getY()), String.format("%.2f", player.getZ()));
+            player.setInvisible(false); // ReplayMod用: 立ち位置にプロポを持った操縦者として自然に配置
+            Minecraft mc = Minecraft.getInstance();
+            if (vehicle != null) {
+                mc.setCameraEntity(vehicle);
+            }
+            mc.options.setCameraType(CameraType.THIRD_PERSON_BACK);
+            lastPlayerMouseYaw = player.getYRot();
+            lastPlayerMousePitch = player.getXRot();
+            MicroDroneMod.LOGGER.info("[CINEMATIC_CAMERA] Event: START_PILOTING, VehicleUUID: {}, Mode: CHASE",
+                    vehicle != null ? vehicle.getUUID() : "null");
         }
     }
 
     @Override
     public void onStop(Entity vehicle, LocalPlayer player) {
+        RcCarSoundManager.stopPilotingSound();
         camDistance = DEFAULT_CAM_DISTANCE;
         fovMultiplier = DEFAULT_FOV_MULTIPLIER;
+        orbitYawOffset = 0.0f;
+        orbitPitchOffset = 0.0f;
+        isCameraInitialized = false;
+
         if (vehicle instanceof RcCarEntity car) {
             car.setLocallyControlled(false);
         }
@@ -68,8 +97,6 @@ public class RcCarClientController implements RcVehicleClientController {
             player.setInvisible(false);
             Minecraft.getInstance().setCameraEntity(player);
             Minecraft.getInstance().options.setCameraType(CameraType.FIRST_PERSON);
-            MicroDroneMod.LOGGER.info("[CAMERA_SWITCH] Event: STOP_PILOTING, VehicleUUID: {}, FinalViewMode: GROUND, PlayerPos: [{}, {}, {}]",
-                    vehicle != null ? vehicle.getUUID() : "null", String.format("%.2f", player.getX()), String.format("%.2f", player.getY()), String.format("%.2f", player.getZ()));
         }
     }
 
@@ -101,7 +128,11 @@ public class RcCarClientController implements RcVehicleClientController {
     public void handleTickInput(LocalPlayer player, Entity vehicle, InputSnapshot input, double startX, double startY, double startZ) {
         if (!(vehicle instanceof RcCarEntity car)) return;
 
+        // ReplayMod撮影対応: プレイヤーは操縦開始時の立ち位置(startX, startY, startZ)に静止！
+        // 車にプレイヤーをテレポートさせないため、車にプレイヤーが張り付く現象を完全に根絶！
         player.setPos(startX, startY, startZ);
+        player.setDeltaMovement(0, 0, 0);
+
         car.inputForward = input.forward();
         car.inputSteer = input.strafe();
         car.inputHandbrake = (input.vertical() > 0.5f);
@@ -131,37 +162,43 @@ public class RcCarClientController implements RcVehicleClientController {
         float partialTick = (float) event.getPartialTick();
         float carYaw = Mth.rotLerp(partialTick, car.yRotO, car.getYRot());
 
-        double carX = Mth.lerp(partialTick, car.xOld, car.getX());
-        double carY = Mth.lerp(partialTick, car.yOld, car.getY());
-        double carZ = Mth.lerp(partialTick, car.zOld, car.getZ());
+        if (viewMode == RcViewMode.CHASE) {
+            // === シネマティック・ジンバルスムーズ追従カメラ ===
+            // マウスの首振り移動量をオービット相対角（フリー回転）に加算
+            float currentMouseYaw = mc.player.getYRot();
+            float currentMousePitch = mc.player.getXRot();
+            float deltaYaw = Mth.wrapDegrees(currentMouseYaw - lastPlayerMouseYaw);
+            float deltaPitch = currentMousePitch - lastPlayerMousePitch;
+            lastPlayerMouseYaw = currentMouseYaw;
+            lastPlayerMousePitch = currentMousePitch;
 
-        if (viewMode == RcViewMode.GROUND) {
-            double eyeX = mc.player.getX();
-            double eyeY = mc.player.getEyeY();
-            double eyeZ = mc.player.getZ();
+            orbitYawOffset += deltaYaw;
+            orbitPitchOffset = Mth.clamp(orbitPitchOffset + deltaPitch, -25.0f, 40.0f);
 
-            double dx = carX - eyeX;
-            double dy = carY - eyeY;
-            double dz = carZ - eyeZ;
-            double distXZ = Math.sqrt(dx * dx + dz * dz);
+            // 目標カメラ角度: 車の進行向き + マウスで調整した自由アングル
+            float targetYaw = carYaw + orbitYawOffset;
+            float targetPitch = Mth.clamp(18.0f + orbitPitchOffset, 5.0f, 75.0f);
 
-            float targetYaw = (float) (Mth.atan2(dz, dx) * (180.0 / Math.PI)) - 90.0f;
-            float targetPitch = (float) (-(Mth.atan2(dy, distXZ) * (180.0 / Math.PI)));
+            if (!isCameraInitialized) {
+                smoothCamYaw = targetYaw;
+                smoothCamPitch = targetPitch;
+                isCameraInitialized = true;
+            } else {
+                // 滑らかなジンバル補間 (Lerp): ドリフト時の急激な首振りを映画カメラのように吸収
+                smoothCamYaw = Mth.rotLerp(0.08f, smoothCamYaw, targetYaw);
+                smoothCamPitch = Mth.lerp(0.12f, smoothCamPitch, targetPitch);
+            }
 
-            event.setYaw(targetYaw);
-            event.setPitch(targetPitch);
+            event.setYaw(smoothCamYaw);
+            event.setPitch(smoothCamPitch);
 
-            mc.player.setYRot(targetYaw);
-            mc.player.setXRot(targetPitch);
-        } else {
-            // CHASE視点
-            float mousePitch = mc.player.getXRot();
-            float pitch = Mth.clamp(20.0f + mousePitch * 0.35f, 10.0f, 60.0f);
-            event.setYaw(carYaw);
-            event.setPitch(pitch);
-            mc.player.setYRot(carYaw);
-            double camHeight = 0.15 + (camDistance * 0.08);
+            double camHeight = 0.20 + (camDistance * 0.10);
             moveCameraSafe(event.getCamera(), camDistance, camHeight, 0.0);
+        } else {
+            // === 三脚フリーカメラ (TRIPOD FREE) ===
+            // プレイヤー自身がマウスで自由にパン・チルトして定点撮影可能（車への強制ロック完全なし）
+            event.setYaw(mc.player.getYRot());
+            event.setPitch(mc.player.getXRot());
         }
     }
 
@@ -170,29 +207,30 @@ public class RcCarClientController implements RcVehicleClientController {
         Minecraft mc = Minecraft.getInstance();
         if (!(vehicle instanceof RcCarEntity car)) return;
 
-        RcViewMode oldMode = viewMode;
-        if (viewMode == RcViewMode.GROUND) {
-            viewMode = RcViewMode.CHASE;
-            if (player != null) {
-                player.displayClientMessage(Component.translatable("message.microdrone.cam_chase"), true);
-                player.setInvisible(true);
-            }
-            mc.setCameraEntity(car);
-            mc.options.setCameraType(CameraType.THIRD_PERSON_BACK);
-        } else {
+        if (viewMode == RcViewMode.CHASE) {
+            // CHASE -> TRIPOD FREE (三脚フリーカメラ)
             viewMode = RcViewMode.GROUND;
             if (player != null) {
-                player.displayClientMessage(Component.translatable("message.microdrone.cam_ground"), true);
+                player.displayClientMessage(Component.translatable("chat.microdrone.camera.tripod"), true);
                 player.setInvisible(false);
             }
             mc.setCameraEntity(player);
             mc.options.setCameraType(CameraType.FIRST_PERSON);
+        } else {
+            // TRIPOD FREE -> CHASE (シネマティックスムーズ追従カメラ)
+            viewMode = RcViewMode.CHASE;
+            orbitYawOffset = 0.0f;
+            orbitPitchOffset = 0.0f;
+            isCameraInitialized = false;
+            if (player != null) {
+                player.displayClientMessage(Component.translatable("chat.microdrone.camera.cinematic"), true);
+                player.setInvisible(false);
+                lastPlayerMouseYaw = player.getYRot();
+                lastPlayerMousePitch = player.getXRot();
+            }
+            mc.setCameraEntity(car);
+            mc.options.setCameraType(CameraType.THIRD_PERSON_BACK);
         }
-
-        MicroDroneMod.LOGGER.info("[CAMERA_SWITCH] VehicleUUID: {}, OldMode: {}, NewMode: {}, PlayerPos: [{}, {}, {}], CarPos: [{}, {}, {}]",
-                car.getUUID(), oldMode, viewMode,
-                player != null ? String.format("%.2f, %.2f, %.2f", player.getX(), player.getY(), player.getZ()) : "null",
-                String.format("%.2f, %.2f, %.2f", car.getX(), car.getY(), car.getZ()));
     }
 
     @Override
@@ -231,7 +269,7 @@ public class RcCarClientController implements RcVehicleClientController {
 
         if (player != null) {
             float zoomX = 1.0f / fovMultiplier;
-            player.displayClientMessage(Component.literal(String.format("§6[RC Camera] §f距離: §e%.1fm §f| レンズ: §e%.2fx §7(中クリックでリセット)", camDistance, zoomX)), true);
+            player.displayClientMessage(Component.translatable("chat.microdrone.camera.zoom", camDistance, zoomX), true);
         }
         return true;
     }
@@ -244,8 +282,11 @@ public class RcCarClientController implements RcVehicleClientController {
         if (button == org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_MIDDLE && action == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
             camDistance = DEFAULT_CAM_DISTANCE;
             fovMultiplier = DEFAULT_FOV_MULTIPLIER;
+            orbitYawOffset = 0.0f;
+            orbitPitchOffset = 0.0f;
+            isCameraInitialized = false;
             if (player != null) {
-                player.displayClientMessage(Component.literal(String.format("§a[RC Camera] §fズームをリセットしました §7(距離: %.1fm, レンズ: 1.00x)", camDistance)), true);
+                player.displayClientMessage(Component.translatable("chat.microdrone.camera.reset", camDistance), true);
             }
             return true;
         }

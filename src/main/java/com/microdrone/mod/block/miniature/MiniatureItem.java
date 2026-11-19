@@ -40,7 +40,7 @@ public class MiniatureItem extends Item {
 
         BlockState clickedState = level.getBlockState(clickedPos);
 
-        // ケース1: 既に MiniaturePlacementBlock をクリックした場合
+        // ケース1: 既に MiniaturePlacementBlock をクリックした場合（空きスロットへの追加配置）
         if (clickedState.is(ModBlocks.MINIATURE_PLACEMENT.get())) {
             BlockEntity be = level.getBlockEntity(clickedPos);
             if (be instanceof MiniaturePlacementBlockEntity placementBe) {
@@ -60,11 +60,12 @@ public class MiniatureItem extends Item {
                     return InteractionResult.sidedSuccess(level.isClientSide);
                 }
             }
-            return InteractionResult.PASS;
+            // 既に配置済みスロットをクリックした場合でも、上に重ねて土台を作らないようFAILを返す
+            return InteractionResult.FAIL;
         }
 
-        // ケース2: 通常ブロックの上面をクリックした場合 -> 上の空気に土台ブロックを新規設置して即座に小物配置
-        if (clickedFace == Direction.UP) {
+        // ケース2: 通常ブロックの上面をクリックした場合のみ -> 上の空気に土台ブロックを新規設置して即座に小物配置
+        if (clickedFace == Direction.UP && !clickedState.is(ModBlocks.MINIATURE_PLACEMENT.get())) {
             BlockPos targetPos = clickedPos.above();
             BlockState targetState = level.getBlockState(targetPos);
 

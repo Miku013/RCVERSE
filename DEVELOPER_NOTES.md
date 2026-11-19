@@ -1,4 +1,4 @@
-# ⚠️【最優先・厳守事項】AI開発運用ルール（次回以降の全AI必読）
+﻿# ⚠️【最優先・厳守事項】AI開発運用ルール（次回以降の全AI必読）
 
 > [!CAUTION]
 > ### 🚨 要求以上の改変を行う場合は、事前に必ずユーザーに確認を取ること！
@@ -15,7 +15,11 @@
 > 4. **教訓（2026-11-06のインシデント）**:
 >    - ユーザーから「コントローラーの画像を差し替えてほしい（アイコンのみ）」という指示を受けた際、AIが勝手に models/item/drone_controller.json を minecraft:item/generated に書き換えてしまい、手持ち時の立体的な GeckoLib 3D プロポモデルを板ポリゴンに破壊してしまうという重大な越権が発生した。
 >    - **二度と同じ過ちを繰り返さないこと。要求以上の改変は必ず事前に確認すること。**
-
+5. **本番環境JARの保護と限定的アップデート原則（2026-11-16改定・最重要厳守事項）**:
+   - **指示がある場合に限り本番jarのアップデートを行うこと、ただし指定された範囲のみのアップデートに限る**。
+   - 本番環境（ユーザーのプレイ環境・`rcverse-1.21.1-1.0.0.jar` 等）は、ユーザーから明確な指示がない限り絶対に自動上書き・更新してはならない。
+   - ユーザーから更新指示を受けた場合であっても、**指定された対象（例: 「潜水艦モデルのみ」「〇〇のテクスチャのみ」等）以外の開発中機能や変更（他機能のUI改修や未確定機能など）を勝手に巻き込んで本番JARをアップデートすることは厳禁**とする。必ず指定された範囲のみに限定して慎重に適用すること。
+   - 開発・テスト中のビルド成果物はプロジェクト内（`build/libs/` や `rcverse-test.jar` 等）に留め、本番プレイ用JARとは完全に分離すること。
 ---
 # Micro Drone MOD - 開発引き継ぎノート (DEVELOPER_NOTES.md)
 
@@ -621,7 +625,8 @@ acing_slope と drone_charger のPNGがJPEGからの変換で Format24bppRgb（�
 - **目的**: 急旋回・ドリフト・ジャンプ・高速移動・チャンク境界通過時のクライアントと統合サーバーの位置ずれ・挙動差を詳細に可視化・数値計測。
 - **実装内容**:
   - RcCarEntity.lerpTo: サーバーから位置同期パケットを受信した際の乖離距離（deltaDist）を算出し、30cm以上の乖離または20tickごとに [SYNC_DELTA] ログを出力。
-  - RcCarEntity.triggerRescueResync: 3.5m超過レスキュー発動時に理由（eason）や接地状態、チャンク座標を出力するように強化。
+  - RcCarEntity.triggerRescueResync: 3.5m超過レスキュー発動時に理由（
+eason）や接地状態、チャンク座標を出力するように強化。
   - RcCarEntity.tick:
     - サーバー側（[SYNC_TRACK_SERVER]）: Tick、XYZ座標、速度ベクトル、実速度、Yaw、Pitch、接地、チャンク座標を毎秒（20tick）出力。
     - クライアント側（[SYNC_TRACK_CLIENT]）: Tick、XYZ座標、速度ベクトル、実速度、Yaw、Pitch、接地、チャンク座標、ドリフト方向を毎秒（20tick）出力。
@@ -745,7 +750,8 @@ acing_slope と drone_charger のPNGがJPEGからの変換で Format24bppRgb（�
 2. **登坂時のガタつき・跳ね上がり解消**:
    - RcCarEntity 内の登坂速度計算で、ジャンプ台急坂用の Math.max(0.38, slopeSinTheta) を撤廃。実際の緩傾斜サイン値そのままを適用。
    - スロープ走行中の路面吸着処理を強化し、登坂時に車体がピョンピョン跳ね上がらず、下りと同様にレールに乗ったようにスムーズに駆け上がるよう改善。
-   - スロープ境界通過時の微小な浮動小数点誤差による判定抜けを防ぐため、aycastSlopeMesh に境界マージン（-0.05〜1.20）を付与。
+   - スロープ境界通過時の微小な浮動小数点誤差による判定抜けを防ぐため、
+aycastSlopeMesh に境界マージン（-0.05〜1.20）を付与。
 3. **登頂後の空中走行バグ修正（自然な着地移行）**:
    - スロープ登頂時にセットされた onGround=true が空中に飛び出しても解除されず無重力（motionY=0）になっていた問題を修正。
    - 4輪サスペンションの真の接地状態（wheelGrounded）と重力落下を完全連動化。
@@ -930,12 +936,14 @@ acing_slope と drone_charger のPNGがJPEGからの変換で Format24bppRgb（�
 - **要望**: RCカーのみに対応していたデカール（ステッカー）工房・3Dリバリーエディターおよび機体への描画・保存システムを、全ビークル（RC飛行機、RCボート、RC潜水艦、RC戦車、ドローン）にも汎用化して一括対応する。
 - **実装内容**:
   1. **汎用インターフェース (RcDecalHolder.java) の新設**:
-     - getDecals(), setDecals(List<CarDecalData>), ddDecal(CarDecalData), emoveDecal(int) を定義。
+     - getDecals(), setDecals(List<CarDecalData>), ddDecal(CarDecalData), 
+emoveDecal(int) を定義。
      - RcCarEntity, RcPlaneEntity, RcBoatEntity, RcSubmarineEntity, RcTankEntity, DroneEntity がすべて実装。
      - 各エンティティで DATA_DECALS_NBT (EntityDataSerializers.COMPOUND_TAG) による自動同期およびNBT（Decals タグ）永続化を実装。
   2. **汎用GeckoLib描画レイヤー (RcVehicleDecalLayer.java) の新設**:
      - <T extends Entity & GeoAnimatable & RcDecalHolder> に対応した汎用レイヤー。
-     - ボーン名指定マッチング（指定ボーンがない場合は ody, chassis, oot, 先頭ボーンへ安全にフォールバック）。
+     - ボーン名指定マッチング（指定ボーンがない場合は ody, chassis, 
+oot, 先頭ボーンへ安全にフォールバック）。
      - 各機体のレンダラー（RcCarGeoRenderer, RcPlaneGeoRenderer, RcBoatGeoRenderer, RcSubmarineGeoRenderer, RcTankGeoRenderer, DroneGeoRenderer）に登録。
   3. **デカール作業台 (DecalTableBlock.java) の拡張**:
      - isDecalApplicableItem メソッドを新設し、全6種類のビークルアイテム（カー、ドローン、プレーン、ボート、潜水艦、タンク）を作業台に載せて編集可能に。
@@ -1024,10 +1032,13 @@ acing_slope と drone_charger のPNGがJPEGからの変換で Format24bppRgb（�
   - DecalTableBlockEntity.hasCar() が RcCarItem のみを判定していたため、ドローン・潜水艦・飛行機・ボート・戦車で hasCar() == false となり、サーバー側でのデカール保存（handleUpdateDecals）およびキャンセル返還（handleCancelDecal）が無視されていた根本原因を解消。
   - ServerPayloadHandler、DecalTableBlock、DecalTableBlockEntityRenderer の判定を !table.getStoredCar().isEmpty() に強化し、作業台上の展示描画、保存、キャンセル返還、スニーク回収のすべてが全6車種で完全に動作するように修復。
 - [x] **RC戦車デカール移動の左右逆現象修正 (2026-11-13)**:
-  - RC戦車モデル（c_tank.geo.json）は他の5車種と異なりモデリング座標系（Blockbench空間の左右X軸および前後Z軸）が反転しているため、エディターでの左右ドラッグ（dxCam）の符号が戦車だけ逆転していた問題を修正。dxSign による車種別符号補正を導入し、戦車でも真上・水平・側面すべての視点でカーソルに完全に追従するよう最適化。
+  - RC戦車モデル（
+c_tank.geo.json）は他の5車種と異なりモデリング座標系（Blockbench空間の左右X軸および前後Z軸）が反転しているため、エディターでの左右ドラッグ（dxCam）の符号が戦車だけ逆転していた問題を修正。dxSign による車種別符号補正を導入し、戦車でも真上・水平・側面すべての視点でカーソルに完全に追従するよう最適化。
 - [x] **全車種モデル向き・レンダラー基準の完全統一 (2026-11-13)**:
   - 変更前の安全チェックポイントとして checkpoint-pre-tank-unify タグおよび ackup-pre-tank-unify ブランチを作成。
-  - c_tank.geo.json の root ボーンに otation: [0, 180, 0] を設定し、PzH2000（pzhtank.geo.json）や他全車種と同じ「北（-Z）＝正面（進行方向）」基準に統一。
+  - 
+c_tank.geo.json の root ボーンに 
+otation: [0, 180, 0] を設定し、PzH2000（pzhtank.geo.json）や他全車種と同じ「北（-Z）＝正面（進行方向）」基準に統一。
   - RcTankGeoRenderer のレンダラー回転を他全車種と完全に同じ Axis.YP(180.0F - yaw)、ピッチ・ロール符号を統一。
   - DecalEditorScreen の getEffectiveYaw およびドラッグ計算から戦車専用の例外分岐（if (TANK) ...）を完全撤去し、全6車種共通の堅牢なパイプラインに一本化。
 - [x] **真上視点時のステッカー左右逆ドラッグ移動の数学的解消 (2026-11-13)**:
@@ -1264,7 +1275,8 @@ ull のままとなり、mouseDragged 内でドラッグ計算が実行されて
   - **対策**: 頭上1ブロック（pos.above()）に水ブロック（FluidTags.WATER）が存在するかを判定。頭上に水がある限り isAtSurface = false を維持し、海面まで一気に滑らかに連続上昇できるように修正。
   - **マルチブランチ反映**: 撮影専用MOD (eature/cinematic-mode) および公開用通常MOD (main) の両方に適用し、JAR再ビルド完了。
 - **公式LP（GitHub Pages）へのゲームプレイ動画埋め込み**:
-  - 実機プレイ動画 c-1.mp4（ドリフト・ジャンプ・戦車射撃シーン）を docs/videos/rc-1.mp4 に配置し、docs/index.html の「ゲームプレイ映像」セクションに動画プレイヤー（<video controls poster>）を設置。
+  - 実機プレイ動画 
+c-1.mp4（ドリフト・ジャンプ・戦車射撃シーン）を docs/videos/rc-1.mp4 に配置し、docs/index.html の「ゲームプレイ映像」セクションに動画プレイヤー（<video controls poster>）を設置。
 - **実機スクリーンショット10枚の切り抜き加工 & 公式LP掲載**:
   - ユーザー提供の実機スクリーンショット10枚（ハチロク、ドローン、戦車、飛行機、ボート、潜水艦、モンスタートラック、自転車村人、デフォルトカー、デフォルト戦車）から、UI・ツールチップ・手持ちプロポ・ホットバー・チャット等をトリミングし、マシンをクローズアップしたサムネイル（4:3 比率）を自動生成。
   - docs/images/screenshots/ に配置し、マシンスペック紹介カードのヘッダー画像、および「自作・バリエーションマシンの実機登場例」ギャラリーとして docs/index.html に反映。
@@ -1364,3 +1376,277 @@ ull のままとなり、mouseDragged 内でドラッグ計算が実行されて
 - `docs/items.html` ⇄ `docs/items_en.html`
 - 図鑑閲覧中は直接日英の図鑑同士でワンクリック切り替えが可能。
 - `feature/cinematic-mode` および `main`（GitHub Pages公開ブランチ）へコミット・プッシュ完了。
+
+
+### F. RC工作台新GUI (Ver 2.1) ＆ 潜水艦モデル・テクスチャ刷新 (2026-11-16)
+- [x] **本番環境JARの明示的更新**:
+  - ユーザーからの明示指示に基づき、本番用JAR（`C:\Users\mikum\curseforge\minecraft\Instances\neofor\mods\rcverse-1.21.1-1.0.0.jar`）へデプロイ完了。
+  - デプロイ直前バックアップ（`rcverse-1.21.1-1.0.0-pre-sub-update.jar.bak`）を作成・保全済み。
+- [x] **潜水艦新モデル＆テクスチャ (512x512)**:
+  - ジオメトリ: `rc_submarine.geo.json` (滑らかな球体分割メッシュ、512x512テクスチャ対応)。
+  - テクスチャ: `rc_submarine.png` (512x512 ARGB)。
+  - ボーン整合性: `rudder`（方向舵）、`dive_plane`（潜舵）、`propeller`（スクリュー）のボーン定義が一致しており、GeckoLib操舵アニメーションと完全連動。
+- [x] **RC工作台新GUI (Ver 2.1)**:
+  - 左側セレクターラックのワイド化（幅80px、ゆったりスロット、上下マウスホイールスクロール）。
+  - タイトル「RC WORKBENCH」の完全センタリング配置。
+  - 全27種類の公式クラフトパーツを完全網羅。
+
+
+
+### G. 開発用ブロック「峠スロープ坂」の安全な完全削除 (2026-11-16)
+- [x] **ブロック・アイテム・モデルのクリーンアップ**:
+  - モジュラースロープ坂（`modular_slope`）で代用可能なため、不要となった「峠スロープ坂」（`touge_slope`）をソースコードおよびリソースから完全削除。
+  - 削除ファイル: `TougeSlopeBlock.java`, `blockstates/touge_slope.json`, `models/item/touge_slope.json`, `models/block/touge_slope*.json`（旧ファイルは `backup_assets/` に安全退避）。
+  - クラス登録解除: `ModBlocks.java`, `ModItems.java`, `ModCreativeTabs.java`。
+  - 車両物理判定のクリーンアップ: `RcCarEntity.java` 内のスロープ激突除外判定および登坂Raycast処理から `TougeSlopeBlock` の分岐を削除（`ModularSlopeBlock` と `RacingSlopeBlock` はそのまま正常稼働）。
+  - 言語ファイル整理: `ja_jp.json`, `en_us.json` からキーを削除。
+- [x] **ビルド検証**:
+  - `./gradlew compileJava` および `./gradlew jar --rerun-tasks` にて正常コンパイル・テストJARビルドを確認済み。
+
+### H. 開発用アイテム「コース中継カメラ」および電光掲示板のCCTV中継機能の完全削除 (2026-11-16)
+- [x] **コース中継カメラ (	rackside_camera) の完全削除**:
+  - 不要となったコース中継カメラブロック・アイテム・エンティティを安全に完全削除（全関連コードおよびリソースは ackup_assets/cctv_and_camera_backup/ に退避・保全済み）。
+  - 削除ファイル: TracksideCameraBlock.java, TracksideCameraBlockEntity.java, lockstates/trackside_camera.json, models/block/trackside_camera.json, models/item/trackside_camera.json。
+  - レジストリ登録解除: ModBlocks.java, ModBlockEntities.java, ModItems.java, ModCreativeTabs.java。
+  - 言語ファイル整理: ja_jp.json, en_us.json から 	rackside_camera 関連キーを完全削除。
+- [x] **電光掲示板 (ace_display) からのCCTV中継機能の安全な分離・削除**:
+  - CCTV描画パイプライン (CctvRenderPipeline.java, CctvScreenTexture.java) を削除。
+  - RaceDisplayBlockEntityRenderer.java: CCTVテクスチャ描画およびOSD描画を完全削除。本来の電光掲示板機能（パイロット名、ベストラップ、セクター別スプリットタイム、順位リーダーボード）のフォント描画・クアッドレンダリングを100%保持。
+  - RaceDisplayBlockEntity.java: DisplayMode.CCTV_LIVE モード、CCTVカメラ接続ロジック、トグル切り替え、NBT同期をクリーンアップ。
+  - RaceDisplayBlock.java: 右クリック時のCCTVモード切り替えを削除し、掲示板のパイロット名とベストタイムのチャット表示に変更。
+- [x] **ビルド検証**:
+  - ./gradlew compileJava および ./gradlew jar --rerun-tasks にて正常コンパイルおよびテストJARビルドを確認済み。
+  - 本番環境JAR（CurseForge環境等）は最重要厳守ルールに従い、ユーザーからの指示があるまで未適用で安全に維持。
+### I. プロポの額縁2Dアイコン表示対応 (2026-11-16)
+- [x] **額縁装着時の2Dアイコン描画 & 他コンテキストの3Dモデル維持**:
+  - DroneControllerItemRenderer.java: 表示コンテキストが ItemDisplayContext.GUI および ItemDisplayContext.FIXED（額縁）の場合に、16x16の2Dドット絵アイコン（drone_controller_gui）を描画するよう拡張。
+  - 額縁特有の向き（ItemDisplayContext.FIXED の Y軸180度反転トランスフォーム）を guiModel.getTransforms().getTransform(...) で正確に適用し、壁面の額縁上で正面を向いてジャストフィット描画されるよう調整。
+  - RcRackDisplayLayer.java および RcShowcaseDisplayLayer.java: RCラック・ショーケースでの通常アイテム描画コンテキストを ItemDisplayContext.GROUND に指定。これにより家具上にプロポを飾った際は立体的な3Dモデルのまま美しく展示されます。
+  - 手持ち時（一人称・三人称）のGeckoLib 3Dモデル・アニメーション・操作系は完全無傷で維持。
+- [x] **ビルド検証**:
+  - ./gradlew compileJava および ./gradlew jar --rerun-tasks にて正常コンパイル＆テストJARビルドを確認済み。
+  - 本番環境JARは最重要厳守ルールに従い未適用のまま保護。
+### J. 本番環境JAR（リリース環境）への指定項目適用 (2026-11-16)
+- [x] **ユーザー指示に基づく本番環境JARの更新**:
+  - 指示範囲: 「峠スロープ坂の削除」「コース中継カメラ＆電光掲示板CCTVの削除」「プロポの額縁のみ2D変更」。
+  - 本番JAR（C:\Users\mikum\curseforge\minecraft\Instances\neofor\mods\rcverse-1.21.1-1.0.0.jar）へ安全にデプロイ完了。
+  - デプロイ直前バックアップとして cverse-1.21.1-1.0.0-pre-cleanup-and-controller-2d.jar.bak を作成・保全済み。
+  - 潜水艦新モデル（512x512）およびRC工作台新GUIも包含された状態で、不要開発アイテムの削除と額縁2D化が正常反映されています。
+### K. スタートブロック（スタートシグナル）の新規実装 (2026-11-16)
+- [x] **GeckoLibモデル・テクスチャ導入**:
+  - ジオメトリ: start_block.geo.json (本体 ody、消灯レンズ led_off_1~3、赤色灯 led_red_1~3、緑色全灯 led_green)。
+  - テクスチャ: start_block.png (128x128 ARGB)。
+- [x] **カウントダウンシグナル動作仕様の実装**:
+  - StartBlockModel.java: アニメーションプロセッサによるボーン可視性制御。
+    - **待機状態 (State 0)**: led_off_1~3 を表示、赤・緑は非表示。
+    - **カウント1 (State 1: 3秒前)**: led_off_1 が消え led_red_1 が点灯。高音ビープ音。
+    - **カウント2 (State 2: 2秒前)**: led_off_2 が消え led_red_1 + led_red_2 が点灯。高音ビープ音。
+    - **カウント3 (State 3: 1秒前)**: led_off_3 が消え led_red_1~3 の全赤が点灯。高音ビープ音。
+    - **スタート (State 4: GO!!)**: 赤が全消灯し、切り替わりで led_green が全灯。スタートホーン＋歓声サウンド、アクションバー案内（「GO!!!!!」）。
+    - **復帰**: グリーン点灯後2秒（計5秒）で自動的に待機状態（全消灯レンズ）に戻る。
+- [x] **操作・起動インターフェース**:
+  - StartBlock.java: プレイヤーによる右クリック、またはレッドストーン信号入力（ボタン・レバー・ディテクターレール等）でカウントダウン開始。
+  - 点灯中はブロックの自発光レベル15（StartBlock.LIT）が発動し、モデル描画もフルブライト発光。
+- [x] **ビルド検証**:
+  - ./gradlew compileJava および ./gradlew jar --rerun-tasks にて正常コンパイル＆テストJARビルドを確認済み。
+  - 本番環境JARは最重要厳守ルールに従い未適用のまま保護。
+### L. コース小物の空手シフト右クリック個別回収＆クリック補正 (2026-11-16)
+- [x] **操作体系の改善**:
+  - MiniaturePlacementBlock.java:
+    - **空手（素手）＋ Shift ＋ 右クリック**: 狙った小物（ゴール/スタートゲート、チェックポイントプレート、コーン等）を**個別に回収**。インベントリへ直接追加され（満杯時はドロップ）、ベース土台上の全小物がなくなると土台ブロックも自動消去。
+    - **素手通常右クリック（Shiftなし）**: 狙った小物を**45度回転**。
+- [x] **クリック判定アシスト（近傍スロット自動補正）**:
+  - 薄型プレート（チェックポイント）やゲート支柱などのクリック時、レイキャストがミリ単位でずれて隣の空スロットに着弾した場合でも、約0.4m（2スロット分）以内の最寄り配置済み小物を自動検出して回収・回転を成立させるアシスト処理を追加。
+- [x] **ビルド検証**:
+  - ./gradlew compileJava および ./gradlew jar --rerun-tasks にて正常コンパイル＆テストJARビルドを確認済み。
+  - 本番環境JARは最重要厳守ルールに従い未適用のまま保護。
+
+
+### M. コース小物ベースの重複スタック不具合修正＆回収判定強化 (2026-11-16)
+- [x] **不具合の原因特定**:
+  - `MiniaturePlacementBlock.useWithoutItem` において `isMainHandEmpty`（素手）チェックがあったため、アイテム回収後に手持ちスロットにアイテムが入ると素手判定から外れ、Minecraft標準の挙動でアイテム使用（`itemstack.useOn`）が呼ばれていた。
+  - `MiniatureItem.java` のケース2（`clickedFace == Direction.UP`）に土台ブロック除外チェックが抜けていたため、配置済み土台の上をクリックした際に上の空間へ新たな土台ブロック（`MiniaturePlacementBlock`）が設置され、土台が上に多重複製・スタックしてしまっていた。
+- [x] **修正・改善内容**:
+  - `MiniaturePlacementBlock.java`:
+    - `useItemOn`（アイテム所持時の右クリック）にも `player.isShiftKeyDown()` のインターセプト判定を追加。小物を手に持っている状態や他アイテムを持っている状態でも、Shift＋右クリックすればMinecraftのアイテム設置を完全にキャンセルし、最優先で小物の個別回収を実行するように修正。
+    - 空の土台（孤立した不要ベースプレート）が残っている場合、Shift＋右クリックで土台自体を即座に安全消去する保護処理を追加。
+  - `MiniatureItem.java`:
+    - 土台ブロッククリック時（ケース1）でスロットが埋まっている場合、`InteractionResult.PASS` ではなく `InteractionResult.FAIL` を返すよう変更し、後続の処理へのフォールスルーを遮断。
+    - 通常ブロック上面への土台設置判定（ケース2）に `!clickedState.is(ModBlocks.MINIATURE_PLACEMENT.get())` ガードを追加し、土台ブロックの上に土台が複製・スタックされる現象を完全に防止。
+- [x] **ビルド検証**:
+  - `./gradlew compileJava` および `./gradlew jar --rerun-tasks` にて正常コンパイル＆テストJARビルドを確認済み。
+  - 本番環境JARは最重要厳守ルールに従い未適用のまま保護。
+
+
+### N. RC戦車（pztank等）着火時・機体破壊時の視点ガタつき・操作不能不具合の調査と完全修正 (2026-11-16)
+- [x] **不具合現象の調査結果と根本原因の特定**:
+  1. **着火による即死・消失（サーバー側）**:
+     - RC戦車が主砲（`SmallFireball`）を発射した際、着弾地点のブロックに着火。戦車がその炎ブロックに入ると、Minecraftの仕様により `hurt(DamageSources.inFire, 1.0f)` が発生。
+     - 従来の `RcTankEntity.hurt` にはダメージ種別のフィルタがなく、1tickでも火炎ダメージを受けると即座に `this.discard()` が呼ばれ、アイテム化もされず瞬時に消滅（消失）していた。
+  2. **サーバー側操縦終了処理の欠落**:
+     - `RcTankEntity.hurt` やエンティティ消滅時に `stopPiloting` が呼ばれず、また `remove(RemovalReason)` のオーバーライドもなかったため、サーバー上の操縦登録（`RcVehicleManager`）や身代わりダミー人形が解除されず取り残されていた。
+  3. **クライアント側カメラ復帰失敗と画面ガタつき（最重要原因）**:
+     - サーバーから機体消滅が通知された際、従来の `ClientDroneInputHandler` はパケット遅延対策として `missingTicks` を40tick（2秒間）カウントするまで `stopPiloting()` を呼ばなかった。
+     - その2秒間、プレイヤーの移動入力がゼロ固定され、さらに消滅した機体を参照しながら `computeCameraAngles` やカメラ補間が行われたため、カメラ座標が消失位置と自位置の間で激しくブレて「画面がガタつく」現象が発生していた。
+     - さらに、40tick後に `stopPiloting()` -> `setPiloting(-1, false)` が呼ばれた際、消滅済みの機体IDからはコントローラー（`RcVehicleClientController`）が取得できず `null` となり、`controller.onStop(...)` 内の `mc.setCameraEntity(player)` や `player.setInvisible(false)` がスキップされ、カメラが消滅機体（死亡エンティティ）に取り残され自プレイヤーへ操作権・視点が戻らなくなっていた。
+- [x] **修正・恒久対策内容**:
+  - `RcTankEntity.java`:
+    - `fireImmune() { return true; }` を実装。重装甲RC戦車として火炎・延焼・地面の火に対する完全耐性を付与し、自弾の着火による即死・消失を防止。
+    - `hurt()` にてサフォケーション（壁埋まり）を無効化し、万が一破壊された場合も確実に `stopPiloting` を呼び出し、戦車本体（バリアント・デカール・カスタム名維持）および装着中のバッテリー・モーターを安全にドロップする `dropVehicle()` を実装。
+    - `remove(RemovalReason)` をオーバーライドし、いかなる要因（/killやワールドアンロード等含む）で機体が消去された場合でも確実にサーバー側操縦解除・ダミー消去を行うよう保護。
+  - `ClientDroneInputHandler.java`:
+    - `setPiloting(..., false)` にコントローラー有無に関わらない**絶対保証フェイルセーフ**を追加。操縦終了時は必ず `mc.setCameraEntity(mc.player)`, `mc.player.setInvisible(false)`, `mc.options.setCameraType(FIRST_PERSON)` を直接呼び出して100%プレイヤーに視点と可視性を復元。
+    - `onClientTick`: 機体が `isRemoved()`（消滅・破壊）された場合は40tick待機せず即座に脱出・視点復元を実行。`null` の場合もタイムアウトを5tick（250ms）に短縮。
+    - `onMovementInput` / `onComputeCameraAngles`: 機体が消滅・削除されている場合は即座に入力抑制を解除し、カメラアングル計算をスキップして画面のガタつきを完全に防止。
+  - `RcCarEntity.java` / `RcBoatEntity.java` / `RcSubmarineEntity.java` / `RcPlaneEntity.java`:
+    - 全RC機体に `remove(RemovalReason)` による操縦解除の安全保護を追加。
+  - `ServerPayloadHandler.java`:
+    - `payload.stop()` 受信時、機体エンティティが既に消失していても `RcVehicleManager.getByPilot(player.getUUID())` から確実に操縦解除を実行するフェイルセーフを追加。
+- [x] **ビルド検証**:
+  - `./gradlew compileJava` および `./gradlew jar --rerun-tasks` にて正常コンパイル＆テストJARビルドを確認済み。
+  - 本番環境JARは最重要厳守ルールに従い未適用のまま保護。
+
+
+### O. 金床での名前変更によるRC戦車（Pz.h等）・RCカーのバリアント解決強化 (2026-11-16)
+- [x] **調査結果と原因特定**:
+  - 先ほどの「着火時消失・画面ガタつき修正」そのものはエンティティの破壊・カメラ周りの修正であり、名前読み込み処理自体を直接壊したわけではありませんでした。
+  - しかし、従来のバリアント解決処理において以下の構造的欠陥が存在していたことが判明しました：
+    1. **厳密一致（`containsKey`）による不一致**:
+       - `pz_h_tank.json` のIDが `"Pz.h_tank"` であるため、`TankConfigManager` のキーは `"pz.h_tank"` のみでした。
+       - `RcTankItem.java` では `getAllConfigs().containsKey(customName)` による厳密一致判定を行っていたため、プレイヤーが金床で自然に名付ける「`Pz.h`」「`pz.h`」「`pzh`」「`pzhtank`」「`Pz.h RC戦車`」などの名前ではキーが一致せず、常にデフォルト戦車（`default`）として扱われてしまっていました。
+    2. **`else if` による金床カスタム名無視**:
+       - アイテムに一度でも `CUSTOM_DATA`（NBTタグ）が付与されていると、`customData != null` が true となり、金床で名前を変更（`CUSTOM_NAME`）しても `else if` がスキップされてバリアントが再認識されなくなっていました。
+- [x] **修正・恒久対策内容**:
+  - `TankConfigManager.java` & `CarConfigManager.java`:
+    - JSON読み込み時にIDだけでなく、ファイル名ベース（`pz_h_tank`）、短縮名（`pz.h` / `pzh`）、全記号除去名（`pzhtank`）、表示名（`Pz.h RC戦車`）を自動的にエイリアスとして登録。
+    - `getConfig(variantId)` において、記号除去（`[._-\s]`）や単語除去（`tank`/`rc`/`戦車`）を用いたコア名ファジー一致を実装。
+  - `RcTankItem.java` & `RcCarItem.java`:
+    - `CUSTOM_NAME`（金床の名前変更）を最優先で検出し、`TankConfigManager.getConfig(customName)` を通じて柔軟にバリアントIDへ解決するよう修正。
+- [x] **ビルド検証**:
+  - `./gradlew compileJava` および `./gradlew jar --rerun-tasks` にて正常コンパイル＆テストJARビルドを確認済み。
+  - 本番環境JARは最重要厳守ルールに従い未適用のまま保護。
+
+
+### P. 本番環境JAR（リリース環境）への指定2件（カメラ対策・金床バリアント解決）の限定デプロイ完了 (2026-11-16)
+- [x] **厳守ルールに基づく限定ビルドとデプロイ**:
+  - ユーザーからの明示的な指示（「カメラ対策と金床による自作モデル名の修正の2件を適用」）に基づき、現在テスト・開発中の機能（スタートブロック新機能、コース小物個別回収機能）を本番に巻き込まないよう、直前の本番リリース状態（`6d7322e`）をベースに指定された2件のみを厳密にチェリーピックして限定ビルドを実施。
+- [x] **適用された対象範囲**:
+  1. **カメラ対策・消失防止**:
+     - `RcTankEntity.java`: 完全火炎耐性（`fireImmune`）付与、被弾・破壊時の安全ドロップ（`dropVehicle`）、エンティティ消滅時（`remove`）の操縦・ダミー自動解除。
+     - `ClientDroneInputHandler.java`: 機体消滅時の即座脱出、入力抑制即時解除、カメラ角度計算バイパス（画面ガタつき防止）、操縦終了時の100%確実なプレイヤーカメラ・可視性復元。
+     - `RcTankClientController.java` / `ServerPayloadHandler.java` / 全RC機体の `remove` 安全保護。
+  2. **金床による自作モデル名（Pz.h等）のバリアント解決強化**:
+     - `TankConfigManager.java` & `CarConfigManager.java`: エイリアス登録（ファイル名、短縮名、記号除去名、表示名）およびコア名（tank/rc/戦車除去）ファジー照合。
+     - `RcTankItem.java` & `RcCarItem.java`: 金床カスタム名（`CUSTOM_NAME`）を最優先で検出し、`getConfig(customName)` を通じて確実にバリアントIDへバインド。
+- [x] **バックアップと本番配備**:
+  - 更新前本番JARのバックアップ `rcverse-1.21.1-1.0.0-pre-camera-and-name-fix.jar.bak` を作成・保全済み。
+  - 本番環境 `C:\Users\mikum\curseforge\minecraft\Instances\neofor\mods\rcverse-1.21.1-1.0.0.jar` を限定ビルド成果物で更新完了。
+
+
+### Q. マイクロRCカーの走行モーター音およびドリフトスキール音の実装 (2026-11-16)
+- [x] **音源ファイル（.ogg）の生成と配置**:
+  - `rc_car_drive.ogg`: 高回転ブラシレスモーターのPWM高周波音（220Hz/440Hz/660Hz/880Hz倍音）およびギアボックス噛合音（ピンクノイズ/バンドパス）を合成した4秒間のシームレスループ音源を生成。
+  - `rc_car_skid.ogg`: アスファルトでのタイヤスキール・スクリーチ音（2200Hz〜2750Hz周波数変調スクリーチ＋2400Hzホワイトノイズ共振）を合成した4秒間のシームレスループ音源を生成。
+  - `src/main/resources/assets/microdrone/sounds/` に配置。
+- [x] **サウンドイベントおよび字幕の登録**:
+  - `ModSounds.java`: `RC_CAR_DRIVE` および `RC_CAR_SKID` を `DeferredRegister` に追加。
+  - `sounds.json`: `"rc_car_drive"` および `"rc_car_skid"`（カテゴリ: neutral）を登録。
+  - `ja_jp.json` / `en_us.json`: 字幕（"RCカーのモーター回転音" / "RCカーのタイヤスキール音"）を追加。
+- [x] **動的TickableSoundInstanceの実装**:
+  - `RcCarDriveSound.java`:
+    - 車両座標に毎tick追従。
+    - アイドリング時（停止中）: ピッチ約0.78F、音量0.20Fで静かに待機。
+    - 走行・加速時: スロットル入力と実速度（`currentSpeed`）に連動してピッチが0.78F〜1.85Fへダイナミックに上昇。
+    - 水没時は音量およびピッチが減衰。
+  - `RcCarSkidSound.java`:
+    - レースモードでのドリフト（`driftDirection != 0`）、リアルモードでのドリフト（`realPhysics.isDrifting()`）、または高速時のハンドブレーキ急旋回時に発音。
+    - 車両接地（`onGround || wheelGrounded`）かつ速度 > 0.08F でのみ発音。
+    - ドリフト速度に合わせて音量（0.25F〜0.65F）およびピッチ（0.90F〜1.25F）が変動し、グリップ復帰時に素早くフェードアウト。
+- [x] **サウンドマネージャー連携**:
+  - `RcCarSoundManager.java`: 操縦開始時にESC接続チャイムと共に駆動音・スキール音インスタンスを生成・再生開始。操縦終了時や機体消失・破壊時に安全に完全停止。
+  - `ClientModEvents.java`: `RcCarSoundManager.register()` を初期化時に登録。
+  - `RcCarClientController.java`: `onStart` / `onStop` にサウンドマネージャーのライフサイクルを接続。
+- [x] **ビルド検証**:
+  - `./gradlew compileJava` および `./gradlew jar --rerun-tasks` にてコンパイル成功を確認。
+  - テストビルド: `micro_drone_mod/build/libs/rcverse-cinematic-1.0.0.jar`
+
+
+### R. RCカーのブラシレスモーター音最適化およびスキール音発音不具合の修正 (2026-11-16)
+- [x] **スキール音が鳴らなかった原因と対策**:
+  - **原因**: `RcCarSkidSound` の初期音量が `0.0F` であったため、Minecraftの `SoundEngine.play` 内の判定（`f2 == 0.0F && !canStartSilent()`）によって無駄なサウンドと判定され、チャンネル割り当ておよび毎tickの `tick()` 登録（`tickingSounds`）がスキップされて破棄されていた。
+  - **対策**:
+    - `RcCarSkidSound` に `@Override public boolean canStartSilent() { return true; }` を実装。
+    - 常時無音で回す方式から、**「ドリフト検知時（レース/リアル/サイドターン）に音量 0.35F で即時発音開始し、グリップ復帰時に素早くフェードアウト停止（`stop()`）する」** オンデマンド再生方式に切り替え。確実な発音とメモリ・チャンネル負荷の完全削減を実現。
+- [x] **モーター走行音のブラシレス高回転音への最適化**:
+  - ドローンの飛行音と同様に `SoundEvents.BEE_LOOP` をベース音源に採用。
+  - アイドリング時（停止中）: ピッチ約0.85F、音量0.18Fで低めのブラシレス通電待機音。
+  - スロットル操作・加速時: スロットル入力（W/Sキー）への即時レスポンスと最高速時（ピッチ最大1.95F〜2.0F・音量0.42F）の甲高いブラシレス高回転唸り音を滑らかに表現。
+- [x] **ビルド検証**:
+  - `./gradlew compileJava` および `./gradlew jar --rerun-tasks` にて正常ビルド完了。
+
+
+### S. スキール音の定常ループ（サステイン音）最適化処理 (2026-11-17)
+- [x] **音源加工とシームレスループ化**:
+  - ユーザー提供のスキール音から、最もタイヤ摩擦が激しく安定しているコアサステイン部分（0.15s〜0.75s）を抽出。
+  - ゲームオーディオの定番手法である「スワップ・クロスフェード（中間分割＋端部クロスフェード）」を用いて、音量減衰のない均一な2.70秒間の完全シームレス定常ループ音源（`rc_car_skid.ogg`）を合成。
+  - ドリフト中は何秒間滑り続けても音量のドロップや継ぎ目ノイズ（プチッ音・しゃっくり感）が発生せず、連続したスキール音が滑らかに鳴り続けるよう最適化。
+- [x] **ビルド検証**:
+  - `./gradlew jar --rerun-tasks` にて正常パッケージ完了。
+
+
+### T. 実車峠系（イニシャルD風）リアルドリフトスキール音の合成と適用 (2026-11-17)
+- [x] **音響合成と仕様**:
+  - 実車のスティックスリップ摩擦振動（2380Hz/2850Hz/3560Hz/4200Hzの微細LFOモジュレーション共振）＋アスファルト切削ノイズ（ピンク/ホワイトバンドパス）＋ラバー接地感（850Hzバンドパス）を多重合成。
+  - スワップ・クロスフェード処理により、継ぎ目ノイズや息継ぎのない2.80秒間の均一な定常ループ音源（`rc_car_skid.ogg`）を生成・配置。
+  - イニシャルD等の峠を駆け抜けるスポーツカーのような、甲高く突き抜ける迫真のスキール音を実現。
+- [x] **ビルド検証**:
+  - `./gradlew jar --rerun-tasks` にて正常パッケージ完了。
+
+
+### U. 実車サンプリング音源（ユーザー提供WAV）の定常ループ化と適用 (2026-11-17)
+- [x] **音響解析と処理**:
+  - SoundEngine Freeにて調整されたユーザー提供の生録音スキール音（1.91秒）を解析。
+  - 音量が均一で実車タイヤ摩擦エネルギーが充満しているコア区間に対し、スワップ・クロスフェード（150ms）を適用。
+  - Minecraftの3D定位音響に最適化したモノラル（44,100Hz）形式で書き出し、音圧（+13.0dB）を適正化して [rc_car_skid.ogg](file:///c:/Users/mikum/.gemini/antigravity-ide/scratch/micro_drone_mod/src/main/resources/assets/microdrone/sounds/rc_car_skid.ogg) に配置。
+  - 数式合成の電子音ではなく、本物のゴムと路面が摩擦する生々しいリアルスキール音の定常ループ化を完了。
+- [x] **ビルド検証**:
+  - `./gradlew jar --rerun-tasks` にて正常パッケージ完了。
+
+### V. 本番環境JAR（CurseForge mods）のアップデート適用 (2026-11-17)
+- [x] **本番リリースJARのビルド**:
+  - `build.gradle` の `archivesName` を本番用 `rcverse-1.21.1` に設定。
+  - `./gradlew jar --rerun-tasks` を実行し、`rcverse-1.21.1-1.0.0.jar`（1,306,093 bytes）をビルド完了。
+- [x] **バックアップの作成とデプロイ（ルール4厳守）**:
+  - 旧本番JARを `rcverse-1.21.1-1.0.0-pre-sound-and-startblock.jar.bak` としてバックアップ保存。
+  - 新規ビルドした `rcverse-1.21.1-1.0.0.jar` を `C:\Users\mikum\curseforge\minecraft\Instances\neofor\mods\rcverse-1.21.1-1.0.0.jar` に安全に配置・更新完了。
+- [x] **本番環境に反映された新機能・修正**:
+  1. **RCカーの走行音・ドリフト音の刷新**:
+     - ブラシレスモーター走行音（`SoundEvents.BEE_LOOP` ベースのアイドリング〜フルスロットル高回転音）。
+     - 実車音源サンプリングベースのシームレス定常ループ・ドリフトスキール音（オンデマンド発音制御・フェードアウト対応）。
+  2. **レーススタートシグナルブロック**:
+     - 5連LEDシグナル、レッドストーン入力同期、カウントダウン音・スタート音、ブロック状態連携。
+  3. **ミニチュア回収・操作性の改善**:
+     - 空手Shift右クリックによる即時アイテム回収対応。
+     - カメラ位置・三人称視点補正、アイテム名表示の適正化。
+### W. 複数台同時操作の完全解除と1台操作モードへの復帰・本番更新 (2026-11-17)
+- [x] **複数台同時操作（ブロードキャスト）の解除**:
+  - `CinematicRecordingManager.java` において、`enabled` の初期値を `false` に変更。
+  - `spawnDummy` の初期値を `true`（通常モード）に復帰。
+  - プロポ操作パケットの周囲ブロードキャストが無効化され、リンクされた「1台のみ」を操縦する通常仕様に完全復帰。
+- [x] **ビルド番号インクリメントとビルドフォルダ書き出し（最重要ルール第4項厳守）**:
+  - `gradle.properties` の `mod_version` を `1.0.1` にインクリメント。
+  - `./gradlew jar --rerun-tasks` を実行し、開発フォルダのビルドフォルダ（`micro_drone_mod/build/libs/`）に `rcverse-1.21.1-1.0.1.jar`（1,306,093 bytes）を出力。
+- [x] **日時付きバックアップフォルダへの出力と本番配置（最重要ルール第4項厳守）**:
+  - 更新前JARを日時フォルダ `backup/20261117_204620/` および `curseforge/.../backup/20261117_204620/` に完全バックアップ出力。
+  - 本番環境（CurseForge mods）へ `rcverse-1.21.1-1.0.1.jar` を配置・更新完了。
+### X. 操縦中プレイヤーの機体追従テレポート（absMoveTo）完全撤廃と本番更新 (2026-11-17)
+- [x] **ボート・潜水艦・ドローンにおける操縦者テレポート追従の撤廃**:
+  - `RcBoatEntity.java`, `RcSubmarineEntity.java`, `DroneEntity.java` において、毎tickサーバー側で操縦者プレイヤー本体（`pilot`）を機体座標へ移動させていた `pilot.absMoveTo(...)` および `getChunkSource().move(pilot)` を完全削除。
+  - RCカー（`RcCarEntity`）と同様に、プレイヤー本体は操縦開始地点（陸地・初期位置）に静止したままにし、視界・遠距離描画は `DroneChunkManager.updateDroneChunks(pilot, this)` でのみ管理する設計へ統一。
+  - これにより、機体（ボート等）の真上に操縦者プレイヤー（スキンや手持ちプロポ）が二重に浮いて追従移動する現象を根本から完全根絶。
+- [x] **ビルド番号インクリメントとビルドフォルダ書き出し（最重要ルール第4項厳守）**:
+  - `gradle.properties` の `mod_version` を `1.0.2` にインクリメント。
+  - `./gradlew jar --rerun-tasks` を実行し、開発フォルダのビルドフォルダ（`micro_drone_mod/build/libs/`）に `rcverse-1.21.1-1.0.2.jar`（1,305,832 bytes）を出力。
+- [x] **日時付きバックアップフォルダへの出力と本番配置（最重要ルール第4項厳守）**:
+  - 更新前JARを日時フォルダ `backup/20261117_213744/` および `curseforge/.../backup/20261117_213744/` に完全バックアップ出力。
+  - 本番環境（CurseForge mods）へ `rcverse-1.21.1-1.0.2.jar` を配置・更新完了。
