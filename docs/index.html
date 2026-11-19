@@ -437,6 +437,23 @@
       <p class="section-desc">MODの再ビルド不要！リソースパックと設定JSONだけで、自分好みの自作マシンを実ゲーム内へ自由に追加できます。</p>
     </div>
 
+    <!-- スターターキット ダウンロードバナー -->
+    <div style="background: linear-gradient(135deg, rgba(14, 165, 233, 0.15), rgba(99, 102, 241, 0.15)); border: 2px solid var(--accent-cyan); border-radius: 12px; padding: 24px; margin-bottom: 24px; text-align: center; box-shadow: 0 8px 24px rgba(14, 165, 233, 0.15);">
+      <h3 style="color: #fff; font-size: 1.3rem; margin-bottom: 8px;">
+        🏎️ RCカー 自作モデル作成スターターキット 配布中！
+      </h3>
+      <p style="color: var(--text-muted); font-size: 0.95rem; max-width: 720px; margin: 0 auto 18px; line-height: 1.6;">
+        Blockbenchですぐに開いて改造できる3Dモデル（<code>.geo.json</code>）、色分けUVテクスチャ（<code>.png</code>）、走行性能設定ファイル（<code>.json</code>）、リソースパック定義（<code>pack.mcmeta</code>）が一式セットになっています。
+      </p>
+      <a href="downloads/rcverse_custom_car_template.zip" download class="btn-hero" style="font-size: 1.05rem; padding: 12px 32px; display: inline-flex; align-items: center; gap: 8px;">
+        <span>📥</span>
+        <span>RCカー テンプレートキット (.zip) をダウンロード</span>
+      </a>
+      <div style="margin-top: 12px; font-size: 0.85rem; color: var(--text-muted);">
+        Minecraft 1.21.1 / GeckoLib 4 対応 (ファイルサイズ: 約 7KB)
+      </div>
+    </div>
+
     <div class="guide-card">
       <h3 style="color: var(--accent-cyan); font-size: 1.2rem; margin-bottom: 8px;">📁 実プレイ環境のファイル・フォルダ階層図</h3>
       <p style="color: var(--text-muted); font-size: 0.95rem;">
@@ -566,24 +583,24 @@
           導入した自作マシンは、以下のいずれかの方法でゲーム内に出現させることができます。
         </p>
         
+        <div style="margin-top: 14px; background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 8px; padding: 12px;">
+          <h4 style="font-size: 0.95rem; color: #fff; margin-bottom: 4px;">✨ ① 金床（Anvil）で名前を変更（最も手軽！）</h4>
+          <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.5;">
+            通常のRCカーを金床に入れ、名前を <code>sample_custom_car</code> や設定した <code>id</code> / 表示名に変更して地面に置くだけで、自作モデル＆性能に一瞬で切り替わります！
+          </p>
+        </div>
+
         <div style="margin-top: 14px;">
-          <h4 style="font-size: 0.95rem; color: #fff; margin-bottom: 4px;">① デカール作業台で見た目変更</h4>
+          <h4 style="font-size: 0.95rem; color: #fff; margin-bottom: 4px;">② デカール作業台で見た目変更</h4>
           <p style="color: var(--text-muted); font-size: 0.85rem;">
             デカール作業台に通常RCカーをセットすると、configに登録された自作モデルがリストに現れ、ワンクリックで外見・性能を切り替えられます。
           </p>
         </div>
 
         <div style="margin-top: 14px;">
-          <h4 style="font-size: 0.95rem; color: #fff; margin-bottom: 4px;">② コマンドで直接スポーン</h4>
+          <h4 style="font-size: 0.95rem; color: #fff; margin-bottom: 4px;">③ コマンドで直接スポーン</h4>
           <div class="code-box" style="font-size: 0.8rem; padding: 8px 12px;">
-            <span>/summon microdrone:rc_car ~ ~ ~ {VariantId:"my_machine"}</span>
-          </div>
-        </div>
-
-        <div style="margin-top: 14px;">
-          <h4 style="font-size: 0.95rem; color: #fff; margin-bottom: 4px;">③ アイテムとして入手</h4>
-          <div class="code-box" style="font-size: 0.8rem; padding: 8px 12px;">
-            <span>/give @p microdrone:rc_car{BlockEntityTag:{Variant:"my_machine"}}</span>
+            <span>/summon microdrone:rc_car ~ ~ ~ {Variant:"sample_custom_car"}</span>
           </div>
         </div>
       </div>
@@ -594,6 +611,13 @@
       <h3 style="color: var(--accent-cyan); font-size: 1.2rem; margin-bottom: 14px; text-align: center;">
         💡 自作・バリエーションマシンの実機登場例
       </h3>
+      <!-- ショールーム全体画像バナー -->
+      <div style="margin-bottom: 20px; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 8px 24px rgba(0,0,0,0.4);">
+        <img src="images/screenshots/showroom_all_vehicles.jpg" alt="RCVERSE 全マシン・アイテム ショールーム" style="width: 100%; height: auto; display: block;">
+        <div style="padding: 10px 16px; background: rgba(15, 23, 42, 0.9); font-size: 0.88rem; color: var(--text-muted); text-align: center;">
+          🏎️ <strong>RCVERSE 全マシン・アイテム ショールーム</strong>（手前: ドローン、AE86、戦車、モンスタートラック、飛行機 / 奥: 各種アイテムフレーム）
+        </div>
+      </div>
       <div class="grid-3">
         <div class="card" style="padding: 20px;">
           <div class="card-thumbnail" style="margin: -20px -20px 14px -20px; height: 180px;">

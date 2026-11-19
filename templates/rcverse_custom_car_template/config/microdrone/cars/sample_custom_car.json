@@ -1,0 +1,18 @@
+{
+  "id": "sample_custom_car",
+  "displayName": "カスタム RCカー",
+  "model": "microdrone:geo/sample_custom_car.geo.json",
+  "texture": "microdrone:textures/entity/sample_custom_car.png",
+  "animation": "microdrone:animations/rc_car.animation.json",
+  "properties": {
+    "maxSpeedMultiplier": 1.15,
+    "accelMultiplier": 1.2,
+    "turnSpeedMultiplier": 1.05,
+    "gripMultiplier": 1.1,
+    "scale": 1.0,
+    "invertSteer": false,
+    "rollMultiplier": 0.5,
+    "maxRollAngle": 35.0,
+    "retractableAngle": 0.0
+  }
+}

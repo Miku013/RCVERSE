@@ -350,6 +350,31 @@
       </p>
     </div>
 
+    <!-- Starter Kit Download Banner -->
+    <div style="background: linear-gradient(135deg, rgba(14, 165, 233, 0.15), rgba(99, 102, 241, 0.15)); border: 2px solid var(--accent-cyan); border-radius: 12px; padding: 24px; margin-bottom: 24px; text-align: center; box-shadow: 0 8px 24px rgba(14, 165, 233, 0.15);">
+      <h3 style="color: #fff; font-size: 1.3rem; margin-bottom: 8px;">
+        🏎️ RC Car Custom Model Starter Template Kit Available!
+      </h3>
+      <p style="color: var(--text-muted); font-size: 0.95rem; max-width: 720px; margin: 0 auto 18px; line-height: 1.6;">
+        Includes a Blockbench-ready 3D model (<code>.geo.json</code>), color-coded UV texture (<code>.png</code>), vehicle physics config (<code>.json</code>), and ready-to-use resource pack files (<code>pack.mcmeta</code>).
+      </p>
+      <a href="downloads/rcverse_custom_car_template.zip" download class="btn-hero" style="font-size: 1.05rem; padding: 12px 32px; display: inline-flex; align-items: center; gap: 8px;">
+        <span>📥</span>
+        <span>Download RC Car Starter Template Kit (.zip)</span>
+      </a>
+      <div style="margin-top: 12px; font-size: 0.85rem; color: var(--text-muted);">
+        Minecraft 1.21.1 / NeoForge / GeckoLib 4 Compatible (~7 KB)
+      </div>
+    </div>
+
+    <!-- Vehicle Showroom Screenshot Banner -->
+    <div style="margin-bottom: 24px; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 8px 24px rgba(0,0,0,0.4);">
+      <img src="images/screenshots/showroom_all_vehicles.jpg" alt="RCVERSE Complete Vehicle & Item Showroom" style="width: 100%; height: auto; display: block;">
+      <div style="padding: 10px 16px; background: rgba(15, 23, 42, 0.9); font-size: 0.88rem; color: var(--text-muted); text-align: center;">
+        🏎️ <strong>RCVERSE Complete Vehicle & Item Showroom</strong> (Front: Drone, AE86, Tank, Monster Truck, Airplane / Back: In-Game Item Frames)
+      </div>
+    </div>
+
     <div class="grid-2" style="align-items: stretch; margin-bottom: 30px;">
       <!-- Guide Step 1 -->
       <div class="feature-box" style="display: flex; flex-direction: column; justify-content: space-between;">
@@ -400,6 +425,33 @@
         <a href="images/blockbench_model_guide.png" target="_blank" title="Click to view full size">
           <img src="images/blockbench_model_guide.png" alt="Blockbench Modeling Blueprint Example" style="width: 100%; height: auto; display: block; transition: opacity 0.2s;">
         </a>
+      </div>
+    </div>
+
+    <!-- Step 4: In-Game Spawning Methods -->
+    <div class="feature-box" style="margin-top: 20px; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px; padding: 25px;">
+      <span style="font-size: 0.85rem; font-weight: 700; color: var(--accent-cyan); letter-spacing: 0.1em; text-transform: uppercase;">Step 4: Spawning In-Game</span>
+      <h3 class="feature-title" style="margin-top: 6px; margin-bottom: 15px;">How to Spawn or Drive Your Custom Car</h3>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;">
+        <div style="background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 8px; padding: 14px;">
+          <h4 style="color: #fff; font-size: 0.95rem; margin-bottom: 6px;">✨ Method 1: Anvil Renaming (Easiest!)</h4>
+          <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.5;">
+            Place a standard RC Car in an Anvil and rename it to your vehicle's <code>id</code> (e.g. <code>sample_custom_car</code>). When deployed, it transforms immediately into your custom model!
+          </p>
+        </div>
+        <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 14px;">
+          <h4 style="color: #fff; font-size: 0.95rem; margin-bottom: 6px;">🛠️ Method 2: Livery Workbench</h4>
+          <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.5;">
+            Place an RC Car in the Livery Workbench. Custom configs registered in <code>config/microdrone/cars/</code> will appear in the variant list for instant 1-click preview and selection.
+          </p>
+        </div>
+        <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 14px;">
+          <h4 style="color: #fff; font-size: 0.95rem; margin-bottom: 6px;">⚡ Method 3: Summon Command</h4>
+          <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.5;">
+            Directly spawn via chat command:<br>
+            <code>/summon microdrone:rc_car ~ ~ ~ {Variant:"sample_custom_car"}</code>
+          </p>
+        </div>
       </div>
     </div>
   </section>
