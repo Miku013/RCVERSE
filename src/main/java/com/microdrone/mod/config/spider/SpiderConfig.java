@@ -20,7 +20,9 @@ public class SpiderConfig {
 
     public static class SpiderProperties {
         public float scale = 0.35f;          // 描画およびレイキャスト判定のスケール倍率 (デフォルト: 0.35)
-        public float yOffset = 0.0f;          // 描画高さオフセット (モデル側で高さを修正いただいたためデフォルト 0.0m)
+        public float yOffset = 0.0f;          // 描画高さオフセット (モデル側修正に追従)
+        public float rideHeight = 0.16f;      // 地面接触時の機体持ち上げ車高クリアランス (m, デフォルト: 0.16)
+        public float springStrength = 0.85f;  // 地面反発・スプリング復元係数 (デフォルト: 0.85)
         public float maxTiltAngle = 30.0f;    // 地形適応時の最大傾斜角（度、デフォルト: 30度）
         public float stepHeight = 0.35f;     // ステップ時に足を持ち上げる高さ (m)
         public float walkSpeedMultiplier = 1.0f; // 歩行速度倍率

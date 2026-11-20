@@ -82,10 +82,12 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
     private static final EntityDataAccessor<Integer> DATA_RECOIL_TICKS = SynchedEntityData
             .defineId(RcSpiderEntity.class, EntityDataSerializers.INT);
 
-    // 車体ピッチ・ロール角
+    // 車体ピッチ・ロール角 & 車高リフト
     private static final EntityDataAccessor<Float> DATA_PITCH_ANGLE = SynchedEntityData.defineId(RcSpiderEntity.class,
             EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> DATA_ROLL_ANGLE = SynchedEntityData.defineId(RcSpiderEntity.class,
+            EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_BODY_LIFT = SynchedEntityData.defineId(RcSpiderEntity.class,
             EntityDataSerializers.FLOAT);
 
     // 機体バリアントID（外部コンフィグ用）
@@ -109,6 +111,8 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
     public float prevPitchAngle = 0.0f;
     public float rollAngle = 0.0f;
     public float prevRollAngle = 0.0f;
+    public float bodyLiftY = 0.0f;
+    public float prevBodyLiftY = 0.0f;
 
     // 歩行サイクルアニメーション用
     public float walkTimer = 0.0f;
@@ -144,6 +148,7 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
         public boolean isStepping = false;
         public float stepProgress = 1.0f; // 0.0f -> 1.0f
         public SpiderLegIkSolver.GaitState gaitState = SpiderLegIkSolver.GaitState.STANCE; // 歩行フェーズ状態（STANCE: 接地, SWING: 遊脚）
+        public boolean isWallContact = false; // 壁・障害物側面への接触判定（trueなら柔軟屈曲、falseならスプリング反発）
 
         // モデルレンダラーへの受け渡し用（胴体基準のローカル相対変位・IK用）
         public float animLiftY = 0.0f;
@@ -192,6 +197,7 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
         builder.define(DATA_RECOIL_TICKS, 0);
         builder.define(DATA_PITCH_ANGLE, 0.0f);
         builder.define(DATA_ROLL_ANGLE, 0.0f);
+        builder.define(DATA_BODY_LIFT, 0.0f);
         builder.define(DATA_VARIANT_ID, "default");
     }
 
@@ -215,11 +221,13 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
         this.prevPitchAngle = this.pitchAngle;
         this.prevRollAngle = this.rollAngle;
         this.prevTurretYaw = this.clientTurretYaw;
+        this.prevBodyLiftY = this.bodyLiftY;
 
         if (this.level().isClientSide) {
             this.clientTurretYaw = Mth.rotLerp(0.3f, this.clientTurretYaw, this.entityData.get(DATA_TURRET_YAW));
             this.pitchAngle = Mth.rotLerp(0.2f, this.pitchAngle, this.entityData.get(DATA_PITCH_ANGLE));
             this.rollAngle = Mth.rotLerp(0.2f, this.rollAngle, this.entityData.get(DATA_ROLL_ANGLE));
+            this.bodyLiftY = Mth.lerp(0.2f, this.bodyLiftY, this.entityData.get(DATA_BODY_LIFT));
         }
 
         // リコイルタイマー減衰
@@ -355,10 +363,12 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
             Vec3 idealWorldPos = new Vec3(bodyPos.x + rotatedOffsetX + leadX, bodyPos.y,
                     bodyPos.z + rotatedOffsetZ + leadZ);
 
-            // 多方向レイキャストによる接地位置検出（直下 + 進行方向段差エッジ検出）
+            // 多方向レイキャストによる接地位置検出（直下 + 進行方向段差エッジ検出、地面 vs 壁面識別）
             Vec3 moveDir = new Vec3(rotatedOffsetX + leadX, 0, rotatedOffsetZ + leadZ);
-            Vec3 targetGroundPos = SpiderLegIkSolver.sampleGroundMultiRay(
+            SpiderLegIkSolver.GroundHitResult hitResult = SpiderLegIkSolver.sampleGroundMultiRay(
                     this.level(), idealWorldPos, bodyPos, moveDir, scale, this);
+            Vec3 targetGroundPos = hitResult.pos;
+            leg.isWallContact = hitResult.isWall;
 
             // 初回初期化
             if (leg.currentWorldFootPos == Vec3.ZERO) {
@@ -466,9 +476,22 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
         this.pitchAngle = Mth.rotLerp(0.12f, this.pitchAngle, targetPitch);
         this.rollAngle = Mth.rotLerp(0.12f, this.rollAngle, targetRoll);
 
+        // 地面接触脚のスプリング反発力による機体の持ち上げ車高（ライドハイト）
+        float rideHeightTarget = (config != null) ? config.properties.rideHeight : 0.16f;
+        int groundContactCount = 0;
+        for (LegState l : legs) {
+            if (!l.isWallContact) {
+                groundContactCount++;
+            }
+        }
+        // 地面に足がついている比率に応じてスプリング反発力で胴体を持ち上げる（最大 rideHeightTarget）
+        float targetBodyLift = (float) ((groundContactCount / (double) LEG_COUNT) * rideHeightTarget);
+        this.bodyLiftY = Mth.lerp(0.15f, this.bodyLiftY, targetBodyLift);
+
         if (!this.level().isClientSide) {
             this.entityData.set(DATA_PITCH_ANGLE, this.pitchAngle);
             this.entityData.set(DATA_ROLL_ANGLE, this.rollAngle);
+            this.entityData.set(DATA_BODY_LIFT, this.bodyLiftY);
         }
     }
 
