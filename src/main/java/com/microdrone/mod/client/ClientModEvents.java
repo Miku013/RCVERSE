@@ -122,6 +122,7 @@ public class ClientModEvents {
     private static void registerReloadListeners(RegisterClientReloadListenersEvent event) {
         event.registerReloadListener((ResourceManagerReloadListener) resourceManager -> {
             CarConfigManager.loadConfigs();
+            com.microdrone.mod.config.spider.SpiderConfigManager.loadConfigs();
         });
     }
 

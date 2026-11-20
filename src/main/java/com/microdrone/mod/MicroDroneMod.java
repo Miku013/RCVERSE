@@ -38,6 +38,7 @@ public class MicroDroneMod {
         com.microdrone.mod.config.plane.PlaneConfigManager.init();
         com.microdrone.mod.config.boat.BoatConfigManager.init();
         com.microdrone.mod.config.submarine.SubmarineConfigManager.init();
+        com.microdrone.mod.config.spider.SpiderConfigManager.init();
 
         if (FMLEnvironment.dist.isClient()) {
             ClientModEvents.register(modEventBus);

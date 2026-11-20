@@ -87,6 +87,10 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
     private static final EntityDataAccessor<Float> DATA_ROLL_ANGLE = SynchedEntityData.defineId(RcSpiderEntity.class,
             EntityDataSerializers.FLOAT);
 
+    // 機体バリアントID（外部コンフィグ用）
+    private static final EntityDataAccessor<String> DATA_VARIANT_ID = SynchedEntityData.defineId(RcSpiderEntity.class,
+            EntityDataSerializers.STRING);
+
     // 操縦者UUID
     private UUID pilotUUID = null;
 
@@ -185,6 +189,20 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
         builder.define(DATA_RECOIL_TICKS, 0);
         builder.define(DATA_PITCH_ANGLE, 0.0f);
         builder.define(DATA_ROLL_ANGLE, 0.0f);
+        builder.define(DATA_VARIANT_ID, "default");
+    }
+
+    public String getVariantId() {
+        return this.entityData.get(DATA_VARIANT_ID);
+    }
+
+    public void setVariantId(String variantId) {
+        this.entityData.set(DATA_VARIANT_ID, variantId != null ? variantId : "default");
+    }
+
+    public float getConfigScale() {
+        com.microdrone.mod.config.spider.SpiderConfig config = com.microdrone.mod.config.spider.SpiderConfigManager.getConfig(getVariantId());
+        return config != null ? Math.max(0.05f, config.properties.scale) : 0.35f;
     }
 
     @Override
@@ -314,25 +332,29 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
             }
         }
 
+        float scale = getConfigScale();
+        com.microdrone.mod.config.spider.SpiderConfig config = com.microdrone.mod.config.spider.SpiderConfigManager.getConfig(getVariantId());
+        float stepHeight = config != null ? config.properties.stepHeight : 0.35f;
+
         for (int i = 0; i < LEG_COUNT; i++) {
             LegState leg = legs[i];
 
-            // 胴体座標から理想のデフォルト足先位置をワールド座標系に変換
-            Vec3 defaultOffset = leg.localFootDefault;
+            // 胴体座標から理想のデフォルト足先位置をワールド座標系に変換（コンフィグscaleと完全一致）
+            Vec3 defaultOffset = leg.localFootDefault.scale(scale);
             double rotatedOffsetX = defaultOffset.x * Mth.cos(yawRad) - defaultOffset.z * Mth.sin(yawRad);
             double rotatedOffsetZ = defaultOffset.x * Mth.sin(yawRad) + defaultOffset.z * Mth.cos(yawRad);
 
-            // 移動先予測（移動方向へ少し先出し）
+            // 移動先予測（移動方向へ少し先出し、scale連動）
             Vec3 vel = this.getDeltaMovement();
-            double leadX = vel.x * 4.0;
-            double leadZ = vel.z * 4.0;
+            double leadX = vel.x * (4.0 * scale);
+            double leadZ = vel.z * (4.0 * scale);
 
             Vec3 idealWorldPos = new Vec3(bodyPos.x + rotatedOffsetX + leadX, bodyPos.y,
                     bodyPos.z + rotatedOffsetZ + leadZ);
 
-            // 地面への下向きレイキャスト
-            Vec3 rayStart = new Vec3(idealWorldPos.x, bodyPos.y + 1.2, idealWorldPos.z);
-            Vec3 rayEnd = new Vec3(idealWorldPos.x, bodyPos.y - 1.5, idealWorldPos.z);
+            // 地面への下向きレイキャスト（scale連動）
+            Vec3 rayStart = new Vec3(idealWorldPos.x, bodyPos.y + (1.0 * scale), idealWorldPos.z);
+            Vec3 rayEnd = new Vec3(idealWorldPos.x, bodyPos.y - (1.5 * scale), idealWorldPos.z);
             BlockHitResult hit = this.level()
                     .clip(new ClipContext(rayStart, rayEnd, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, this));
 
@@ -345,9 +367,10 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
                 leg.targetWorldFootPos = targetGroundPos;
             }
 
-            // ステップ判定: 自分のグループの番で、目標位置から離れたら踏み出す
+            // ステップ判定: 自分のグループの番で、目標位置から離れたら踏み出す (scale連動)
             double distToTarget = leg.currentWorldFootPos.distanceTo(targetGroundPos);
-            if (!leg.isStepping && leg.group == activeStepGroup && distToTarget > 0.35 && isMoving) {
+            double stepThreshold = 0.35 * scale;
+            if (!leg.isStepping && leg.group == activeStepGroup && distToTarget > stepThreshold && isMoving) {
                 leg.isStepping = true;
                 leg.stepProgress = 0.0f;
                 leg.stepStartWorldPos = leg.currentWorldFootPos;
@@ -368,9 +391,9 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
                                 leg.currentWorldFootPos.y + 0.05, leg.currentWorldFootPos.z, 0, 0.02, 0);
                     }
                 } else {
-                    // 放物線状に持ち上げて着地
+                    // 放物線状に持ち上げて着地 (scale連動)
                     Vec3 horizLerp = leg.stepStartWorldPos.lerp(leg.targetWorldFootPos, leg.stepProgress);
-                    double liftHeight = Math.sin(leg.stepProgress * Math.PI) * 0.35; // 35cm 持ち上げる
+                    double liftHeight = Math.sin(leg.stepProgress * Math.PI) * (stepHeight * scale);
                     leg.currentWorldFootPos = new Vec3(horizLerp.x, horizLerp.y + liftHeight, horizLerp.z);
                 }
             }
@@ -626,7 +649,19 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
         if (!this.level().isClientSide && !this.isRemoved()) {
             this.removeBattery(player);
             this.removeMotor(player);
-            this.spawnAtLocation(new ItemStack(ModItems.RC_SPIDER_ITEM.get()));
+            ItemStack dropStack = new ItemStack(ModItems.RC_SPIDER_ITEM.get());
+            if (!"default".equalsIgnoreCase(getVariantId())) {
+                net.minecraft.world.item.component.CustomData.update(
+                        net.minecraft.core.component.DataComponents.CUSTOM_DATA,
+                        dropStack,
+                        tag -> tag.putString("Variant", getVariantId())
+                );
+                var config = com.microdrone.mod.config.spider.SpiderConfigManager.getConfig(getVariantId());
+                if (config != null && config.displayName != null) {
+                    dropStack.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal(config.displayName));
+                }
+            }
+            this.spawnAtLocation(dropStack);
             this.discard();
         }
     }
@@ -683,6 +718,9 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
 
     @Override
     protected void readAdditionalSaveData(CompoundTag compound) {
+        if (compound.contains("VariantId", 8)) {
+            setVariantId(compound.getString("VariantId"));
+        }
         this.entityData.set(DATA_HAS_BATTERY, compound.getBoolean("HasBattery"));
         this.entityData.set(DATA_BATTERY_REMAINING, compound.getInt("BatteryRemaining"));
         this.entityData.set(DATA_BATTERY_MAX, compound.getInt("BatteryMax"));
@@ -699,6 +737,7 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
 
     @Override
     protected void addAdditionalSaveData(CompoundTag compound) {
+        compound.putString("VariantId", getVariantId());
         compound.putBoolean("HasBattery", this.entityData.get(DATA_HAS_BATTERY));
         compound.putInt("BatteryRemaining", this.entityData.get(DATA_BATTERY_REMAINING));
         compound.putInt("BatteryMax", this.entityData.get(DATA_BATTERY_MAX));
