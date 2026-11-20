@@ -491,35 +491,81 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
     }
 
     @Override
+    public boolean isPickable() {
+        return !this.isRemoved();
+    }
+
+    @Override
+    public boolean isAttackable() {
+        return true;
+    }
+
+    @Override
     public InteractionResult interact(Player player, InteractionHand hand) {
-        if (this.level().isClientSide) return InteractionResult.SUCCESS;
+        if (hand != InteractionHand.MAIN_HAND) {
+            return InteractionResult.PASS;
+        }
+        if (this.level().isClientSide) {
+            return InteractionResult.SUCCESS;
+        }
 
         ItemStack held = player.getItemInHand(hand);
 
-        if (player.isShiftKeyDown()) {
+        // 1. スニーク右クリック: 機体回収
+        if (player.isShiftKeyDown() && !isPiloted()) {
+            dropVehicle(player);
+            this.level().playSound(null, blockPosition(), SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 0.8f, 1.2f);
+            return InteractionResult.SUCCESS;
+        }
+
+        // 2. バッテリー装着
+        if (held.getItem() instanceof DroneBatteryItem batteryItem) {
             if (this.entityData.get(DATA_HAS_BATTERY)) {
-                removeBattery(player);
-                return InteractionResult.SUCCESS;
-            } else if (!this.entityData.get(DATA_INSTALLED_MOTOR).isEmpty()) {
-                removeMotor(player);
+                player.sendSystemMessage(Component.translatable("message.microdrone.battery_already_installed"));
+                return InteractionResult.CONSUME;
+            } else {
+                if (installBattery(held, player)) {
+                    ItemStack installed = this.entityData.get(DATA_INSTALLED_BATTERY);
+                    player.sendSystemMessage(Component.translatable("message.microdrone.battery_installed",
+                            batteryItem.getRemainingBlocks(installed), batteryItem.getMaxFlightBlocks()));
+                    return InteractionResult.SUCCESS;
+                }
+            }
+        }
+
+        // 3. モーター装着
+        if (held.getItem() instanceof DroneMotorItem motorItem) {
+            if (installMotor(held, player)) {
+                player.sendSystemMessage(Component.translatable("message.microdrone.motor_installed", motorItem.getTier()));
                 return InteractionResult.SUCCESS;
             }
         }
 
-        if (held.getItem() instanceof DroneBatteryItem) {
-            if (installBattery(held, player)) return InteractionResult.SUCCESS;
+        // 4. 手ぶら右クリック: バッテリー取り出し
+        if (held.isEmpty() && this.entityData.get(DATA_HAS_BATTERY)) {
+            removeBattery(player);
+            player.sendSystemMessage(Component.translatable("message.microdrone.battery_removed"));
+            return InteractionResult.SUCCESS;
         }
 
-        if (held.getItem() instanceof DroneMotorItem) {
-            if (installMotor(held, player)) return InteractionResult.SUCCESS;
-        }
-
-        // 送信機を持っていれば操縦開始
+        // 5. 送信機を持っていれば操縦開始
         if (held.getItem() == ModItems.DRONE_CONTROLLER.get() && player instanceof ServerPlayer sp) {
             if (startPiloting(sp)) return InteractionResult.SUCCESS;
         }
 
         return InteractionResult.PASS;
+    }
+
+    /**
+     * 機体をアイテムとして回収
+     */
+    public void dropVehicle(Player player) {
+        if (!this.level().isClientSide && !this.isRemoved()) {
+            this.removeBattery(player);
+            this.removeMotor(player);
+            this.spawnAtLocation(new ItemStack(ModItems.RC_SPIDER_ITEM.get()));
+            this.discard();
+        }
     }
 
     // === RcControllable 実装 ===
@@ -565,12 +611,7 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
     @Override
     public boolean hurt(DamageSource source, float amount) {
         if (this.isInvulnerableTo(source)) return false;
-        if (!this.level().isClientSide && !this.isRemoved()) {
-            this.removeBattery(null);
-            this.removeMotor(null);
-            this.spawnAtLocation(new ItemStack(ModItems.RC_SPIDER_ITEM.get()));
-            this.discard();
-        }
+        dropVehicle(null);
         return true;
     }
 
