@@ -40,12 +40,12 @@
 
 <hr>
 
-<h2>🏎️ Dynamic Drift Action & Real Physics</h2>
+<h2>🏁 Dynamic Spline Tracks & Stunt Ramps</h2>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Miku013/RCVERSE/main/docs/images/gifs/rc_drift.gif" width="80%" alt="RC Drift Action GIF">
+  <img src="https://raw.githubusercontent.com/Miku013/RCVERSE/main/docs/images/gifs/rc_jump.gif" width="80%" alt="RC Spline Track & Jump Action GIF">
   <br>
-  <em>Inertia-based counter-steer drifting, independent suspension travel, and live ground dust effects!</em>
+  <em>Smooth procedural asphalt tracks, high-speed banked corners, and big air stunt jump ramps!</em>
 </p>
 
 <p>
@@ -63,24 +63,20 @@
   <li>🚲 <strong>RC Bicycles</strong>: Dual-wheel gyroscopic balance and handlebar steering.</li>
 </ul>
 
-<hr>
-
-<h2>🌐 Complete Vehicle Lineup</h2>
-
 <p align="center">
   <img src="https://raw.githubusercontent.com/Miku013/RCVERSE/main/docs/images/screenshots/showroom_all_vehicles.jpg" width="90%" alt="RCVERSE All Vehicles">
   <br>
-  <em>All machines are ready to craft, upgrade, and race with friends!</em>
+  <em>Complete fleet ready to drive, tune, and race!</em>
 </p>
 
 <hr>
 
-<h2>🏁 Dynamic Stunt Loops & Spline Race Tracks</h2>
+<h2>💥 Explosive Combat & RC Tank Battles</h2>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Miku013/RCVERSE/main/docs/images/gifs/rc_stunt.gif" width="80%" alt="RC Stunt Loop GIF">
+  <img src="https://raw.githubusercontent.com/Miku013/RCVERSE/main/docs/images/gifs/rc_tank_cannon.gif" width="80%" alt="RC Tank Cannon Fire GIF">
   <br>
-  <em>Place Road Generation Markers to create procedural asphalt tracks, banked corners, and 360° vertical stunt loops!</em>
+  <em>Independent turret rotation, high-explosive cannon shots, and realistic recoil kickback!</em>
 </p>
 
 <hr>
