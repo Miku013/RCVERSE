@@ -239,7 +239,8 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
 
     /**
      * モデルスケール（拡大・縮小）に連動したヒットボックスサイズ算出
-     * モデルの中心（胴体・足先から砲塔）を包み込み、拡大時は一回り小さくなるよう倍率を緩やかに設定
+     * モデルの胴体コア（スライム顔キューブの中心）にぴったり合わせ、
+     * 拡大時は一回り小さくなるよう倍率を緩やか（約75%）に設定
      */
     @Override
     public EntityDimensions getDimensions(Pose pose) {
@@ -249,13 +250,13 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
             // 拡大時: ピッタリではなく一回り小さくなるよう緩やかな拡大倍率（約75%追従）
             hitboxScale = 1.0f + (scale - 1.0f) * 0.75f;
         } else {
-            // 縮小時: 卓上サイズに合わせて縮小
-            hitboxScale = scale;
+            // 縮小時: 卓上サイズに合わせて縮小（隙間に引っかからないようスリム化）
+            hitboxScale = scale * 0.85f;
         }
         hitboxScale = Math.max(0.1f, hitboxScale);
 
-        // モデル全体（足元から胴体中心・砲塔）を包み込むプロポーション
-        return EntityDimensions.scalable(0.85f * hitboxScale, 0.95f * hitboxScale);
+        // 胴体コア（幅約0.35m、高さ約0.35m）の中心にすっぽり収まるサイズ
+        return EntityDimensions.scalable(0.55f * hitboxScale, 0.55f * hitboxScale);
     }
 
     @Override
@@ -330,8 +331,8 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
             this.setYRot(this.getYRot() + this.inputSteer * turnSpeed);
         }
 
-        // 前後・左右の移動ベクトル
-        float speed = 0.12f * motorSpeedMultiplier;
+        // 前後・左右の移動ベクトル（摩擦や段差に負けないトルクを確保）
+        float speed = 0.16f * motorSpeedMultiplier;
         float forwardMove = this.inputThrottle * speed;
         float strafeMove = this.inputStrafe * (speed * 0.7f);
 
