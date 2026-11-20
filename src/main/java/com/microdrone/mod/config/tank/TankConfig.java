@@ -27,6 +27,7 @@ public class TankConfig {
         public float scale = 1.0f;
         public boolean invertCannonPitch = false;
         public boolean invertTurretYaw = false;
+        public float recoilDistance = 3.0f; // 砲身後座ストローク幅 (デフォルト: 3.0 units, 正数で後方後座, 負数で逆方向)
     }
 
     public ResourceLocation getModelResource() {

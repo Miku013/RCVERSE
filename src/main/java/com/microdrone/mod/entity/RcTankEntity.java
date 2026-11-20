@@ -5,6 +5,8 @@ import com.microdrone.mod.item.DroneBatteryItem;
 import com.microdrone.mod.item.DroneMotorItem;
 import com.microdrone.mod.item.ModItems;
 import com.microdrone.mod.network.DronePilotStatePayload;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.BlockParticleOption;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -27,6 +29,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.SmallFireball;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.network.PacketDistributor;
 import software.bernie.geckolib.animatable.GeoEntity;
@@ -510,6 +513,38 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable, c
         // マズルフラッシュ・煙
         serverLevel.sendParticles(ParticleTypes.FLASH, muzzleX, muzzleY, muzzleZ, 1, 0, 0, 0, 0);
         serverLevel.sendParticles(ParticleTypes.CAMPFIRE_COSY_SMOKE, muzzleX, muzzleY, muzzleZ, 4, dirX * 0.1, dirY * 0.1, dirZ * 0.1, 0.05);
+
+        // 【衝撃波演出】車体直下の地面における砂埃・土煙パーティクル
+        BlockPos groundPos = BlockPos.containing(getX(), getY() - 0.1, getZ());
+        BlockState groundState = serverLevel.getBlockState(groundPos);
+        if (groundState.isAir()) {
+            groundPos = groundPos.below();
+            groundState = serverLevel.getBlockState(groundPos);
+        }
+        if (!groundState.isAir()) {
+            // 接地ブロックに応じたリアルな砂埃・土煙（足元から放射状に低く拡散）
+            serverLevel.sendParticles(
+                    new BlockParticleOption(ParticleTypes.BLOCK, groundState),
+                    getX(), getY() + 0.05, getZ(),
+                    10, 0.35, 0.02, 0.35, 0.08
+            );
+        }
+        // 低空をふわりと漂う衝撃波スモーク
+        serverLevel.sendParticles(ParticleTypes.POOF, getX(), getY() + 0.05, getZ(), 4, 0.25, 0.01, 0.25, 0.03);
+
+        // 砲口（マズル）直下の地面にも衝撃風による砂埃を生成
+        BlockPos muzzleGroundPos = BlockPos.containing(muzzleX, getY() - 0.1, muzzleZ);
+        BlockState muzzleGroundState = serverLevel.getBlockState(muzzleGroundPos);
+        if (muzzleGroundState.isAir()) {
+            muzzleGroundState = serverLevel.getBlockState(muzzleGroundPos.below());
+        }
+        if (!muzzleGroundState.isAir()) {
+            serverLevel.sendParticles(
+                    new BlockParticleOption(ParticleTypes.BLOCK, muzzleGroundState),
+                    muzzleX, getY() + 0.05, muzzleZ,
+                    6, 0.25, 0.02, 0.25, 0.06
+            );
+        }
 
         // 反動（リコイル）
         entityData.set(DATA_RECOIL, 1.0f);

@@ -1,0 +1,18 @@
+{
+  "id": "sample_custom_tank",
+  "displayName": "カスタム RC戦車",
+  "model": "microdrone:geo/sample_custom_tank.geo.json",
+  "texture": "microdrone:textures/entity/sample_custom_tank.png",
+  "animation": "microdrone:animations/rc_tank.animation.json",
+  "properties": {
+    "maxSpeedMultiplier": 1.0,
+    "accelMultiplier": 1.0,
+    "turnSpeedMultiplier": 1.0,
+    "reloadTicks": 20,
+    "cannonPower": 1.0,
+    "scale": 1.0,
+    "invertCannonPitch": false,
+    "invertTurretYaw": false,
+    "recoilDistance": 3.0
+  }
+}

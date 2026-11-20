@@ -438,19 +438,47 @@
     </div>
 
     <!-- スターターキット ダウンロードバナー -->
-    <div style="background: linear-gradient(135deg, rgba(14, 165, 233, 0.15), rgba(99, 102, 241, 0.15)); border: 2px solid var(--accent-cyan); border-radius: 12px; padding: 24px; margin-bottom: 24px; text-align: center; box-shadow: 0 8px 24px rgba(14, 165, 233, 0.15);">
-      <h3 style="color: #fff; font-size: 1.3rem; margin-bottom: 8px;">
-        🏎️ RCカー 自作モデル作成スターターキット 配布中！
-      </h3>
-      <p style="color: var(--text-muted); font-size: 0.95rem; max-width: 720px; margin: 0 auto 18px; line-height: 1.6;">
-        Blockbenchですぐに開いて改造できる3Dモデル（<code>.geo.json</code>）、色分けUVテクスチャ（<code>.png</code>）、走行性能設定ファイル（<code>.json</code>）、リソースパック定義（<code>pack.mcmeta</code>）が一式セットになっています。
-      </p>
-      <a href="downloads/rcverse_custom_car_template.zip" download class="btn-hero" style="font-size: 1.05rem; padding: 12px 32px; display: inline-flex; align-items: center; gap: 8px;">
-        <span>📥</span>
-        <span>RCカー テンプレートキット (.zip) をダウンロード</span>
-      </a>
-      <div style="margin-top: 12px; font-size: 0.85rem; color: var(--text-muted);">
-        Minecraft 1.21.1 / GeckoLib 4 対応 (ファイルサイズ: 約 7KB)
+    <div class="grid-2" style="margin-bottom: 24px;">
+      <!-- RCカー テンプレート -->
+      <div style="background: linear-gradient(135deg, rgba(14, 165, 233, 0.15), rgba(99, 102, 241, 0.15)); border: 2px solid var(--accent-cyan); border-radius: 12px; padding: 22px; text-align: center; box-shadow: 0 8px 24px rgba(14, 165, 233, 0.15); display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+          <h3 style="color: #fff; font-size: 1.25rem; margin-bottom: 8px;">
+            🏎️ RCカー 自作モデル スターターキット
+          </h3>
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0 auto 16px; line-height: 1.5;">
+            Blockbenchで開ける3Dモデル（<code>.geo.json</code>）、色分けUVテクスチャ、ステアリング連動ボーン、性能設定（<code>.json</code>）、リソースパック定義が一式揃っています。
+          </p>
+        </div>
+        <div>
+          <a href="downloads/rcverse_custom_car_template.zip" download class="btn-hero" style="font-size: 1rem; padding: 10px 24px; display: inline-flex; align-items: center; gap: 8px;">
+            <span>📥</span>
+            <span>RCカー テンプレート (.zip)</span>
+          </a>
+          <div style="margin-top: 10px; font-size: 0.8rem; color: var(--text-muted);">
+            Minecraft 1.21.1 / GeckoLib 4 (約 7KB)
+          </div>
+        </div>
+      </div>
+
+      <!-- RC戦車 テンプレート -->
+      <div style="background: linear-gradient(135deg, rgba(234, 179, 8, 0.15), rgba(239, 68, 68, 0.15)); border: 2px solid #eab308; border-radius: 12px; padding: 22px; text-align: center; box-shadow: 0 8px 24px rgba(234, 179, 8, 0.15); display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+          <h3 style="color: #fff; font-size: 1.25rem; margin-bottom: 8px;">
+            💥 RC戦車 自作モデル スターターキット
+          </h3>
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0 auto 16px; line-height: 1.5;">
+            旋回砲塔、砲身の上下動、射撃時のリアルな後座（リコイル）アニメーション、履帯＆転輪回転、砲口フラッシュ・地面土煙エフェクトに対応したフルセット！
+          </p>
+        </div>
+        <div>
+          <a href="downloads/rcverse_custom_tank_template.zip" download class="btn-hero" style="background: linear-gradient(135deg, #eab308, #f97316); font-size: 1rem; padding: 10px 24px; display: inline-flex; align-items: center; gap: 8px; border: none; color: #000; font-weight: 700;">
+            <span>📥</span>
+            <span>RC戦車 テンプレート (.zip)</span>
+          </a>
+          <div style="margin-top: 10px; font-size: 0.8rem; color: var(--text-muted);">
+            Minecraft 1.21.1 / GeckoLib 4 (約 83KB)
+          </div>
+        </div>
       </div>
     </div>
 
@@ -463,16 +491,22 @@
 .minecraft/ (またはMod環境のインスタンスフォルダ)
 ├── <span class="tree-highlight">config/</span>
 │   └── <span class="tree-highlight">microdrone/</span>
-│       └── <span class="tree-highlight">cars/</span>
-│           └── <span class="tree-highlight">my_machine.json</span>          <span class="tree-comment">&lt;-- 【Step 1】マシンの性能・モデル指定設定ファイル</span>
+│       ├── <span class="tree-highlight">cars/</span>
+│       │   └── <span class="tree-highlight">my_car.json</span>             <span class="tree-comment">&lt;-- 【Step 1】RCカーの性能・モデル指定設定</span>
+│       └── <span class="tree-highlight">tanks/</span>
+│           └── <span class="tree-highlight">my_tank.json</span>            <span class="tree-comment">&lt;-- 【Step 1】RC戦車の性能・後座幅・威力設定</span>
 └── <span class="tree-highlight">resourcepacks/</span>
     └── <span class="tree-highlight">MyRcPack/</span>                    <span class="tree-comment">&lt;-- 【Step 2】自作リソースパック（フォルダ）</span>
         ├── <span class="tree-highlight">pack.mcmeta</span>              <span class="tree-comment">&lt;-- リソースパックの定義ファイル</span>
         └── assets/
             └── microdrone/
                 ├── geo/
-                │   └── <span class="tree-highlight">my_machine.geo.json</span>  <span class="tree-comment">&lt;-- Blockbenchで出力したGeckoLib 3Dモデル</span>
+                │   ├── <span class="tree-highlight">my_car.geo.json</span>      <span class="tree-comment">&lt;-- Blockbenchで出力したGeckoLib 3Dモデル</span>
+                │   └── <span class="tree-highlight">my_tank.geo.json</span>
                 └── textures/
+                    └── entity/
+                        ├── <span class="tree-highlight">my_car.png</span>           <span class="tree-comment">&lt;-- マシンのテクスチャ画像</span>
+                        └── <span class="tree-highlight">my_tank.png</span>
                     └── entity/
                         └── <span class="tree-highlight">my_machine.png</span>   <span class="tree-comment">&lt;-- マシンのテクスチャ画像</span></div>
     </div>
@@ -567,6 +601,34 @@
               <td><code>fork_and_handle</code></td>
               <td>バイク・自転車用フロントフォーク操舵</td>
             </tr>
+            <!-- 戦車ボーン -->
+            <tr style="background: rgba(234, 179, 8, 0.1);">
+              <td colspan="2" style="font-weight: 700; color: #eab308; padding: 8px 12px;">💥 RC戦車専用ボーン</td>
+            </tr>
+            <tr>
+              <td><code>turret</code></td>
+              <td>砲塔ルート（照準に合わせて360度ヨー旋回）</td>
+            </tr>
+            <tr>
+              <td><code>cannon</code></td>
+              <td>砲身俯仰軸（砲身の上下ピッチ角度に連動）</td>
+            </tr>
+            <tr>
+              <td><code>recoil</code></td>
+              <td>【重要】射撃後座ボーン（配下の砲身バレルが射撃時に後退スライド）</td>
+            </tr>
+            <tr>
+              <td><code>muzzle</code></td>
+              <td>砲口先端基点（砲弾および発射閃光・土煙の発生位置）</td>
+            </tr>
+            <tr>
+              <td><code>camera_gunner</code></td>
+              <td>砲手視点カメラ位置（砲塔旋回に連動するFPV照準視点）</td>
+            </tr>
+            <tr>
+              <td><code>track_l</code> / <code>track_r</code><br><code>sprocket_*</code> / <code>wheels_*</code></td>
+              <td>左右履帯・スプロケット駆動輪・転輪群（走行・超信地旋回連動）</td>
+            </tr>
           </tbody>
         </table>
         <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 10px;">
@@ -586,7 +648,7 @@
         <div style="margin-top: 14px; background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 8px; padding: 12px;">
           <h4 style="font-size: 0.95rem; color: #fff; margin-bottom: 4px;">✨ ① 金床（Anvil）で名前を変更（最も手軽！）</h4>
           <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.5;">
-            通常のRCカーを金床に入れ、名前を <code>sample_custom_car</code> や設定した <code>id</code> / 表示名に変更して地面に置くだけで、自作モデル＆性能に一瞬で切り替わります！
+            通常のRCカーやRC戦車を金床に入れ、名前を <code>sample_custom_car</code> や <code>sample_custom_tank</code>、設定した <code>id</code> / 表示名に変更して地面に置くだけで、自作モデル＆性能に一瞬で切り替わります！
           </p>
         </div>
 
