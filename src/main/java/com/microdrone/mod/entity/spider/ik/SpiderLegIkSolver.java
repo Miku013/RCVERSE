@@ -1,15 +1,30 @@
 package com.microdrone.mod.entity.spider.ik;
 
+import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3f;
 
 /**
- * 多脚ロボット用 2リンク幾何学的3D逆運動学（Analytical IK）ソルバー
+ * 多脚ロボット用 2リンク幾何学的3D逆運動学（Analytical IK）ソルバー & 遊脚軌道エンジン
  * 
- * 股関節 (Hip) -> 膝関節 (Knee) -> 足先 (Foot) の2リンク構造に対し、
- * 目標足先位置 (Target) に到達するための関節角（Yaw, Pitch, Knee）を余弦定理により高精度・低負荷で算出します。
+ * - 股関節 (Hip) -> 膝関節 (Knee) -> 足先 (Foot) の2リンク構造の幾何学的解法
+ * - 多方向レイキャストによる段差・障害物検出
+ * - 接地期（Stance）と遊脚期（Swing）の高度な状態遷移と放物線軌道補間
  */
 public class SpiderLegIkSolver {
+
+    /**
+     * 歩行フェーズ状態
+     */
+    public enum GaitState {
+        STANCE, // 接地期: 足先は地面に固定され、車体を支持・推進
+        SWING   // 遊脚期: 足先を空中に持ち上げ、次の接地目標へ運ぶ
+    }
 
     /**
      * IK計算結果
@@ -113,5 +128,86 @@ public class SpiderLegIkSolver {
         float deltaKnee = -heightRatio * 0.65f;
 
         return new IkResult(swingOffset, deltaPitch, deltaKnee, true);
+    }
+
+    /**
+     * 多方向レイキャストによる接地位置検出
+     * 1. 真下の地面レイキャスト
+     * 2. 移動方向・進行方向への前方斜めレイキャスト（段差・階段・壁のエッジ検出）
+     * 
+     * @param level ワールド
+     * @param idealWorldPos 脚の理想接地基準座標
+     * @param bodyPos 車体中心座標
+     * @param moveDir 車体の移動方向ベクトル (正規化または速度)
+     * @param scale 機体スケール倍率
+     * @param entity 対象エンティティ
+     * @return 最適な接地ワールド座標
+     */
+    public static Vec3 sampleGroundMultiRay(Level level, Vec3 idealWorldPos, Vec3 bodyPos, Vec3 moveDir, float scale, net.minecraft.world.entity.Entity entity) {
+        // 1. 直下レイキャスト（基準となる地面高さ）
+        Vec3 downStart = new Vec3(idealWorldPos.x, bodyPos.y + (1.2 * scale), idealWorldPos.z);
+        Vec3 downEnd = new Vec3(idealWorldPos.x, bodyPos.y - (1.6 * scale), idealWorldPos.z);
+        BlockHitResult downHit = level.clip(new ClipContext(downStart, downEnd, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, entity));
+
+        double baseGroundY = (downHit.getType() == HitResult.Type.BLOCK) ? downHit.getLocation().y : bodyPos.y;
+        Vec3 bestPos = new Vec3(idealWorldPos.x, baseGroundY, idealWorldPos.z);
+
+        // 2. 移動中・前進時の斜め前方レイキャスト（段差上面・エッジ検出）
+        if (moveDir.lengthSqr() > 0.001) {
+            Vec3 dirNorm = moveDir.normalize();
+            double forwardOffset = 0.35 * scale;
+            Vec3 forwardStart = new Vec3(
+                    idealWorldPos.x + dirNorm.x * forwardOffset,
+                    bodyPos.y + (1.2 * scale),
+                    idealWorldPos.z + dirNorm.z * forwardOffset
+            );
+            Vec3 forwardEnd = new Vec3(
+                    idealWorldPos.x + dirNorm.x * forwardOffset,
+                    bodyPos.y - (1.6 * scale),
+                    idealWorldPos.z + dirNorm.z * forwardOffset
+            );
+
+            BlockHitResult fwdHit = level.clip(new ClipContext(forwardStart, forwardEnd, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, entity));
+            if (fwdHit.getType() == HitResult.Type.BLOCK) {
+                double fwdGroundY = fwdHit.getLocation().y;
+                // 段差を登る場合（前方が一段高い場合）、その高さを優先採用
+                if (fwdGroundY > baseGroundY && (fwdGroundY - baseGroundY) <= (1.1 * scale)) {
+                    bestPos = new Vec3(fwdHit.getLocation().x, fwdGroundY, fwdHit.getLocation().z);
+                }
+            }
+        }
+
+        return bestPos;
+    }
+
+    /**
+     * 遊脚期（Swing）の滑らかな3次元ステップ放物線軌道補間
+     * 段差を跨ぐ際に障害物に衝突しないよう、放物線ピークを制御します。
+     * 
+     * @param start 踏み出し開始位置
+     * @param target 目標接地位置
+     * @param progress ステップ進行度 (0.0 〜 1.0)
+     * @param stepHeight 持ち上げ高さ (スケール適用済み)
+     * @return 補間された現在フレームのワールド座標
+     */
+    public static Vec3 computeStepTrajectory(Vec3 start, Vec3 target, float progress, double stepHeight) {
+        float t = Mth.clamp(progress, 0.0f, 1.0f);
+
+        // Smoothstep による水平移動の緩急（出だしと着地が滑らか）
+        float s = t * t * (3.0f - 2.0f * t);
+        Vec3 horizLerp = start.lerp(target, s);
+
+        // 段差上昇時の補正: 目標が開始点より高い場合、山なりの頂点を少し前方にバイアス
+        double heightDelta = target.y - start.y;
+        double liftCurve = Math.sin(t * Math.PI);
+        if (heightDelta > 0.05) {
+            // 上り段差: 足をより高く持ち上げて引っかかりを防止
+            liftCurve = Math.pow(Math.sin(t * Math.PI), 0.75);
+        }
+
+        double currentLift = liftCurve * stepHeight;
+        double currentY = Mth.lerp(s, start.y, target.y) + currentLift;
+
+        return new Vec3(horizLerp.x, currentY, horizLerp.z);
     }
 }

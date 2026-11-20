@@ -4,6 +4,7 @@ import com.microdrone.mod.MicroDroneMod;
 import com.microdrone.mod.entity.ModEntities;
 import com.microdrone.mod.entity.RcControllable;
 import com.microdrone.mod.entity.RcVehicleManager;
+import com.microdrone.mod.entity.spider.ik.SpiderLegIkSolver;
 import com.microdrone.mod.item.DroneBatteryItem;
 import com.microdrone.mod.item.DroneMotorItem;
 import com.microdrone.mod.item.ModItems;
@@ -142,6 +143,7 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
 
         public boolean isStepping = false;
         public float stepProgress = 1.0f; // 0.0f -> 1.0f
+        public SpiderLegIkSolver.GaitState gaitState = SpiderLegIkSolver.GaitState.STANCE; // 歩行フェーズ状態（STANCE: 接地, SWING: 遊脚）
 
         // モデルレンダラーへの受け渡し用（胴体基準のローカル相対変位・IK用）
         public float animLiftY = 0.0f;
@@ -353,14 +355,10 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
             Vec3 idealWorldPos = new Vec3(bodyPos.x + rotatedOffsetX + leadX, bodyPos.y,
                     bodyPos.z + rotatedOffsetZ + leadZ);
 
-            // 地面への下向きレイキャスト（scale連動）
-            Vec3 rayStart = new Vec3(idealWorldPos.x, bodyPos.y + (1.0 * scale), idealWorldPos.z);
-            Vec3 rayEnd = new Vec3(idealWorldPos.x, bodyPos.y - (1.5 * scale), idealWorldPos.z);
-            BlockHitResult hit = this.level()
-                    .clip(new ClipContext(rayStart, rayEnd, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, this));
-
-            double groundY = (hit.getType() == HitResult.Type.BLOCK) ? hit.getLocation().y : bodyPos.y;
-            Vec3 targetGroundPos = new Vec3(idealWorldPos.x, groundY, idealWorldPos.z);
+            // 多方向レイキャストによる接地位置検出（直下 + 進行方向段差エッジ検出）
+            Vec3 moveDir = new Vec3(rotatedOffsetX + leadX, 0, rotatedOffsetZ + leadZ);
+            Vec3 targetGroundPos = SpiderLegIkSolver.sampleGroundMultiRay(
+                    this.level(), idealWorldPos, bodyPos, moveDir, scale, this);
 
             // 初回初期化
             if (leg.currentWorldFootPos == Vec3.ZERO) {
@@ -373,17 +371,19 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
             double stepThreshold = 0.35 * scale;
             if (!leg.isStepping && leg.group == activeStepGroup && distToTarget > stepThreshold && isMoving) {
                 leg.isStepping = true;
+                leg.gaitState = SpiderLegIkSolver.GaitState.SWING;
                 leg.stepProgress = 0.0f;
                 leg.stepStartWorldPos = leg.currentWorldFootPos;
                 leg.targetWorldFootPos = targetGroundPos;
             }
 
-            // ステップ実行中アニメーション補間
+            // ステップ実行中アニメーション補間（遊脚期 Swing）
             if (leg.isStepping) {
                 leg.stepProgress += 0.25f;
                 if (leg.stepProgress >= 1.0f) {
                     leg.stepProgress = 1.0f;
                     leg.isStepping = false;
+                    leg.gaitState = SpiderLegIkSolver.GaitState.STANCE;
                     leg.currentWorldFootPos = leg.targetWorldFootPos;
 
                     // 着地時の微小土煙パーティクル
@@ -392,11 +392,12 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
                                 leg.currentWorldFootPos.y + 0.05, leg.currentWorldFootPos.z, 0, 0.02, 0);
                     }
                 } else {
-                    // 放物線状に持ち上げて着地 (scale連動)
-                    Vec3 horizLerp = leg.stepStartWorldPos.lerp(leg.targetWorldFootPos, leg.stepProgress);
-                    double liftHeight = Math.sin(leg.stepProgress * Math.PI) * (stepHeight * scale);
-                    leg.currentWorldFootPos = new Vec3(horizLerp.x, horizLerp.y + liftHeight, horizLerp.z);
+                    // 多脚IK軌道エンジンによる段差跨ぎ放物線補間 (scale連動)
+                    leg.currentWorldFootPos = SpiderLegIkSolver.computeStepTrajectory(
+                            leg.stepStartWorldPos, leg.targetWorldFootPos, leg.stepProgress, stepHeight * scale);
                 }
+            } else {
+                leg.gaitState = SpiderLegIkSolver.GaitState.STANCE;
             }
 
             // 車体中心に対する足先接地面の相対高さ（IK地形適応・段差追従用）
@@ -435,7 +436,7 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
     }
 
     /**
-     * 接地脚の高さから車体の傾斜（ピッチ・ロール）を計算
+     * 接地脚の高さから車体の傾斜（ピッチ・ロール）を計算（スケール連動・過度傾斜クランプ付き）
      */
     private void calculateBodyTilt() {
         double frontY = (legs[LEG_FL].currentWorldFootPos.y + legs[LEG_FR].currentWorldFootPos.y) * 0.5;
@@ -445,8 +446,16 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
         double rightY = (legs[LEG_FR].currentWorldFootPos.y + legs[LEG_MR].currentWorldFootPos.y
                 + legs[LEG_RR].currentWorldFootPos.y) / 3.0;
 
-        float targetPitch = (float) Math.toDegrees(Math.atan2(rearY - frontY, 1.4));
-        float targetRoll = (float) Math.toDegrees(Math.atan2(leftY - rightY, 1.6));
+        float scale = getConfigScale();
+        double wheelbase = 1.4 * scale;
+        double trackwidth = 1.6 * scale;
+
+        float targetPitch = (float) Math.toDegrees(Math.atan2(rearY - frontY, Math.max(0.2, wheelbase)));
+        float targetRoll = (float) Math.toDegrees(Math.atan2(leftY - rightY, Math.max(0.2, trackwidth)));
+
+        // 不自然な裏返りや破綻を防ぐ安全クランプ（±35度）
+        targetPitch = Mth.clamp(targetPitch, -35.0f, 35.0f);
+        targetRoll = Mth.clamp(targetRoll, -35.0f, 35.0f);
 
         this.pitchAngle = Mth.rotLerp(0.15f, this.pitchAngle, targetPitch);
         this.rollAngle = Mth.rotLerp(0.15f, this.rollAngle, targetRoll);
