@@ -26,8 +26,10 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MoverType;
+import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.SmallFireball;
@@ -181,6 +183,8 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
         legs[LEG_FR] = new LegState(LEG_FR, 1, new Vec3(-0.5, 1.06, -0.44), new Vec3(-1.5, 0.0, -0.7));
         legs[LEG_MR] = new LegState(LEG_MR, 0, new Vec3(-0.5, 1.06, 0.0), new Vec3(-1.6, 0.0, 0.0));
         legs[LEG_RR] = new LegState(LEG_RR, 1, new Vec3(-0.5, 1.06, 0.44), new Vec3(-1.5, 0.0, 0.7));
+
+        this.refreshDimensions();
     }
 
     @Override
@@ -207,11 +211,39 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
 
     public void setVariantId(String variantId) {
         this.entityData.set(DATA_VARIANT_ID, variantId != null ? variantId : "default");
+        this.refreshDimensions();
+    }
+
+    @Override
+    public void onSyncedDataUpdated(EntityDataAccessor<?> key) {
+        super.onSyncedDataUpdated(key);
+        if (DATA_VARIANT_ID.equals(key)) {
+            this.refreshDimensions();
+        }
     }
 
     public float getConfigScale() {
         com.microdrone.mod.config.spider.SpiderConfig config = com.microdrone.mod.config.spider.SpiderConfigManager.getConfig(getVariantId());
         return config != null ? Math.max(0.05f, config.properties.scale) : 0.35f;
+    }
+
+    /**
+     * モデルスケール（拡大・縮小）に連動したヒットボックスサイズ算出
+     * 拡大時はピッタリではなく一回り小さくなるよう倍率を緩やか（約75%）に設定
+     */
+    @Override
+    public EntityDimensions getDimensions(Pose pose) {
+        float scale = getConfigScale();
+        float hitboxScale;
+        if (scale > 1.0f) {
+            // 拡大時: ピッタリではなく一回り小さくなるよう緩やかな拡大倍率（約75%追従）
+            hitboxScale = 1.0f + (scale - 1.0f) * 0.75f;
+        } else {
+            // 縮小時: 卓上サイズに合わせて縮小（足の引っかかりを防ぐため約85%）
+            hitboxScale = scale * 0.85f;
+        }
+        hitboxScale = Math.max(0.1f, hitboxScale);
+        return super.getDimensions(pose).scale(hitboxScale);
     }
 
     @Override
