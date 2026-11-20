@@ -112,9 +112,9 @@ public class RcSpiderGeoModel extends GeoModel<RcSpiderEntity> {
             }
         }
 
-        // 1. IKソルバーによる地形高低差（凹凸適応）計算
+        // 1. IKソルバーによる地形高低差 & 壁・地面適応計算（壁なら屈曲、地面ならスプリング反発）
         SpiderLegIkSolver.IkResult ik = SpiderLegIkSolver.solveTerrainAdaptation(
-                state.groundDeltaY, state.animSwingZ, lenUpper, lenLower, isLeft);
+                state.groundDeltaY, state.animSwingZ, state.isWallContact, lenUpper, lenLower, isLeft);
 
         // 2. 前後スイング（Y軸旋回）: 初期角度に対して前進・旋回スイングを加算！
         float swing = ik.yawRad;

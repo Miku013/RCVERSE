@@ -10,11 +10,12 @@ import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3f;
 
 /**
- * 多脚ロボット用 2リンク幾何学的3D逆運動学（Analytical IK）ソルバー & 遊脚軌道エンジン
+ * 多脚ロボット用 2リンク幾何学的3D逆運動学（Analytical IK）ソルバー & サスペンション制御エンジン
  * 
  * - 股関節 (Hip) -> 膝関節 (Knee) -> 足先 (Foot) の2リンク構造の幾何学的解法
- * - 多方向レイキャストによる段差・障害物検出
- * - 接地期（Stance）と遊脚期（Swing）の高度な状態遷移と放物線軌道補間
+ * - 多方向レイキャストによる地面 vs 壁面/段差側面の接触識別
+ * - 地面接触時のスプリング復元力（機体押し上げ）と壁面接触時のコンプライアンス（柔軟屈曲）
+ * - ライドハイト（地上高クリアランス）適応制御
  */
 public class SpiderLegIkSolver {
 
@@ -24,6 +25,21 @@ public class SpiderLegIkSolver {
     public enum GaitState {
         STANCE, // 接地期: 足先は地面に固定され、車体を支持・推進
         SWING   // 遊脚期: 足先を空中に持ち上げ、次の接地目標へ運ぶ
+    }
+
+    /**
+     * 接地サンプリング結果
+     */
+    public static class GroundHitResult {
+        public final Vec3 pos;
+        public final boolean isWall;
+        public final Direction hitDirection;
+
+        public GroundHitResult(Vec3 pos, boolean isWall, Direction hitDirection) {
+            this.pos = pos;
+            this.isWall = isWall;
+            this.hitDirection = hitDirection;
+        }
     }
 
     /**
@@ -82,7 +98,6 @@ public class SpiderLegIkSolver {
         float clampedDist = Mth.clamp(totalDist, minReach, maxReach);
 
         // 2. 余弦定理による関節角の導出
-        // cos(alpha) = (L1^2 + D^2 - L2^2) / (2 * L1 * D)
         float cosAlpha = (lenUpper * lenUpper + clampedDist * clampedDist - lenLower * lenLower)
                 / (2.0f * lenUpper * clampedDist);
         cosAlpha = Mth.clamp(cosAlpha, -1.0f, 1.0f);
@@ -95,7 +110,6 @@ public class SpiderLegIkSolver {
         float pitchRad = baseElevation + alpha;
 
         // 3. 膝関節角 (Knee):
-        // cos(gamma) = (L1^2 + L2^2 - D^2) / (2 * L1 * L2)
         float cosGamma = (lenUpper * lenUpper + lenLower * lenLower - clampedDist * clampedDist)
                 / (2.0f * lenUpper * lenLower);
         cosGamma = Mth.clamp(cosGamma, -1.0f, 1.0f);
@@ -108,49 +122,53 @@ public class SpiderLegIkSolver {
     }
 
     /**
-     * 初期ポーズからの変位（デルタ）に基づく簡易補正計算
-     * （既存の歩行アニメーションに地面凹凸の適応差分を加算する際に使用）
+     * 地形高低差・接触状態に基づくサスペンション適応計算
      * 
      * @param groundDeltaY 地面高低差 (ブロック単位)
      * @param swingOffset 前後スイング変位
+     * @param isWall 壁・障害物側面接触かどうか
      * @param lenUpper 大腿長
      * @param lenLower 下腿長
      * @param isLeft 左脚かどうか
      */
-    public static IkResult solveTerrainAdaptation(float groundDeltaY, float swingOffset, float lenUpper, float lenLower, boolean isLeft) {
-        // 標準接地位置における代表的な大腿・下腿の展開角をもとに、
-        // 地面の高低差 groundDeltaY に応じた微小回転角（線形＋三角関数補正）を算出
+    public static IkResult solveTerrainAdaptation(float groundDeltaY, float swingOffset, boolean isWall, float lenUpper, float lenLower, boolean isLeft) {
         float heightRatio = groundDeltaY / Math.max(1.0f, (lenUpper + lenLower) * 0.0625f);
-        heightRatio = Mth.clamp(heightRatio, -1.0f, 1.0f);
+        heightRatio = Mth.clamp(heightRatio, -1.2f, 1.2f);
 
-        // 足が上がった時は膝を曲げ、付け根を上げる
-        float deltaPitch = heightRatio * 0.45f;
-        float deltaKnee = -heightRatio * 0.65f;
+        float deltaPitch;
+        float deltaKnee;
+
+        if (isWall) {
+            // === 壁・段差側面接触: コンプライアンス（柔軟屈曲） ===
+            // 突っ張らずに脚を柔らかく曲げて障害物を吸収する
+            deltaPitch = heightRatio * 0.55f;
+            deltaKnee = -heightRatio * 0.75f;
+        } else {
+            // === 地面接触: 仮想スプリング復元力（押し上げ突っ張り） ===
+            // 地面に押し付けられた脚は元に戻ろうとする反発力（突っ張り）を発生し、機体をしっかり支える
+            float springFactor = 0.85f; // 復元係数
+            deltaPitch = heightRatio * 0.35f * springFactor;
+            deltaKnee = -heightRatio * 0.50f * springFactor;
+        }
 
         return new IkResult(swingOffset, deltaPitch, deltaKnee, true);
     }
 
     /**
-     * 多方向レイキャストによる接地位置検出
+     * 多方向レイキャストによる接地位置および接触面の識別
      * 1. 真下の地面レイキャスト
      * 2. 移動方向・進行方向への前方斜めレイキャスト（段差・階段・壁のエッジ検出）
-     * 
-     * @param level ワールド
-     * @param idealWorldPos 脚の理想接地基準座標
-     * @param bodyPos 車体中心座標
-     * @param moveDir 車体の移動方向ベクトル (正規化または速度)
-     * @param scale 機体スケール倍率
-     * @param entity 対象エンティティ
-     * @return 最適な接地ワールド座標
      */
-    public static Vec3 sampleGroundMultiRay(Level level, Vec3 idealWorldPos, Vec3 bodyPos, Vec3 moveDir, float scale, net.minecraft.world.entity.Entity entity) {
+    public static GroundHitResult sampleGroundMultiRay(Level level, Vec3 idealWorldPos, Vec3 bodyPos, Vec3 moveDir, float scale, net.minecraft.world.entity.Entity entity) {
         // 1. 直下レイキャスト（基準となる地面高さ）
         Vec3 downStart = new Vec3(idealWorldPos.x, bodyPos.y + (1.2 * scale), idealWorldPos.z);
         Vec3 downEnd = new Vec3(idealWorldPos.x, bodyPos.y - (1.6 * scale), idealWorldPos.z);
         BlockHitResult downHit = level.clip(new ClipContext(downStart, downEnd, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, entity));
 
         double baseGroundY = (downHit.getType() == HitResult.Type.BLOCK) ? downHit.getLocation().y : bodyPos.y;
+        Direction bestDir = (downHit.getType() == HitResult.Type.BLOCK) ? downHit.getDirection() : Direction.UP;
         Vec3 bestPos = new Vec3(idealWorldPos.x, baseGroundY, idealWorldPos.z);
+        boolean isWall = bestDir.getAxis().isHorizontal();
 
         // 2. 移動中・前進時の斜め前方レイキャスト（段差上面・エッジ検出）
         if (moveDir.lengthSqr() > 0.001) {
@@ -170,25 +188,21 @@ public class SpiderLegIkSolver {
             BlockHitResult fwdHit = level.clip(new ClipContext(forwardStart, forwardEnd, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, entity));
             if (fwdHit.getType() == HitResult.Type.BLOCK) {
                 double fwdGroundY = fwdHit.getLocation().y;
-                // 段差を登る場合（前方が一段高い場合）、その高さを優先採用
+                Direction fwdDir = fwdHit.getDirection();
+                // 段差を登る場合（前方が一段高い場合）、その高さを採用
                 if (fwdGroundY > baseGroundY && (fwdGroundY - baseGroundY) <= (1.1 * scale)) {
                     bestPos = new Vec3(fwdHit.getLocation().x, fwdGroundY, fwdHit.getLocation().z);
+                    bestDir = fwdDir;
+                    isWall = fwdDir.getAxis().isHorizontal();
                 }
             }
         }
 
-        return bestPos;
+        return new GroundHitResult(bestPos, isWall, bestDir);
     }
 
     /**
      * 遊脚期（Swing）の滑らかな3次元ステップ放物線軌道補間
-     * 段差を跨ぐ際に障害物に衝突しないよう、放物線ピークを制御します。
-     * 
-     * @param start 踏み出し開始位置
-     * @param target 目標接地位置
-     * @param progress ステップ進行度 (0.0 〜 1.0)
-     * @param stepHeight 持ち上げ高さ (スケール適用済み)
-     * @return 補間された現在フレームのワールド座標
      */
     public static Vec3 computeStepTrajectory(Vec3 start, Vec3 target, float progress, double stepHeight) {
         float t = Mth.clamp(progress, 0.0f, 1.0f);
@@ -197,11 +211,10 @@ public class SpiderLegIkSolver {
         float s = t * t * (3.0f - 2.0f * t);
         Vec3 horizLerp = start.lerp(target, s);
 
-        // 段差上昇時の補正: 目標が開始点より高い場合、山なりの頂点を少し前方にバイアス
+        // 段差上昇時の補正
         double heightDelta = target.y - start.y;
         double liftCurve = Math.sin(t * Math.PI);
         if (heightDelta > 0.05) {
-            // 上り段差: 足をより高く持ち上げて引っかかりを防止
             liftCurve = Math.pow(Math.sin(t * Math.PI), 0.75);
         }
 
