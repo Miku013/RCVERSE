@@ -25,16 +25,16 @@ public class RcSpiderRenderer extends GeoEntityRenderer<RcSpiderEntity> {
     public void render(RcSpiderEntity entity, float entityYaw, float partialTick, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
         poseStack.pushPose();
 
-        // 外部コンフィグによるスケール倍率の適用（基本 0.35F = 卓上RCサイズ）
-        float configScale = com.microdrone.mod.config.spider.SpiderConfigManager.getConfig(entity.getVariantId()).properties.scale;
+        com.microdrone.mod.config.spider.SpiderConfig config = com.microdrone.mod.config.spider.SpiderConfigManager.getConfig(entity.getVariantId());
+        float configScale = (config != null) ? config.properties.scale : 0.35F;
+        float yOffset = (config != null) ? config.properties.yOffset : -0.22F;
         float scale = Math.max(0.05F, configScale);
-        poseStack.scale(scale, scale, scale);
 
         // 進行方向の回転（正面合わせ: 180.0F - yaw）
         float yaw = Mth.rotLerp(partialTick, entity.yRotO, entity.getYRot());
         poseStack.mulPose(Axis.YP.rotationDegrees(180.0F - yaw));
 
-        // 6本の足の接地高さから算出されたピッチ・ロール傾斜
+        // 6本の足の接地高さから算出されたピッチ・ロール傾斜（スムーズ補間）
         float pitch = Mth.lerp(partialTick, entity.prevPitchAngle, entity.pitchAngle);
         float roll = Mth.lerp(partialTick, entity.prevRollAngle, entity.rollAngle);
         if (Math.abs(pitch) > 0.01f) {
@@ -43,6 +43,12 @@ public class RcSpiderRenderer extends GeoEntityRenderer<RcSpiderEntity> {
         if (Math.abs(roll) > 0.01f) {
             poseStack.mulPose(Axis.ZP.rotationDegrees(-roll));
         }
+
+        // 初期状態で地面から浮くのを防止するYオフセット（地面に足先を着地させる）
+        poseStack.translate(0, yOffset, 0);
+
+        // スケール倍率の適用（卓上RCサイズ）
+        poseStack.scale(scale, scale, scale);
 
         super.render(entity, entityYaw, partialTick, poseStack, bufferSource, packedLight);
 

@@ -20,6 +20,8 @@ public class SpiderConfig {
 
     public static class SpiderProperties {
         public float scale = 0.35f;          // 描画およびレイキャスト判定のスケール倍率 (デフォルト: 0.35)
+        public float yOffset = -0.22f;        // 描画高さオフセット (負の値で地面側へ下げる: デフォルト -0.22m)
+        public float maxTiltAngle = 30.0f;    // 地形適応時の最大傾斜角（度、デフォルト: 30度）
         public float stepHeight = 0.35f;     // ステップ時に足を持ち上げる高さ (m)
         public float walkSpeedMultiplier = 1.0f; // 歩行速度倍率
         public float turnSpeedMultiplier = 1.0f; // 旋回速度倍率
