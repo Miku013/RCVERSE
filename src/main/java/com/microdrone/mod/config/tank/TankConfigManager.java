@@ -6,8 +6,10 @@ import com.microdrone.mod.MicroDroneMod;
 import net.neoforged.fml.loading.FMLPaths;
 
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
+import java.io.Reader;
+import java.io.Writer;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashMap;
@@ -40,7 +42,7 @@ public class TankConfigManager {
             File[] files = dir.listFiles((d, name) -> name.endsWith(".json"));
             if (files != null) {
                 for (File file : files) {
-                    try (FileReader reader = new FileReader(file)) {
+                    try (Reader reader = Files.newBufferedReader(file.toPath(), StandardCharsets.UTF_8)) {
                         TankConfig config = GSON.fromJson(reader, TankConfig.class);
                         if (config != null && config.id != null && !config.id.isBlank()) {
                             String key = config.id.toLowerCase();
@@ -90,7 +92,7 @@ public class TankConfigManager {
                 defaultTemplate.animation = "microdrone:animations/rc_tank.animation.json";
                 defaultTemplate.properties = new TankConfig.TankProperties();
 
-                try (FileWriter writer = new FileWriter(defaultFile)) {
+                try (Writer writer = Files.newBufferedWriter(defaultFile.toPath(), StandardCharsets.UTF_8)) {
                     GSON.toJson(defaultTemplate, writer);
                 }
             }

@@ -351,19 +351,47 @@
     </div>
 
     <!-- Starter Kit Download Banner -->
-    <div style="background: linear-gradient(135deg, rgba(14, 165, 233, 0.15), rgba(99, 102, 241, 0.15)); border: 2px solid var(--accent-cyan); border-radius: 12px; padding: 24px; margin-bottom: 24px; text-align: center; box-shadow: 0 8px 24px rgba(14, 165, 233, 0.15);">
-      <h3 style="color: #fff; font-size: 1.3rem; margin-bottom: 8px;">
-        🏎️ RC Car Custom Model Starter Template Kit Available!
-      </h3>
-      <p style="color: var(--text-muted); font-size: 0.95rem; max-width: 720px; margin: 0 auto 18px; line-height: 1.6;">
-        Includes a Blockbench-ready 3D model (<code>.geo.json</code>), color-coded UV texture (<code>.png</code>), vehicle physics config (<code>.json</code>), and ready-to-use resource pack files (<code>pack.mcmeta</code>).
-      </p>
-      <a href="downloads/rcverse_custom_car_template.zip" download class="btn-hero" style="font-size: 1.05rem; padding: 12px 32px; display: inline-flex; align-items: center; gap: 8px;">
-        <span>📥</span>
-        <span>Download RC Car Starter Template Kit (.zip)</span>
-      </a>
-      <div style="margin-top: 12px; font-size: 0.85rem; color: var(--text-muted);">
-        Minecraft 1.21.1 / NeoForge / GeckoLib 4 Compatible (~7 KB)
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-bottom: 24px;">
+      <!-- RC Car Template -->
+      <div style="background: linear-gradient(135deg, rgba(14, 165, 233, 0.15), rgba(99, 102, 241, 0.15)); border: 2px solid var(--accent-cyan); border-radius: 12px; padding: 22px; text-align: center; box-shadow: 0 8px 24px rgba(14, 165, 233, 0.15); display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+          <h3 style="color: #fff; font-size: 1.25rem; margin-bottom: 8px;">
+            🏎️ RC Car Custom Model Starter Kit
+          </h3>
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0 auto 16px; line-height: 1.5;">
+            Includes a Blockbench-ready 3D model (<code>.geo.json</code>), color-coded UV texture (<code>.png</code>), steering bones, physics config (<code>.json</code>), and resource pack (<code>pack.mcmeta</code>).
+          </p>
+        </div>
+        <div>
+          <a href="downloads/rcverse_custom_car_template.zip" download class="btn-hero" style="font-size: 1rem; padding: 10px 24px; display: inline-flex; align-items: center; gap: 8px;">
+            <span>📥</span>
+            <span>Download RC Car Kit (.zip)</span>
+          </a>
+          <div style="margin-top: 10px; font-size: 0.8rem; color: var(--text-muted);">
+            Minecraft 1.21.1 / GeckoLib 4 (~7 KB)
+          </div>
+        </div>
+      </div>
+
+      <!-- RC Tank Template -->
+      <div style="background: linear-gradient(135deg, rgba(234, 179, 8, 0.15), rgba(239, 68, 68, 0.15)); border: 2px solid #eab308; border-radius: 12px; padding: 22px; text-align: center; box-shadow: 0 8px 24px rgba(234, 179, 8, 0.15); display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+          <h3 style="color: #fff; font-size: 1.25rem; margin-bottom: 8px;">
+            💥 RC Tank Custom Model Starter Kit
+          </h3>
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0 auto 16px; line-height: 1.5;">
+            Equipped with 360° turret traverse, cannon elevation, animated barrel recoil, rotating sprockets & tracks, muzzle flashes, and ground dust shockwaves!
+          </p>
+        </div>
+        <div>
+          <a href="downloads/rcverse_custom_tank_template.zip" download class="btn-hero" style="background: linear-gradient(135deg, #eab308, #f97316); font-size: 1rem; padding: 10px 24px; display: inline-flex; align-items: center; gap: 8px; border: none; color: #000; font-weight: 700;">
+            <span>📥</span>
+            <span>Download RC Tank Kit (.zip)</span>
+          </a>
+          <div style="margin-top: 10px; font-size: 0.8rem; color: var(--text-muted);">
+            Minecraft 1.21.1 / GeckoLib 4 (~83 KB)
+          </div>
+        </div>
       </div>
     </div>
 
@@ -389,7 +417,12 @@
             <li><code>chassis</code> / <code>body</code>: Main vehicle body (connects to suspension & tilt)</li>
             <li><code>wheel_fl</code> / <code>wheel_fr</code>: Front wheels (steers and rolls)</li>
             <li><code>wheel_rl</code> / <code>wheel_rr</code>: Rear wheels (drive axle rolling)</li>
-            <li><code>turret</code> / <code>barrel</code>: Tank turret traverse & cannon recoil</li>
+            <li><code>turret</code>: Tank turret yaw traverse (360° aim tracking)</li>
+            <li><code>cannon</code>: Cannon pitch elevation & depression</li>
+            <li><code>recoil</code>: [CRITICAL] Cannon barrel recoil slide animation bone</li>
+            <li><code>muzzle</code>: Cannon tip origin (projectile spawn & muzzle flash)</li>
+            <li><code>camera_gunner</code>: Gunner sight camera (syncs with turret rotation)</li>
+            <li><code>track_l</code> / <code>track_r</code>, <code>sprocket_*</code>, <code>wheels_*</code>: Tracks & road wheels</li>
             <li><code>propeller_1..4</code>: High-speed drone & aircraft propeller rotation</li>
           </ul>
         </div>
@@ -436,7 +469,7 @@
         <div style="background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 8px; padding: 14px;">
           <h4 style="color: #fff; font-size: 0.95rem; margin-bottom: 6px;">✨ Method 1: Anvil Renaming (Easiest!)</h4>
           <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.5;">
-            Place a standard RC Car in an Anvil and rename it to your vehicle's <code>id</code> (e.g. <code>sample_custom_car</code>). When deployed, it transforms immediately into your custom model!
+            Place a standard RC Car or RC Tank in an Anvil and rename it to your vehicle's <code>id</code> (e.g. <code>sample_custom_car</code> or <code>sample_custom_tank</code>). When deployed, it transforms immediately into your custom model!
           </p>
         </div>
         <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 14px;">
