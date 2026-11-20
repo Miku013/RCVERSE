@@ -239,7 +239,7 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
 
     /**
      * モデルスケール（拡大・縮小）に連動したヒットボックスサイズ算出
-     * モデルの胴体コア（スライム顔キューブの中心）にぴったり合わせ、
+     * モデルの胴体コア（スライム顔キューブ）に自動計算でぴったり貼り付け
      * 拡大時は一回り小さくなるよう倍率を緩やか（約75%）に設定
      */
     @Override
@@ -250,13 +250,14 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
             // 拡大時: ピッタリではなく一回り小さくなるよう緩やかな拡大倍率（約75%追従）
             hitboxScale = 1.0f + (scale - 1.0f) * 0.75f;
         } else {
-            // 縮小時: 卓上サイズに合わせて縮小（隙間に引っかからないようスリム化）
+            // 縮小時: 卓上サイズに合わせて縮小（足の引っかかりを防ぐため一回りスリム化）
             hitboxScale = scale * 0.85f;
         }
         hitboxScale = Math.max(0.1f, hitboxScale);
 
-        // 胴体コア（幅約0.35m、高さ約0.35m）の中心にすっぽり収まるサイズ
-        return EntityDimensions.scalable(0.55f * hitboxScale, 0.55f * hitboxScale);
+        // Blockbenchモデルの胴体（body）キューブ（16x17x16ユニット）に合わせた寸法
+        return EntityDimensions.scalable(0.85f * hitboxScale, 0.90f * hitboxScale)
+                .withEyeHeight(0.90f * hitboxScale * 0.75f);
     }
 
     @Override
@@ -340,11 +341,37 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
         double motionX = -Mth.sin(yawRad) * forwardMove + Mth.cos(yawRad) * strafeMove;
         double motionZ = Mth.cos(yawRad) * forwardMove + Mth.sin(yawRad) * strafeMove;
 
-        // 重力
-        Vec3 currentDelta = this.getDeltaMovement();
-        double motionY = currentDelta.y - 0.08;
-        if (this.onGround()) {
-            motionY = 0.0;
+        // 多脚ロボット脚サスペンション車高支持物理（下のブロックに吸い付かず、胴体中心にヒットボックスを維持）
+        float scale = getConfigScale();
+        com.microdrone.mod.config.spider.SpiderConfig config = com.microdrone.mod.config.spider.SpiderConfigManager.getConfig(getVariantId());
+        float rideHeight = (config != null) ? (config.properties.rideHeight * scale) : (0.16f * scale);
+
+        // 接地している脚の平均地面高さ
+        double sumGroundY = 0;
+        int groundLegCount = 0;
+        for (LegState l : legs) {
+            if (!l.isWallContact && l.currentWorldFootPos != Vec3.ZERO) {
+                sumGroundY += l.currentWorldFootPos.y;
+                groundLegCount++;
+            }
+        }
+
+        double motionY;
+        if (groundLegCount > 0) {
+            double avgGroundY = sumGroundY / groundLegCount;
+            // 目標車体高度: 接地地面から足の長さ（ライドハイト）分だけ胴体を持ち上げる
+            double targetY = avgGroundY + rideHeight;
+            double yDiff = targetY - this.getY();
+
+            // 脚の仮想スプリング反発力（車高維持・スムーズ追従）
+            motionY = Mth.clamp(yDiff * 0.45, -0.25, 0.25);
+        } else {
+            // 足が地面に届かない空宙では重力で自然落下
+            Vec3 currentDelta = this.getDeltaMovement();
+            motionY = currentDelta.y - 0.08;
+            if (this.onGround()) {
+                motionY = 0.0;
+            }
         }
 
         // 移動適用
