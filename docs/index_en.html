@@ -22,6 +22,7 @@
       </a>
       <ul class="nav-links">
         <li><a href="#about">Overview</a></li>
+        <li><a href="#movie">Video</a></li>
         <li><a href="#vehicles">Vehicles</a></li>
         <li><a href="items_en.html">Items</a></li>
         <li><a href="dev-status_en.html">Dev Status</a></li>
@@ -69,18 +70,44 @@
   <!-- Gameplay Trailer Section -->
   <section id="movie" class="section">
     <div class="section-header">
-      <span class="section-tag">GAMEPLAY TRAILER</span>
-      <h2 class="section-title">Gameplay Footage & Action Highlights</h2>
-      <p class="section-desc">Watch actual in-game footage showing realistic suspension dynamics, counter-steer drifting, and high-speed drone acrobatics across vast Minecraft worlds.</p>
+      <span class="section-tag">OFFICIAL TRAILER & GUIDE</span>
+      <h2 class="section-title">Official Introduction & Complete Guide</h2>
+      <p class="section-desc">Watch the official walkthrough covering vehicle controls, physics mechanics, FPV piloting, and custom model customization.</p>
     </div>
 
     <div class="video-container">
       <div class="video-wrapper">
-        <video src="videos/rc-1.mp4" controls autoplay muted loop playsinline poster="images/hero_banner.jpg">
-          Your browser does not support the video tag.
-        </video>
+        <iframe 
+          src="https://www.youtube-nocookie.com/embed/rsyY97cwt14?rel=0" 
+          title="RCVERSE – Minecraft RC Vehicle Mod | Official Introduction & Complete Guide" 
+          frameborder="0" 
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+          allowfullscreen>
+        </iframe>
+      </div>
+      <div style="padding: 14px 20px; background: rgba(15, 23, 42, 0.95); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; border-top: 1px solid rgba(255, 255, 255, 0.08);">
+        <div style="font-size: 0.95rem; color: #fff; font-weight: 600;">
+          🎬 RCVERSE – Official Introduction & Complete Guide (NeoForge 1.21.1)
+        </div>
+        <a href="https://youtu.be/rsyY97cwt14?si=yZ3v_AgZdvxtcNWk" target="_blank" rel="noopener noreferrer" style="color: #fff; background: #cc0000; font-weight: 700; font-size: 0.88rem; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; padding: 7px 16px; border-radius: 6px; transition: background 0.2s; box-shadow: 0 2px 8px rgba(204,0,0,0.3);">
+          <span>▶️ Watch on YouTube</span>
+        </a>
       </div>
     </div>
+
+    <!-- Gameplay Short Highlights (Local Clip) -->
+    <details style="max-width: 900px; margin: 20px auto 0; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; overflow: hidden;">
+      <summary style="padding: 12px 18px; cursor: pointer; color: var(--accent-cyan); font-weight: 600; font-size: 0.92rem; user-select: none; display: flex; align-items: center; gap: 8px;">
+        <span>🎮 Watch Short Gameplay Highlights Clip (~1 min)</span>
+      </summary>
+      <div style="padding: 0 16px 16px;">
+        <div class="video-wrapper" style="border-radius: 8px; overflow: hidden; margin-top: 8px;">
+          <video src="videos/rc-1.mp4" controls loop playsinline poster="images/hero_banner.jpg" style="border-radius: 8px;">
+            Your browser does not support the video tag.
+          </video>
+        </div>
+      </div>
+    </details>
   </section>
 
   <!-- MOD Overview -->
@@ -674,6 +701,7 @@
         <a href="items_en.html">Items</a>
         <a href="dev-status_en.html">Dev Status</a>
         <a href="#install">Install</a>
+        <a href="https://youtu.be/rsyY97cwt14" target="_blank" style="color: #ff4444;">📺 YouTube</a>
         <a href="https://github.com/Miku013/RCVERSE" target="_blank">GitHub</a>
         <a href="index.html">🌐 日本語</a>
       </div>
