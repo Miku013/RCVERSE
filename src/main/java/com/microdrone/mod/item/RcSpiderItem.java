@@ -40,6 +40,30 @@ public class RcSpiderItem extends Item {
 
         RcSpiderEntity spider = ModEntities.RC_SPIDER.get().create(serverLevel);
         if (spider != null) {
+            String variantToSet = null;
+
+            // 1. 金床でのカスタム名によるバリアント指定
+            if (itemStack.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME)) {
+                String customName = itemStack.getHoverName().getString().trim();
+                com.microdrone.mod.config.spider.SpiderConfig config = com.microdrone.mod.config.spider.SpiderConfigManager.getConfig(customName);
+                if (config != null && !"default".equalsIgnoreCase(config.id)) {
+                    variantToSet = config.id;
+                }
+            }
+
+            // 2. アイテムのカスタムデータ内の明示的な Variant タグ
+            var customData = itemStack.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA);
+            if (customData != null) {
+                net.minecraft.nbt.CompoundTag tag = customData.copyTag();
+                if (variantToSet == null && tag.contains("Variant")) {
+                    variantToSet = tag.getString("Variant");
+                }
+            }
+
+            if (variantToSet != null) {
+                spider.setVariantId(variantToSet);
+            }
+
             spider.moveTo(x, y, z, context.getRotation(), 0.0F);
             serverLevel.addFreshEntity(spider);
             level.gameEvent(context.getPlayer(), GameEvent.ENTITY_PLACE, spawnPos);

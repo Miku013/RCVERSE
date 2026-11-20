@@ -25,8 +25,9 @@ public class RcSpiderRenderer extends GeoEntityRenderer<RcSpiderEntity> {
     public void render(RcSpiderEntity entity, float entityYaw, float partialTick, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
         poseStack.pushPose();
 
-        // 卓上RCスケール（約 0.35倍）
-        float scale = 0.35F;
+        // 外部コンフィグによるスケール倍率の適用（基本 0.35F = 卓上RCサイズ）
+        float configScale = com.microdrone.mod.config.spider.SpiderConfigManager.getConfig(entity.getVariantId()).properties.scale;
+        float scale = Math.max(0.05F, configScale);
         poseStack.scale(scale, scale, scale);
 
         // 進行方向の回転（正面合わせ: 180.0F - yaw）

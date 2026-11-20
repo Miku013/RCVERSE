@@ -24,17 +24,20 @@ public class RcSpiderGeoModel extends GeoModel<RcSpiderEntity> {
 
     @Override
     public ResourceLocation getModelResource(RcSpiderEntity animatable) {
-        return MODEL;
+        com.microdrone.mod.config.spider.SpiderConfig config = com.microdrone.mod.config.spider.SpiderConfigManager.getConfig(animatable.getVariantId());
+        return config != null ? config.getModelResource() : MODEL;
     }
 
     @Override
     public ResourceLocation getTextureResource(RcSpiderEntity animatable) {
-        return TEXTURE;
+        com.microdrone.mod.config.spider.SpiderConfig config = com.microdrone.mod.config.spider.SpiderConfigManager.getConfig(animatable.getVariantId());
+        return config != null ? config.getTextureResource() : TEXTURE;
     }
 
     @Override
     public ResourceLocation getAnimationResource(RcSpiderEntity animatable) {
-        return ANIMATION;
+        com.microdrone.mod.config.spider.SpiderConfig config = com.microdrone.mod.config.spider.SpiderConfigManager.getConfig(animatable.getVariantId());
+        return config != null ? config.getAnimationResource() : ANIMATION;
     }
 
     @Override
