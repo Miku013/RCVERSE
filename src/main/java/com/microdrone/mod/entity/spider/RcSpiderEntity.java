@@ -228,8 +228,18 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
     }
 
     /**
+     * 段差踏破性能（ステップ高さ）
+     * ハーフブロック（0.5m）や階段、ブロック段差をスムーズに踏破できるように設定
+     */
+    @Override
+    public float maxUpStep() {
+        float scale = getConfigScale();
+        return Math.max(0.6f, 0.8f * scale);
+    }
+
+    /**
      * モデルスケール（拡大・縮小）に連動したヒットボックスサイズ算出
-     * 拡大時はピッタリではなく一回り小さくなるよう倍率を緩やか（約75%）に設定
+     * モデルの中心（胴体・足先から砲塔）を包み込み、拡大時は一回り小さくなるよう倍率を緩やかに設定
      */
     @Override
     public EntityDimensions getDimensions(Pose pose) {
@@ -239,11 +249,13 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
             // 拡大時: ピッタリではなく一回り小さくなるよう緩やかな拡大倍率（約75%追従）
             hitboxScale = 1.0f + (scale - 1.0f) * 0.75f;
         } else {
-            // 縮小時: 卓上サイズに合わせて縮小（足の引っかかりを防ぐため約85%）
-            hitboxScale = scale * 0.85f;
+            // 縮小時: 卓上サイズに合わせて縮小
+            hitboxScale = scale;
         }
         hitboxScale = Math.max(0.1f, hitboxScale);
-        return super.getDimensions(pose).scale(hitboxScale);
+
+        // モデル全体（足元から胴体中心・砲塔）を包み込むプロポーション
+        return EntityDimensions.scalable(0.85f * hitboxScale, 0.95f * hitboxScale);
     }
 
     @Override
