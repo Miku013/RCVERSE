@@ -143,10 +143,11 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
         public boolean isStepping = false;
         public float stepProgress = 1.0f; // 0.0f -> 1.0f
 
-        // モデルレンダラーへの受け渡し用（胴体基準のローカル相対変位）
+        // モデルレンダラーへの受け渡し用（胴体基準のローカル相対変位・IK用）
         public float animLiftY = 0.0f;
         public float animSwingX = 0.0f;
         public float animSwingZ = 0.0f;
+        public float groundDeltaY = 0.0f; // 車体中心Yに対する足先接地面の相対高さ（ブロック単位）
 
         public LegState(int index, int group, Vec3 localBaseOffset, Vec3 localFootDefault) {
             this.index = index;
@@ -397,6 +398,9 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
                     leg.currentWorldFootPos = new Vec3(horizLerp.x, horizLerp.y + liftHeight, horizLerp.z);
                 }
             }
+
+            // 車体中心に対する足先接地面の相対高さ（IK地形適応・段差追従用）
+            leg.groundDeltaY = (float) (leg.currentWorldFootPos.y - bodyPos.y);
 
             // モデルレンダラー用の前後スイング角 & ステップリフト量計算
             float phase = (leg.group == 0) ? 0.0f : (float) Math.PI;
