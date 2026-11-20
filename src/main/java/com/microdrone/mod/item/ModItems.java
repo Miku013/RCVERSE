@@ -31,6 +31,9 @@ public class ModItems {
     public static final DeferredHolder<Item, RcSubmarineItem> RC_SUBMARINE_ITEM =
             ITEMS.register("rc_submarine_item", () -> new RcSubmarineItem(new Item.Properties().stacksTo(16)));
 
+    public static final DeferredHolder<Item, RcSpiderItem> RC_SPIDER_ITEM =
+            ITEMS.register("rc_spider_item", () -> new RcSpiderItem(new Item.Properties().stacksTo(16)));
+
     public static final DeferredHolder<Item, DroneControllerItem> DRONE_CONTROLLER =
             ITEMS.register("drone_controller", () -> new DroneControllerItem(new Item.Properties().stacksTo(1)));
 
