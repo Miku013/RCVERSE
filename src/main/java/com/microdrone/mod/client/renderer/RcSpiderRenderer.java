@@ -44,9 +44,8 @@ public class RcSpiderRenderer extends GeoEntityRenderer<RcSpiderEntity> {
             poseStack.mulPose(Axis.ZP.rotationDegrees(-roll));
         }
 
-        // スプリング復元力による車高リフト（地面接触時に機体を持ち上げてお腹擦りを防止）
-        float bodyLift = Mth.lerp(partialTick, entity.prevBodyLiftY, entity.bodyLiftY);
-        poseStack.translate(0, yOffset + bodyLift, 0);
+        // モデルの中心とヒットボックスを正確に一致させるオフセット適用
+        poseStack.translate(0, yOffset, 0);
 
         // スケール倍率の適用（卓上RCサイズ）
         poseStack.scale(scale, scale, scale);
