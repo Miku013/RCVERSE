@@ -59,23 +59,20 @@ public class RcSpiderGeoModel extends GeoModel<RcSpiderEntity> {
             body.setPosY(bobbing);
         }
 
-        // 3. 6本の脚のプロシージャル歩行モーション
-        // 初期オフセット角（モデル定義の初期角度）
-        // 左側: leg_fl(+15 deg), leg_ml(0 deg), leg_rl(-15 deg)
-        // 右側: leg_fr(-15 deg), leg_mr(0 deg), leg_rr(+15 deg)
-        applyLegAnimation(entity, RcSpiderEntity.LEG_FL, "leg_fl", "leg_fl_lower", 15.0f * Mth.DEG_TO_RAD, true);
-        applyLegAnimation(entity, RcSpiderEntity.LEG_ML, "leg_ml", "leg_ml_lower", 0.0f, true);
-        applyLegAnimation(entity, RcSpiderEntity.LEG_RL, "leg_rl", "leg_rl_lower", -15.0f * Mth.DEG_TO_RAD, true);
+        // 4. 6本の脚のプロシージャル歩行モーション（モデルの初期姿勢に差分加算）
+        applyLegAnimation(entity, RcSpiderEntity.LEG_FL, "leg_fl", "leg_fl_lower", true);
+        applyLegAnimation(entity, RcSpiderEntity.LEG_ML, "leg_ml", "leg_ml_lower", true);
+        applyLegAnimation(entity, RcSpiderEntity.LEG_RL, "leg_rl", "leg_rl_lower", true);
 
-        applyLegAnimation(entity, RcSpiderEntity.LEG_FR, "leg_fr", "leg_fr_lower", -15.0f * Mth.DEG_TO_RAD, false);
-        applyLegAnimation(entity, RcSpiderEntity.LEG_MR, "leg_mr", "leg_mr_lower", 0.0f, false);
-        applyLegAnimation(entity, RcSpiderEntity.LEG_RR, "leg_rr", "leg_rr_lower", 15.0f * Mth.DEG_TO_RAD, false);
+        applyLegAnimation(entity, RcSpiderEntity.LEG_FR, "leg_fr", "leg_fr_lower", false);
+        applyLegAnimation(entity, RcSpiderEntity.LEG_MR, "leg_mr", "leg_mr_lower", false);
+        applyLegAnimation(entity, RcSpiderEntity.LEG_RR, "leg_rr", "leg_rr_lower", false);
     }
 
     /**
-     * 各脚のIKアニメーションをボーンに適用
+     * 各脚のIKアニメーションをボーンに適用（Blockbenchモデル本来の初期ポーズを完全保護）
      */
-    private void applyLegAnimation(RcSpiderEntity entity, int legIndex, String boneName, String lowerBoneName, float defaultYaw, boolean isLeft) {
+    private void applyLegAnimation(RcSpiderEntity entity, int legIndex, String boneName, String lowerBoneName, boolean isLeft) {
         GeoBone leg = this.getAnimationProcessor().getBone(boneName);
         GeoBone lower = this.getAnimationProcessor().getBone(lowerBoneName);
         if (leg == null) return;
@@ -83,26 +80,29 @@ public class RcSpiderGeoModel extends GeoModel<RcSpiderEntity> {
         RcSpiderEntity.LegState state = entity.legs[legIndex];
         if (state == null) return;
 
-        // 1. 前後スイング（Y軸旋回）: 前進・旋回時に足を前後に大きく振る！
-        float swing = state.animSwingZ;
-        leg.setRotY(defaultYaw + (isLeft ? -swing : swing));
+        // Blockbenchモデル定義の初期回転角（レストポーズ）を取得
+        float initRotX = (leg.getInitialSnapshot() != null) ? leg.getInitialSnapshot().getRotX() : leg.getRotX();
+        float initRotY = (leg.getInitialSnapshot() != null) ? leg.getInitialSnapshot().getRotY() : leg.getRotY();
+        float initRotZ = (leg.getInitialSnapshot() != null) ? leg.getInitialSnapshot().getRotZ() : leg.getRotZ();
 
-        // 2. ステップリフト（足を上げる）
+        // 1. 前後スイング（Y軸旋回）: 初期角度に対して前進・旋回スイングを加算！
+        float swing = state.animSwingZ;
+        leg.setRotX(initRotX);
+        leg.setRotY(initRotY + (isLeft ? -swing : swing));
+
+        // 2. ステップリフト（足を上げる）: 初期角度に対して持ち上げ角を加算！
         float lift = state.animLiftY; // 0.0 〜 1.0
         float liftRad = lift * 0.25f; // 最大約15度持ち上げる
+        leg.setRotZ(initRotZ + (isLeft ? -liftRad : liftRad));
 
-        if (isLeft) {
-            // 左脚: Z軸回転を負にすると外側斜め上へ持ち上がる
-            leg.setRotZ(-liftRad);
-            if (lower != null) {
-                lower.setRotZ(liftRad * 0.5f);
-            }
-        } else {
-            // 右脚: Z軸回転を正にすると外側斜め上へ持ち上がる
-            leg.setRotZ(liftRad);
-            if (lower != null) {
-                lower.setRotZ(-liftRad * 0.5f);
-            }
+        // 3. 下腿（膝）の連動屈曲
+        if (lower != null) {
+            float lowerInitX = (lower.getInitialSnapshot() != null) ? lower.getInitialSnapshot().getRotX() : lower.getRotX();
+            float lowerInitY = (lower.getInitialSnapshot() != null) ? lower.getInitialSnapshot().getRotY() : lower.getRotY();
+            float lowerInitZ = (lower.getInitialSnapshot() != null) ? lower.getInitialSnapshot().getRotZ() : lower.getRotZ();
+            lower.setRotX(lowerInitX);
+            lower.setRotY(lowerInitY);
+            lower.setRotZ(lowerInitZ + (isLeft ? liftRad * 0.4f : -liftRad * 0.4f));
         }
     }
 }
