@@ -5,6 +5,7 @@ import com.microdrone.mod.entity.RcCarEntity;
 import com.microdrone.mod.entity.RcBoatEntity;
 import com.microdrone.mod.entity.RcPlaneEntity;
 import com.microdrone.mod.entity.RcSubmarineEntity;
+import com.microdrone.mod.entity.spider.RcSpiderEntity;
 import com.microdrone.mod.entity.RcTankEntity;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
@@ -113,6 +114,18 @@ public class ServerPayloadHandler {
                             submarine.inputForward = payload.forward();
                             submarine.inputSteer = payload.strafe();
                             submarine.inputVertical = payload.vertical();
+                        }
+                    }
+                } else if (entity instanceof RcSpiderEntity spider) {
+                    if (spider.isPilotedBy(player)) {
+                        if (payload.stop()) {
+                            spider.stopPiloting(player);
+                        } else {
+                            spider.inputThrottle = payload.forward();
+                            spider.inputSteer = payload.strafe();
+                            spider.inputFire = (payload.vertical() > 0.5f);
+                            float relativeYaw = Mth.wrapDegrees(payload.yaw() - spider.getYRot());
+                            spider.targetTurretYaw = relativeYaw;
                         }
                     }
                 }
