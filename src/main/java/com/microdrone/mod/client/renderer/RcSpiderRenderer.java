@@ -27,7 +27,7 @@ public class RcSpiderRenderer extends GeoEntityRenderer<RcSpiderEntity> {
 
         com.microdrone.mod.config.spider.SpiderConfig config = com.microdrone.mod.config.spider.SpiderConfigManager.getConfig(entity.getVariantId());
         float configScale = (config != null) ? config.properties.scale : 0.35F;
-        float yOffset = (config != null) ? config.properties.yOffset : -0.22F;
+        float yOffset = (config != null) ? config.properties.yOffset : 0.0F;
         float scale = Math.max(0.05F, configScale);
 
         // 進行方向の回転（正面合わせ: 180.0F - yaw）
