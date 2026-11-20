@@ -61,31 +61,31 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
     private final AnimatableInstanceCache geoCache = GeckoLibUtil.createInstanceCache(this);
 
     // === 同期用 EntityData ===
-    private static final EntityDataAccessor<Boolean> DATA_HAS_BATTERY =
-            SynchedEntityData.defineId(RcSpiderEntity.class, EntityDataSerializers.BOOLEAN);
-    private static final EntityDataAccessor<Integer> DATA_BATTERY_REMAINING =
-            SynchedEntityData.defineId(RcSpiderEntity.class, EntityDataSerializers.INT);
-    private static final EntityDataAccessor<Integer> DATA_BATTERY_MAX =
-            SynchedEntityData.defineId(RcSpiderEntity.class, EntityDataSerializers.INT);
-    private static final EntityDataAccessor<ItemStack> DATA_INSTALLED_BATTERY =
-            SynchedEntityData.defineId(RcSpiderEntity.class, EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<Boolean> DATA_HAS_BATTERY = SynchedEntityData.defineId(RcSpiderEntity.class,
+            EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Integer> DATA_BATTERY_REMAINING = SynchedEntityData
+            .defineId(RcSpiderEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> DATA_BATTERY_MAX = SynchedEntityData.defineId(RcSpiderEntity.class,
+            EntityDataSerializers.INT);
+    private static final EntityDataAccessor<ItemStack> DATA_INSTALLED_BATTERY = SynchedEntityData
+            .defineId(RcSpiderEntity.class, EntityDataSerializers.ITEM_STACK);
 
-    private static final EntityDataAccessor<Integer> DATA_MOTOR_TIER =
-            SynchedEntityData.defineId(RcSpiderEntity.class, EntityDataSerializers.INT);
-    private static final EntityDataAccessor<ItemStack> DATA_INSTALLED_MOTOR =
-            SynchedEntityData.defineId(RcSpiderEntity.class, EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<Integer> DATA_MOTOR_TIER = SynchedEntityData.defineId(RcSpiderEntity.class,
+            EntityDataSerializers.INT);
+    private static final EntityDataAccessor<ItemStack> DATA_INSTALLED_MOTOR = SynchedEntityData
+            .defineId(RcSpiderEntity.class, EntityDataSerializers.ITEM_STACK);
 
     // 砲塔ヨー角・リコイル
-    private static final EntityDataAccessor<Float> DATA_TURRET_YAW =
-            SynchedEntityData.defineId(RcSpiderEntity.class, EntityDataSerializers.FLOAT);
-    private static final EntityDataAccessor<Integer> DATA_RECOIL_TICKS =
-            SynchedEntityData.defineId(RcSpiderEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Float> DATA_TURRET_YAW = SynchedEntityData.defineId(RcSpiderEntity.class,
+            EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Integer> DATA_RECOIL_TICKS = SynchedEntityData
+            .defineId(RcSpiderEntity.class, EntityDataSerializers.INT);
 
     // 車体ピッチ・ロール角
-    private static final EntityDataAccessor<Float> DATA_PITCH_ANGLE =
-            SynchedEntityData.defineId(RcSpiderEntity.class, EntityDataSerializers.FLOAT);
-    private static final EntityDataAccessor<Float> DATA_ROLL_ANGLE =
-            SynchedEntityData.defineId(RcSpiderEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_PITCH_ANGLE = SynchedEntityData.defineId(RcSpiderEntity.class,
+            EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_ROLL_ANGLE = SynchedEntityData.defineId(RcSpiderEntity.class,
+            EntityDataSerializers.FLOAT);
 
     // 操縦者UUID
     private UUID pilotUUID = null;
@@ -104,6 +104,10 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
     public float prevPitchAngle = 0.0f;
     public float rollAngle = 0.0f;
     public float prevRollAngle = 0.0f;
+
+    // 歩行サイクルアニメーション用
+    public float walkTimer = 0.0f;
+    public float currentMoveSpeed = 0.0f;
 
     // 射撃クールダウン
     private int shootCooldown = 0;
@@ -124,8 +128,8 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
     public static class LegState {
         public final int index;
         public final int group; // 0=グループA(FL, MR, RL), 1=グループB(FR, ML, RR)
-        public final Vec3 localBaseOffset;   // 胴体中心からの付け根位置 (ブロック単位)
-        public final Vec3 localFootDefault;  // 胴体中心からの標準足先位置 (ブロック単位)
+        public final Vec3 localBaseOffset; // 胴体中心からの付け根位置 (ブロック単位)
+        public final Vec3 localFootDefault; // 胴体中心からの標準足先位置 (ブロック単位)
 
         // ワールド座標系での足先位置
         public Vec3 currentWorldFootPos = Vec3.ZERO;
@@ -159,12 +163,12 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
         // 脚の初期化 (16単位 = 1m に換算)
         // 左側: X > 0, 右側: X < 0
         legs[LEG_FL] = new LegState(LEG_FL, 0, new Vec3(0.5, 1.06, -0.44), new Vec3(1.5, 0.0, -0.7));
-        legs[LEG_ML] = new LegState(LEG_ML, 1, new Vec3(0.5, 1.06, 0.0),   new Vec3(1.6, 0.0, 0.0));
-        legs[LEG_RL] = new LegState(LEG_RL, 0, new Vec3(0.5, 1.06, 0.44),  new Vec3(1.5, 0.0, 0.7));
+        legs[LEG_ML] = new LegState(LEG_ML, 1, new Vec3(0.5, 1.06, 0.0), new Vec3(1.6, 0.0, 0.0));
+        legs[LEG_RL] = new LegState(LEG_RL, 0, new Vec3(0.5, 1.06, 0.44), new Vec3(1.5, 0.0, 0.7));
 
         legs[LEG_FR] = new LegState(LEG_FR, 1, new Vec3(-0.5, 1.06, -0.44), new Vec3(-1.5, 0.0, -0.7));
-        legs[LEG_MR] = new LegState(LEG_MR, 0, new Vec3(-0.5, 1.06, 0.0),   new Vec3(-1.6, 0.0, 0.0));
-        legs[LEG_RR] = new LegState(LEG_RR, 1, new Vec3(-0.5, 1.06, 0.44),  new Vec3(-1.5, 0.0, 0.7));
+        legs[LEG_MR] = new LegState(LEG_MR, 0, new Vec3(-0.5, 1.06, 0.0), new Vec3(-1.6, 0.0, 0.0));
+        legs[LEG_RR] = new LegState(LEG_RR, 1, new Vec3(-0.5, 1.06, 0.44), new Vec3(-1.5, 0.0, 0.7));
     }
 
     @Override
@@ -205,6 +209,23 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
 
         if (shootCooldown > 0) {
             shootCooldown--;
+        }
+
+        // 歩行サイクルタイマーの進行
+        float moveIntent = Math.max(Math.abs(inputThrottle), Math.abs(inputSteer));
+        if (moveIntent < 0.05f) {
+            double hSpeed = this.getDeltaMovement().horizontalDistance();
+            if (hSpeed > 0.005) {
+                moveIntent = (float) Math.min(1.0, hSpeed * 6.0);
+            }
+        }
+        this.currentMoveSpeed = Mth.lerp(0.25f, this.currentMoveSpeed, moveIntent);
+
+        if (this.currentMoveSpeed > 0.01f) {
+            this.walkTimer += this.currentMoveSpeed * 0.4f;
+            if (this.walkTimer > (float) (Math.PI * 2000.0)) {
+                this.walkTimer = 0.0f;
+            }
         }
 
         if (!this.level().isClientSide) {
@@ -257,7 +278,8 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
         this.move(MoverType.SELF, this.getDeltaMovement());
 
         // バッテリー消費
-        if (isPiloted() && hasBattery && (Math.abs(inputThrottle) > 0.05f || Math.abs(inputSteer) > 0.05f || Math.abs(inputStrafe) > 0.05f)) {
+        if (isPiloted() && hasBattery
+                && (Math.abs(inputThrottle) > 0.05f || Math.abs(inputSteer) > 0.05f || Math.abs(inputStrafe) > 0.05f)) {
             if (this.tickCount % 20 == 0) {
                 consumeBattery(1);
             }
@@ -281,7 +303,8 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
         float bodyYaw = this.getYRot();
         float yawRad = bodyYaw * Mth.DEG_TO_RAD;
 
-        boolean isMoving = Math.abs(inputThrottle) > 0.05f || Math.abs(inputSteer) > 0.05f || Math.abs(inputStrafe) > 0.05f || this.getDeltaMovement().horizontalDistanceSqr() > 0.001;
+        boolean isMoving = Math.abs(inputThrottle) > 0.05f || Math.abs(inputSteer) > 0.05f
+                || Math.abs(inputStrafe) > 0.05f || this.getDeltaMovement().horizontalDistanceSqr() > 0.001;
 
         if (isMoving) {
             stepCycleTimer += 0.2f;
@@ -304,12 +327,14 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
             double leadX = vel.x * 4.0;
             double leadZ = vel.z * 4.0;
 
-            Vec3 idealWorldPos = new Vec3(bodyPos.x + rotatedOffsetX + leadX, bodyPos.y, bodyPos.z + rotatedOffsetZ + leadZ);
+            Vec3 idealWorldPos = new Vec3(bodyPos.x + rotatedOffsetX + leadX, bodyPos.y,
+                    bodyPos.z + rotatedOffsetZ + leadZ);
 
             // 地面への下向きレイキャスト
             Vec3 rayStart = new Vec3(idealWorldPos.x, bodyPos.y + 1.2, idealWorldPos.z);
             Vec3 rayEnd = new Vec3(idealWorldPos.x, bodyPos.y - 1.5, idealWorldPos.z);
-            BlockHitResult hit = this.level().clip(new ClipContext(rayStart, rayEnd, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, this));
+            BlockHitResult hit = this.level()
+                    .clip(new ClipContext(rayStart, rayEnd, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, this));
 
             double groundY = (hit.getType() == HitResult.Type.BLOCK) ? hit.getLocation().y : bodyPos.y;
             Vec3 targetGroundPos = new Vec3(idealWorldPos.x, groundY, idealWorldPos.z);
@@ -339,7 +364,8 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
 
                     // 着地時の微小土煙パーティクル
                     if (this.level().isClientSide) {
-                        this.level().addParticle(ParticleTypes.POOF, leg.currentWorldFootPos.x, leg.currentWorldFootPos.y + 0.05, leg.currentWorldFootPos.z, 0, 0.02, 0);
+                        this.level().addParticle(ParticleTypes.POOF, leg.currentWorldFootPos.x,
+                                leg.currentWorldFootPos.y + 0.05, leg.currentWorldFootPos.z, 0, 0.02, 0);
                     }
                 } else {
                     // 放物線状に持ち上げて着地
@@ -349,9 +375,32 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
                 }
             }
 
-            // モデルレンダラー用のローカル変位計算
-            double relY = leg.currentWorldFootPos.y - bodyPos.y;
-            leg.animLiftY = (float) relY;
+            // モデルレンダラー用の前後スイング角 & ステップリフト量計算
+            float phase = (leg.group == 0) ? 0.0f : (float) Math.PI;
+            float cycle = this.walkTimer + phase;
+
+            if (this.currentMoveSpeed > 0.01f) {
+                // 操縦入力に応じたスイング方向と強さ
+                float throttleEffect = (Math.abs(inputThrottle) > 0.05f) ? inputThrottle : 0.0f;
+                // 旋回時: 左側(FL,ML,RL)と右側(FR,MR,RR)で逆スイング
+                boolean isLeft = (i < 3);
+                float steerEffect = (Math.abs(inputSteer) > 0.05f) ? (isLeft ? inputSteer : -inputSteer) : 0.0f;
+                float combined = throttleEffect + steerEffect;
+                if (Math.abs(combined) < 0.05f) {
+                    combined = this.currentMoveSpeed;
+                }
+
+                // 前後への振り出し角 (約 ±25度 = 0.45rad)
+                leg.animSwingZ = (float) Math.sin(cycle) * combined * 0.45f;
+
+                // ステップ持ち上げ（前に足を振る半周期の間だけ足をふわりと上げる）
+                float rawLift = (float) Math.sin(cycle);
+                leg.animLiftY = (rawLift > 0.0f) ? rawLift * this.currentMoveSpeed : 0.0f;
+            } else {
+                // 停止時はスムーズに直立基準ポーズへ
+                leg.animSwingZ = Mth.lerp(0.2f, leg.animSwingZ, 0.0f);
+                leg.animLiftY = Mth.lerp(0.2f, leg.animLiftY, 0.0f);
+            }
         }
 
         // 6本の足の接地高さから車体のピッチ・ロール傾斜角を計算
@@ -364,8 +413,10 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
     private void calculateBodyTilt() {
         double frontY = (legs[LEG_FL].currentWorldFootPos.y + legs[LEG_FR].currentWorldFootPos.y) * 0.5;
         double rearY = (legs[LEG_RL].currentWorldFootPos.y + legs[LEG_RR].currentWorldFootPos.y) * 0.5;
-        double leftY = (legs[LEG_FL].currentWorldFootPos.y + legs[LEG_ML].currentWorldFootPos.y + legs[LEG_RL].currentWorldFootPos.y) / 3.0;
-        double rightY = (legs[LEG_FR].currentWorldFootPos.y + legs[LEG_MR].currentWorldFootPos.y + legs[LEG_RR].currentWorldFootPos.y) / 3.0;
+        double leftY = (legs[LEG_FL].currentWorldFootPos.y + legs[LEG_ML].currentWorldFootPos.y
+                + legs[LEG_RL].currentWorldFootPos.y) / 3.0;
+        double rightY = (legs[LEG_FR].currentWorldFootPos.y + legs[LEG_MR].currentWorldFootPos.y
+                + legs[LEG_RR].currentWorldFootPos.y) / 3.0;
 
         float targetPitch = (float) Math.toDegrees(Math.atan2(rearY - frontY, 1.4));
         float targetRoll = (float) Math.toDegrees(Math.atan2(leftY - rightY, 1.6));
@@ -412,7 +463,8 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
 
         if (this.level() instanceof ServerLevel serverLevel) {
             serverLevel.sendParticles(ParticleTypes.FLASH, muzzlePos.x, muzzlePos.y, muzzlePos.z, 1, 0, 0, 0, 0);
-            serverLevel.sendParticles(ParticleTypes.CAMPFIRE_COSY_SMOKE, muzzlePos.x, muzzlePos.y, muzzlePos.z, 4, 0.1, 0.1, 0.1, 0.02);
+            serverLevel.sendParticles(ParticleTypes.CAMPFIRE_COSY_SMOKE, muzzlePos.x, muzzlePos.y, muzzlePos.z, 4, 0.1,
+                    0.1, 0.1, 0.02);
         }
 
         consumeBattery(2);
@@ -420,8 +472,10 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
 
     // === バッテリー・モーター管理 ===
     public boolean installBattery(ItemStack batteryItem, Player player) {
-        if (!(batteryItem.getItem() instanceof DroneBatteryItem item)) return false;
-        if (this.entityData.get(DATA_HAS_BATTERY)) return false;
+        if (!(batteryItem.getItem() instanceof DroneBatteryItem item))
+            return false;
+        if (this.entityData.get(DATA_HAS_BATTERY))
+            return false;
 
         ItemStack installed = batteryItem.split(1);
         int max = item.getMaxFlightBlocks();
@@ -432,12 +486,14 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
         this.entityData.set(DATA_BATTERY_REMAINING, cur);
         this.entityData.set(DATA_INSTALLED_BATTERY, installed);
 
-        this.level().playSound(null, getX(), getY(), getZ(), SoundEvents.IRON_TRAPDOOR_CLOSE, SoundSource.NEUTRAL, 0.8f, 1.2f);
+        this.level().playSound(null, getX(), getY(), getZ(), SoundEvents.IRON_TRAPDOOR_CLOSE, SoundSource.NEUTRAL, 0.8f,
+                1.2f);
         return true;
     }
 
     public void removeBattery(Player player) {
-        if (!this.entityData.get(DATA_HAS_BATTERY)) return;
+        if (!this.entityData.get(DATA_HAS_BATTERY))
+            return;
 
         ItemStack battery = this.entityData.get(DATA_INSTALLED_BATTERY);
         if (!battery.isEmpty() && battery.getItem() instanceof DroneBatteryItem item) {
@@ -451,12 +507,15 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
         this.entityData.set(DATA_BATTERY_REMAINING, 0);
         this.entityData.set(DATA_INSTALLED_BATTERY, ItemStack.EMPTY);
 
-        this.level().playSound(null, getX(), getY(), getZ(), SoundEvents.IRON_TRAPDOOR_OPEN, SoundSource.NEUTRAL, 0.8f, 1.2f);
+        this.level().playSound(null, getX(), getY(), getZ(), SoundEvents.IRON_TRAPDOOR_OPEN, SoundSource.NEUTRAL, 0.8f,
+                1.2f);
     }
 
     public boolean installMotor(ItemStack motorItem, Player player) {
-        if (!(motorItem.getItem() instanceof DroneMotorItem item)) return false;
-        if (!this.entityData.get(DATA_INSTALLED_MOTOR).isEmpty()) return false;
+        if (!(motorItem.getItem() instanceof DroneMotorItem item))
+            return false;
+        if (!this.entityData.get(DATA_INSTALLED_MOTOR).isEmpty())
+            return false;
 
         ItemStack installed = motorItem.split(1);
         this.entityData.set(DATA_MOTOR_TIER, item.getTier());
@@ -468,7 +527,8 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
 
     public void removeMotor(Player player) {
         ItemStack motor = this.entityData.get(DATA_INSTALLED_MOTOR);
-        if (motor.isEmpty()) return;
+        if (motor.isEmpty())
+            return;
 
         ItemEntity drop = new ItemEntity(this.level(), getX(), getY() + 0.3, getZ(), motor);
         this.level().addFreshEntity(drop);
@@ -476,7 +536,8 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
         this.entityData.set(DATA_MOTOR_TIER, 1);
         this.entityData.set(DATA_INSTALLED_MOTOR, ItemStack.EMPTY);
 
-        this.level().playSound(null, getX(), getY(), getZ(), SoundEvents.ITEM_FRAME_REMOVE_ITEM, SoundSource.NEUTRAL, 0.8f, 1.2f);
+        this.level().playSound(null, getX(), getY(), getZ(), SoundEvents.ITEM_FRAME_REMOVE_ITEM, SoundSource.NEUTRAL,
+                0.8f, 1.2f);
     }
 
     public void consumeBattery(int amount) {
@@ -536,7 +597,8 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
         // 3. モーター装着
         if (held.getItem() instanceof DroneMotorItem motorItem) {
             if (installMotor(held, player)) {
-                player.sendSystemMessage(Component.translatable("message.microdrone.motor_installed", motorItem.getTier()));
+                player.sendSystemMessage(
+                        Component.translatable("message.microdrone.motor_installed", motorItem.getTier()));
                 return InteractionResult.SUCCESS;
             }
         }
@@ -550,7 +612,8 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
 
         // 5. 送信機を持っていれば操縦開始
         if (held.getItem() == ModItems.DRONE_CONTROLLER.get() && player instanceof ServerPlayer sp) {
-            if (startPiloting(sp)) return InteractionResult.SUCCESS;
+            if (startPiloting(sp))
+                return InteractionResult.SUCCESS;
         }
 
         return InteractionResult.PASS;
@@ -586,10 +649,12 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
 
     @Override
     public boolean startPiloting(ServerPlayer player) {
-        if (isPiloted()) return false;
+        if (isPiloted())
+            return false;
         this.pilotUUID = player.getUUID();
         RcVehicleManager.registerPiloting(this.pilotUUID, this);
-        PacketDistributor.sendToPlayer(player, new DronePilotStatePayload(this.getId(), true, player.getX(), player.getY(), player.getZ()));
+        PacketDistributor.sendToPlayer(player,
+                new DronePilotStatePayload(this.getId(), true, player.getX(), player.getY(), player.getZ()));
         player.sendSystemMessage(Component.translatable("message.microdrone.pilot_started_robot", this.getName()));
         return true;
     }
@@ -610,7 +675,8 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
 
     @Override
     public boolean hurt(DamageSource source, float amount) {
-        if (this.isInvulnerableTo(source)) return false;
+        if (this.isInvulnerableTo(source))
+            return false;
         dropVehicle(null);
         return true;
     }
@@ -621,11 +687,13 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
         this.entityData.set(DATA_BATTERY_REMAINING, compound.getInt("BatteryRemaining"));
         this.entityData.set(DATA_BATTERY_MAX, compound.getInt("BatteryMax"));
         if (compound.contains("InstalledBattery")) {
-            this.entityData.set(DATA_INSTALLED_BATTERY, ItemStack.parseOptional(this.level().registryAccess(), compound.getCompound("InstalledBattery")));
+            this.entityData.set(DATA_INSTALLED_BATTERY,
+                    ItemStack.parseOptional(this.level().registryAccess(), compound.getCompound("InstalledBattery")));
         }
         this.entityData.set(DATA_MOTOR_TIER, compound.getInt("MotorTier"));
         if (compound.contains("InstalledMotor")) {
-            this.entityData.set(DATA_INSTALLED_MOTOR, ItemStack.parseOptional(this.level().registryAccess(), compound.getCompound("InstalledMotor")));
+            this.entityData.set(DATA_INSTALLED_MOTOR,
+                    ItemStack.parseOptional(this.level().registryAccess(), compound.getCompound("InstalledMotor")));
         }
     }
 
