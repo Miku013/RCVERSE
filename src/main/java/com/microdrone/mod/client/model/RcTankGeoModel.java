@@ -87,8 +87,8 @@ public class RcTankGeoModel extends GeoModel<RcTankEntity> {
         float recoil = animatable.getRecoil();
         GeoBone recoilBone = this.getAnimationProcessor().getBone("recoil");
         if (recoilBone != null) {
-            // cannonのローカル座標系で後ろ(+Yまたは+Z)に後座
-            recoilBone.setPosZ(recoil * -3.0f);
+            // cannonのローカル座標系で後方（+Z）に後座スライド
+            recoilBone.setPosZ(recoil * 3.0f);
         }
     }
 }
