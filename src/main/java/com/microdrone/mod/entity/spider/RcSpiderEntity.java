@@ -436,7 +436,7 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
     }
 
     /**
-     * 接地脚の高さから車体の傾斜（ピッチ・ロール）を計算（スケール連動・過度傾斜クランプ付き）
+     * 接地脚の高さから車体の傾斜（ピッチ・ロール）を計算（スケール連動・IKサスペンションダンピング・過度傾斜クランプ付き）
      */
     private void calculateBodyTilt() {
         double frontY = (legs[LEG_FL].currentWorldFootPos.y + legs[LEG_FR].currentWorldFootPos.y) * 0.5;
@@ -447,18 +447,24 @@ public class RcSpiderEntity extends Entity implements GeoEntity, RcControllable 
                 + legs[LEG_RR].currentWorldFootPos.y) / 3.0;
 
         float scale = getConfigScale();
+        com.microdrone.mod.config.spider.SpiderConfig config = com.microdrone.mod.config.spider.SpiderConfigManager.getConfig(getVariantId());
+        float maxTilt = (config != null) ? config.properties.maxTiltAngle : 30.0f;
+
+        // ホイールベースとトレッド幅（スケール連動）
         double wheelbase = 1.4 * scale;
         double trackwidth = 1.6 * scale;
 
-        float targetPitch = (float) Math.toDegrees(Math.atan2(rearY - frontY, Math.max(0.2, wheelbase)));
-        float targetRoll = (float) Math.toDegrees(Math.atan2(leftY - rightY, Math.max(0.2, trackwidth)));
+        // IK脚サスペンション効果: 脚の屈曲が段差を吸収するため、車体の傾斜はマイルド（約65%）に追従
+        float rawPitch = (float) Math.toDegrees(Math.atan2(rearY - frontY, Math.max(0.2, wheelbase))) * 0.65f;
+        float rawRoll = (float) Math.toDegrees(Math.atan2(leftY - rightY, Math.max(0.2, trackwidth))) * 0.65f;
 
-        // 不自然な裏返りや破綻を防ぐ安全クランプ（±35度）
-        targetPitch = Mth.clamp(targetPitch, -35.0f, 35.0f);
-        targetRoll = Mth.clamp(targetRoll, -35.0f, 35.0f);
+        // 安全クランプ（±maxTilt）
+        float targetPitch = Mth.clamp(rawPitch, -maxTilt, maxTilt);
+        float targetRoll = Mth.clamp(rawRoll, -maxTilt, maxTilt);
 
-        this.pitchAngle = Mth.rotLerp(0.15f, this.pitchAngle, targetPitch);
-        this.rollAngle = Mth.rotLerp(0.15f, this.rollAngle, targetRoll);
+        // 滑らかな回転補間（RotLerp）
+        this.pitchAngle = Mth.rotLerp(0.12f, this.pitchAngle, targetPitch);
+        this.rollAngle = Mth.rotLerp(0.12f, this.rollAngle, targetRoll);
 
         if (!this.level().isClientSide) {
             this.entityData.set(DATA_PITCH_ANGLE, this.pitchAngle);
