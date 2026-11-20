@@ -49,6 +49,13 @@ public class RcSpiderGeoModel extends GeoModel<RcSpiderEntity> {
             turret.setRotY(turretYawRad);
         }
 
+        // 3. 歩行時のボディ微振動（ボビング）
+        GeoBone body = this.getAnimationProcessor().getBone("body");
+        if (body != null) {
+            float bobbing = (float) Math.sin(entity.walkTimer * 2.0f) * entity.currentMoveSpeed * 0.6f;
+            body.setPosY(bobbing);
+        }
+
         // 3. 6本の脚のプロシージャル歩行モーション
         // 初期オフセット角（モデル定義の初期角度）
         // 左側: leg_fl(+15 deg), leg_ml(0 deg), leg_rl(-15 deg)
@@ -73,27 +80,25 @@ public class RcSpiderGeoModel extends GeoModel<RcSpiderEntity> {
         RcSpiderEntity.LegState state = entity.legs[legIndex];
         if (state == null) return;
 
-        // 水平スイング（前後・左右への振り出し角）
-        // animSwingZ: 前後方向の変位, animSwingX: 左右方向の変位
-        float swingAngle = (float) Math.atan2(state.animSwingZ, 0.6f);
-        // 旋回入力や移動方向に応じたYaw回転
-        leg.setRotY(defaultYaw + (isLeft ? -swingAngle : swingAngle));
+        // 1. 前後スイング（Y軸旋回）: 前進・旋回時に足を前後に大きく振る！
+        float swing = state.animSwingZ;
+        leg.setRotY(defaultYaw + (isLeft ? -swing : swing));
 
-        // 垂直リフト（足を上げる放物線軌道）
-        float liftAmount = state.animLiftY; // 0.0m 〜 0.35m
-        float liftRad = Mth.clamp(liftAmount * 1.5f, 0.0f, 0.7f); // 最大約40度
+        // 2. ステップリフト（足を上げる）
+        float lift = state.animLiftY; // 0.0 〜 1.0
+        float liftRad = lift * 0.25f; // 最大約15度持ち上げる
 
         if (isLeft) {
-            // 左脚の持ち上げ（ロール軸／ピッチ軸連動）
-            leg.setRotZ(-liftRad * 0.7f);
+            // 左脚: Z軸回転を負にすると外側斜め上へ持ち上がる
+            leg.setRotZ(-liftRad);
             if (lower != null) {
-                lower.setRotZ(liftRad * 1.2f);
+                lower.setRotZ(liftRad * 0.5f);
             }
         } else {
-            // 右脚の持ち上げ
-            leg.setRotZ(liftRad * 0.7f);
+            // 右脚: Z軸回転を正にすると外側斜め上へ持ち上がる
+            leg.setRotZ(liftRad);
             if (lower != null) {
-                lower.setRotZ(-liftRad * 1.2f);
+                lower.setRotZ(-liftRad * 0.5f);
             }
         }
     }
