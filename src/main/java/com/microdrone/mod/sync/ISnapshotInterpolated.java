@@ -8,4 +8,10 @@ public interface ISnapshotInterpolated {
      * 車両が保持するスナップショットバッファを取得
      */
     VehicleSnapshotBuffer getSnapshotBuffer();
+
+    /**
+     * 自プレイヤー（ローカルクライアント）が現在操縦中かどうか
+     */
+    boolean isLocallyControlled();
 }
+

@@ -21,13 +21,39 @@ public class RcBoatGeoRenderer extends GeoEntityRenderer<RcBoatEntity> {
     public void render(RcBoatEntity entity, float entityYaw, float partialTick, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
         poseStack.pushPose();
 
+        float yaw;
+        float pitch;
+        float roll;
+
+        if (!entity.isLocallyControlled() && !com.microdrone.mod.client.ReplayHelper.isReplayActive()) {
+            // 他プレイヤー操縦・リモートボート: Snapshot Interpolation（第1段階）
+            long renderTime = System.currentTimeMillis() - com.microdrone.mod.sync.VehicleSnapshotBuffer.DEFAULT_INTERPOLATION_DELAY_MS;
+            com.microdrone.mod.sync.InterpolatedTransform transform = entity.getSnapshotBuffer().interpolate(renderTime);
+
+            if (transform.valid()) {
+                double vanillaX = Mth.lerp((double) partialTick, entity.xOld, entity.getX());
+                double vanillaY = Mth.lerp((double) partialTick, entity.yOld, entity.getY());
+                double vanillaZ = Mth.lerp((double) partialTick, entity.zOld, entity.getZ());
+
+                poseStack.translate(transform.x() - vanillaX, transform.y() - vanillaY, transform.z() - vanillaZ);
+
+                yaw = transform.yaw();
+                pitch = transform.pitch();
+                roll = transform.roll();
+            } else {
+                yaw = Mth.rotLerp(partialTick, entity.yRotO, entity.getYRot());
+                pitch = Mth.lerp(partialTick, entity.prevPitchAngle, entity.getPitchAngle());
+                roll = Mth.lerp(partialTick, entity.prevRollAngle, entity.getRollAngle());
+            }
+        } else {
+            yaw = Mth.rotLerp(partialTick, entity.yRotO, entity.getYRot());
+            pitch = Mth.lerp(partialTick, entity.prevPitchAngle, entity.getPitchAngle());
+            roll = Mth.lerp(partialTick, entity.prevRollAngle, entity.getRollAngle());
+        }
+
         // 1/4模型サイズ + 外部コンフィグ倍率適用
         float configScale = com.microdrone.mod.config.boat.BoatConfigManager.getConfig(entity.getVariantId()).properties.scale;
         poseStack.scale(0.25F * configScale, 0.25F * configScale, 0.25F * configScale);
-
-        float yaw = Mth.rotLerp(partialTick, entity.yRotO, entity.getYRot());
-        float pitch = Mth.rotLerp(partialTick, entity.prevPitchAngle, entity.getPitchAngle());
-        float roll = Mth.rotLerp(partialTick, entity.prevRollAngle, entity.getRollAngle());
 
         // 進行方向ヨー
         poseStack.mulPose(Axis.YP.rotationDegrees(180.0F - yaw));
@@ -47,4 +73,3 @@ public class RcBoatGeoRenderer extends GeoEntityRenderer<RcBoatEntity> {
         poseStack.popPose();
     }
 }
-

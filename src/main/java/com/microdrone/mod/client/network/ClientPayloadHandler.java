@@ -39,7 +39,7 @@ public class ClientPayloadHandler {
             Entity entity = mc.level.getEntity(payload.entityId());
             if (entity instanceof ISnapshotInterpolated vehicle) {
                 // 自プレイヤー操縦中の機体は手元の予測物理（Prediction）を最優先するためスキップ
-                if (entity instanceof RcCarEntity car && car.isLocallyControlled()) {
+                if (vehicle.isLocallyControlled()) {
                     return;
                 }
 
