@@ -70,5 +70,12 @@ public class ModNetworking {
                 DronePilotStatePayload.STREAM_CODEC,
                 ClientPayloadHandler::handlePilotState
         );
+
+        // サーバー -> クライアント (マルチプレイ車両スナップショット同期: 第1段階)
+        registrar.playToClient(
+                RcVehicleSnapshotPayload.TYPE,
+                RcVehicleSnapshotPayload.STREAM_CODEC,
+                ClientPayloadHandler::handleVehicleSnapshot
+        );
     }
 }

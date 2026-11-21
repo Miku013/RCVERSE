@@ -51,8 +51,16 @@ import software.bernie.geckolib.util.GeckoLibUtil;
 
 import java.util.UUID;
 
-public class RcCarEntity extends Entity implements GeoEntity, RcControllable, com.microdrone.mod.decal.RcDecalHolder {
+public class RcCarEntity extends Entity implements GeoEntity, RcControllable, com.microdrone.mod.decal.RcDecalHolder, com.microdrone.mod.sync.ISnapshotInterpolated {
     private final AnimatableInstanceCache geoCache = GeckoLibUtil.createInstanceCache(this);
+
+    // === マルチプレイ同期用 スナップショット補間バッファ（第1段階） ===
+    private final com.microdrone.mod.sync.VehicleSnapshotBuffer snapshotBuffer = new com.microdrone.mod.sync.VehicleSnapshotBuffer();
+
+    @Override
+    public com.microdrone.mod.sync.VehicleSnapshotBuffer getSnapshotBuffer() {
+        return this.snapshotBuffer;
+    }
 
     // === 同期用 EntityData ===
     private static final EntityDataAccessor<Boolean> DATA_HAS_BATTERY = SynchedEntityData.defineId(RcCarEntity.class,
@@ -716,6 +724,24 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
             this.entityData.set(DATA_LOOP_PROGRESS, this.loopProgress);
             this.entityData.set(DATA_CHASSIS_BOUNCE, this.chassisBounce);
             this.entityData.set(DATA_BRAKING, isBrakingInput());
+
+            // マルチプレイ同期: Snapshot Interpolation用パケットを周囲のプレイヤーへ配信（第1段階）
+            boolean isMoving = this.isPiloted() || (this.carVelocity != null && this.carVelocity.lengthSqr() > 0.0001) || Math.abs(this.currentSpeed) > 0.01f;
+            if (isMoving || (this.tickCount % 4 == 0)) {
+                PacketDistributor.sendToPlayersTrackingEntity(this, new com.microdrone.mod.network.RcVehicleSnapshotPayload(
+                        this.getId(),
+                        this.tickCount,
+                        this.getX(),
+                        this.getY(),
+                        this.getZ(),
+                        this.getYRot(),
+                        this.getPitchAngle(),
+                        this.getRollAngle(),
+                        (float) (this.carVelocity != null ? this.carVelocity.x : 0.0),
+                        (float) (this.carVelocity != null ? this.carVelocity.y : 0.0),
+                        (float) (this.carVelocity != null ? this.carVelocity.z : 0.0)
+                ));
+            }
         } else {
             // クライアント側処理
             if (this.locallyControlled && !com.microdrone.mod.client.ReplayHelper.isReplayActive()) {

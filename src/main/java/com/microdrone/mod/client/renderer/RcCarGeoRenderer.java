@@ -62,22 +62,52 @@ public class RcCarGeoRenderer extends GeoEntityRenderer<RcCarEntity> {
 
         poseStack.pushPose();
 
+        float yaw;
+        float roll;
+        float pitch;
+
+        if (!entity.isLocallyControlled() && !com.microdrone.mod.client.ReplayHelper.isReplayActive()) {
+            // 他プレイヤー操縦・リモート車両: Snapshot Interpolation（第1段階）
+            // サーバーから受信したスナップショットを 100ms 遅延バッファで滑らかに毎フレーム補間
+            long renderTime = System.currentTimeMillis() - com.microdrone.mod.sync.VehicleSnapshotBuffer.DEFAULT_INTERPOLATION_DELAY_MS;
+            com.microdrone.mod.sync.InterpolatedTransform transform = entity.getSnapshotBuffer().interpolate(renderTime);
+
+            if (transform.valid()) {
+                // Minecraftバニラの基準描画位置との差分をオフセット移動（物理演算やAABBを破壊せず描画のみ滑らかにする）
+                double vanillaX = Mth.lerp((double) partialTick, entity.xOld, entity.getX());
+                double vanillaY = Mth.lerp((double) partialTick, entity.yOld, entity.getY());
+                double vanillaZ = Mth.lerp((double) partialTick, entity.zOld, entity.getZ());
+
+                poseStack.translate(transform.x() - vanillaX, transform.y() - vanillaY, transform.z() - vanillaZ);
+
+                yaw = transform.yaw();
+                roll = transform.roll();
+                pitch = transform.pitch();
+            } else {
+                yaw = Mth.rotLerp(partialTick, entity.yRotO, entity.getYRot());
+                roll = Mth.lerp(partialTick, entity.prevRollAngle, entity.getRollAngle());
+                pitch = Mth.lerp(partialTick, entity.prevPitchAngle, entity.getPitchAngle());
+            }
+        } else {
+            // 自プレイヤー操縦時: クライアント側ローカル物理演算の最新値をダイレクト描画
+            yaw = Mth.rotLerp(partialTick, entity.yRotO, entity.getYRot());
+            roll = Mth.lerp(partialTick, entity.prevRollAngle, entity.getRollAngle());
+            pitch = Mth.lerp(partialTick, entity.prevPitchAngle, entity.getPitchAngle());
+        }
+
         // 1/5 スケールに縮小（手のひら・卓上マイクロRCカーサイズ）+ 外部コンフィグ倍率適用
         float configScale = com.microdrone.mod.config.car.CarConfigManager.getConfig(entity.getVariantId()).properties.scale;
         poseStack.scale(0.2F * configScale, 0.2F * configScale, 0.2F * configScale);
 
-        float yaw = Mth.rotLerp(partialTick, entity.yRotO, entity.getYRot());
         // 車体の進行方向の回転（正面合わせ）
         poseStack.mulPose(Axis.YP.rotationDegrees(180.0F - yaw));
 
         // サスペンション・路面追従によるロール（横傾き: 符号反転 -roll で持ち上がり/沈み込みを正常化）
-        float roll = Mth.lerp(partialTick, entity.prevRollAngle, entity.getRollAngle());
         if (Math.abs(roll) > 0.01f) {
             poseStack.mulPose(Axis.ZP.rotationDegrees(-roll));
         }
 
         // サスペンション・路面追従によるピッチ（前後傾き: 符号反転 -pitch で段差前上がり/ノーズダイブを正常化）
-        float pitch = Mth.lerp(partialTick, entity.prevPitchAngle, entity.getPitchAngle());
         if (Math.abs(pitch) > 0.01f) {
             poseStack.mulPose(Axis.XP.rotationDegrees(-pitch));
         }
