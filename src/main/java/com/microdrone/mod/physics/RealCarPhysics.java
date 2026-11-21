@@ -500,10 +500,10 @@ public class RealCarPhysics {
             }
         }
 
-        // ドリフト継続時間・距離に応じた後輪グリップ回復 (Grip Recovery)
-        // ドリフトが長引くとタイヤの動摩擦低下が収まり、本来のグリップ(1.0)を取り戻して横滑りを収束
-        if (this.continuousDriftTicks > 15) {
-            float gripRecovery = Mth.clamp((this.continuousDriftTicks - 15) / 25.0f, 0.0f, 1.0f);
+        // ドリフト継続時間・距離に応じた後輪グリップ回復 (Grip Recovery - マイルド調整版)
+        // ドリフトが長引くとタイヤの動摩擦低下が適度に収まり、マイルドにグリップを取り戻して横滑りを収束
+        if (this.continuousDriftTicks > 22) {
+            float gripRecovery = Mth.clamp((this.continuousDriftTicks - 22) / 38.0f, 0.0f, 0.85f);
             rearDynMult = Mth.lerp(gripRecovery, rearDynMult, 1.0);
         }
 
@@ -614,9 +614,9 @@ public class RealCarPhysics {
             double bodySlipRad = Math.atan2(Math.abs(this.lateralVelocity), Math.max(Math.abs(this.forwardVelocity), 0.05));
             double dragRetention = 1.0 - Math.min(0.06, bodySlipRad * config.corneringDragFactor * subDt);
 
-            // ドリフト継続時間・距離に応じた追加スクラブ抵抗（ロングドリフト時に緩やかに速度低下）
-            if (this.continuousDriftTicks > 15) {
-                double scrubDrag = Math.min(0.022, (this.continuousDriftTicks - 15) * 0.0006);
+            // ドリフト継続時間・距離に応じた追加スクラブ抵抗（マイルド調整版：ロングドリフト時に緩やかに速度低下）
+            if (this.continuousDriftTicks > 20) {
+                double scrubDrag = Math.min(0.013, (this.continuousDriftTicks - 20) * 0.00035);
                 dragRetention -= scrubDrag * subDt;
             }
 
