@@ -50,7 +50,7 @@
           <span style="display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; background: rgba(56, 189, 248, 0.15); color: var(--accent-cyan); border: 1px solid rgba(56, 189, 248, 0.3); margin-bottom: 8px;">
             LATEST STABLE RELEASE
           </span>
-          <h2 style="font-size: 1.8rem; font-weight: 800; color: #fff; margin: 0;">RCVERSE v1.0.9</h2>
+          <h2 style="font-size: 1.8rem; font-weight: 800; color: #fff; margin: 0;">RCVERSE v1.0.11</h2>
         </div>
         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
           <a href="index.html#download" class="btn btn-primary" style="padding: 10px 20px; font-size: 0.9rem;">⬇ 最新版をダウンロード</a>
@@ -139,6 +139,10 @@
           <ul class="roadmap-list">
             <li class="roadmap-list-item">
               <span class="check-icon">✔</span>
+              <span><strong>全機体マルチプレイ補間同期 (Snapshot Interpolation)</strong>: 100ms補間バッファと推測航法により、他プレイヤーや観戦カメラから見てもカクつきゼロの完全滑らかな走行・飛行・スタント同期を実現 (v1.0.11)</span>
+            </li>
+            <li class="roadmap-list-item">
+              <span class="check-icon">✔</span>
               <span><strong>自作モデルID金床連携</strong>: 金床で名付けたIDでデカール作業台の3Dモデルが即座に同期・保存される仕組み (v1.0.9)</span>
             </li>
             <li class="roadmap-list-item">
@@ -195,6 +199,14 @@
           <ul class="roadmap-list">
             <li class="roadmap-list-item">
               <span class="check-icon" style="color: #94a3b8;">✦</span>
+              <span><strong>タイヤパーツ換装システム (Tire Customization)</strong>: ドリフトタイヤ（低摩擦・スライド重視）、ハイグリップタイヤ（高接地力・オンレール走行）、ラリータイヤ（ブロックパターン・不整地走破）、スパイクタイヤ（氷上用）をクラフト・換装して走行特性を自在にセッティング</span>
+            </li>
+            <li class="roadmap-list-item">
+              <span class="check-icon" style="color: #94a3b8;">✦</span>
+              <span><strong>道路生成マーカーの路面バリエーション</strong>: 道路マーカーGUIから路面タイプ（アスファルト、氷塊・アイスバーン、ダート・砂利道、浅水・ウォーターロード）を選択可能にし、タイヤとの相乗効果や水しぶき・土埃エフェクトを展開</span>
+            </li>
+            <li class="roadmap-list-item">
+              <span class="check-icon" style="color: #94a3b8;">✦</span>
               <span><strong>コースレイアウト共有機能</strong>: 道路生成マーカーで作成したオリジナルコースのプリセット保存・書き出し</span>
             </li>
             <li class="roadmap-list-item">
@@ -220,13 +232,31 @@
 
       <div class="timeline-wrap">
 
-        <!-- v1.0.9 -->
+        <!-- v1.0.11 -->
         <div class="timeline-block">
           <div class="timeline-node latest"></div>
           <div class="timeline-card">
             <div class="timeline-card-header">
-              <span class="version-tag">v1.0.9</span>
+              <span class="version-tag">v1.0.11</span>
               <span class="release-date">最新リリース (Latest)</span>
+            </div>
+            <div class="timeline-desc">🌐 全機種対応マルチプレイヤー Snapshot Interpolation（超滑らか位置同期＆観戦カメラ対応）</div>
+            <ul class="timeline-details">
+              <li>他プレイヤー視点や定点カメラから見た際の車両・機体のカクつき（ネットワークジッター）を完全に解消する100ms補間バッファシステムを実装。</li>
+              <li>RCカー、RC戦車、RC飛行機、RCスピードボート、RC潜水艦、マイクロドローンの全6機種すべてに水平展開。</li>
+              <li>GeckoLib 4のレンダラーオフセット分離により、大ジャンプや360°ループ、高速ドリフト中もモデルの座標ブレを防止。</li>
+              <li>LANテストおよび複数クライアント接続環境での高品位な同期安定性を実証。</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- v1.0.9 -->
+        <div class="timeline-block">
+          <div class="timeline-node"></div>
+          <div class="timeline-card">
+            <div class="timeline-card-header">
+              <span class="version-tag">v1.0.9</span>
+              <span class="release-date">Decal Anvil Sync</span>
             </div>
             <div class="timeline-desc">🎨 3Dデカール工房での自作モデルID金床認識＆タグ自動永続化</div>
             <ul class="timeline-details">
