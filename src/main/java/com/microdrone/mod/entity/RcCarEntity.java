@@ -928,6 +928,13 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
 
                 if (this.driftDirection != 0) {
                     this.driftTicks++;
+
+                    // ドリフト継続時間・距離に応じたスクラブ抵抗による緩やかな減速
+                    // 序盤(~15tick=約0.75秒)は最高速ドリフトを維持し、長く流し続けると緩やかに速度低下
+                    if (this.driftTicks > 15) {
+                        float scrubFactor = Math.min(0.018f, (this.driftTicks - 15) * 0.0006f);
+                        this.currentSpeed = Math.max(0.04f, this.currentSpeed * (1.0f - scrubFactor));
+                    }
                 }
             } else {
                 // Released space key or stopped -> Mini-Turbo release!
@@ -1028,6 +1035,29 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                 // Full In-steer: drive 0.90, slide 0.20 -> Drives forward into turn
                 double driveWeight = 0.60 - (counterAmount * 0.35) + (inSteerAmount * 0.30);
                 double slideWeight = 0.55 + (counterAmount * 0.50) - (inSteerAmount * 0.35);
+
+                // ドリフト距離・時間に応じたグリップ力回復 (Grip Recovery)
+                // ドリフトが伸びると横滑り(slideWeight)が減衰し、前進トラクション(driveWeight)が復帰
+                if (this.driftTicks > 20) {
+                    float gripRecovery = Mth.clamp((this.driftTicks - 20) / 30.0f, 0.0f, 1.0f);
+                    driveWeight = Mth.lerp(gripRecovery, driveWeight, 0.95);
+                    slideWeight = Mth.lerp(gripRecovery, slideWeight, 0.06);
+
+                    // 長時間流しきった(48tick超=約2.4秒以上)またはステア中立で完全グリップ復帰＆立ち上がり
+                    if (this.driftTicks > 48 || (this.driftTicks > 28 && counterAmount < 0.12f && inSteerAmount < 0.12f)) {
+                        if (this.driftTicks >= 14 && this.currentSpeed > 0.04f) {
+                            this.turboBoostTicks = 10;
+                            this.currentSpeed = (float) Math.min(this.currentSpeed * 1.30f, maxSpeed * 1.25f);
+                            this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                                    SoundEvents.FIREWORK_ROCKET_LAUNCH, SoundSource.PLAYERS, 12.0F, 1.8F);
+                            if (this.level().isClientSide) {
+                                spawnMiniTurboBurst();
+                            }
+                        }
+                        this.driftDirection = 0;
+                        this.driftTicks = 0;
+                    }
+                }
 
                 double combinedX = (driveX * driveWeight) + (counterSlideX * slideWeight);
                 double combinedZ = (driveZ * driveWeight) + (counterSlideZ * slideWeight);

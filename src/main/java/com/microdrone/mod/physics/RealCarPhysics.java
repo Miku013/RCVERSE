@@ -45,6 +45,7 @@ public class RealCarPhysics {
     private float slipAngleDeg = 0.0f;    // 車体中心のスリップ角 (deg)
     private boolean drifting = false;
     private boolean counterSteering = false;
+    private int continuousDriftTicks = 0; // ドリフト継続tick数 (ロングドリフト時の減速・グリップ回復用)
     private int recentSlideTicks = 0; // 直近まで横滑り/ドリフトしていた余韻カウント (立ち上がりおつり抑止用)
     private double smoothedPowerSpin = 0.0; // アクセル瞬間抜き時の急激なリアグリップ復帰を防ぐ滑らか保持値
 
@@ -204,6 +205,7 @@ public class RealCarPhysics {
         this.steerAngleDeg = currentSteerDeg;
         this.yawRateDeg = 0.0f;
         this.recentSlideTicks = 0;
+        this.continuousDriftTicks = 0;
         this.smoothedPowerSpin = 0.0;
         updateSlipAndDriftFlags();
     }
@@ -216,6 +218,7 @@ public class RealCarPhysics {
         this.slipAngleDeg = 0.0f;
         this.drifting = false;
         this.counterSteering = false;
+        this.continuousDriftTicks = 0;
         this.recentSlideTicks = 0;
         this.smoothedPowerSpin = 0.0;
         this.frontSlipping = false;
@@ -398,6 +401,11 @@ public class RealCarPhysics {
         this.lateralVelocity = Mth.clamp(this.lateralVelocity, -maxSpeed * 1.15, maxSpeed * 1.15);
 
         updateSlipAndDriftFlags();
+        if (this.drifting) {
+            this.continuousDriftTicks++;
+        } else {
+            this.continuousDriftTicks = 0;
+        }
         this.lastStepYawDeg = newYawDeg;
         if (this.drifting || this.counterSteering || Math.abs(this.lateralVelocity) > config.exitDampingLatThreshold) {
             this.recentSlideTicks = 8;
@@ -491,6 +499,14 @@ public class RealCarPhysics {
                 rearDynMult *= Mth.lerp((float) effectiveSpin, 1.0f, (float) config.powerOversteerGripMult);
             }
         }
+
+        // ドリフト継続時間・距離に応じた後輪グリップ回復 (Grip Recovery)
+        // ドリフトが長引くとタイヤの動摩擦低下が収まり、本来のグリップ(1.0)を取り戻して横滑りを収束
+        if (this.continuousDriftTicks > 15) {
+            float gripRecovery = Mth.clamp((this.continuousDriftTicks - 15) / 25.0f, 0.0f, 1.0f);
+            rearDynMult = Mth.lerp(gripRecovery, rearDynMult, 1.0);
+        }
+
         this.lastRearDynMult = rearDynMult;
         this.rearGripLimit = Math.max(0.004, this.rearGrip * (this.rearLoadRatio * 2.0) * baseLimitScale * rearDynMult);
 
@@ -597,6 +613,12 @@ public class RealCarPhysics {
             // コーナリングドラッグ（横滑り角度が大きいほどタイヤ摩擦により自然に減速し、グリップ回復へ繋げる）
             double bodySlipRad = Math.atan2(Math.abs(this.lateralVelocity), Math.max(Math.abs(this.forwardVelocity), 0.05));
             double dragRetention = 1.0 - Math.min(0.06, bodySlipRad * config.corneringDragFactor * subDt);
+
+            // ドリフト継続時間・距離に応じた追加スクラブ抵抗（ロングドリフト時に緩やかに速度低下）
+            if (this.continuousDriftTicks > 15) {
+                double scrubDrag = Math.min(0.022, (this.continuousDriftTicks - 15) * 0.0006);
+                dragRetention -= scrubDrag * subDt;
+            }
 
             // 車体の微小回転 δYaw に対して、速度ベクトル自体を新しい車体ローカル軸へ正確に再射影する
             double dYawRad = yawRateRad * subDt;
