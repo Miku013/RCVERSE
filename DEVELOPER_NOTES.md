@@ -1835,3 +1835,22 @@ c-1.mp4（ドリフト・ジャンプ・戦車射撃シーン）を docs/videos/
 ### 3. バックアップとビルド成果物
 - バックアップフォルダ: `backup/20261123_001056/rcverse-1.21.1-1.0.20.jar`
 - ビルド成果物: `build/libs/rcverse-1.21.1-1.0.21.jar`
+
+## [2026-11-23] 4種の路面スクリーンショット反映とWeb/Wikiギャラリー更新 (v1.0.27)
+
+### 1. 作業の背景と概要
+- ユーザーより提供された4種の路面（アスファルト、ダート、アイス、水たまり）のゲーム内実機スクリーンショットをプロジェクトに統合。
+- GitHub Pages用のWebサイト（日本語・英語）、CurseForge/Modrinth説明文、およびREADME.mdにコースギャラリーセクションを追加。
+
+### 2. 反映内容
+1. **画像の配置**:
+   - docs/images/tracks/road_asphalt.jpg: アスファルト路面（高速標準サーキット）
+   - docs/images/tracks/road_dirt.jpg: ダート路面（未舗装ラリー＆オフロード）
+   - docs/images/tracks/road_ice.jpg: アイス路面（氷上極限スライド）
+   - docs/images/tracks/road_puddle.jpg: 水たまり路面（ウェット＆水しぶきハザード）
+2. **Webサイト (docs/index.html & docs/index_en.html)**:
+   - ナビゲーションバーに「コース (Tracks)」リンクを追加。
+   - garage セクションの直後に「🛣️ 4種の路面バリエーション & スプラインサーキット (Dynamic Track Surfaces)」セクションを新設。
+   - 各路面の画像、特徴、推奨タイヤ（グリップ/ドリフト/オフロード/スパイク）を分かりやすくカード形式で掲載。
+3. **リポジトリ・説明文ドキュメント (README.md & docs/CURSEFORGE_DESCRIPTION.md)**:
+   - 4種のコース画像を並べた比較ギャラリーテーブルを追加。
