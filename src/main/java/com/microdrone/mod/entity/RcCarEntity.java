@@ -836,13 +836,13 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
 
             float dynamicGrip = tireType.getLateralGripMultiplier();
             if (tireType == com.microdrone.mod.item.RcTireItem.TireType.SPIKE) {
-                dynamicGrip = onIce ? 1.60f : 0.50f;
+                dynamicGrip = onIce ? 2.24f : 0.70f;
             } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.OFFROAD) {
-                // 舗装路では良好(1.20f)でグリップタイヤ(2.20f)より下、オフロードでは最強(1.85f)でグリップタイヤを圧倒！
-                dynamicGrip = onOffroad ? 1.85f : 1.20f;
+                // 舗装路では良好(1.68f)でグリップタイヤ(3.08f)より下、オフロードでは最強(2.59f)でグリップタイヤを圧倒！
+                dynamicGrip = onOffroad ? 2.59f : 1.68f;
             } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.GRIP) {
-                // 舗装路では最強(2.20f)、オフロードでは泥や砂で目詰まりして激減(0.55f)
-                dynamicGrip = onOffroad ? 0.55f : 2.20f;
+                // 舗装路では最強(3.08f)、オフロードでは泥や砂で目詰まりして激減(0.77f)
+                dynamicGrip = onOffroad ? 0.77f : 3.08f;
             }
 
             this.realPhysics.setTireProperties(
@@ -985,12 +985,12 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                     float tractionMult = tireType.getTractionMultiplier();
                     if (!onIce && !onOffroad) {
                         if (tireType == com.microdrone.mod.item.RcTireItem.TireType.SPIKE) {
-                            tractionMult = 0.85f; // 舗装路では金属ピンが空転して加速が逃げる
+                            tractionMult = 1.19f; // 舗装路では金属ピンが空転して加速が逃げる (0.85*1.4)
                         } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.OFFROAD) {
-                            tractionMult = 1.05f; // 舗装路でも良好なトラクション
+                            tractionMult = 1.47f; // 舗装路でも良好なトラクション (1.05*1.4)
                         }
                     } else if (onOffroad && tireType == com.microdrone.mod.item.RcTireItem.TireType.OFFROAD) {
-                        tractionMult = 1.40f; // オフロードでは最強トラクション！
+                        tractionMult = 1.96f; // オフロードでは最強トラクション！ (1.40*1.4)
                     }
                     float forwardAccel = (float) (accel * this.inputForward * tractionMult * offroadAccelMult);
                     if (this.driftDirection != 0) {
@@ -1145,18 +1145,18 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                 if (Math.abs(this.currentSpeed) > 0.002f) {
                     float baseTurn = (this.currentSpeed > 0 ? 13.5f : -13.5f);
                     if (tireType == com.microdrone.mod.item.RcTireItem.TireType.GRIP) {
-                        baseTurn *= (onOffroad ? 0.70f : 1.45f);
+                        baseTurn *= (onOffroad ? 0.98f : 2.03f); // 0.70*1.4, 1.45*1.4
                     } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.DRIFT) {
-                        baseTurn *= 1.15f;
+                        baseTurn *= 1.61f; // 1.15*1.4
                     } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.SPIKE) {
                         if (!onIce) {
-                            baseTurn *= 0.82f; // 舗装路では前輪ピンが逃げて少しアンダー気味に外へ滑る
+                            baseTurn *= 1.15f; // 0.82*1.4
                         }
                     } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.OFFROAD) {
                         if (onOffroad) {
-                            baseTurn *= 1.35f; // ダートでは専用グリップでキュッと曲がる！
+                            baseTurn *= 1.89f; // 1.35*1.4
                         } else {
-                            baseTurn *= 1.10f; // 舗装路でも良好に曲がるがグリップ(1.45)には及ばない
+                            baseTurn *= 1.54f; // 1.10*1.4
                         }
                     }
                     if (onIce && !tireType.isIceImmunity()) {
@@ -1268,33 +1268,32 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                 if (Math.abs(this.currentSpeed) < 0.001f) {
                     this.carVelocity = Vec3.ZERO;
                 } else {
-                    double gripFollowRate = 0.55; // NORMALの基準値
+                    double gripFollowRate = 0.77; // NORMALの基準値 (0.55 * 1.4)
                     if (onIce) {
                         if (tireType.isIceImmunity()) {
-                            gripFollowRate = 0.70; // スパイクタイヤ: 氷上でもしっかり追従！
+                            gripFollowRate = 0.98; // 0.70 * 1.4
                         } else {
-                            gripFollowRate = 0.08; // 通常タイヤ: 氷上ではツルツル外へ流れる！
+                            gripFollowRate = 0.11; // 0.08 * 1.4
                         }
                     } else if (onOffroad) {
                         if (tireType.isOffroadImmunity()) {
-                            // ★ オフロード路面: オフロードタイヤが最強グリップ！(0.92)
-                            // グリップタイヤ(0.25)を完全に凌駕！
-                            gripFollowRate = 0.92;
+                            // ★ オフロード路面: オフロードタイヤが最強グリップ！ (0.92 * 1.4 -> 1.0)
+                            gripFollowRate = 1.0;
                         } else {
                             // グリップタイヤや他タイヤは悪路で目詰まり・足を取られてズルズル
-                            gripFollowRate = 0.25;
+                            gripFollowRate = 0.35; // 0.25 * 1.4
                         }
                     } else {
                         // ★ 通常ブロック・舗装道路・メッシュ道路！
-                        // 舗装路ではオフロード(0.68)よりグリップタイヤ(0.88)が最強！
+                        // 舗装路ではオフロード(0.95)よりグリップタイヤ(1.0)が最強！
                         if (tireType == com.microdrone.mod.item.RcTireItem.TireType.GRIP) {
-                            gripFollowRate = 0.88; // オン・ザ・レール！
+                            gripFollowRate = 1.0; // 0.88 * 1.4 -> 1.0 完全オン・ザ・レール！
                         } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.OFFROAD) {
-                            gripFollowRate = 0.68; // 舗装路でもしっかり安定、ただしグリップ(0.88)よりはマイルド
+                            gripFollowRate = 0.95; // 0.68 * 1.4 超強力グリップ
                         } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.DRIFT) {
-                            gripFollowRate = 0.28;
+                            gripFollowRate = 0.39; // 0.28 * 1.4
                         } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.SPIKE) {
-                            gripFollowRate = 0.18; // 金属ピンが滑る
+                            gripFollowRate = 0.25; // 0.18 * 1.4
                         }
                     }
 

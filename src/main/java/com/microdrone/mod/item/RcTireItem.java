@@ -14,11 +14,11 @@ import java.util.List;
 public class RcTireItem extends Item {
 
     public enum TireType {
-        NORMAL("normal", 1.0f, 1.0f, 1.0f, false, false, ChatFormatting.GRAY),
-        DRIFT("drift", 0.35f, 0.15f, 0.95f, false, false, ChatFormatting.AQUA),
-        GRIP("grip", 2.20f, 1.80f, 1.25f, false, false, ChatFormatting.GOLD),
-        OFFROAD("offroad", 1.25f, 0.85f, 1.35f, true, false, ChatFormatting.DARK_GREEN),
-        SPIKE("spike", 1.35f, 0.90f, 1.10f, false, true, ChatFormatting.LIGHT_PURPLE);
+        NORMAL("normal", 1.40f, 1.40f, 1.40f, false, false, ChatFormatting.GRAY),
+        DRIFT("drift", 0.49f, 0.21f, 1.33f, false, false, ChatFormatting.AQUA),
+        GRIP("grip", 3.08f, 2.52f, 1.75f, false, false, ChatFormatting.GOLD),
+        OFFROAD("offroad", 1.75f, 1.19f, 1.89f, true, false, ChatFormatting.DARK_GREEN),
+        SPIKE("spike", 1.89f, 1.26f, 1.54f, false, true, ChatFormatting.LIGHT_PURPLE);
 
         private final String id;
         private final float lateralGripMultiplier; // 横グリップ倍率 (スピンしにくさ)
