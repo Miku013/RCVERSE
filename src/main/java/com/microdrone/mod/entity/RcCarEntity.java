@@ -852,8 +852,14 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
             }
 
             float dynamicGrip = tireType.getLateralGripMultiplier();
-            if (tireType == com.microdrone.mod.item.RcTireItem.TireType.SPIKE) {
-                dynamicGrip = onIce ? 2.24f : 0.70f;
+            if (onIce) {
+                if (tireType == com.microdrone.mod.item.RcTireItem.TireType.SPIKE) {
+                    dynamicGrip = 1.40f; // スパイクタイヤ: 氷上でもしっかりグリップ
+                } else {
+                    dynamicGrip = 0.12f; // 通常タイヤ: 氷上では横グリップほぼゼロで激しくスリップ！
+                }
+            } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.SPIKE) {
+                dynamicGrip = 0.70f;
             } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.OFFROAD) {
                 // 舗装路では良好(1.68f)でグリップタイヤ(3.08f)より下、オフロードでは最強(2.59f)でグリップタイヤを圧倒！
                 dynamicGrip = onOffroad ? 2.59f : 1.68f;
@@ -966,11 +972,11 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                     }
                 } else if (onIce) {
                     if (tireType.isIceImmunity()) {
-                        // スパイクタイヤ: 氷上でもアスファルト同等にガッチリ食いつく！
-                        friction = 0.90;
+                        // スパイクタイヤ: 氷上でもしっかり減速・グリップ
+                        friction = 0.93;
                     } else {
-                        // 通常タイヤ: 氷上ではツルツル滑って止まらない＆曲がらない！
-                        friction = 0.985;
+                        // 通常タイヤ: 氷上ではツルツル滑って止まらない！
+                        friction = 0.995;
                     }
                 } else if (!onOffroad) {
                     // 通常ブロック・普通の舗装道路！
@@ -1199,7 +1205,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                         }
                     }
                     if (onIce && !tireType.isIceImmunity()) {
-                        baseTurn *= 0.35f;
+                        baseTurn *= 0.65f; // 車体は斜めを向くが、gripFollowRate(0.02)により進行方向は変えられずツルツル横滑り
                     }
                     float turnSpeed = (this.steerAngle / 35.0f) * baseTurn;
                     this.setYRot(this.getYRot() - turnSpeed);
@@ -1234,7 +1240,17 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                 double driveWeight = 0.60 - (counterAmount * 0.35) + (inSteerAmount * 0.30);
                 double slideWeight = 0.55 + (counterAmount * 0.50) - (inSteerAmount * 0.35);
 
-                if (tireType == com.microdrone.mod.item.RcTireItem.TireType.DRIFT) {
+                if (onIce) {
+                    if (tireType == com.microdrone.mod.item.RcTireItem.TireType.SPIKE) {
+                        // 氷上スパイク: ガッチリ噛みつつ、適度なカウンタースライドを許容してコントロール可能
+                        slideWeight *= 0.90;
+                        driveWeight *= 1.25;
+                    } else {
+                        // 氷上通常タイヤ (ノーマル/グリップ/オフロード/ドリフト): 超ロングスライド！前進トラクション消失
+                        slideWeight *= 3.50;
+                        driveWeight *= 0.10;
+                    }
+                } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.DRIFT) {
                     slideWeight *= 1.70;
                     driveWeight *= 0.55;
                 } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.GRIP) {
@@ -1246,15 +1262,9 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                         driveWeight *= 1.75;
                     }
                 } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.SPIKE) {
-                    if (!onIce) {
-                        // 舗装路では金属ピンが滑ってオフロードより激しくスライド！
-                        slideWeight *= 1.50;
-                        driveWeight *= 0.65;
-                    } else {
-                        // 氷上ではガッチリ噛む
-                        slideWeight *= 0.55;
-                        driveWeight *= 1.40;
-                    }
+                    // 舗装路では金属ピンが滑ってオフロードより激しくスライド！
+                    slideWeight *= 1.50;
+                    driveWeight *= 0.65;
                 } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.OFFROAD) {
                     if (onOffroad) {
                         // オフロードでは最強！ドリフトを抑えて強烈なトラクションで前進！
@@ -1267,9 +1277,9 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                     }
                 }
 
-                // ドリフト距離・時間に応じたグリップ力回復 (Grip Recovery - マイルド調整版)
-                // ドリフトが伸びると横滑り(slideWeight)が適度に収まり、前進トラクション(driveWeight)へ移行
-                if (this.driftTicks > 24) {
+                // ドリフト距離・時間に応じたグリップ力回復 (Grip Recovery)
+                // ※ 氷上でスパイク以外の通常タイヤを履いている場合は、滑り続けるため自動グリップ回復をスキップ！
+                if ((!onIce || tireType.isIceImmunity()) && this.driftTicks > 24) {
                     float gripRecovery = Mth.clamp((this.driftTicks - 24) / 45.0f, 0.0f, 1.0f);
                     driveWeight = Mth.lerp(gripRecovery, driveWeight, 0.85);
                     slideWeight = Mth.lerp(gripRecovery, slideWeight, 0.18);
@@ -1310,9 +1320,9 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                     double gripFollowRate = 0.77; // NORMALの基準値 (0.55 * 1.4)
                     if (onIce) {
                         if (tireType.isIceImmunity()) {
-                            gripFollowRate = 0.98; // 0.70 * 1.4
+                            gripFollowRate = 0.75; // スパイクタイヤ: 氷上でもしっかり食いつきつつ、程よいスライド感
                         } else {
-                            gripFollowRate = 0.11; // 0.08 * 1.4
+                            gripFollowRate = 0.02; // ★ 通常タイヤ: 極小！車体の向きが変わっても慣性のままスーッと真横に滑走！
                         }
                     } else if (onOffroad) {
                         if (tireType.isOffroadImmunity()) {
