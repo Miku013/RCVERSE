@@ -29,6 +29,7 @@
         <li><a href="#features">操作・機能</a></li>
         <li><a href="#custom-models">自作モデル</a></li>
         <li><a href="#garage">ガレージ</a></li>
+        <li><a href="#tracks">コース</a></li>
         <li><a href="#install">導入方法</a></li>
         <li><a href="#download" class="btn-nav">ダウンロード</a></li>
         <li><a href="index_en.html" class="btn-lang" title="Switch to English">🌐 English</a></li>
@@ -452,6 +453,117 @@
           <li><strong>本格ドリフト</strong>: リアルサスペンションとステアリングカウンターによるテールスライド</li>
           <li><strong>レース設備</strong>: ブーストジャンプ台、縁石、スロープ、カラーコーン、ゴールゲート</li>
         </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- スプライン道路 & 4種の路面バリエーション -->
+  <section id="tracks" class="section">
+    <div class="section-header">
+      <span class="section-tag">DYNAMIC TRACK SURFACES</span>
+      <h2 class="section-title">🛣️ 4種の路面バリエーション & スプラインサーキット</h2>
+      <p class="section-desc">道路生成マーカーで敷設できる4つの路面タイプ。路面ごとに異なるグリップ・摩擦・滑り特性を持ち、専用タイヤとの組み合わせで無限のレース体験が広がります。</p>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px;">
+      <!-- アスファルト -->
+      <div class="card" style="padding: 0; overflow: hidden; display: flex; flex-direction: column;">
+        <div class="card-thumbnail" style="margin: 0; height: 180px; position: relative; overflow: hidden;">
+          <a href="images/tracks/road_asphalt.jpg" target="_blank" title="クリックして拡大">
+            <img src="images/tracks/road_asphalt.jpg" alt="アスファルト路面 (Asphalt Track)" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease;">
+          </a>
+          <span style="position: absolute; top: 12px; left: 12px; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(4px); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3);">
+            🏎️ 標準サーキット
+          </span>
+        </div>
+        <div style="padding: 20px; flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <h3 class="card-title" style="margin-bottom: 8px; font-size: 1.15rem; color: #fff;">
+              🏁 アスファルト路面 (Asphalt)
+            </h3>
+            <p class="card-text" style="font-size: 0.9rem; line-height: 1.6; color: var(--text-muted); margin-bottom: 14px;">
+              舗装された高速サーキット道路。高いグリップ力と素直な旋回性能を発揮し、スリックタイヤでのタイムアタックやドリフトタイヤでのテールスライドに最適です。
+            </p>
+          </div>
+          <div style="padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.06); font-size: 0.82rem; color: var(--accent-cyan);">
+            ⚙️ <strong>推奨タイヤ:</strong> グリップタイヤ / ドリフトタイヤ
+          </div>
+        </div>
+      </div>
+
+      <!-- ダート -->
+      <div class="card" style="padding: 0; overflow: hidden; display: flex; flex-direction: column;">
+        <div class="card-thumbnail" style="margin: 0; height: 180px; position: relative; overflow: hidden;">
+          <a href="images/tracks/road_dirt.jpg" target="_blank" title="クリックして拡大">
+            <img src="images/tracks/road_dirt.jpg" alt="ダート路面 (Dirt Track)" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease;">
+          </a>
+          <span style="position: absolute; top: 12px; left: 12px; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(4px); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);">
+            🏜️ ラリー & オフロード
+          </span>
+        </div>
+        <div style="padding: 20px; flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <h3 class="card-title" style="margin-bottom: 8px; font-size: 1.15rem; color: #fff;">
+              🚜 ダート路面 (Dirt)
+            </h3>
+            <p class="card-text" style="font-size: 0.9rem; line-height: 1.6; color: var(--text-muted); margin-bottom: 14px;">
+              土や小石が敷かれたオフロードトラック。通常タイヤではホイルスピンが発生しますが、オフロードタイヤ装着で駆動ロスなく加速+35%の走破性を実現します。
+            </p>
+          </div>
+          <div style="padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.06); font-size: 0.82rem; color: #f59e0b;">
+            ⚙️ <strong>推奨タイヤ:</strong> オフロードタイヤ (加速+35%)
+          </div>
+        </div>
+      </div>
+
+      <!-- アイス -->
+      <div class="card" style="padding: 0; overflow: hidden; display: flex; flex-direction: column;">
+        <div class="card-thumbnail" style="margin: 0; height: 180px; position: relative; overflow: hidden;">
+          <a href="images/tracks/road_ice.jpg" target="_blank" title="クリックして拡大">
+            <img src="images/tracks/road_ice.jpg" alt="アイス路面 (Ice Track)" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease;">
+          </a>
+          <span style="position: absolute; top: 12px; left: 12px; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(4px); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; color: #67e8f9; border: 1px solid rgba(103, 232, 249, 0.3);">
+            ❄️ 氷上エクストリーム
+          </span>
+        </div>
+        <div style="padding: 20px; flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <h3 class="card-title" style="margin-bottom: 8px; font-size: 1.15rem; color: #fff;">
+              ⛸️ アイス路面 (Ice)
+            </h3>
+            <p class="card-text" style="font-size: 0.9rem; line-height: 1.6; color: var(--text-muted); margin-bottom: 14px;">
+              極限の低摩擦（Friction 0.995）を誇る凍結路面。通常タイヤではどこまでも流れる豪快な氷上スライド！スパイクタイヤを履くことで氷を噛みしめ安定走行が可能です。
+            </p>
+          </div>
+          <div style="padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.06); font-size: 0.82rem; color: #67e8f9;">
+            ⚙️ <strong>推奨タイヤ:</strong> スパイクタイヤ (氷上グリップ確保)
+          </div>
+        </div>
+      </div>
+
+      <!-- 水たまり -->
+      <div class="card" style="padding: 0; overflow: hidden; display: flex; flex-direction: column;">
+        <div class="card-thumbnail" style="margin: 0; height: 180px; position: relative; overflow: hidden;">
+          <a href="images/tracks/road_puddle.jpg" target="_blank" title="クリックして拡大">
+            <img src="images/tracks/road_puddle.jpg" alt="水たまり路面 (Water Puddle Track)" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease;">
+          </a>
+          <span style="position: absolute; top: 12px; left: 12px; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(4px); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3);">
+            💧 ウェット & 水しぶき
+          </span>
+        </div>
+        <div style="padding: 20px; flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <h3 class="card-title" style="margin-bottom: 8px; font-size: 1.15rem; color: #fff;">
+              🌧️ 水たまり路面 (Water Puddle)
+            </h3>
+            <p class="card-text" style="font-size: 0.9rem; line-height: 1.6; color: var(--text-muted); margin-bottom: 14px;">
+              雨天や水たまりを模したテクニカル路面。突入時の抵抗やスリップ、ダイナミックな水しぶきエフェクトが発生し、天候変化や難関セクションの演出に最適です。
+            </p>
+          </div>
+          <div style="padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.06); font-size: 0.82rem; color: #3b82f6;">
+            ⚙️ <strong>推奨タイヤ:</strong> オフロードタイヤ / ドリフトタイヤ
+          </div>
+        </div>
       </div>
     </div>
   </section>

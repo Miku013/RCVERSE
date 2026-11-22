@@ -43,6 +43,11 @@ Drive, fly, sail, customize, and build your dream tracks with full physics, real
 - **🏁 Dynamic Mesh Spline Track Generator & Surface Types**:
   - Place **Road Generation Markers** to automatically generate smooth circuits, banked corners, kerbs, and **360° vertical loops**.
   - Choose between **4 track surfaces**: Asphalt (circuit pavement), Dirt (off-road trail), Ice (low-friction frozen track), and Water Puddle (hydroplaning hazards).
+
+| Asphalt (Circuit) | Dirt & Gravel (Rally) | Ice (Low-Friction Drift) | Water Puddle (Wet Hazards) |
+| :---: | :---: | :---: | :---: |
+| ![Asphalt](docs/images/tracks/road_asphalt.jpg) | ![Dirt](docs/images/tracks/road_dirt.jpg) | ![Ice](docs/images/tracks/road_ice.jpg) | ![Water Puddle](docs/images/tracks/road_puddle.jpg) |
+| Standard tarmac for grip & drift | Rough dirt with +35% off-road boost | Ultra-slick ice for extreme sliding | Puddle hazards with splash particles |
 - **🛞 Performance Tire Tuning**:
   - Swap tires on the fly to master any track: **Normal** (all-round), **Drift** (slick resin for huge power slides), **Grip** (asphalt track soft slicks), **Off-road** (mud/dirt +35% accel boost), and **Spike** (metal studs for ice biting).
 - **🎨 3D Decal Customizer & Workshop**:
@@ -97,6 +102,11 @@ Drive, fly, sail, customize, and build your dream tracks with full physics, real
 - **陸海空6大マシン**: ドリフトカー、FPVドローン、戦車（砲塔独立旋回）、飛行機、ボート、潜水艦。
 - **実機プロポ送信機**: アニメーションするスティック、デュアルレート・EXP調整GUI。
 - **動的メッシュ道路＆4種の路面タイプ**: マーカーを置くだけで滑らかなカーブ、バンク、縁石、360度ループコースを自動生成。アスファルト・ダート・アイス・水たまりの路面切り替えに対応。
+
+| アスファルト (標準サーキット) | ダート (未舗装ラリー) | アイス (氷上ドリフト) | 水たまり (ウェット路面) |
+| :---: | :---: | :---: | :---: |
+| ![アスファルト](docs/images/tracks/road_asphalt.jpg) | ![ダート](docs/images/tracks/road_dirt.jpg) | ![アイス](docs/images/tracks/road_ice.jpg) | ![水たまり](docs/images/tracks/road_puddle.jpg) |
+| 高速グリップ＆本格テールスライド | オフロードタイヤで加速+35%ブースト | 摩擦0.995の超スライド＆スパイクタイヤ対応 | 水しぶきエフェクト＆スリップ制御 |
 - **5大タイヤパーツチューニング**: ノーマル、ドリフト、グリップ、オフロード、スパイクタイヤを用途に合わせて自由に換装可能。
 - **デカール工房（リバリーエディタ）**: 車体に好きなステッカーを3D空間上で自由に配置・拡大縮小・回転。
 - **自作モデル対応**: Blockbenchで作成したオリジナル車両モデルを簡単に導入可能。
