@@ -70,6 +70,31 @@ public class RealCarPhysics {
     private float rearLoadRatio = 0.50f;
     private float surfaceFriction = 1.0f;
 
+    // 装着タイヤ特性倍率
+    private float tireGripMultiplier = 1.0f;
+    private float tireScrubMultiplier = 1.0f;
+    private boolean tireIceImmunity = false;
+    private boolean tireOffroadImmunity = false;
+
+    public void setTireProperties(float gripMult, float scrubMult, boolean iceImmunity, boolean offroadImmunity) {
+        this.tireGripMultiplier = gripMult;
+        this.tireScrubMultiplier = scrubMult;
+        this.tireIceImmunity = iceImmunity;
+        this.tireOffroadImmunity = offroadImmunity;
+        this.frontGrip = 1.12f * gripMult;
+        this.rearGrip = 1.02f * gripMult;
+    }
+
+    public void setSurfaceFriction(float friction) {
+        if (this.tireIceImmunity && friction < 0.65f) {
+            this.surfaceFriction = 1.0f; // 氷上でもスパイクピンが食い付く
+        } else if (this.tireOffroadImmunity && friction < 0.85f && friction >= 0.65f) {
+            this.surfaceFriction = 1.0f; // ダートでもブロックパターンがグリップ
+        } else {
+            this.surfaceFriction = friction;
+        }
+    }
+
     // 一時テスト用テレメトリー記録状態
     private double lastRearDynMult = 1.0;
     private double lastGyroSteerDeg = 0.0;
@@ -630,7 +655,7 @@ public class RealCarPhysics {
 
             // ドリフト継続時間・距離に応じた追加スクラブ抵抗（減速緩和微調整版：ロングドリフト時もスピードを維持）
             if (this.continuousDriftTicks > 22) {
-                double scrubDrag = Math.min(0.0085, (this.continuousDriftTicks - 22) * 0.00022);
+                double scrubDrag = Math.min(0.0085 * this.tireScrubMultiplier, (this.continuousDriftTicks - 22) * 0.00022);
                 dragRetention -= scrubDrag * subDt;
             }
 

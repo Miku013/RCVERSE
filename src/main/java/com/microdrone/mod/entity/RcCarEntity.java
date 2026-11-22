@@ -134,7 +134,19 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
     // 装着中のアイテム
     private ItemStack installedBattery = ItemStack.EMPTY;
     private ItemStack installedMotor = ItemStack.EMPTY;
+    private ItemStack installedTire = ItemStack.EMPTY;
     private double accumulatedDistance = 0.0;
+
+    public ItemStack getInstalledTire() {
+        return this.installedTire;
+    }
+
+    public com.microdrone.mod.item.RcTireItem.TireType getTireType() {
+        if (!this.installedTire.isEmpty() && this.installedTire.getItem() instanceof com.microdrone.mod.item.RcTireItem tireItem) {
+            return tireItem.getTireType();
+        }
+        return com.microdrone.mod.item.RcTireItem.TireType.NORMAL;
+    }
 
     // 操作入力（サーバー/クライアント共用）
     public float inputForward = 0.0f; // 前進(+1.0) / 後退(-1.0)
@@ -797,6 +809,20 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
 
         if (this.isRealMode()) {
             // === REALモード専用物理演算 (RACEモードから完全分離) ===
+            com.microdrone.mod.item.RcTireItem.TireType tireType = getTireType();
+            this.realPhysics.setTireProperties(
+                    tireType.getLateralGripMultiplier(),
+                    tireType.getScrubDragMultiplier(),
+                    tireType.isIceImmunity(),
+                    tireType.isOffroadImmunity()
+            );
+            float blockFriction = 1.0f;
+            if (this.onGround() || this.wheelGrounded) {
+                net.minecraft.world.level.block.state.BlockState groundState = this.level().getBlockState(this.blockPosition().below());
+                blockFriction = groundState.getBlock().getFriction();
+            }
+            this.realPhysics.setSurfaceFriction(blockFriction);
+
             double realMaxSpeed = maxSpeed * this.realPhysics.getConfig().realSpeedScale;
             double realAccel = accel * this.realPhysics.getConfig().realAccelScale;
             this.realPhysics.setCounterMaxAngleDeg(this.getCounterMaxAngle());
@@ -845,7 +871,16 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
             this.turboBoostTicks = 0;
         } else {
             // === RACEモード (既存の挙動を完全維持) ===
+            com.microdrone.mod.item.RcTireItem.TireType tireType = getTireType();
             double friction = 0.90; // 地面摩擦減速
+            if (this.onGround() || this.wheelGrounded) {
+                net.minecraft.world.level.block.state.BlockState groundState = this.level().getBlockState(this.blockPosition().below());
+                float bFriction = groundState.getBlock().getFriction();
+                if (bFriction < 0.7f && tireType.isIceImmunity()) {
+                    // スパイクタイヤは氷上でも滑らない
+                    friction = 0.90;
+                }
+            }
 
             // ステアリング操舵 (最大35度)
             float steerMult = (props.invertSteer ? -1.0f : 1.0f) * props.turnSpeedMultiplier;
@@ -870,7 +905,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                     if (this.currentSpeed > 0.0f)
                         this.currentSpeed = 0.0f;
                 } else {
-                    float forwardAccel = (float) (accel * this.inputForward);
+                    float forwardAccel = (float) (accel * this.inputForward * tireType.getTractionMultiplier());
                     if (this.driftDirection != 0) {
                         forwardAccel *= 1.30f; // Maintain high speed during drift (long slide)
 
@@ -942,7 +977,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                     // ドリフト継続時間・距離に応じたスクラブ抵抗による緩やかな減速（減速緩和微調整版）
                     // 序盤(~20tick=約1.0秒)は最高速ドリフトを維持し、それ以降も減速を抑えてスピードをキープ
                     if (this.driftTicks > 20) {
-                        float scrubFactor = Math.min(0.0075f, (this.driftTicks - 20) * 0.00020f);
+                        float scrubFactor = Math.min(0.0075f * tireType.getScrubDragMultiplier(), (this.driftTicks - 20) * 0.00020f);
                         this.currentSpeed = Math.max(0.04f, this.currentSpeed * (1.0f - scrubFactor));
                     }
                 }
@@ -1045,6 +1080,14 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                 // Full In-steer: drive 0.90, slide 0.20 -> Drives forward into turn
                 double driveWeight = 0.60 - (counterAmount * 0.35) + (inSteerAmount * 0.30);
                 double slideWeight = 0.55 + (counterAmount * 0.50) - (inSteerAmount * 0.35);
+
+                if (tireType == com.microdrone.mod.item.RcTireItem.TireType.DRIFT) {
+                    slideWeight *= 1.25;
+                    driveWeight *= 0.85;
+                } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.GRIP) {
+                    slideWeight *= 0.45;
+                    driveWeight *= 1.35;
+                }
 
                 // ドリフト距離・時間に応じたグリップ力回復 (Grip Recovery - マイルド調整版)
                 // ドリフトが伸びると横滑り(slideWeight)が適度に収まり、前進トラクション(driveWeight)へ移行
@@ -1723,6 +1766,23 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                 return InteractionResult.SUCCESS;
             }
 
+            // 2.5. タイヤ換装 (装着・交換)
+            if (heldItem.getItem() instanceof com.microdrone.mod.item.RcTireItem tireItem) {
+                ItemStack oldTire = this.installedTire.copy();
+                this.installedTire = heldItem.split(1);
+                if (!oldTire.isEmpty()) {
+                    if (!player.getInventory().add(oldTire)) {
+                        this.level().addFreshEntity(
+                                new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(), oldTire));
+                    }
+                }
+                this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                        SoundEvents.ARMOR_EQUIP_GENERIC.value(), SoundSource.PLAYERS, 0.9F, 1.1F);
+                player.sendSystemMessage(Component.translatable("message.microdrone.tire_installed",
+                        Component.translatable("tooltip.microdrone.tire_type." + tireItem.getTireType().getId())));
+                return InteractionResult.SUCCESS;
+            }
+
             // 3. プロポ所持時: 操縦開始
             if (heldItem.getItem() instanceof com.microdrone.mod.item.DroneControllerItem) {
                 if (player instanceof ServerPlayer serverPlayer) {
@@ -1796,6 +1856,11 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                 this.level().addFreshEntity(
                         new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(), this.installedMotor));
                 this.installedMotor = ItemStack.EMPTY;
+            }
+            if (!this.installedTire.isEmpty()) {
+                this.level().addFreshEntity(
+                        new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(), this.installedTire));
+                this.installedTire = ItemStack.EMPTY;
             }
             this.discard();
         }
@@ -1931,6 +1996,10 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                     .orElse(ItemStack.EMPTY);
             updateMotorSyncData();
         }
+        if (compound.contains("InstalledTire")) {
+            this.installedTire = ItemStack.parse(this.registryAccess(), compound.getCompound("InstalledTire"))
+                    .orElse(ItemStack.EMPTY);
+        }
         this.accumulatedDistance = compound.getDouble("BatteryAccumulatedDist");
         if (compound.contains("CustomWeight", 99)) {
             this.entityData.set(DATA_CUSTOM_WEIGHT, compound.getFloat("CustomWeight"));
@@ -1973,6 +2042,9 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
         }
         if (!this.installedMotor.isEmpty()) {
             compound.put("InstalledMotor", this.installedMotor.save(this.registryAccess()));
+        }
+        if (!this.installedTire.isEmpty()) {
+            compound.put("InstalledTire", this.installedTire.save(this.registryAccess()));
         }
         compound.putDouble("BatteryAccumulatedDist", this.accumulatedDistance);
         compound.putFloat("CustomWeight", this.entityData.get(DATA_CUSTOM_WEIGHT));
