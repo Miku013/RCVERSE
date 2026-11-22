@@ -392,5 +392,10 @@
   "chat.microdrone.cinematic.broadcast_off": "§b[RCVERSE 撮影モード]§r §c通常操作（単独操縦）に戻しました。",
   "chat.microdrone.cinematic.dummy_status": "§b[RCVERSE 撮影モード]§r ダミー人形生成: %s",
   "chat.microdrone.cinematic.dummy_on": "§b[RCVERSE 撮影モード]§r §aダミー人形生成を有効化しました。",
-  "chat.microdrone.cinematic.dummy_off": "§b[RCVERSE 撮影モード]§r §cダミー人形生成を無効化（視点ロック完全解除）しました。"
+  "chat.microdrone.cinematic.dummy_off": "§b[RCVERSE 撮影モード]§r §cダミー人形生成を無効化（視点ロック完全解除）しました。",
+  "block.microdrone.rc_pit_station": "RCピット作業台 (テスト)",
+  "gui.microdrone.pit_station.title": "RC PIT STATION // 3Dチューニングピット",
+  "gui.microdrone.pit_station.help": "左ドラッグ: 360°自由回転 | ホイール: ズーム | 右ドラッグ: 平行移動",
+  "gui.microdrone.pit_station.reset": "⟲ アングル初期化",
+  "gui.microdrone.pit_station.empty": "RCマシンを手に持って作業台をクリックしてセットしてください"
 }

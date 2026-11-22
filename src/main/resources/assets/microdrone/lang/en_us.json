@@ -370,5 +370,10 @@
   "chat.microdrone.cinematic.broadcast_off": "§b[RCVERSE Cinema]§r §cReturned to single vehicle control.",
   "chat.microdrone.cinematic.dummy_status": "§b[RCVERSE Cinema]§r Pilot dummy spawn: %s",
   "chat.microdrone.cinematic.dummy_on": "§b[RCVERSE Cinema]§r §aPilot dummy spawn enabled.",
-  "chat.microdrone.cinematic.dummy_off": "§b[RCVERSE Cinema]§r §cPilot dummy spawn disabled."
+  "chat.microdrone.cinematic.dummy_off": "§b[RCVERSE Cinema]§r §cPilot dummy spawn disabled.",
+  "block.microdrone.rc_pit_station": "RC Pit Station (Test)",
+  "gui.microdrone.pit_station.title": "RC PIT STATION // 3D Tuning Pit",
+  "gui.microdrone.pit_station.help": "Left Drag: 360° Rotate | Scroll: Zoom | Right Drag: Pan",
+  "gui.microdrone.pit_station.reset": "⟲ Reset Camera",
+  "gui.microdrone.pit_station.empty": "Right-click with an RC vehicle in hand to place it on the pit station"
 }

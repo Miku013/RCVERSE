@@ -90,6 +90,7 @@ public class ClientModEvents {
         event.registerBlockEntityRenderer(ModBlockEntities.RC_WORKBENCH_BE.get(), com.microdrone.mod.client.renderer.RcWorkbenchBlockEntityRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.RC_RACK_BE.get(), com.microdrone.mod.client.renderer.RcRackBlockEntityRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.RC_SHOWCASE_BE.get(), com.microdrone.mod.client.renderer.RcShowcaseBlockEntityRenderer::new);
+        event.registerBlockEntityRenderer(ModBlockEntities.RC_PIT_STATION.get(), com.microdrone.mod.client.renderer.RcPitStationBlockEntityRenderer::new);
     }
 
     private static void registerMenuScreens(net.neoforged.neoforge.client.event.RegisterMenuScreensEvent event) {

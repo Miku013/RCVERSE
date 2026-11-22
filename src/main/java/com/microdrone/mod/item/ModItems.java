@@ -97,6 +97,10 @@ public class ModItems {
     public static final DeferredHolder<Item, BlockItem> RC_SHOWCASE_ITEM =
             ITEMS.register("rc_showcase", () -> new BlockItem(ModBlocks.RC_SHOWCASE.get(), new Item.Properties()));
 
+    // RCピット作業台 (BlockItem)
+    public static final DeferredHolder<Item, BlockItem> RC_PIT_STATION_ITEM =
+            ITEMS.register("rc_pit_station", () -> new BlockItem(ModBlocks.RC_PIT_STATION.get(), new Item.Properties()));
+
     // === コース小物・設備システム (Phase 1: カラーコーン ＆ Phase 2: 縁石・ガードレール・タイヤバリア) ===
     public static final DeferredHolder<Item, com.microdrone.mod.block.miniature.TrafficConeItem> TRAFFIC_CONE =
             ITEMS.register("traffic_cone", () -> new com.microdrone.mod.block.miniature.TrafficConeItem(new Item.Properties().stacksTo(64)));
