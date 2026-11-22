@@ -873,12 +873,42 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
             // === RACEモード (既存の挙動を完全維持) ===
             com.microdrone.mod.item.RcTireItem.TireType tireType = getTireType();
             double friction = 0.90; // 地面摩擦減速
+            boolean onIce = false;
+            boolean onOffroad = false;
+
             if (this.onGround() || this.wheelGrounded) {
                 net.minecraft.world.level.block.state.BlockState groundState = this.level().getBlockState(this.blockPosition().below());
                 float bFriction = groundState.getBlock().getFriction();
-                if (bFriction < 0.7f && tireType.isIceImmunity()) {
-                    // スパイクタイヤは氷上でも滑らない
-                    friction = 0.90;
+                onIce = (bFriction > 0.85f) || groundState.is(net.minecraft.tags.BlockTags.ICE);
+                onOffroad = groundState.is(net.minecraft.tags.BlockTags.DIRT)
+                        || groundState.is(net.minecraft.tags.BlockTags.SAND)
+                        || groundState.is(net.minecraft.world.level.block.Blocks.GRAVEL)
+                        || groundState.is(net.minecraft.world.level.block.Blocks.GRASS_BLOCK)
+                        || groundState.is(net.minecraft.world.level.block.Blocks.SOUL_SAND)
+                        || groundState.is(net.minecraft.world.level.block.Blocks.MUD);
+
+                if (onIce) {
+                    if (tireType.isIceImmunity()) {
+                        // スパイクタイヤ: 氷上でもアスファルト同等にガッチリ食いつく！
+                        friction = 0.90;
+                    } else {
+                        // 通常タイヤ: 氷上ではツルツル滑って止まらない＆曲がらない！
+                        friction = 0.985;
+                    }
+                }
+            }
+
+            double offroadMaxMult = 1.0;
+            double offroadAccelMult = 1.0;
+            if (onOffroad) {
+                if (tireType.isOffroadImmunity()) {
+                    // ラリータイヤ: ダート・草地でも減速なし＆トラクション向上！
+                    offroadMaxMult = 1.0;
+                    offroadAccelMult = 1.35;
+                } else {
+                    // 通常タイヤ（ノーマル/ドリフト/グリップ）: 不整地に足を取られて失速！
+                    offroadMaxMult = 0.65;
+                    offroadAccelMult = 0.50;
                 }
             }
 
@@ -905,7 +935,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                     if (this.currentSpeed > 0.0f)
                         this.currentSpeed = 0.0f;
                 } else {
-                    float forwardAccel = (float) (accel * this.inputForward * tireType.getTractionMultiplier());
+                    float forwardAccel = (float) (accel * this.inputForward * tireType.getTractionMultiplier() * offroadAccelMult);
                     if (this.driftDirection != 0) {
                         forwardAccel *= 1.30f; // Maintain high speed during drift (long slide)
 
@@ -934,7 +964,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                 }
             }
 
-            double currentMax = (this.turboBoostTicks > 0) ? (maxSpeed * 1.30) : maxSpeed;
+            double currentMax = ((this.turboBoostTicks > 0) ? (maxSpeed * 1.30) : maxSpeed) * offroadMaxMult;
             this.currentSpeed = (float) Mth.clamp(this.currentSpeed, -maxSpeed * 0.45, currentMax);
 
             // === Mario Kart Drift State Machine ===
@@ -1037,6 +1067,11 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
             // === Steering / Yaw Turn ===
             if (this.driftDirection != 0 && Math.abs(this.currentSpeed) > 0.002f) {
                 float baseTurn = 4.2f;
+                if (tireType == com.microdrone.mod.item.RcTireItem.TireType.DRIFT) {
+                    baseTurn = 5.6f;
+                } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.GRIP) {
+                    baseTurn = 2.8f;
+                }
                 float turnSpeed;
                 if (inSteerAmount > 0.0f) {
                     turnSpeed = baseTurn * (1.0f + inSteerAmount * 0.85f); // In-steer tighter
@@ -1048,6 +1083,14 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
             } else {
                 if (Math.abs(this.currentSpeed) > 0.002f) {
                     float baseTurn = (this.currentSpeed > 0 ? 13.5f : -13.5f);
+                    if (tireType == com.microdrone.mod.item.RcTireItem.TireType.GRIP) {
+                        baseTurn *= 1.40f;
+                    } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.DRIFT) {
+                        baseTurn *= 1.15f;
+                    }
+                    if (onIce && !tireType.isIceImmunity()) {
+                        baseTurn *= 0.35f;
+                    }
                     float turnSpeed = (this.steerAngle / 35.0f) * baseTurn;
                     this.setYRot(this.getYRot() - turnSpeed);
                 }
@@ -1082,11 +1125,11 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                 double slideWeight = 0.55 + (counterAmount * 0.50) - (inSteerAmount * 0.35);
 
                 if (tireType == com.microdrone.mod.item.RcTireItem.TireType.DRIFT) {
-                    slideWeight *= 1.25;
-                    driveWeight *= 0.85;
+                    slideWeight *= 1.70;
+                    driveWeight *= 0.55;
                 } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.GRIP) {
-                    slideWeight *= 0.45;
-                    driveWeight *= 1.35;
+                    slideWeight *= 0.12;
+                    driveWeight *= 1.75;
                 }
 
                 // ドリフト距離・時間に応じたグリップ力回復 (Grip Recovery - マイルド調整版)
