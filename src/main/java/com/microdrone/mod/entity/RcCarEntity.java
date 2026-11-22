@@ -929,10 +929,10 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                 if (this.driftDirection != 0) {
                     this.driftTicks++;
 
-                    // ドリフト継続時間・距離に応じたスクラブ抵抗による緩やかな減速（マイルド調整版）
-                    // 序盤(~18tick=約0.9秒)は最高速ドリフトを維持し、それ以降じわじわとマイルドに速度低下
-                    if (this.driftTicks > 18) {
-                        float scrubFactor = Math.min(0.011f, (this.driftTicks - 18) * 0.00032f);
+                    // ドリフト継続時間・距離に応じたスクラブ抵抗による緩やかな減速（減速緩和微調整版）
+                    // 序盤(~20tick=約1.0秒)は最高速ドリフトを維持し、それ以降も減速を抑えてスピードをキープ
+                    if (this.driftTicks > 20) {
+                        float scrubFactor = Math.min(0.0075f, (this.driftTicks - 20) * 0.00020f);
                         this.currentSpeed = Math.max(0.04f, this.currentSpeed * (1.0f - scrubFactor));
                     }
                 }
