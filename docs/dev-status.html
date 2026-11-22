@@ -50,7 +50,7 @@
           <span style="display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; background: rgba(56, 189, 248, 0.15); color: var(--accent-cyan); border: 1px solid rgba(56, 189, 248, 0.3); margin-bottom: 8px;">
             LATEST STABLE RELEASE
           </span>
-          <h2 style="font-size: 1.8rem; font-weight: 800; color: #fff; margin: 0;">RCVERSE v1.0.11</h2>
+          <h2 style="font-size: 1.8rem; font-weight: 800; color: #fff; margin: 0;">RCVERSE v1.0.27</h2>
         </div>
         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
           <a href="index.html#download" class="btn btn-primary" style="padding: 10px 20px; font-size: 0.9rem;">⬇ 最新版をダウンロード</a>
@@ -106,7 +106,14 @@
         </div>
         <div>
           <div class="progress-item-header">
-            <span>🏁 コース設営・道路生成・電光掲示板</span>
+            <span>🏁 スプライン道路・4種路面バリエーション・電光掲示板</span>
+            <span style="color: var(--accent-cyan); font-family: var(--font-mono);">100% (完成)</span>
+          </div>
+          <div class="progress-track"><div class="progress-fill" style="width: 100%;"></div></div>
+        </div>
+        <div>
+          <div class="progress-item-header">
+            <span>🛞 コース対応タイヤチューニング & 物理演算</span>
             <span style="color: var(--accent-cyan); font-family: var(--font-mono);">100% (完成)</span>
           </div>
           <div class="progress-track"><div class="progress-fill" style="width: 100%;"></div></div>
@@ -137,6 +144,18 @@
             <span class="badge-status badge-done">Completed</span>
           </div>
           <ul class="roadmap-list">
+            <li class="roadmap-list-item">
+              <span class="check-icon">✔</span>
+              <span><strong>4種の路面バリエーション＆タブ設定GUI</strong>: 道路マーカーGUIからアスファルト、ダート、アイス、水たまりの4路面を選択可能に。各路面ごとの摩擦・グリップ・エフェクト変化を実装 (v1.0.27)</span>
+            </li>
+            <li class="roadmap-list-item">
+              <span class="check-icon">✔</span>
+              <span><strong>5大タイヤパーツ換装システム (Tire Customization)</strong>: ノーマル、ドリフト、グリップ、オフロード、スパイクの各タイヤを実装。手に持って右クリックで即座に換装でき、路面に合わせた最高の走破性を発揮 (v1.0.27)</span>
+            </li>
+            <li class="roadmap-list-item">
+              <span class="check-icon">✔</span>
+              <span><strong>氷上物理演算オーバーホール (Extreme Ice Drift)</strong>: 摩擦0.995・横滑り追従0.02の極限低摩擦スライド挙動を実装。スパイクタイヤで氷上グリップを確保 (v1.0.27)</span>
+            </li>
             <li class="roadmap-list-item">
               <span class="check-icon">✔</span>
               <span><strong>全機体マルチプレイ補間同期 (Snapshot Interpolation)</strong>: 100ms補間バッファと推測航法により、他プレイヤーや観戦カメラから見てもカクつきゼロの完全滑らかな走行・飛行・スタント同期を実現 (v1.0.11)</span>
@@ -199,14 +218,6 @@
           <ul class="roadmap-list">
             <li class="roadmap-list-item">
               <span class="check-icon" style="color: #94a3b8;">✦</span>
-              <span><strong>タイヤパーツ換装システム (Tire Customization)</strong>: ドリフトタイヤ（低摩擦・スライド重視）、ハイグリップタイヤ（高接地力・オンレール走行）、ラリータイヤ（ブロックパターン・不整地走破）、スパイクタイヤ（氷上用）をクラフト・換装して走行特性を自在にセッティング</span>
-            </li>
-            <li class="roadmap-list-item">
-              <span class="check-icon" style="color: #94a3b8;">✦</span>
-              <span><strong>道路生成マーカーの路面バリエーション</strong>: 道路マーカーGUIから路面タイプ（アスファルト、氷塊・アイスバーン、ダート・砂利道、浅水・ウォーターロード）を選択可能にし、タイヤとの相乗効果や水しぶき・土埃エフェクトを展開</span>
-            </li>
-            <li class="roadmap-list-item">
-              <span class="check-icon" style="color: #94a3b8;">✦</span>
               <span><strong>コースレイアウト共有機能</strong>: 道路生成マーカーで作成したオリジナルコースのプリセット保存・書き出し</span>
             </li>
             <li class="roadmap-list-item">
@@ -232,13 +243,32 @@
 
       <div class="timeline-wrap">
 
-        <!-- v1.0.11 -->
+        <!-- v1.0.27 -->
         <div class="timeline-block">
           <div class="timeline-node latest"></div>
           <div class="timeline-card">
             <div class="timeline-card-header">
-              <span class="version-tag">v1.0.11</span>
+              <span class="version-tag">v1.0.27</span>
               <span class="release-date">最新リリース (Latest)</span>
+            </div>
+            <div class="timeline-desc">🛣️ 4種の路面バリエーション・5大タイヤチューニング・氷上ドリフト物理刷新</div>
+            <ul class="timeline-details">
+              <li><strong>道路生成マーカーの路面タイプ選択</strong>: アスファルト、ダート/オフロード、アイス/氷上、水たまり（ハイドロ減速・水しぶき）の4種類の路面を自由に設定可能に。</li>
+              <li><strong>設定画面のタブ切り替えGUI</strong>: 「形状・コース設定」と「路面タイプ設定」をタブで直感的に切り替えられる新UIを実装。</li>
+              <li><strong>氷上物理演算の大幅強化</strong>: 氷上特有の極低摩擦（減速摩擦0.995、横滑り追従率0.02）を実装し、慣性のまま真横にスーッと滑るリアルなスリップ・パワースライドを実現。</li>
+              <li><strong>5種類のコース対応タイヤ＆専用アイコン</strong>: ノーマル、ドリフト、グリップ、オフロード、スパイクの各タイヤを実装し、専用ピクセルアートアイコンを追加。</li>
+              <li><strong>ドキュメント＆Webサイトのギャラリー拡充</strong>: 4種の路面タイプの実機スクリーンショットを公式WebサイトやREADME、CurseForge説明文に統合。</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- v1.0.11 -->
+        <div class="timeline-block">
+          <div class="timeline-node"></div>
+          <div class="timeline-card">
+            <div class="timeline-card-header">
+              <span class="version-tag">v1.0.11</span>
+              <span class="release-date">Multiplayer Smoothing</span>
             </div>
             <div class="timeline-desc">🌐 全機種対応マルチプレイヤー Snapshot Interpolation（超滑らか位置同期＆観戦カメラ対応）</div>
             <ul class="timeline-details">
