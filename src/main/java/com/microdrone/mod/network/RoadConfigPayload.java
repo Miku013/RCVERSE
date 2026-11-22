@@ -13,6 +13,7 @@ import net.minecraft.resources.ResourceLocation;
 public record RoadConfigPayload(
         BlockPos startPos,
         int roadMode,
+        int surfaceType,
         float roadWidth,
         float maxBankAngle,
         int turnDirection,
@@ -32,6 +33,7 @@ public record RoadConfigPayload(
             (buf, val) -> {
                 BlockPos.STREAM_CODEC.encode(buf, val.startPos());
                 buf.writeInt(val.roadMode());
+                buf.writeInt(val.surfaceType());
                 buf.writeFloat(val.roadWidth());
                 buf.writeFloat(val.maxBankAngle());
                 buf.writeInt(val.turnDirection());
@@ -46,6 +48,7 @@ public record RoadConfigPayload(
             },
             buf -> new RoadConfigPayload(
                     BlockPos.STREAM_CODEC.decode(buf),
+                    buf.readInt(),
                     buf.readInt(),
                     buf.readFloat(),
                     buf.readFloat(),

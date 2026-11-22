@@ -814,23 +814,40 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
             boolean onIce = false;
             boolean onOffroad = false;
             if (this.onGround() || this.wheelGrounded) {
-                boolean onSplineRoad = com.microdrone.mod.block.road.RoadSplineManager.sampleRoad(
-                        this.level(), this.getX(), this.getY(), this.getZ()).hit;
+                var roadHit = com.microdrone.mod.block.road.RoadSplineManager.sampleRoad(
+                        this.level(), this.getX(), this.getY(), this.getZ());
+                boolean onSplineRoad = roadHit.hit;
 
                 net.minecraft.world.level.block.state.BlockState groundState = this.level().getBlockState(this.blockPosition().below());
                 net.minecraft.world.level.block.state.BlockState atState = this.level().getBlockState(this.blockPosition());
                 float bFriction = groundState.getBlock().getFriction();
-                onIce = !onSplineRoad && ((bFriction > 0.85f) || groundState.is(net.minecraft.tags.BlockTags.ICE) || atState.is(net.minecraft.tags.BlockTags.ICE));
-                onOffroad = !onSplineRoad && (groundState.is(net.minecraft.tags.BlockTags.DIRT)
-                        || groundState.is(net.minecraft.tags.BlockTags.SAND)
-                        || groundState.is(net.minecraft.world.level.block.Blocks.GRAVEL)
-                        || groundState.is(net.minecraft.world.level.block.Blocks.GRASS_BLOCK)
-                        || groundState.is(net.minecraft.world.level.block.Blocks.SOUL_SAND)
-                        || groundState.is(net.minecraft.world.level.block.Blocks.MUD)
-                        || atState.is(net.minecraft.tags.BlockTags.DIRT)
-                        || atState.is(net.minecraft.tags.BlockTags.SAND)
-                        || atState.is(net.minecraft.world.level.block.Blocks.GRAVEL)
-                        || atState.is(net.minecraft.world.level.block.Blocks.GRASS_BLOCK));
+                if (onSplineRoad) {
+                    onIce = (roadHit.surfaceType == com.microdrone.mod.block.road.RoadSplineData.RoadSurfaceType.ICE);
+                    onOffroad = (roadHit.surfaceType == com.microdrone.mod.block.road.RoadSplineData.RoadSurfaceType.DIRT);
+                    if (roadHit.surfaceType == com.microdrone.mod.block.road.RoadSplineData.RoadSurfaceType.PUDDLE) {
+                        maxSpeed *= 0.60;
+                        accel *= 0.40;
+                        if (Math.abs(this.currentSpeed) > 0.05f && this.random.nextInt(2) == 0) {
+                            this.level().addParticle(net.minecraft.core.particles.ParticleTypes.SPLASH,
+                                    this.getX() + (this.random.nextDouble() - 0.5) * 0.4,
+                                    this.getY() + 0.05,
+                                    this.getZ() + (this.random.nextDouble() - 0.5) * 0.4,
+                                    (this.random.nextDouble() - 0.5) * 0.2, 0.15, (this.random.nextDouble() - 0.5) * 0.2);
+                        }
+                    }
+                } else {
+                    onIce = ((bFriction > 0.85f) || groundState.is(net.minecraft.tags.BlockTags.ICE) || atState.is(net.minecraft.tags.BlockTags.ICE));
+                    onOffroad = (groundState.is(net.minecraft.tags.BlockTags.DIRT)
+                            || groundState.is(net.minecraft.tags.BlockTags.SAND)
+                            || groundState.is(net.minecraft.world.level.block.Blocks.GRAVEL)
+                            || groundState.is(net.minecraft.world.level.block.Blocks.GRASS_BLOCK)
+                            || groundState.is(net.minecraft.world.level.block.Blocks.SOUL_SAND)
+                            || groundState.is(net.minecraft.world.level.block.Blocks.MUD)
+                            || atState.is(net.minecraft.tags.BlockTags.DIRT)
+                            || atState.is(net.minecraft.tags.BlockTags.SAND)
+                            || atState.is(net.minecraft.world.level.block.Blocks.GRAVEL)
+                            || atState.is(net.minecraft.world.level.block.Blocks.GRASS_BLOCK));
+                }
                 blockFriction = bFriction;
             }
 
@@ -905,27 +922,49 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
             double friction = 0.90; // 地面摩擦減速
             boolean onIce = false;
             boolean onOffroad = false;
+            boolean onPuddle = false;
 
             if (this.onGround() || this.wheelGrounded) {
-                boolean onSplineRoad = com.microdrone.mod.block.road.RoadSplineManager.sampleRoad(
-                        this.level(), this.getX(), this.getY(), this.getZ()).hit;
+                var roadHit = com.microdrone.mod.block.road.RoadSplineManager.sampleRoad(
+                        this.level(), this.getX(), this.getY(), this.getZ());
+                boolean onSplineRoad = roadHit.hit;
 
                 net.minecraft.world.level.block.state.BlockState groundState = this.level().getBlockState(this.blockPosition().below());
                 net.minecraft.world.level.block.state.BlockState atState = this.level().getBlockState(this.blockPosition());
                 float bFriction = groundState.getBlock().getFriction();
-                onIce = !onSplineRoad && ((bFriction > 0.85f) || groundState.is(net.minecraft.tags.BlockTags.ICE) || atState.is(net.minecraft.tags.BlockTags.ICE));
-                onOffroad = !onSplineRoad && (groundState.is(net.minecraft.tags.BlockTags.DIRT)
-                        || groundState.is(net.minecraft.tags.BlockTags.SAND)
-                        || groundState.is(net.minecraft.world.level.block.Blocks.GRAVEL)
-                        || groundState.is(net.minecraft.world.level.block.Blocks.GRASS_BLOCK)
-                        || groundState.is(net.minecraft.world.level.block.Blocks.SOUL_SAND)
-                        || groundState.is(net.minecraft.world.level.block.Blocks.MUD)
-                        || atState.is(net.minecraft.tags.BlockTags.DIRT)
-                        || atState.is(net.minecraft.tags.BlockTags.SAND)
-                        || atState.is(net.minecraft.world.level.block.Blocks.GRAVEL)
-                        || atState.is(net.minecraft.world.level.block.Blocks.GRASS_BLOCK));
+                if (onSplineRoad) {
+                    onIce = (roadHit.surfaceType == com.microdrone.mod.block.road.RoadSplineData.RoadSurfaceType.ICE);
+                    onOffroad = (roadHit.surfaceType == com.microdrone.mod.block.road.RoadSplineData.RoadSurfaceType.DIRT);
+                    if (roadHit.surfaceType == com.microdrone.mod.block.road.RoadSplineData.RoadSurfaceType.PUDDLE) {
+                        onPuddle = true;
+                    }
+                } else {
+                    onIce = ((bFriction > 0.85f) || groundState.is(net.minecraft.tags.BlockTags.ICE) || atState.is(net.minecraft.tags.BlockTags.ICE));
+                    onOffroad = (groundState.is(net.minecraft.tags.BlockTags.DIRT)
+                            || groundState.is(net.minecraft.tags.BlockTags.SAND)
+                            || groundState.is(net.minecraft.world.level.block.Blocks.GRAVEL)
+                            || groundState.is(net.minecraft.world.level.block.Blocks.GRASS_BLOCK)
+                            || groundState.is(net.minecraft.world.level.block.Blocks.SOUL_SAND)
+                            || groundState.is(net.minecraft.world.level.block.Blocks.MUD)
+                            || atState.is(net.minecraft.tags.BlockTags.DIRT)
+                            || atState.is(net.minecraft.tags.BlockTags.SAND)
+                            || atState.is(net.minecraft.world.level.block.Blocks.GRAVEL)
+                            || atState.is(net.minecraft.world.level.block.Blocks.GRASS_BLOCK));
+                }
 
-                if (onIce) {
+                if (onPuddle) {
+                    // 水たまり: 水の抵抗で減速＆水しぶき
+                    maxSpeed *= 0.60;
+                    accel *= 0.40;
+                    friction = 0.92;
+                    if (Math.abs(this.currentSpeed) > 0.05f && this.random.nextInt(2) == 0) {
+                        this.level().addParticle(net.minecraft.core.particles.ParticleTypes.SPLASH,
+                                this.getX() + (this.random.nextDouble() - 0.5) * 0.4,
+                                this.getY() + 0.05,
+                                this.getZ() + (this.random.nextDouble() - 0.5) * 0.4,
+                                (this.random.nextDouble() - 0.5) * 0.2, 0.15, (this.random.nextDouble() - 0.5) * 0.2);
+                    }
+                } else if (onIce) {
                     if (tireType.isIceImmunity()) {
                         // スパイクタイヤ: 氷上でもアスファルト同等にガッチリ食いつく！
                         friction = 0.90;

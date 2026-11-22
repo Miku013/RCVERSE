@@ -23,15 +23,17 @@ public class RoadSplineManager {
         public final BlockPos endPos;
         public final float roadWidth;
         public final RoadSplineData.RoadMode roadMode;
+        public final RoadSplineData.RoadSurfaceType surfaceType;
         public final float loopBoostMultiplier;
         public final AABB boundingBox;
         public final List<RoadSplineGenerator.SplineSample> samples;
 
-        public CachedRoad(BlockPos startPos, BlockPos endPos, float roadWidth, RoadSplineData.RoadMode roadMode, float loopBoostMultiplier, AABB boundingBox, List<RoadSplineGenerator.SplineSample> samples) {
+        public CachedRoad(BlockPos startPos, BlockPos endPos, float roadWidth, RoadSplineData.RoadMode roadMode, RoadSplineData.RoadSurfaceType surfaceType, float loopBoostMultiplier, AABB boundingBox, List<RoadSplineGenerator.SplineSample> samples) {
             this.startPos = startPos;
             this.endPos = endPos;
             this.roadWidth = roadWidth;
             this.roadMode = roadMode != null ? roadMode : RoadSplineData.RoadMode.ROAD;
+            this.surfaceType = surfaceType != null ? surfaceType : RoadSplineData.RoadSurfaceType.ASPHALT;
             this.loopBoostMultiplier = loopBoostMultiplier;
             this.boundingBox = boundingBox;
             this.samples = samples;
@@ -73,7 +75,7 @@ public class RoadSplineManager {
         );
 
         AABB aabb = startBe.getRoadBoundingBox();
-        CachedRoad road = new CachedRoad(startBe.getBlockPos(), endPos, data.getRoadWidth(), data.getRoadMode(), data.getLoopBoostMultiplier(), aabb, samples);
+        CachedRoad road = new CachedRoad(startBe.getBlockPos(), endPos, data.getRoadWidth(), data.getRoadMode(), data.getSurfaceType(), data.getLoopBoostMultiplier(), aabb, samples);
 
         String key = getLevelKey(level);
         ACTIVE_ROADS.computeIfAbsent(key, k -> new ConcurrentHashMap<>()).put(startBe.getBlockPos(), road);
@@ -111,6 +113,7 @@ public class RoadSplineManager {
                     if (hit.isLoop360) {
                         hit = hit.withLoopBoost(road.loopBoostMultiplier);
                     }
+                    hit = hit.withSurfaceType(road.surfaceType);
                     double dy = Math.abs(y - hit.groundY);
                     if (dy < bestDistY) {
                         bestDistY = dy;

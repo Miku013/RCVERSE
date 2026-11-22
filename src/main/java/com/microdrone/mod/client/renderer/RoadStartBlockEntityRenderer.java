@@ -32,6 +32,11 @@ public class RoadStartBlockEntityRenderer implements BlockEntityRenderer<RoadSta
     public static final ResourceLocation CURB_TEX = ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, "textures/block/modular_slope_curb.png");
     public static final ResourceLocation SIDE_TEX = ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, "textures/block/modular_slope_side.png");
 
+    public static final ResourceLocation ROAD_TEX_DIRT = ResourceLocation.withDefaultNamespace("textures/block/dirt.png");
+    public static final ResourceLocation ROAD_TEX_ICE = ResourceLocation.withDefaultNamespace("textures/block/blue_ice.png");
+    public static final ResourceLocation CURB_TEX_DIRT = ResourceLocation.withDefaultNamespace("textures/block/oak_planks.png");
+    public static final ResourceLocation CURB_TEX_ICE = ResourceLocation.withDefaultNamespace("textures/block/snow.png");
+
     public RoadStartBlockEntityRenderer(BlockEntityRendererProvider.Context context) {
     }
 
@@ -91,8 +96,21 @@ public class RoadStartBlockEntityRenderer implements BlockEntityRenderer<RoadSta
 
         boolean isPreviewMode = data.isPreview() && !data.isGenerated();
         int alpha = isPreviewMode ? 170 : 255;
-        RenderType roadRenderType = isPreviewMode ? RenderType.entityTranslucent(ROAD_TEX) : RenderType.entityCutoutNoCull(ROAD_TEX);
-        RenderType curbRenderType = isPreviewMode ? RenderType.entityTranslucent(CURB_TEX) : RenderType.entityCutoutNoCull(CURB_TEX);
+
+        RoadSplineData.RoadSurfaceType surfaceType = data.getSurfaceType();
+        ResourceLocation activeRoadTex = switch (surfaceType) {
+            case DIRT -> ROAD_TEX_DIRT;
+            case ICE -> ROAD_TEX_ICE;
+            default -> ROAD_TEX; // ASPHALT, PUDDLE
+        };
+        ResourceLocation activeCurbTex = switch (surfaceType) {
+            case DIRT -> CURB_TEX_DIRT;
+            case ICE -> CURB_TEX_ICE;
+            default -> CURB_TEX;
+        };
+
+        RenderType roadRenderType = isPreviewMode ? RenderType.entityTranslucent(activeRoadTex) : RenderType.entityCutoutNoCull(activeRoadTex);
+        RenderType curbRenderType = isPreviewMode ? RenderType.entityTranslucent(activeCurbTex) : RenderType.entityCutoutNoCull(activeCurbTex);
         RenderType sideRenderType = isPreviewMode ? RenderType.entityTranslucent(SIDE_TEX) : RenderType.entityCutoutNoCull(SIDE_TEX);
 
         // =========================================================================
@@ -120,13 +138,18 @@ public class RoadStartBlockEntityRenderer implements BlockEntityRenderer<RoadSta
             float ny = (float) norm.y;
             float nz = (float) norm.z;
 
+            int r = 255, g = 255, b = 255;
+            if (surfaceType == RoadSplineData.RoadSurfaceType.PUDDLE) {
+                r = 140; g = 185; b = 255; // 水たまり・濡れたウェット路面
+            }
+
             // 道路面 (CCW 反時計回り)
             addQuad(roadConsumer, pose,
                     (float) l0.x, (float) l0.y, (float) l0.z, 0.0f, v0,
                     (float) r0.x, (float) r0.y, (float) r0.z, 1.0f, v0,
                     (float) r1.x, (float) r1.y, (float) r1.z, 1.0f, v1,
                     (float) l1.x, (float) l1.y, (float) l1.z, 0.0f, v1,
-                    nx, ny, nz, alpha, packedLight, packedOverlay);
+                    nx, ny, nz, r, g, b, alpha, packedLight, packedOverlay);
         }
 
         // =========================================================================
