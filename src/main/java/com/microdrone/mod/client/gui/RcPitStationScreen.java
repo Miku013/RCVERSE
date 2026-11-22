@@ -201,10 +201,10 @@ public class RcPitStationScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        // 1. 背景の暗転グラデーション
-        graphics.fillGradient(0, 0, this.width, this.height, 0xF00a0e17, 0xF5111827);
+        // 1. super.render を最初に実行 (背景メニューブラーと下地を最奥に描画)
+        super.render(graphics, mouseX, mouseY, partialTick);
 
-        // 2. 中央の3Dビューポート枠
+        // 2. 中央の3Dビューポート枠と背景パネル
         int viewMargin = 12;
         graphics.fillGradient(viewMargin, viewMargin, this.width - viewMargin, this.height - viewMargin, 0xEE090d16, 0xEE111827);
         graphics.renderOutline(viewMargin, viewMargin, this.width - viewMargin * 2, this.height - viewMargin * 2, 0xFF0284c7);
@@ -218,7 +218,7 @@ public class RcPitStationScreen extends Screen {
         Component helpText = Component.translatable("gui.microdrone.pit_station.help");
         graphics.drawCenteredString(this.font, helpText, this.width / 2, this.height - 28, 0xFF94a3b8);
 
-        // 5. 3Dモデルのレンダリング
+        // 5. 3Dモデルのレンダリング (ブラーの上に鮮明に描画)
         if (this.previewEntity != null) {
             int centerX = this.width / 2 + (int) this.modelPanX;
             int centerY = this.height / 2 + 10 + (int) this.modelPanY;
@@ -233,8 +233,10 @@ public class RcPitStationScreen extends Screen {
             renderVehicleInfoCard(graphics);
         }
 
-        // 7. ボタンなどのウィジェット描画
-        super.render(graphics, mouseX, mouseY, partialTick);
+        // 7. 前景ウィジェット（ボタン等）の最前面描画
+        for (var renderable : this.renderables) {
+            renderable.render(graphics, mouseX, mouseY, partialTick);
+        }
     }
 
     private void renderVehicleInfoCard(GuiGraphics graphics) {
