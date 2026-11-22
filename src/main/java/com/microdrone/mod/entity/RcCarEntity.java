@@ -814,33 +814,35 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
             boolean onIce = false;
             boolean onOffroad = false;
             if (this.onGround() || this.wheelGrounded) {
+                boolean onSplineRoad = com.microdrone.mod.block.road.RoadSplineManager.sampleRoad(
+                        this.level(), this.getX(), this.getY(), this.getZ()).hit;
+
                 net.minecraft.world.level.block.state.BlockState groundState = this.level().getBlockState(this.blockPosition().below());
+                net.minecraft.world.level.block.state.BlockState atState = this.level().getBlockState(this.blockPosition());
                 float bFriction = groundState.getBlock().getFriction();
-                onIce = (bFriction > 0.85f) || groundState.is(net.minecraft.tags.BlockTags.ICE);
-                onOffroad = groundState.is(net.minecraft.tags.BlockTags.DIRT)
+                onIce = !onSplineRoad && ((bFriction > 0.85f) || groundState.is(net.minecraft.tags.BlockTags.ICE) || atState.is(net.minecraft.tags.BlockTags.ICE));
+                onOffroad = !onSplineRoad && (groundState.is(net.minecraft.tags.BlockTags.DIRT)
                         || groundState.is(net.minecraft.tags.BlockTags.SAND)
                         || groundState.is(net.minecraft.world.level.block.Blocks.GRAVEL)
                         || groundState.is(net.minecraft.world.level.block.Blocks.GRASS_BLOCK)
                         || groundState.is(net.minecraft.world.level.block.Blocks.SOUL_SAND)
-                        || groundState.is(net.minecraft.world.level.block.Blocks.MUD);
+                        || groundState.is(net.minecraft.world.level.block.Blocks.MUD)
+                        || atState.is(net.minecraft.tags.BlockTags.DIRT)
+                        || atState.is(net.minecraft.tags.BlockTags.SAND)
+                        || atState.is(net.minecraft.world.level.block.Blocks.GRAVEL)
+                        || atState.is(net.minecraft.world.level.block.Blocks.GRASS_BLOCK));
                 blockFriction = bFriction;
             }
 
             float dynamicGrip = tireType.getLateralGripMultiplier();
             if (tireType == com.microdrone.mod.item.RcTireItem.TireType.SPIKE) {
-                if (onIce) {
-                    dynamicGrip = 1.60f; // 氷上ではガッチリ食い付く！
-                } else {
-                    // 通常ブロック・舗装道路では金属ピンが滑ってオフロードより激しくスリップ！
-                    dynamicGrip = 0.50f;
-                }
+                dynamicGrip = onIce ? 1.60f : 0.50f;
             } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.OFFROAD) {
-                if (onOffroad) {
-                    dynamicGrip = 1.45f; // ダートでは専用グリップで強力に噛む！
-                } else {
-                    // 舗装道路ではブロックがヨレてやや滑るがスパイク(0.50)よりは滑りづらい(0.80)
-                    dynamicGrip = 0.80f;
-                }
+                // 舗装路では良好(1.20f)でグリップタイヤ(2.20f)より下、オフロードでは最強(1.85f)でグリップタイヤを圧倒！
+                dynamicGrip = onOffroad ? 1.85f : 1.20f;
+            } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.GRIP) {
+                // 舗装路では最強(2.20f)、オフロードでは泥や砂で目詰まりして激減(0.55f)
+                dynamicGrip = onOffroad ? 0.55f : 2.20f;
             }
 
             this.realPhysics.setTireProperties(
@@ -905,15 +907,23 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
             boolean onOffroad = false;
 
             if (this.onGround() || this.wheelGrounded) {
+                boolean onSplineRoad = com.microdrone.mod.block.road.RoadSplineManager.sampleRoad(
+                        this.level(), this.getX(), this.getY(), this.getZ()).hit;
+
                 net.minecraft.world.level.block.state.BlockState groundState = this.level().getBlockState(this.blockPosition().below());
+                net.minecraft.world.level.block.state.BlockState atState = this.level().getBlockState(this.blockPosition());
                 float bFriction = groundState.getBlock().getFriction();
-                onIce = (bFriction > 0.85f) || groundState.is(net.minecraft.tags.BlockTags.ICE);
-                onOffroad = groundState.is(net.minecraft.tags.BlockTags.DIRT)
+                onIce = !onSplineRoad && ((bFriction > 0.85f) || groundState.is(net.minecraft.tags.BlockTags.ICE) || atState.is(net.minecraft.tags.BlockTags.ICE));
+                onOffroad = !onSplineRoad && (groundState.is(net.minecraft.tags.BlockTags.DIRT)
                         || groundState.is(net.minecraft.tags.BlockTags.SAND)
                         || groundState.is(net.minecraft.world.level.block.Blocks.GRAVEL)
                         || groundState.is(net.minecraft.world.level.block.Blocks.GRASS_BLOCK)
                         || groundState.is(net.minecraft.world.level.block.Blocks.SOUL_SAND)
-                        || groundState.is(net.minecraft.world.level.block.Blocks.MUD);
+                        || groundState.is(net.minecraft.world.level.block.Blocks.MUD)
+                        || atState.is(net.minecraft.tags.BlockTags.DIRT)
+                        || atState.is(net.minecraft.tags.BlockTags.SAND)
+                        || atState.is(net.minecraft.world.level.block.Blocks.GRAVEL)
+                        || atState.is(net.minecraft.world.level.block.Blocks.GRASS_BLOCK));
 
                 if (onIce) {
                     if (tireType.isIceImmunity()) {
@@ -929,8 +939,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                         // スパイクタイヤ: 金属ピンが舗装路で滑り、アクセルオフでもスーッと滑って減速しにくい
                         friction = 0.96;
                     } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.OFFROAD) {
-                        // オフロードタイヤ: スパイクタイヤよりは滑りづらい
-                        friction = 0.92;
+                        // オフロードタイヤ: 舗装路でもしっかり減速・グリップ
+                        friction = 0.90;
                     }
                 }
             }
@@ -977,8 +987,10 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                         if (tireType == com.microdrone.mod.item.RcTireItem.TireType.SPIKE) {
                             tractionMult = 0.85f; // 舗装路では金属ピンが空転して加速が逃げる
                         } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.OFFROAD) {
-                            tractionMult = 1.00f; // 舗装路では標準的（土・草地の1.35より控えめ）
+                            tractionMult = 1.05f; // 舗装路でも良好なトラクション
                         }
+                    } else if (onOffroad && tireType == com.microdrone.mod.item.RcTireItem.TireType.OFFROAD) {
+                        tractionMult = 1.40f; // オフロードでは最強トラクション！
                     }
                     float forwardAccel = (float) (accel * this.inputForward * tractionMult * offroadAccelMult);
                     if (this.driftDirection != 0) {
@@ -1133,7 +1145,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                 if (Math.abs(this.currentSpeed) > 0.002f) {
                     float baseTurn = (this.currentSpeed > 0 ? 13.5f : -13.5f);
                     if (tireType == com.microdrone.mod.item.RcTireItem.TireType.GRIP) {
-                        baseTurn *= 1.40f;
+                        baseTurn *= (onOffroad ? 0.70f : 1.45f);
                     } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.DRIFT) {
                         baseTurn *= 1.15f;
                     } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.SPIKE) {
@@ -1142,9 +1154,9 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                         }
                     } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.OFFROAD) {
                         if (onOffroad) {
-                            baseTurn *= 1.25f; // ダートでは専用グリップでキュッと曲がる！
+                            baseTurn *= 1.35f; // ダートでは専用グリップでキュッと曲がる！
                         } else {
-                            baseTurn *= 0.95f; // 舗装路ではスパイク(0.82)よりグリップする
+                            baseTurn *= 1.10f; // 舗装路でも良好に曲がるがグリップ(1.45)には及ばない
                         }
                     }
                     if (onIce && !tireType.isIceImmunity()) {
@@ -1187,8 +1199,13 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                     slideWeight *= 1.70;
                     driveWeight *= 0.55;
                 } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.GRIP) {
-                    slideWeight *= 0.12;
-                    driveWeight *= 1.75;
+                    if (onOffroad) {
+                        slideWeight *= 1.20; // 悪路ではスリックが目詰まり・空転して滑る
+                        driveWeight *= 0.80;
+                    } else {
+                        slideWeight *= 0.12; // 舗装路では最強グリップ！
+                        driveWeight *= 1.75;
+                    }
                 } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.SPIKE) {
                     if (!onIce) {
                         // 舗装路では金属ピンが滑ってオフロードより激しくスライド！
@@ -1201,13 +1218,13 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                     }
                 } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.OFFROAD) {
                     if (onOffroad) {
-                        // 土・草地ではグリップが効いてスライドしにくく前に進む！
-                        slideWeight *= 0.45;
-                        driveWeight *= 1.45;
+                        // オフロードでは最強！ドリフトを抑えて強烈なトラクションで前進！
+                        slideWeight *= 0.15;
+                        driveWeight *= 1.85;
                     } else {
-                        // 舗装路ではブロックがヨレてやや滑るがスパイク(1.50)よりは滑りづらい(1.10)
-                        slideWeight *= 1.10;
-                        driveWeight *= 0.95;
+                        // 舗装路でもしっかり踏ん張る(0.60)がグリップ(0.12)には及ばない
+                        slideWeight *= 0.60;
+                        driveWeight *= 1.35;
                     }
                 }
 
@@ -1254,31 +1271,30 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                     double gripFollowRate = 0.55; // NORMALの基準値
                     if (onIce) {
                         if (tireType.isIceImmunity()) {
-                            gripFollowRate = 0.65; // スパイクタイヤ: 氷上でもしっかり追従！
+                            gripFollowRate = 0.70; // スパイクタイヤ: 氷上でもしっかり追従！
                         } else {
                             gripFollowRate = 0.08; // 通常タイヤ: 氷上ではツルツル外へ流れる！
                         }
                     } else if (onOffroad) {
                         if (tireType.isOffroadImmunity()) {
-                            // オフロードタイヤ: 専用の土や草地、砂などでは舗装路より強力にグリップ！
-                            gripFollowRate = 0.75;
+                            // ★ オフロード路面: オフロードタイヤが最強グリップ！(0.92)
+                            // グリップタイヤ(0.25)を完全に凌駕！
+                            gripFollowRate = 0.92;
                         } else {
-                            gripFollowRate = 0.35; // 他タイヤは未舗装路で足を取られてズルズル
+                            // グリップタイヤや他タイヤは悪路で目詰まり・足を取られてズルズル
+                            gripFollowRate = 0.25;
                         }
                     } else {
-                        // 通常ブロック・普通の舗装道路！
+                        // ★ 通常ブロック・舗装道路・メッシュ道路！
+                        // 舗装路ではオフロード(0.68)よりグリップタイヤ(0.88)が最強！
                         if (tireType == com.microdrone.mod.item.RcTireItem.TireType.GRIP) {
-                            gripFollowRate = 0.85; // オンザレール
-                        } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.DRIFT) {
-                            gripFollowRate = 0.28; // 低グリップ
-                        } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.SPIKE) {
-                            // ★ スパイクタイヤ: 舗装路では金属ピンが滑ってオフロードより滑りやすい！
-                            // 通常ステアでもテールが流れて外へスライドする！
-                            gripFollowRate = 0.18;
+                            gripFollowRate = 0.88; // オン・ザ・レール！
                         } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.OFFROAD) {
-                            // ★ オフロードタイヤ: 舗装路では土・草(0.75)よりグリップが落ちるが、
-                            // スパイクタイヤ(0.18)よりは滑りづらい(0.42)！
-                            gripFollowRate = 0.42;
+                            gripFollowRate = 0.68; // 舗装路でもしっかり安定、ただしグリップ(0.88)よりはマイルド
+                        } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.DRIFT) {
+                            gripFollowRate = 0.28;
+                        } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.SPIKE) {
+                            gripFollowRate = 0.18; // 金属ピンが滑る
                         }
                     }
 
