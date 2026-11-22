@@ -138,6 +138,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
 
     // 操作入力（サーバー/クライアント共用）
     public float inputForward = 0.0f; // 前進(+1.0) / 後退(-1.0)
+    private float prevInputForward = 0.0f; // 直前tickのアクセル入力（踏み直し・チョッピング検出用）
     public float inputSteer = 0.0f; // 左ステアリング(-1.0) / 右ステアリング(+1.0)
 
     // 内部物理パラメータ
@@ -862,6 +863,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
 
             // 前進 / 後退 / ESCブレーキ処理 (実機ホビーラジコンESC仕様: 前進中のS入力は急ブレーキ、停止後にバック)
             // Forward / Reverse / Brake processing with Mario Kart drift speed maintenance
+            boolean throttleKicked = (this.inputForward > 0.10f && this.prevInputForward <= 0.05f);
             if (this.inputForward > 0.05f) {
                 if (this.currentSpeed < -0.01f) {
                     this.currentSpeed += (float) (accel * 2.5f);
@@ -871,6 +873,14 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                     float forwardAccel = (float) (accel * this.inputForward);
                     if (this.driftDirection != 0) {
                         forwardAccel *= 1.30f; // Maintain high speed during drift (long slide)
+
+                        // ★ 実車・RC流アクセル煽り（チョッピング）: ドリフト中のアクセル踏み直しで前に蹴り出し＆垂れをリフレッシュ
+                        if (throttleKicked && this.currentSpeed > 0.04f) {
+                            this.currentSpeed += (float) (accel * 1.4f); // 一瞬グッと前に蹴り出すトラクション
+                            if (this.driftTicks > 14) {
+                                this.driftTicks = Math.max(8, this.driftTicks - 16); // 垂れカウントを巻き戻し、ドリフトが息を吹き返す
+                            }
+                        }
                     }
                     this.currentSpeed += forwardAccel;
                 }
@@ -1082,6 +1092,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                             Mth.lerp(0.55, this.carVelocity.z, driveZ * this.currentSpeed));
                 }
             }
+            this.prevInputForward = this.inputForward;
         }
 
         float commonYawRad = this.getYRot() * Mth.DEG_TO_RAD;

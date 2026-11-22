@@ -48,6 +48,7 @@ public class RealCarPhysics {
     private int continuousDriftTicks = 0; // ドリフト継続tick数 (ロングドリフト時の減速・グリップ回復用)
     private int recentSlideTicks = 0; // 直近まで横滑り/ドリフトしていた余韻カウント (立ち上がりおつり抑止用)
     private double smoothedPowerSpin = 0.0; // アクセル瞬間抜き時の急激なリアグリップ復帰を防ぐ滑らか保持値
+    private float prevInputForward = 0.0f; // 直前tickのアクセル入力（踏み直し・チョッピング検出用）
 
     // 第3段階：前後グリップ・スリップ・デバッグ監視用パラメーター
     private float frontGrip = 1.12f;
@@ -221,6 +222,7 @@ public class RealCarPhysics {
         this.continuousDriftTicks = 0;
         this.recentSlideTicks = 0;
         this.smoothedPowerSpin = 0.0;
+        this.prevInputForward = 0.0f;
         this.frontSlipping = false;
         this.rearSlipping = false;
         this.frontGripUsage = 0.0f;
@@ -317,6 +319,16 @@ public class RealCarPhysics {
                     double fwdGain = effectiveAccel * inputForward;
                     this.forwardVelocity += fwdGain;
                     powerSpinSeverity = Mth.clamp(inputForward, 0.0f, 1.0f);
+
+                    // ★ ドリフト中のアクセル踏み直し（チョッピング / パワースライド再点火）
+                    boolean throttleKicked = (inputForward > 0.15f && this.prevInputForward <= 0.05f);
+                    if (throttleKicked && (this.drifting || this.continuousDriftTicks > 5) && this.forwardVelocity > 0.04) {
+                        this.forwardVelocity += effectiveAccel * 1.5; // 前方へグッと蹴り出すトラクション
+                        this.smoothedPowerSpin = 1.0; // 後輪を再スピンさせてテールを押し出す
+                        if (this.continuousDriftTicks > 12) {
+                            this.continuousDriftTicks = Math.max(8, this.continuousDriftTicks - 14); // 垂れを巻き戻し
+                        }
+                    }
                 }
             } else if (inputForward < -0.05f) {
                 if (this.forwardVelocity > 0.01) {
@@ -425,6 +437,8 @@ public class RealCarPhysics {
                 0.0,
                 outFwdZ * this.forwardVelocity + outRightZ * this.lateralVelocity
         );
+
+        this.prevInputForward = inputForward;
 
         return new StepResult(
                 outWorldVel,
