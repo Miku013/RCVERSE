@@ -17,8 +17,8 @@ public class RcTireItem extends Item {
         NORMAL("normal", 1.0f, 1.0f, 1.0f, false, false, ChatFormatting.GRAY),
         DRIFT("drift", 0.35f, 0.15f, 0.95f, false, false, ChatFormatting.AQUA),
         GRIP("grip", 2.20f, 1.80f, 1.25f, false, false, ChatFormatting.GOLD),
-        OFFROAD("offroad", 1.10f, 0.85f, 1.35f, true, false, ChatFormatting.DARK_GREEN),
-        SPIKE("spike", 1.20f, 0.90f, 1.10f, false, true, ChatFormatting.LIGHT_PURPLE);
+        OFFROAD("offroad", 1.25f, 0.85f, 1.35f, true, false, ChatFormatting.DARK_GREEN),
+        SPIKE("spike", 1.35f, 0.90f, 1.10f, false, true, ChatFormatting.LIGHT_PURPLE);
 
         private final String id;
         private final float lateralGripMultiplier; // 横グリップ倍率 (スピンしにくさ)
