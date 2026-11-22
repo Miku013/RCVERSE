@@ -42,8 +42,16 @@ import java.util.UUID;
  * - モード切替ハイブリッド: 直感アシスト飛行(自動水平復帰) ⇔ 本格アクロバット(手動ロール・宙返り)
  * - 飛行制御ログ出力システム ＆ 地面接触時の姿勢リセット防止
  */
-public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable, com.microdrone.mod.decal.RcDecalHolder {
+public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable, com.microdrone.mod.decal.RcDecalHolder, com.microdrone.mod.sync.ISnapshotInterpolated {
     private final AnimatableInstanceCache geoCache = GeckoLibUtil.createInstanceCache(this);
+
+    // === マルチプレイ同期用 スナップショット補間バッファ（第1段階） ===
+    private final com.microdrone.mod.sync.VehicleSnapshotBuffer snapshotBuffer = new com.microdrone.mod.sync.VehicleSnapshotBuffer();
+
+    @Override
+    public com.microdrone.mod.sync.VehicleSnapshotBuffer getSnapshotBuffer() {
+        return this.snapshotBuffer;
+    }
 
     // === 同期用 EntityData ===
     private static final EntityDataAccessor<CompoundTag> DATA_DECALS =
@@ -298,6 +306,26 @@ public class RcPlaneEntity extends Entity implements GeoEntity, RcControllable, 
                 this.verticalVelocity = 0.0;
                 this.pitchAngle = Mth.lerp(0.2f, this.pitchAngle, 6.0f);
                 this.rollAngle = Mth.lerp(0.2f, this.rollAngle, 0.0f);
+            }
+        }
+
+        // マルチプレイ同期: Snapshot Interpolation用パケットを周囲のプレイヤーへ配信（第1段階）
+        if (!this.level().isClientSide) {
+            boolean isMoving = this.isPiloted() || Math.abs(this.airspeed) > 0.01f || !this.onGround();
+            if (isMoving || (this.tickCount % 4 == 0)) {
+                PacketDistributor.sendToPlayersTrackingEntity(this, new com.microdrone.mod.network.RcVehicleSnapshotPayload(
+                        this.getId(),
+                        this.tickCount,
+                        this.getX(),
+                        this.getY(),
+                        this.getZ(),
+                        this.getYRot(),
+                        this.pitchAngle,
+                        this.rollAngle,
+                        (float) this.getDeltaMovement().x,
+                        (float) this.getDeltaMovement().y,
+                        (float) this.getDeltaMovement().z
+                ));
             }
         }
     }

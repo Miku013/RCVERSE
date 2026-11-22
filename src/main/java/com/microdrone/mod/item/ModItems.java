@@ -162,6 +162,27 @@ public class ModItems {
             ITEMS.register("motor_tier_4", () -> new DroneMotorItem(
                     new Item.Properties().stacksTo(1), 4, 0.72, 0.095, 0.48, 0xFFE53935, "Racing"));
 
+    // === RCカー用換装タイヤパーツアイテム ===
+    public static final DeferredHolder<Item, RcTireItem> TIRE_NORMAL =
+            ITEMS.register("rc_tire_normal", () -> new RcTireItem(
+                    new Item.Properties().stacksTo(16), RcTireItem.TireType.NORMAL));
+
+    public static final DeferredHolder<Item, RcTireItem> TIRE_DRIFT =
+            ITEMS.register("rc_tire_drift", () -> new RcTireItem(
+                    new Item.Properties().stacksTo(16), RcTireItem.TireType.DRIFT));
+
+    public static final DeferredHolder<Item, RcTireItem> TIRE_GRIP =
+            ITEMS.register("rc_tire_grip", () -> new RcTireItem(
+                    new Item.Properties().stacksTo(16), RcTireItem.TireType.GRIP));
+
+    public static final DeferredHolder<Item, RcTireItem> TIRE_OFFROAD =
+            ITEMS.register("rc_tire_offroad", () -> new RcTireItem(
+                    new Item.Properties().stacksTo(16), RcTireItem.TireType.OFFROAD));
+
+    public static final DeferredHolder<Item, RcTireItem> TIRE_SPIKE =
+            ITEMS.register("rc_tire_spike", () -> new RcTireItem(
+                    new Item.Properties().stacksTo(16), RcTireItem.TireType.SPIKE));
+
     // === ドローン本体製作用・中間素材パーツ ===
     public static final DeferredHolder<Item, DroneComponentItem> PROPELLER =
             ITEMS.register("propeller", () -> new DroneComponentItem(

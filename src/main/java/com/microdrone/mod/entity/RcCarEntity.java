@@ -51,8 +51,16 @@ import software.bernie.geckolib.util.GeckoLibUtil;
 
 import java.util.UUID;
 
-public class RcCarEntity extends Entity implements GeoEntity, RcControllable, com.microdrone.mod.decal.RcDecalHolder {
+public class RcCarEntity extends Entity implements GeoEntity, RcControllable, com.microdrone.mod.decal.RcDecalHolder, com.microdrone.mod.sync.ISnapshotInterpolated {
     private final AnimatableInstanceCache geoCache = GeckoLibUtil.createInstanceCache(this);
+
+    // === マルチプレイ同期用 スナップショット補間バッファ（第1段階） ===
+    private final com.microdrone.mod.sync.VehicleSnapshotBuffer snapshotBuffer = new com.microdrone.mod.sync.VehicleSnapshotBuffer();
+
+    @Override
+    public com.microdrone.mod.sync.VehicleSnapshotBuffer getSnapshotBuffer() {
+        return this.snapshotBuffer;
+    }
 
     // === 同期用 EntityData ===
     private static final EntityDataAccessor<Boolean> DATA_HAS_BATTERY = SynchedEntityData.defineId(RcCarEntity.class,
@@ -126,10 +134,23 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
     // 装着中のアイテム
     private ItemStack installedBattery = ItemStack.EMPTY;
     private ItemStack installedMotor = ItemStack.EMPTY;
+    private ItemStack installedTire = ItemStack.EMPTY;
     private double accumulatedDistance = 0.0;
+
+    public ItemStack getInstalledTire() {
+        return this.installedTire;
+    }
+
+    public com.microdrone.mod.item.RcTireItem.TireType getTireType() {
+        if (!this.installedTire.isEmpty() && this.installedTire.getItem() instanceof com.microdrone.mod.item.RcTireItem tireItem) {
+            return tireItem.getTireType();
+        }
+        return com.microdrone.mod.item.RcTireItem.TireType.NORMAL;
+    }
 
     // 操作入力（サーバー/クライアント共用）
     public float inputForward = 0.0f; // 前進(+1.0) / 後退(-1.0)
+    private float prevInputForward = 0.0f; // 直前tickのアクセル入力（踏み直し・チョッピング検出用）
     public float inputSteer = 0.0f; // 左ステアリング(-1.0) / 右ステアリング(+1.0)
 
     // 内部物理パラメータ
@@ -716,6 +737,24 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
             this.entityData.set(DATA_LOOP_PROGRESS, this.loopProgress);
             this.entityData.set(DATA_CHASSIS_BOUNCE, this.chassisBounce);
             this.entityData.set(DATA_BRAKING, isBrakingInput());
+
+            // マルチプレイ同期: Snapshot Interpolation用パケットを周囲のプレイヤーへ配信（第1段階）
+            boolean isMoving = this.isPiloted() || (this.carVelocity != null && this.carVelocity.lengthSqr() > 0.0001) || Math.abs(this.currentSpeed) > 0.01f;
+            if (isMoving || (this.tickCount % 4 == 0)) {
+                PacketDistributor.sendToPlayersTrackingEntity(this, new com.microdrone.mod.network.RcVehicleSnapshotPayload(
+                        this.getId(),
+                        this.tickCount,
+                        this.getX(),
+                        this.getY(),
+                        this.getZ(),
+                        this.getYRot(),
+                        this.getPitchAngle(),
+                        this.getRollAngle(),
+                        (float) (this.carVelocity != null ? this.carVelocity.x : 0.0),
+                        (float) (this.carVelocity != null ? this.carVelocity.y : 0.0),
+                        (float) (this.carVelocity != null ? this.carVelocity.z : 0.0)
+                ));
+            }
         } else {
             // クライアント側処理
             if (this.locallyControlled && !com.microdrone.mod.client.ReplayHelper.isReplayActive()) {
@@ -770,6 +809,73 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
 
         if (this.isRealMode()) {
             // === REALモード専用物理演算 (RACEモードから完全分離) ===
+            com.microdrone.mod.item.RcTireItem.TireType tireType = getTireType();
+            float blockFriction = 1.0f;
+            boolean onIce = false;
+            boolean onOffroad = false;
+            if (this.onGround() || this.wheelGrounded) {
+                var roadHit = com.microdrone.mod.block.road.RoadSplineManager.sampleRoad(
+                        this.level(), this.getX(), this.getY(), this.getZ());
+                boolean onSplineRoad = roadHit.hit;
+
+                net.minecraft.world.level.block.state.BlockState groundState = this.level().getBlockState(this.blockPosition().below());
+                net.minecraft.world.level.block.state.BlockState atState = this.level().getBlockState(this.blockPosition());
+                float bFriction = groundState.getBlock().getFriction();
+                if (onSplineRoad) {
+                    onIce = (roadHit.surfaceType == com.microdrone.mod.block.road.RoadSplineData.RoadSurfaceType.ICE);
+                    onOffroad = (roadHit.surfaceType == com.microdrone.mod.block.road.RoadSplineData.RoadSurfaceType.DIRT);
+                    if (roadHit.surfaceType == com.microdrone.mod.block.road.RoadSplineData.RoadSurfaceType.PUDDLE) {
+                        maxSpeed *= 0.60;
+                        accel *= 0.40;
+                        if (Math.abs(this.currentSpeed) > 0.05f && this.random.nextInt(2) == 0) {
+                            this.level().addParticle(net.minecraft.core.particles.ParticleTypes.SPLASH,
+                                    this.getX() + (this.random.nextDouble() - 0.5) * 0.4,
+                                    this.getY() + 0.05,
+                                    this.getZ() + (this.random.nextDouble() - 0.5) * 0.4,
+                                    (this.random.nextDouble() - 0.5) * 0.2, 0.15, (this.random.nextDouble() - 0.5) * 0.2);
+                        }
+                    }
+                } else {
+                    onIce = ((bFriction > 0.85f) || groundState.is(net.minecraft.tags.BlockTags.ICE) || atState.is(net.minecraft.tags.BlockTags.ICE));
+                    onOffroad = (groundState.is(net.minecraft.tags.BlockTags.DIRT)
+                            || groundState.is(net.minecraft.tags.BlockTags.SAND)
+                            || groundState.is(net.minecraft.world.level.block.Blocks.GRAVEL)
+                            || groundState.is(net.minecraft.world.level.block.Blocks.GRASS_BLOCK)
+                            || groundState.is(net.minecraft.world.level.block.Blocks.SOUL_SAND)
+                            || groundState.is(net.minecraft.world.level.block.Blocks.MUD)
+                            || atState.is(net.minecraft.tags.BlockTags.DIRT)
+                            || atState.is(net.minecraft.tags.BlockTags.SAND)
+                            || atState.is(net.minecraft.world.level.block.Blocks.GRAVEL)
+                            || atState.is(net.minecraft.world.level.block.Blocks.GRASS_BLOCK));
+                }
+                blockFriction = bFriction;
+            }
+
+            float dynamicGrip = tireType.getLateralGripMultiplier();
+            if (onIce) {
+                if (tireType == com.microdrone.mod.item.RcTireItem.TireType.SPIKE) {
+                    dynamicGrip = 1.40f; // スパイクタイヤ: 氷上でもしっかりグリップ
+                } else {
+                    dynamicGrip = 0.12f; // 通常タイヤ: 氷上では横グリップほぼゼロで激しくスリップ！
+                }
+            } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.SPIKE) {
+                dynamicGrip = 0.70f;
+            } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.OFFROAD) {
+                // 舗装路では良好(1.68f)でグリップタイヤ(3.08f)より下、オフロードでは最強(2.59f)でグリップタイヤを圧倒！
+                dynamicGrip = onOffroad ? 2.59f : 1.68f;
+            } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.GRIP) {
+                // 舗装路では最強(3.08f)、オフロードでは泥や砂で目詰まりして激減(0.77f)
+                dynamicGrip = onOffroad ? 0.77f : 3.08f;
+            }
+
+            this.realPhysics.setTireProperties(
+                    dynamicGrip,
+                    tireType.getScrubDragMultiplier(),
+                    tireType.isIceImmunity(),
+                    tireType.isOffroadImmunity()
+            );
+            this.realPhysics.setSurfaceFriction(blockFriction);
+
             double realMaxSpeed = maxSpeed * this.realPhysics.getConfig().realSpeedScale;
             double realAccel = accel * this.realPhysics.getConfig().realAccelScale;
             this.realPhysics.setCounterMaxAngleDeg(this.getCounterMaxAngle());
@@ -818,7 +924,85 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
             this.turboBoostTicks = 0;
         } else {
             // === RACEモード (既存の挙動を完全維持) ===
+            com.microdrone.mod.item.RcTireItem.TireType tireType = getTireType();
             double friction = 0.90; // 地面摩擦減速
+            boolean onIce = false;
+            boolean onOffroad = false;
+            boolean onPuddle = false;
+
+            if (this.onGround() || this.wheelGrounded) {
+                var roadHit = com.microdrone.mod.block.road.RoadSplineManager.sampleRoad(
+                        this.level(), this.getX(), this.getY(), this.getZ());
+                boolean onSplineRoad = roadHit.hit;
+
+                net.minecraft.world.level.block.state.BlockState groundState = this.level().getBlockState(this.blockPosition().below());
+                net.minecraft.world.level.block.state.BlockState atState = this.level().getBlockState(this.blockPosition());
+                float bFriction = groundState.getBlock().getFriction();
+                if (onSplineRoad) {
+                    onIce = (roadHit.surfaceType == com.microdrone.mod.block.road.RoadSplineData.RoadSurfaceType.ICE);
+                    onOffroad = (roadHit.surfaceType == com.microdrone.mod.block.road.RoadSplineData.RoadSurfaceType.DIRT);
+                    if (roadHit.surfaceType == com.microdrone.mod.block.road.RoadSplineData.RoadSurfaceType.PUDDLE) {
+                        onPuddle = true;
+                    }
+                } else {
+                    onIce = ((bFriction > 0.85f) || groundState.is(net.minecraft.tags.BlockTags.ICE) || atState.is(net.minecraft.tags.BlockTags.ICE));
+                    onOffroad = (groundState.is(net.minecraft.tags.BlockTags.DIRT)
+                            || groundState.is(net.minecraft.tags.BlockTags.SAND)
+                            || groundState.is(net.minecraft.world.level.block.Blocks.GRAVEL)
+                            || groundState.is(net.minecraft.world.level.block.Blocks.GRASS_BLOCK)
+                            || groundState.is(net.minecraft.world.level.block.Blocks.SOUL_SAND)
+                            || groundState.is(net.minecraft.world.level.block.Blocks.MUD)
+                            || atState.is(net.minecraft.tags.BlockTags.DIRT)
+                            || atState.is(net.minecraft.tags.BlockTags.SAND)
+                            || atState.is(net.minecraft.world.level.block.Blocks.GRAVEL)
+                            || atState.is(net.minecraft.world.level.block.Blocks.GRASS_BLOCK));
+                }
+
+                if (onPuddle) {
+                    // 水たまり: 水の抵抗で減速＆水しぶき
+                    maxSpeed *= 0.60;
+                    accel *= 0.40;
+                    friction = 0.92;
+                    if (Math.abs(this.currentSpeed) > 0.05f && this.random.nextInt(2) == 0) {
+                        this.level().addParticle(net.minecraft.core.particles.ParticleTypes.SPLASH,
+                                this.getX() + (this.random.nextDouble() - 0.5) * 0.4,
+                                this.getY() + 0.05,
+                                this.getZ() + (this.random.nextDouble() - 0.5) * 0.4,
+                                (this.random.nextDouble() - 0.5) * 0.2, 0.15, (this.random.nextDouble() - 0.5) * 0.2);
+                    }
+                } else if (onIce) {
+                    if (tireType.isIceImmunity()) {
+                        // スパイクタイヤ: 氷上でもしっかり減速・グリップ
+                        friction = 0.93;
+                    } else {
+                        // 通常タイヤ: 氷上ではツルツル滑って止まらない！
+                        friction = 0.995;
+                    }
+                } else if (!onOffroad) {
+                    // 通常ブロック・普通の舗装道路！
+                    if (tireType == com.microdrone.mod.item.RcTireItem.TireType.SPIKE) {
+                        // スパイクタイヤ: 金属ピンが舗装路で滑り、アクセルオフでもスーッと滑って減速しにくい
+                        friction = 0.96;
+                    } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.OFFROAD) {
+                        // オフロードタイヤ: 舗装路でもしっかり減速・グリップ
+                        friction = 0.90;
+                    }
+                }
+            }
+
+            double offroadMaxMult = 1.0;
+            double offroadAccelMult = 1.0;
+            if (onOffroad) {
+                if (tireType.isOffroadImmunity()) {
+                    // ラリータイヤ: ダート・草地でも減速なし＆トラクション向上！
+                    offroadMaxMult = 1.0;
+                    offroadAccelMult = 1.35;
+                } else {
+                    // 通常タイヤ（ノーマル/ドリフト/グリップ）: 不整地に足を取られて失速！
+                    offroadMaxMult = 0.65;
+                    offroadAccelMult = 0.50;
+                }
+            }
 
             // ステアリング操舵 (最大35度)
             float steerMult = (props.invertSteer ? -1.0f : 1.0f) * props.turnSpeedMultiplier;
@@ -836,15 +1020,34 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
 
             // 前進 / 後退 / ESCブレーキ処理 (実機ホビーラジコンESC仕様: 前進中のS入力は急ブレーキ、停止後にバック)
             // Forward / Reverse / Brake processing with Mario Kart drift speed maintenance
+            boolean throttleKicked = (this.inputForward > 0.10f && this.prevInputForward <= 0.05f);
             if (this.inputForward > 0.05f) {
                 if (this.currentSpeed < -0.01f) {
                     this.currentSpeed += (float) (accel * 2.5f);
                     if (this.currentSpeed > 0.0f)
                         this.currentSpeed = 0.0f;
                 } else {
-                    float forwardAccel = (float) (accel * this.inputForward);
+                    float tractionMult = tireType.getTractionMultiplier();
+                    if (!onIce && !onOffroad) {
+                        if (tireType == com.microdrone.mod.item.RcTireItem.TireType.SPIKE) {
+                            tractionMult = 1.19f; // 舗装路では金属ピンが空転して加速が逃げる (0.85*1.4)
+                        } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.OFFROAD) {
+                            tractionMult = 1.47f; // 舗装路でも良好なトラクション (1.05*1.4)
+                        }
+                    } else if (onOffroad && tireType == com.microdrone.mod.item.RcTireItem.TireType.OFFROAD) {
+                        tractionMult = 1.96f; // オフロードでは最強トラクション！ (1.40*1.4)
+                    }
+                    float forwardAccel = (float) (accel * this.inputForward * tractionMult * offroadAccelMult);
                     if (this.driftDirection != 0) {
                         forwardAccel *= 1.30f; // Maintain high speed during drift (long slide)
+
+                        // ★ 実車・RC流アクセル煽り（チョッピング）: ドリフト中のアクセル踏み直しで前に蹴り出し＆垂れをリフレッシュ
+                        if (throttleKicked && this.currentSpeed > 0.04f) {
+                            this.currentSpeed += (float) (accel * 1.4f); // 一瞬グッと前に蹴り出すトラクション
+                            if (this.driftTicks > 14) {
+                                this.driftTicks = Math.max(8, this.driftTicks - 16); // 垂れカウントを巻き戻し、ドリフトが息を吹き返す
+                            }
+                        }
                     }
                     this.currentSpeed += forwardAccel;
                 }
@@ -863,7 +1066,7 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                 }
             }
 
-            double currentMax = (this.turboBoostTicks > 0) ? (maxSpeed * 1.30) : maxSpeed;
+            double currentMax = ((this.turboBoostTicks > 0) ? (maxSpeed * 1.30) : maxSpeed) * offroadMaxMult;
             this.currentSpeed = (float) Mth.clamp(this.currentSpeed, -maxSpeed * 0.45, currentMax);
 
             // === Mario Kart Drift State Machine ===
@@ -902,6 +1105,13 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
 
                 if (this.driftDirection != 0) {
                     this.driftTicks++;
+
+                    // ドリフト継続時間・距離に応じたスクラブ抵抗による緩やかな減速（減速緩和微調整版）
+                    // 序盤(~20tick=約1.0秒)は最高速ドリフトを維持し、それ以降も減速を抑えてスピードをキープ
+                    if (this.driftTicks > 20) {
+                        float scrubFactor = Math.min(0.0075f * tireType.getScrubDragMultiplier(), (this.driftTicks - 20) * 0.00020f);
+                        this.currentSpeed = Math.max(0.04f, this.currentSpeed * (1.0f - scrubFactor));
+                    }
                 }
             } else {
                 // Released space key or stopped -> Mini-Turbo release!
@@ -959,6 +1169,15 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
             // === Steering / Yaw Turn ===
             if (this.driftDirection != 0 && Math.abs(this.currentSpeed) > 0.002f) {
                 float baseTurn = 4.2f;
+                if (tireType == com.microdrone.mod.item.RcTireItem.TireType.DRIFT) {
+                    baseTurn = 5.6f;
+                } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.GRIP) {
+                    baseTurn = 2.8f;
+                } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.SPIKE) {
+                    baseTurn = onIce ? 3.4f : 5.0f; // 舗装路では金属ピンが滑ってスピンしやすい
+                } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.OFFROAD) {
+                    baseTurn = onOffroad ? 3.6f : 4.4f; // 舗装路ではスパイク(5.0)より安定(4.4)
+                }
                 float turnSpeed;
                 if (inSteerAmount > 0.0f) {
                     turnSpeed = baseTurn * (1.0f + inSteerAmount * 0.85f); // In-steer tighter
@@ -970,6 +1189,24 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
             } else {
                 if (Math.abs(this.currentSpeed) > 0.002f) {
                     float baseTurn = (this.currentSpeed > 0 ? 13.5f : -13.5f);
+                    if (tireType == com.microdrone.mod.item.RcTireItem.TireType.GRIP) {
+                        baseTurn *= (onOffroad ? 0.98f : 2.03f); // 0.70*1.4, 1.45*1.4
+                    } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.DRIFT) {
+                        baseTurn *= 1.61f; // 1.15*1.4
+                    } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.SPIKE) {
+                        if (!onIce) {
+                            baseTurn *= 1.15f; // 0.82*1.4
+                        }
+                    } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.OFFROAD) {
+                        if (onOffroad) {
+                            baseTurn *= 1.89f; // 1.35*1.4
+                        } else {
+                            baseTurn *= 1.54f; // 1.10*1.4
+                        }
+                    }
+                    if (onIce && !tireType.isIceImmunity()) {
+                        baseTurn *= 0.65f; // 車体は斜めを向くが、gripFollowRate(0.02)により進行方向は変えられずツルツル横滑り
+                    }
                     float turnSpeed = (this.steerAngle / 35.0f) * baseTurn;
                     this.setYRot(this.getYRot() - turnSpeed);
                 }
@@ -1003,6 +1240,66 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                 double driveWeight = 0.60 - (counterAmount * 0.35) + (inSteerAmount * 0.30);
                 double slideWeight = 0.55 + (counterAmount * 0.50) - (inSteerAmount * 0.35);
 
+                if (onIce) {
+                    if (tireType == com.microdrone.mod.item.RcTireItem.TireType.SPIKE) {
+                        // 氷上スパイク: ガッチリ噛みつつ、適度なカウンタースライドを許容してコントロール可能
+                        slideWeight *= 0.90;
+                        driveWeight *= 1.25;
+                    } else {
+                        // 氷上通常タイヤ (ノーマル/グリップ/オフロード/ドリフト): 超ロングスライド！前進トラクション消失
+                        slideWeight *= 3.50;
+                        driveWeight *= 0.10;
+                    }
+                } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.DRIFT) {
+                    slideWeight *= 1.70;
+                    driveWeight *= 0.55;
+                } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.GRIP) {
+                    if (onOffroad) {
+                        slideWeight *= 1.20; // 悪路ではスリックが目詰まり・空転して滑る
+                        driveWeight *= 0.80;
+                    } else {
+                        slideWeight *= 0.12; // 舗装路では最強グリップ！
+                        driveWeight *= 1.75;
+                    }
+                } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.SPIKE) {
+                    // 舗装路では金属ピンが滑ってオフロードより激しくスライド！
+                    slideWeight *= 1.50;
+                    driveWeight *= 0.65;
+                } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.OFFROAD) {
+                    if (onOffroad) {
+                        // オフロードでは最強！ドリフトを抑えて強烈なトラクションで前進！
+                        slideWeight *= 0.15;
+                        driveWeight *= 1.85;
+                    } else {
+                        // 舗装路でもしっかり踏ん張る(0.60)がグリップ(0.12)には及ばない
+                        slideWeight *= 0.60;
+                        driveWeight *= 1.35;
+                    }
+                }
+
+                // ドリフト距離・時間に応じたグリップ力回復 (Grip Recovery)
+                // ※ 氷上でスパイク以外の通常タイヤを履いている場合は、滑り続けるため自動グリップ回復をスキップ！
+                if ((!onIce || tireType.isIceImmunity()) && this.driftTicks > 24) {
+                    float gripRecovery = Mth.clamp((this.driftTicks - 24) / 45.0f, 0.0f, 1.0f);
+                    driveWeight = Mth.lerp(gripRecovery, driveWeight, 0.85);
+                    slideWeight = Mth.lerp(gripRecovery, slideWeight, 0.18);
+
+                    // 長時間流しきった(60tick超=約3.0秒以上)またはステア中立で完全グリップ復帰＆立ち上がり
+                    if (this.driftTicks > 60 || (this.driftTicks > 36 && counterAmount < 0.10f && inSteerAmount < 0.10f)) {
+                        if (this.driftTicks >= 14 && this.currentSpeed > 0.04f) {
+                            this.turboBoostTicks = 10;
+                            this.currentSpeed = (float) Math.min(this.currentSpeed * 1.30f, maxSpeed * 1.25f);
+                            this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                                     SoundEvents.FIREWORK_ROCKET_LAUNCH, SoundSource.PLAYERS, 12.0F, 1.8F);
+                            if (this.level().isClientSide) {
+                                spawnMiniTurboBurst();
+                            }
+                        }
+                        this.driftDirection = 0;
+                        this.driftTicks = 0;
+                    }
+                }
+
                 double combinedX = (driveX * driveWeight) + (counterSlideX * slideWeight);
                 double combinedZ = (driveZ * driveWeight) + (counterSlideZ * slideWeight);
 
@@ -1020,12 +1317,46 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                 if (Math.abs(this.currentSpeed) < 0.001f) {
                     this.carVelocity = Vec3.ZERO;
                 } else {
-                    this.carVelocity = new Vec3(
-                            Mth.lerp(0.55, this.carVelocity.x, driveX * this.currentSpeed),
-                            0,
-                            Mth.lerp(0.55, this.carVelocity.z, driveZ * this.currentSpeed));
+                    double gripFollowRate = 0.77; // NORMALの基準値 (0.55 * 1.4)
+                    if (onIce) {
+                        if (tireType.isIceImmunity()) {
+                            gripFollowRate = 0.75; // スパイクタイヤ: 氷上でもしっかり食いつきつつ、程よいスライド感
+                        } else {
+                            gripFollowRate = 0.02; // ★ 通常タイヤ: 極小！車体の向きが変わっても慣性のままスーッと真横に滑走！
+                        }
+                    } else if (onOffroad) {
+                        if (tireType.isOffroadImmunity()) {
+                            // ★ オフロード路面: オフロードタイヤが最強グリップ！ (0.92 * 1.4 -> 1.0)
+                            gripFollowRate = 1.0;
+                        } else {
+                            // グリップタイヤや他タイヤは悪路で目詰まり・足を取られてズルズル
+                            gripFollowRate = 0.35; // 0.25 * 1.4
+                        }
+                    } else {
+                        // ★ 通常ブロック・舗装道路・メッシュ道路！
+                        if (tireType == com.microdrone.mod.item.RcTireItem.TireType.GRIP) {
+                            gripFollowRate = 1.25; // ★ ご指定: グリップタイヤは 1.25！
+                        } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.OFFROAD) {
+                            gripFollowRate = 0.72; // ★ ご指定: ノーマルタイヤ(0.77)よりもちょびっとだけ小さく！
+                        } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.DRIFT) {
+                            gripFollowRate = 0.39; // 0.28 * 1.4
+                        } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.SPIKE) {
+                            gripFollowRate = 0.25; // 0.18 * 1.4
+                        }
+                    }
+
+                    double newVx = Mth.lerp(gripFollowRate, this.carVelocity.x, driveX * this.currentSpeed);
+                    double newVz = Mth.lerp(gripFollowRate, this.carVelocity.z, driveZ * this.currentSpeed);
+                    double currentMag = Math.sqrt(newVx * newVx + newVz * newVz);
+                    double targetSpeed = Math.abs(this.currentSpeed);
+                    if (currentMag > 0.001 && currentMag > targetSpeed) {
+                        newVx = (newVx / currentMag) * targetSpeed;
+                        newVz = (newVz / currentMag) * targetSpeed;
+                    }
+                    this.carVelocity = new Vec3(newVx, 0, newVz);
                 }
             }
+            this.prevInputForward = this.inputForward;
         }
 
         float commonYawRad = this.getYRot() * Mth.DEG_TO_RAD;
@@ -1656,6 +1987,23 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                 return InteractionResult.SUCCESS;
             }
 
+            // 2.5. タイヤ換装 (装着・交換)
+            if (heldItem.getItem() instanceof com.microdrone.mod.item.RcTireItem tireItem) {
+                ItemStack oldTire = this.installedTire.copy();
+                this.installedTire = heldItem.split(1);
+                if (!oldTire.isEmpty()) {
+                    if (!player.getInventory().add(oldTire)) {
+                        this.level().addFreshEntity(
+                                new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(), oldTire));
+                    }
+                }
+                this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                        SoundEvents.ARMOR_EQUIP_GENERIC.value(), SoundSource.PLAYERS, 0.9F, 1.1F);
+                player.sendSystemMessage(Component.translatable("message.microdrone.tire_installed",
+                        Component.translatable("tooltip.microdrone.tire_type." + tireItem.getTireType().getId())));
+                return InteractionResult.SUCCESS;
+            }
+
             // 3. プロポ所持時: 操縦開始
             if (heldItem.getItem() instanceof com.microdrone.mod.item.DroneControllerItem) {
                 if (player instanceof ServerPlayer serverPlayer) {
@@ -1729,6 +2077,11 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                 this.level().addFreshEntity(
                         new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(), this.installedMotor));
                 this.installedMotor = ItemStack.EMPTY;
+            }
+            if (!this.installedTire.isEmpty()) {
+                this.level().addFreshEntity(
+                        new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(), this.installedTire));
+                this.installedTire = ItemStack.EMPTY;
             }
             this.discard();
         }
@@ -1864,6 +2217,10 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                     .orElse(ItemStack.EMPTY);
             updateMotorSyncData();
         }
+        if (compound.contains("InstalledTire")) {
+            this.installedTire = ItemStack.parse(this.registryAccess(), compound.getCompound("InstalledTire"))
+                    .orElse(ItemStack.EMPTY);
+        }
         this.accumulatedDistance = compound.getDouble("BatteryAccumulatedDist");
         if (compound.contains("CustomWeight", 99)) {
             this.entityData.set(DATA_CUSTOM_WEIGHT, compound.getFloat("CustomWeight"));
@@ -1906,6 +2263,9 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
         }
         if (!this.installedMotor.isEmpty()) {
             compound.put("InstalledMotor", this.installedMotor.save(this.registryAccess()));
+        }
+        if (!this.installedTire.isEmpty()) {
+            compound.put("InstalledTire", this.installedTire.save(this.registryAccess()));
         }
         compound.putDouble("BatteryAccumulatedDist", this.accumulatedDistance);
         compound.putFloat("CustomWeight", this.entityData.get(DATA_CUSTOM_WEIGHT));

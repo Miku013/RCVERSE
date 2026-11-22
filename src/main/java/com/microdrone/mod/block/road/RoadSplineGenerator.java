@@ -393,22 +393,29 @@ public class RoadSplineGenerator {
         public final double loopAngleDeg;  // ループ内角度 0° ~ 360°
         public final Vec3 surfacePoint;    // 3D路面接触基準点
         public final float loopBoostMultiplier; // ループ加速倍率
+        public final RoadSplineData.RoadSurfaceType surfaceType; // 路面タイプ
 
         public RoadHitResult(boolean hit, double groundY, Vec3 normal, Vec3 tangent, double lateralOffset, double progress) {
-            this(hit, groundY, normal, tangent, lateralOffset, progress, false, false, false, 0.0, new Vec3(0, groundY, 0), 1.0f);
+            this(hit, groundY, normal, tangent, lateralOffset, progress, false, false, false, 0.0, new Vec3(0, groundY, 0), 1.0f, RoadSplineData.RoadSurfaceType.ASPHALT);
         }
 
         public RoadHitResult(boolean hit, double groundY, Vec3 normal, Vec3 tangent, double lateralOffset, double progress, boolean isLip, boolean isJumpRamp) {
-            this(hit, groundY, normal, tangent, lateralOffset, progress, isLip, isJumpRamp, false, 0.0, new Vec3(0, groundY, 0), 1.0f);
+            this(hit, groundY, normal, tangent, lateralOffset, progress, isLip, isJumpRamp, false, 0.0, new Vec3(0, groundY, 0), 1.0f, RoadSplineData.RoadSurfaceType.ASPHALT);
         }
 
         public RoadHitResult(boolean hit, double groundY, Vec3 normal, Vec3 tangent, double lateralOffset, double progress,
                              boolean isLip, boolean isJumpRamp, boolean isLoop360, double loopAngleDeg, Vec3 surfacePoint) {
-            this(hit, groundY, normal, tangent, lateralOffset, progress, isLip, isJumpRamp, isLoop360, loopAngleDeg, surfacePoint, 1.0f);
+            this(hit, groundY, normal, tangent, lateralOffset, progress, isLip, isJumpRamp, isLoop360, loopAngleDeg, surfacePoint, 1.0f, RoadSplineData.RoadSurfaceType.ASPHALT);
         }
 
         public RoadHitResult(boolean hit, double groundY, Vec3 normal, Vec3 tangent, double lateralOffset, double progress,
                              boolean isLip, boolean isJumpRamp, boolean isLoop360, double loopAngleDeg, Vec3 surfacePoint, float loopBoostMultiplier) {
+            this(hit, groundY, normal, tangent, lateralOffset, progress, isLip, isJumpRamp, isLoop360, loopAngleDeg, surfacePoint, loopBoostMultiplier, RoadSplineData.RoadSurfaceType.ASPHALT);
+        }
+
+        public RoadHitResult(boolean hit, double groundY, Vec3 normal, Vec3 tangent, double lateralOffset, double progress,
+                             boolean isLip, boolean isJumpRamp, boolean isLoop360, double loopAngleDeg, Vec3 surfacePoint, float loopBoostMultiplier,
+                             RoadSplineData.RoadSurfaceType surfaceType) {
             this.hit = hit;
             this.groundY = groundY;
             this.normal = normal;
@@ -421,10 +428,15 @@ public class RoadSplineGenerator {
             this.loopAngleDeg = loopAngleDeg;
             this.surfacePoint = surfacePoint;
             this.loopBoostMultiplier = loopBoostMultiplier;
+            this.surfaceType = surfaceType != null ? surfaceType : RoadSplineData.RoadSurfaceType.ASPHALT;
         }
 
         public RoadHitResult withLoopBoost(float boost) {
-            return new RoadHitResult(hit, groundY, normal, tangent, lateralOffset, progress, isLip, isJumpRamp, isLoop360, loopAngleDeg, surfacePoint, boost);
+            return new RoadHitResult(hit, groundY, normal, tangent, lateralOffset, progress, isLip, isJumpRamp, isLoop360, loopAngleDeg, surfacePoint, boost, surfaceType);
+        }
+
+        public RoadHitResult withSurfaceType(RoadSplineData.RoadSurfaceType type) {
+            return new RoadHitResult(hit, groundY, normal, tangent, lateralOffset, progress, isLip, isJumpRamp, isLoop360, loopAngleDeg, surfacePoint, loopBoostMultiplier, type);
         }
     }
 

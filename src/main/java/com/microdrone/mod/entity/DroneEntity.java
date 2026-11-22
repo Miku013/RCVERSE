@@ -48,8 +48,16 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class DroneEntity extends Entity implements GeoEntity, RcControllable, com.microdrone.mod.decal.RcDecalHolder {
+public class DroneEntity extends Entity implements GeoEntity, RcControllable, com.microdrone.mod.decal.RcDecalHolder, com.microdrone.mod.sync.ISnapshotInterpolated {
     private final AnimatableInstanceCache geoCache = GeckoLibUtil.createInstanceCache(this);
+
+    // === マルチプレイ同期用 スナップショット補間バッファ（第1段階） ===
+    private final com.microdrone.mod.sync.VehicleSnapshotBuffer snapshotBuffer = new com.microdrone.mod.sync.VehicleSnapshotBuffer();
+
+    @Override
+    public com.microdrone.mod.sync.VehicleSnapshotBuffer getSnapshotBuffer() {
+        return this.snapshotBuffer;
+    }
 
     // フェイルセーフ用: 操縦中プレイヤーUUID -> ドローン
     private static final Map<UUID, DroneEntity> ACTIVE_PILOTED_DRONES = new ConcurrentHashMap<>();
@@ -554,6 +562,24 @@ public class DroneEntity extends Entity implements GeoEntity, RcControllable, co
                 tickFlightPhysics();
             } else {
                 tickUnpilotedPhysics();
+            }
+
+            // マルチプレイ同期: Snapshot Interpolation用パケットを周囲のプレイヤーへ配信（第1段階）
+            boolean isMoving = this.isPiloted() || this.getDeltaMovement().lengthSqr() > 0.0001;
+            if (isMoving || (this.tickCount % 4 == 0)) {
+                PacketDistributor.sendToPlayersTrackingEntity(this, new com.microdrone.mod.network.RcVehicleSnapshotPayload(
+                        this.getId(),
+                        this.tickCount,
+                        this.getX(),
+                        this.getY(),
+                        this.getZ(),
+                        this.getYRot(),
+                        this.getXRot(),
+                        0.0f,
+                        (float) this.getDeltaMovement().x,
+                        (float) this.getDeltaMovement().y,
+                        (float) this.getDeltaMovement().z
+                ));
             }
         } else {
             // === クライアント側 ===

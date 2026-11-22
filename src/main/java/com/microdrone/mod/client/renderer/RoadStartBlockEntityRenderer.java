@@ -28,9 +28,21 @@ import java.util.List;
  */
 public class RoadStartBlockEntityRenderer implements BlockEntityRenderer<RoadStartBlockEntity> {
 
-    public static final ResourceLocation ROAD_TEX = ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, "textures/block/modular_slope_road.png");
-    public static final ResourceLocation CURB_TEX = ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, "textures/block/modular_slope_curb.png");
-    public static final ResourceLocation SIDE_TEX = ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, "textures/block/modular_slope_side.png");
+    public static final ResourceLocation ROAD_TEX = ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID,
+            "textures/block/modular_slope_road.png");
+    public static final ResourceLocation CURB_TEX = ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID,
+            "textures/block/modular_slope_curb.png");
+    public static final ResourceLocation SIDE_TEX = ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID,
+            "textures/block/modular_slope_side.png");
+
+    public static final ResourceLocation ROAD_TEX_DIRT = ResourceLocation
+            .withDefaultNamespace("textures/block/dirt.png");
+    public static final ResourceLocation ROAD_TEX_ICE = ResourceLocation
+            .withDefaultNamespace("textures/block/blue_ice.png");
+    public static final ResourceLocation CURB_TEX_DIRT = ResourceLocation
+            .withDefaultNamespace("textures/block/oak_planks.png");
+    public static final ResourceLocation CURB_TEX_ICE = ResourceLocation
+            .withDefaultNamespace("textures/block/snow.png");
 
     public RoadStartBlockEntityRenderer(BlockEntityRendererProvider.Context context) {
     }
@@ -51,13 +63,16 @@ public class RoadStartBlockEntityRenderer implements BlockEntityRenderer<RoadSta
     }
 
     @Override
-    public void render(RoadStartBlockEntity be, float partialTick, PoseStack poseStack, MultiBufferSource buffer, int packedLight, int packedOverlay) {
+    public void render(RoadStartBlockEntity be, float partialTick, PoseStack poseStack, MultiBufferSource buffer,
+            int packedLight, int packedOverlay) {
         BlockPos endPos = be.getLinkedEndPos();
-        if (endPos == null || be.getLevel() == null) return;
+        if (endPos == null || be.getLevel() == null)
+            return;
 
         RoadSplineData data = be.getSplineData();
         // プレビューも確定もOFFなら描画しない
-        if (!data.isPreview() && !data.isGenerated()) return;
+        if (!data.isPreview() && !data.isGenerated())
+            return;
 
         Direction startFacing = be.getBlockState().getValue(RoadStartBlock.FACING);
         Direction endFacing = Direction.SOUTH;
@@ -68,9 +83,9 @@ public class RoadStartBlockEntityRenderer implements BlockEntityRenderer<RoadSta
         List<SplineSample> samples = RoadSplineGenerator.generateSpline(
                 be.getBlockPos(), startFacing,
                 endPos, endFacing,
-                data
-        );
-        if (samples.size() < 2) return;
+                data);
+        if (samples.size() < 2)
+            return;
 
         // クライアント側物理用マネージャーに登録・同期
         com.microdrone.mod.block.road.RoadSplineManager.registerRoad(be.getLevel(), be);
@@ -86,14 +101,30 @@ public class RoadStartBlockEntityRenderer implements BlockEntityRenderer<RoadSta
         PoseStack.Pose pose = poseStack.last();
 
         float halfWidth = data.getRoadWidth() * 0.5f;
-        float curbWidth = 0.40f;  // 縁石幅 (0.4m)
+        float curbWidth = 0.40f; // 縁石幅 (0.4m)
         float curbHeight = 0.15f; // 縁石高さ (0.15m)
 
         boolean isPreviewMode = data.isPreview() && !data.isGenerated();
         int alpha = isPreviewMode ? 170 : 255;
-        RenderType roadRenderType = isPreviewMode ? RenderType.entityTranslucent(ROAD_TEX) : RenderType.entityCutoutNoCull(ROAD_TEX);
-        RenderType curbRenderType = isPreviewMode ? RenderType.entityTranslucent(CURB_TEX) : RenderType.entityCutoutNoCull(CURB_TEX);
-        RenderType sideRenderType = isPreviewMode ? RenderType.entityTranslucent(SIDE_TEX) : RenderType.entityCutoutNoCull(SIDE_TEX);
+
+        RoadSplineData.RoadSurfaceType surfaceType = data.getSurfaceType();
+        ResourceLocation activeRoadTex = switch (surfaceType) {
+            case DIRT -> ROAD_TEX_DIRT;
+            case ICE -> ROAD_TEX_ICE;
+            default -> ROAD_TEX; // ASPHALT, PUDDLE
+        };
+        ResourceLocation activeCurbTex = switch (surfaceType) {
+            case DIRT -> CURB_TEX_DIRT;
+            case ICE -> CURB_TEX_ICE;
+            default -> CURB_TEX;
+        };
+
+        RenderType roadRenderType = isPreviewMode ? RenderType.entityTranslucent(activeRoadTex)
+                : RenderType.entityCutoutNoCull(activeRoadTex);
+        RenderType curbRenderType = isPreviewMode ? RenderType.entityTranslucent(activeCurbTex)
+                : RenderType.entityCutoutNoCull(activeCurbTex);
+        RenderType sideRenderType = isPreviewMode ? RenderType.entityTranslucent(SIDE_TEX)
+                : RenderType.entityCutoutNoCull(SIDE_TEX);
 
         // =========================================================================
         // パス 1: 道路面 (Road Surface)
@@ -120,13 +151,20 @@ public class RoadStartBlockEntityRenderer implements BlockEntityRenderer<RoadSta
             float ny = (float) norm.y;
             float nz = (float) norm.z;
 
+            int r = 255, g = 255, b = 255;
+            if (surfaceType == RoadSplineData.RoadSurfaceType.PUDDLE) {
+                r = 140;
+                g = 185;
+                b = 255; // 水たまり・濡れたウェット路面
+            }
+
             // 道路面 (CCW 反時計回り)
             addQuad(roadConsumer, pose,
                     (float) l0.x, (float) l0.y, (float) l0.z, 0.0f, v0,
                     (float) r0.x, (float) r0.y, (float) r0.z, 1.0f, v0,
                     (float) r1.x, (float) r1.y, (float) r1.z, 1.0f, v1,
                     (float) l1.x, (float) l1.y, (float) l1.z, 0.0f, v1,
-                    nx, ny, nz, alpha, packedLight, packedOverlay);
+                    nx, ny, nz, r, g, b, alpha, packedLight, packedOverlay);
         }
 
         // =========================================================================
@@ -175,7 +213,8 @@ public class RoadStartBlockEntityRenderer implements BlockEntityRenderer<RoadSta
                     (float) l0_in.x, (float) l0_in.y, (float) l0_in.z, 0.0f, 0.0f,
                     (float) l1_in.x, (float) l1_in.y, (float) l1_in.z, 1.0f, 0.0f,
                     (float) l1_base_in.x, (float) l1_base_in.y, (float) l1_base_in.z, 1.0f, 0.125f,
-                    (float) s0.rightBanked.x, (float) s0.rightBanked.y, (float) s0.rightBanked.z, alpha, packedLight, packedOverlay);
+                    (float) s0.rightBanked.x, (float) s0.rightBanked.y, (float) s0.rightBanked.z, alpha, packedLight,
+                    packedOverlay);
 
             // 右縁石
             Vec3 r0_up = r0.add(s0.upBanked.scale(curbHeight));
@@ -199,7 +238,8 @@ public class RoadStartBlockEntityRenderer implements BlockEntityRenderer<RoadSta
                     (float) r0_base_in.x, (float) r0_base_in.y, (float) r0_base_in.z, 0.0f, 0.125f,
                     (float) r1_base_in.x, (float) r1_base_in.y, (float) r1_base_in.z, 1.0f, 0.125f,
                     (float) r1_in.x, (float) r1_in.y, (float) r1_in.z, 1.0f, 0.0f,
-                    -(float) s0.rightBanked.x, -(float) s0.rightBanked.y, -(float) s0.rightBanked.z, alpha, packedLight, packedOverlay);
+                    -(float) s0.rightBanked.x, -(float) s0.rightBanked.y, -(float) s0.rightBanked.z, alpha, packedLight,
+                    packedOverlay);
         }
 
         // =========================================================================
@@ -249,15 +289,29 @@ public class RoadStartBlockEntityRenderer implements BlockEntityRenderer<RoadSta
     }
 
     private void addQuad(VertexConsumer consumer, PoseStack.Pose pose,
-                         float x0, float y0, float z0, float u0, float v0,
-                         float x1, float y1, float z1, float u1, float v1,
-                         float x2, float y2, float z2, float u2, float v2,
-                         float x3, float y3, float z3, float u3, float v3,
-                         float nx, float ny, float nz, int alpha, int light, int overlay) {
+            float x0, float y0, float z0, float u0, float v0,
+            float x1, float y1, float z1, float u1, float v1,
+            float x2, float y2, float z2, float u2, float v2,
+            float x3, float y3, float z3, float u3, float v3,
+            float nx, float ny, float nz, int alpha, int light, int overlay) {
+        addQuad(consumer, pose, x0, y0, z0, u0, v0, x1, y1, z1, u1, v1, x2, y2, z2, u2, v2, x3, y3, z3, u3, v3,
+                nx, ny, nz, 255, 255, 255, alpha, light, overlay);
+    }
+
+    private void addQuad(VertexConsumer consumer, PoseStack.Pose pose,
+            float x0, float y0, float z0, float u0, float v0,
+            float x1, float y1, float z1, float u1, float v1,
+            float x2, float y2, float z2, float u2, float v2,
+            float x3, float y3, float z3, float u3, float v3,
+            float nx, float ny, float nz, int r, int g, int b, int alpha, int light, int overlay) {
         Matrix4f mat = pose.pose();
-        consumer.addVertex(mat, x0, y0, z0).setColor(255, 255, 255, alpha).setUv(u0, v0).setOverlay(overlay).setLight(light).setNormal(pose, nx, ny, nz);
-        consumer.addVertex(mat, x1, y1, z1).setColor(255, 255, 255, alpha).setUv(u1, v1).setOverlay(overlay).setLight(light).setNormal(pose, nx, ny, nz);
-        consumer.addVertex(mat, x2, y2, z2).setColor(255, 255, 255, alpha).setUv(u2, v2).setOverlay(overlay).setLight(light).setNormal(pose, nx, ny, nz);
-        consumer.addVertex(mat, x3, y3, z3).setColor(255, 255, 255, alpha).setUv(u3, v3).setOverlay(overlay).setLight(light).setNormal(pose, nx, ny, nz);
+        consumer.addVertex(mat, x0, y0, z0).setColor(r, g, b, alpha).setUv(u0, v0).setOverlay(overlay)
+                .setLight(light).setNormal(pose, nx, ny, nz);
+        consumer.addVertex(mat, x1, y1, z1).setColor(r, g, b, alpha).setUv(u1, v1).setOverlay(overlay)
+                .setLight(light).setNormal(pose, nx, ny, nz);
+        consumer.addVertex(mat, x2, y2, z2).setColor(r, g, b, alpha).setUv(u2, v2).setOverlay(overlay)
+                .setLight(light).setNormal(pose, nx, ny, nz);
+        consumer.addVertex(mat, x3, y3, z3).setColor(r, g, b, alpha).setUv(u3, v3).setOverlay(overlay)
+                .setLight(light).setNormal(pose, nx, ny, nz);
     }
 }

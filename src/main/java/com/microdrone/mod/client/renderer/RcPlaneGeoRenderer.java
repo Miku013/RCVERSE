@@ -21,13 +21,39 @@ public class RcPlaneGeoRenderer extends GeoEntityRenderer<RcPlaneEntity> {
     public void render(RcPlaneEntity entity, float entityYaw, float partialTick, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
         poseStack.pushPose();
 
+        float yaw;
+        float pitch;
+        float roll;
+
+        if (!entity.isLocallyControlled() && !com.microdrone.mod.client.ReplayHelper.isReplayActive()) {
+            // 他プレイヤー操縦・リモート機体: Snapshot Interpolation（第1段階）
+            long renderTime = System.currentTimeMillis() - com.microdrone.mod.sync.VehicleSnapshotBuffer.DEFAULT_INTERPOLATION_DELAY_MS;
+            com.microdrone.mod.sync.InterpolatedTransform transform = entity.getSnapshotBuffer().interpolate(renderTime);
+
+            if (transform.valid()) {
+                double vanillaX = Mth.lerp((double) partialTick, entity.xOld, entity.getX());
+                double vanillaY = Mth.lerp((double) partialTick, entity.yOld, entity.getY());
+                double vanillaZ = Mth.lerp((double) partialTick, entity.zOld, entity.getZ());
+
+                poseStack.translate(transform.x() - vanillaX, transform.y() - vanillaY, transform.z() - vanillaZ);
+
+                yaw = transform.yaw();
+                pitch = transform.pitch();
+                roll = transform.roll();
+            } else {
+                yaw = Mth.rotLerp(partialTick, entity.yRotO, entity.getYRot());
+                pitch = Mth.rotLerp(partialTick, entity.prevPitchAngle, entity.getPitchAngle());
+                roll = Mth.rotLerp(partialTick, entity.prevRollAngle, entity.getRollAngle());
+            }
+        } else {
+            yaw = Mth.rotLerp(partialTick, entity.yRotO, entity.getYRot());
+            pitch = Mth.rotLerp(partialTick, entity.prevPitchAngle, entity.getPitchAngle());
+            roll = Mth.rotLerp(partialTick, entity.prevRollAngle, entity.getRollAngle());
+        }
+
         // RCプレーンスケール（1/4スケール、模型飛行機サイズ）+ 外部コンフィグ倍率適用
         float configScale = com.microdrone.mod.config.plane.PlaneConfigManager.getConfig(entity.getVariantId()).properties.scale;
         poseStack.scale(0.25F * configScale, 0.25F * configScale, 0.25F * configScale);
-
-        float yaw = Mth.rotLerp(partialTick, entity.yRotO, entity.getYRot());
-        float pitch = Mth.rotLerp(partialTick, entity.prevPitchAngle, entity.getPitchAngle());
-        float roll = Mth.rotLerp(partialTick, entity.prevRollAngle, entity.getRollAngle());
 
         // 1. 進行方向（ワールド水平Yaw旋回）
         poseStack.mulPose(Axis.YP.rotationDegrees(180.0F - yaw));
@@ -38,8 +64,6 @@ public class RcPlaneGeoRenderer extends GeoEntityRenderer<RcPlaneEntity> {
         }
 
         // 3. 傾いた主翼を基準としたエレベーターピッチ（機首上下）
-        // ※ ロールした後にピッチを掛けることで、バンク旋回時に機体自身の主翼基準で機首が起こされ、
-        // 「横向きのまま縦回転する」不自然な挙動を完全に防止！
         if (Math.abs(pitch) > 0.01f) {
             poseStack.mulPose(Axis.XP.rotationDegrees(pitch));
         }

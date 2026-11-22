@@ -43,9 +43,17 @@ import java.util.UUID;
  * マイクロRC潜水艇（水中探査・潜水艦）
  * 3次元水中潜航・浮力バラスト制御・潜舵エレベーター・ラダー操舵・水中泡トレイルをシミュレート
  */
-public class RcSubmarineEntity extends Entity implements GeoEntity, RcControllable, com.microdrone.mod.decal.RcDecalHolder {
+public class RcSubmarineEntity extends Entity implements GeoEntity, RcControllable, com.microdrone.mod.decal.RcDecalHolder, com.microdrone.mod.sync.ISnapshotInterpolated {
 
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
+
+    // === マルチプレイ同期用 スナップショット補間バッファ（第1段階） ===
+    private final com.microdrone.mod.sync.VehicleSnapshotBuffer snapshotBuffer = new com.microdrone.mod.sync.VehicleSnapshotBuffer();
+
+    @Override
+    public com.microdrone.mod.sync.VehicleSnapshotBuffer getSnapshotBuffer() {
+        return this.snapshotBuffer;
+    }
 
     // バッテリー & モーター同期データ
     private static final EntityDataAccessor<CompoundTag> DATA_DECALS =
@@ -300,6 +308,24 @@ public class RcSubmarineEntity extends Entity implements GeoEntity, RcControllab
                 }
             }
             tickSubmarinePhysics();
+
+            // マルチプレイ同期: Snapshot Interpolation用パケットを周囲のプレイヤーへ配信（第1段階）
+            boolean isMoving = this.isPiloted() || Math.abs(this.currentSpeed) > 0.005f || Math.abs(this.inputSteer) > 0.1f || Math.abs(this.inputVertical) > 0.1f;
+            if (isMoving || (this.tickCount % 4 == 0)) {
+                PacketDistributor.sendToPlayersTrackingEntity(this, new com.microdrone.mod.network.RcVehicleSnapshotPayload(
+                        this.getId(),
+                        this.tickCount,
+                        this.getX(),
+                        this.getY(),
+                        this.getZ(),
+                        this.getYRot(),
+                        this.getPitchAngle(),
+                        this.getRollAngle(),
+                        (float) this.getDeltaMovement().x,
+                        (float) this.getDeltaMovement().y,
+                        (float) this.getDeltaMovement().z
+                ));
+            }
         } else {
             if (this.locallyControlled && !com.microdrone.mod.client.ReplayHelper.isReplayActive()) {
                 tickSubmarinePhysics();

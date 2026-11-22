@@ -29,12 +29,31 @@ public class DroneGeoRenderer extends GeoEntityRenderer<DroneEntity> {
     public void render(DroneEntity entity, float entityYaw, float partialTick, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
         poseStack.pushPose();
 
+        float yaw;
+
+        if (!entity.isLocallyControlled() && !com.microdrone.mod.client.ReplayHelper.isReplayActive()) {
+            // 他プレイヤー操縦・リモートドローン: Snapshot Interpolation（第1段階）
+            long renderTime = System.currentTimeMillis() - com.microdrone.mod.sync.VehicleSnapshotBuffer.DEFAULT_INTERPOLATION_DELAY_MS;
+            com.microdrone.mod.sync.InterpolatedTransform transform = entity.getSnapshotBuffer().interpolate(renderTime);
+
+            if (transform.valid()) {
+                double vanillaX = Mth.lerp((double) partialTick, entity.xOld, entity.getX());
+                double vanillaY = Mth.lerp((double) partialTick, entity.yOld, entity.getY());
+                double vanillaZ = Mth.lerp((double) partialTick, entity.zOld, entity.getZ());
+
+                poseStack.translate(transform.x() - vanillaX, transform.y() - vanillaY, transform.z() - vanillaZ);
+                yaw = transform.yaw();
+            } else {
+                yaw = Mth.rotLerp(partialTick, entity.yRotO, entity.getYRot());
+            }
+        } else {
+            yaw = Mth.rotLerp(partialTick, entity.yRotO, entity.getYRot());
+        }
+
         float configScale = com.microdrone.mod.config.drone.DroneConfigManager.getConfig(entity.getVariantId()).properties.scale;
         if (configScale != 1.0f) {
             poseStack.scale(configScale, configScale, configScale);
         }
-
-        float yaw = Mth.rotLerp(partialTick, entity.yRotO, entity.getYRot());
 
         // 移動速度に応じた傾き（ピッチ・ロール）の算出
         Vec3 vel = entity.getDeltaMovement();

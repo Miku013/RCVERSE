@@ -169,6 +169,7 @@ public class ServerPayloadHandler {
                 if (player.level().getBlockEntity(payload.startPos()) instanceof com.microdrone.mod.block.road.RoadStartBlockEntity startBe) {
                     var data = startBe.getSplineData();
                     data.setRoadMode(com.microdrone.mod.block.road.RoadSplineData.RoadMode.fromId(payload.roadMode()));
+                    data.setSurfaceType(com.microdrone.mod.block.road.RoadSplineData.RoadSurfaceType.fromId(payload.surfaceType()));
                     data.setRoadWidth(payload.roadWidth());
                     data.setMaxBankAngle(payload.maxBankAngle());
                     data.setTurnDirection(payload.turnDirection());

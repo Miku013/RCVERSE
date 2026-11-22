@@ -48,8 +48,16 @@ import java.util.UUID;
  * - 主砲発射・マズルフラッシュ・反動（リコイル）
  * - バッテリー・モーター換装スロット
  */
-public class RcTankEntity extends Entity implements GeoEntity, RcControllable, com.microdrone.mod.decal.RcDecalHolder {
+public class RcTankEntity extends Entity implements GeoEntity, RcControllable, com.microdrone.mod.decal.RcDecalHolder, com.microdrone.mod.sync.ISnapshotInterpolated {
     private final AnimatableInstanceCache geoCache = GeckoLibUtil.createInstanceCache(this);
+
+    // === マルチプレイ同期用 スナップショット補間バッファ（第1段階） ===
+    private final com.microdrone.mod.sync.VehicleSnapshotBuffer snapshotBuffer = new com.microdrone.mod.sync.VehicleSnapshotBuffer();
+
+    @Override
+    public com.microdrone.mod.sync.VehicleSnapshotBuffer getSnapshotBuffer() {
+        return this.snapshotBuffer;
+    }
 
     // === 同期用 EntityData ===
     private static final EntityDataAccessor<CompoundTag> DATA_DECALS =
@@ -416,6 +424,26 @@ public class RcTankEntity extends Entity implements GeoEntity, RcControllable, c
 
         // 【接地ポイント4点方式】地形の凹凸・傾斜に合わせたリアルなピッチ＆ロール傾斜物理
         updateGroundTiltPhysics();
+
+        // マルチプレイ同期: Snapshot Interpolation用パケットを周囲のプレイヤーへ配信（第1段階）
+        if (!this.level().isClientSide) {
+            boolean isMoving = this.isPiloted() || Math.abs(this.currentSpeed) > 0.005f || Math.abs(this.inputSteer) > 0.1f;
+            if (isMoving || (this.tickCount % 4 == 0)) {
+                PacketDistributor.sendToPlayersTrackingEntity(this, new com.microdrone.mod.network.RcVehicleSnapshotPayload(
+                        this.getId(),
+                        this.tickCount,
+                        this.getX(),
+                        this.getY(),
+                        this.getZ(),
+                        this.getYRot(),
+                        this.getPitchAngle(),
+                        this.getRollAngle(),
+                        (float) this.getDeltaMovement().x,
+                        (float) this.getDeltaMovement().y,
+                        (float) this.getDeltaMovement().z
+                ));
+            }
+        }
     }
 
     private void updateGroundTiltPhysics() {

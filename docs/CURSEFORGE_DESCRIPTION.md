@@ -48,6 +48,18 @@
   <em>Smooth procedural asphalt tracks, high-speed banked corners, and big air stunt jump ramps!</em>
 </p>
 
+<p align="center">
+  <strong>🛣️ 4 Diverse Track Surfaces (Asphalt, Dirt, Ice, Water Puddle)</strong>
+</p>
+<table align="center" style="width: 100%; text-align: center;">
+  <tr>
+    <td width="25%"><img src="https://raw.githubusercontent.com/Miku013/RCVERSE/main/docs/images/tracks/road_asphalt.jpg" width="100%"><br><b>Asphalt</b><br><em>High-speed circuit</em></td>
+    <td width="25%"><img src="https://raw.githubusercontent.com/Miku013/RCVERSE/main/docs/images/tracks/road_dirt.jpg" width="100%"><br><b>Dirt & Gravel</b><br><em>+35% off-road boost</em></td>
+    <td width="25%"><img src="https://raw.githubusercontent.com/Miku013/RCVERSE/main/docs/images/tracks/road_ice.jpg" width="100%"><br><b>Ice Lake</b><br><em>Extreme sliding</em></td>
+    <td width="25%"><img src="https://raw.githubusercontent.com/Miku013/RCVERSE/main/docs/images/tracks/road_puddle.jpg" width="100%"><br><b>Water Puddle</b><br><em>Wet spray hazards</em></td>
+  </tr>
+</table>
+
 <p>
   <strong>RCVERSE</strong> brings the authentic adult RC hobby into Minecraft.  
   Hold your handheld transmitter to steer micro-sized machines across land, sea, and air with dedicated physics engines tailored for every vehicle class:

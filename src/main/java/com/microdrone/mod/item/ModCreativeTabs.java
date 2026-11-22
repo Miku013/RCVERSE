@@ -63,6 +63,13 @@ public class ModCreativeTabs {
                         output.accept(ModItems.MOTOR_TIER_3.get());
                         output.accept(ModItems.MOTOR_TIER_4.get());
 
+                        // タイヤパーツ
+                        output.accept(ModItems.TIRE_NORMAL.get());
+                        output.accept(ModItems.TIRE_DRIFT.get());
+                        output.accept(ModItems.TIRE_GRIP.get());
+                        output.accept(ModItems.TIRE_OFFROAD.get());
+                        output.accept(ModItems.TIRE_SPIKE.get());
+
                         // ドローン本体素材
                         output.accept(ModItems.DRONE_FRAME.get());
                         output.accept(ModItems.PROPELLER.get());

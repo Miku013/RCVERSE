@@ -47,6 +47,52 @@ public class RoadSplineData {
         }
     }
 
+    /**
+     * 道路路面タイプ
+     */
+    public enum RoadSurfaceType {
+        ASPHALT(0, "asphalt", "アスファルト"),
+        DIRT(1, "dirt", "ダート / オフロード"),
+        ICE(2, "ice", "アイス / 氷上"),
+        PUDDLE(3, "puddle", "水たまり");
+
+        private final int id;
+        private final String name;
+        private final String displayName;
+
+        RoadSurfaceType(int id, String name, String displayName) {
+            this.id = id;
+            this.name = name;
+            this.displayName = displayName;
+        }
+
+        public int getId() {
+            return id;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public String getDisplayName() {
+            return displayName;
+        }
+
+        public RoadSurfaceType next() {
+            RoadSurfaceType[] values = values();
+            return values[(this.ordinal() + 1) % values.length];
+        }
+
+        public static RoadSurfaceType fromId(int id) {
+            for (RoadSurfaceType type : values()) {
+                if (type.id == id) {
+                    return type;
+                }
+            }
+            return ASPHALT;
+        }
+    }
+
     // 規定値
     public static final float DEFAULT_ROAD_WIDTH = 5.0f;
     public static final float MIN_ROAD_WIDTH = 4.0f;
@@ -66,6 +112,7 @@ public class RoadSplineData {
 
     // パラメータ
     private RoadMode roadMode = RoadMode.ROAD;
+    private RoadSurfaceType surfaceType = RoadSurfaceType.ASPHALT;
     private float roadWidth = DEFAULT_ROAD_WIDTH;
     private float maxBankAngle = DEFAULT_MAX_BANK;
     private float loopHeight = DEFAULT_LOOP_HEIGHT;
@@ -88,6 +135,14 @@ public class RoadSplineData {
 
     public void setRoadMode(RoadMode roadMode) {
         this.roadMode = roadMode != null ? roadMode : RoadMode.ROAD;
+    }
+
+    public RoadSurfaceType getSurfaceType() {
+        return surfaceType;
+    }
+
+    public void setSurfaceType(RoadSurfaceType surfaceType) {
+        this.surfaceType = surfaceType != null ? surfaceType : RoadSurfaceType.ASPHALT;
     }
 
     public float getRoadWidth() {
@@ -188,6 +243,7 @@ public class RoadSplineData {
 
     public void saveToNbt(CompoundTag tag) {
         tag.putInt("RoadMode", this.roadMode.getId());
+        tag.putInt("SurfaceType", this.surfaceType.getId());
         tag.putFloat("RoadWidth", this.roadWidth);
         tag.putFloat("MaxBankAngle", this.maxBankAngle);
         tag.putFloat("LoopHeight", this.loopHeight);
@@ -204,6 +260,7 @@ public class RoadSplineData {
 
     public void loadFromNbt(CompoundTag tag) {
         this.roadMode = tag.contains("RoadMode") ? RoadMode.fromId(tag.getInt("RoadMode")) : RoadMode.ROAD;
+        this.surfaceType = tag.contains("SurfaceType") ? RoadSurfaceType.fromId(tag.getInt("SurfaceType")) : RoadSurfaceType.ASPHALT;
         if (tag.contains("RoadWidth")) this.roadWidth = tag.getFloat("RoadWidth");
         if (tag.contains("MaxBankAngle")) this.maxBankAngle = tag.getFloat("MaxBankAngle");
         if (tag.contains("LoopHeight")) setLoopHeight(tag.getFloat("LoopHeight"));

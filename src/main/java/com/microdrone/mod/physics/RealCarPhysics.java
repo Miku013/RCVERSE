@@ -45,8 +45,10 @@ public class RealCarPhysics {
     private float slipAngleDeg = 0.0f;    // 車体中心のスリップ角 (deg)
     private boolean drifting = false;
     private boolean counterSteering = false;
+    private int continuousDriftTicks = 0; // ドリフト継続tick数 (ロングドリフト時の減速・グリップ回復用)
     private int recentSlideTicks = 0; // 直近まで横滑り/ドリフトしていた余韻カウント (立ち上がりおつり抑止用)
     private double smoothedPowerSpin = 0.0; // アクセル瞬間抜き時の急激なリアグリップ復帰を防ぐ滑らか保持値
+    private float prevInputForward = 0.0f; // 直前tickのアクセル入力（踏み直し・チョッピング検出用）
 
     // 第3段階：前後グリップ・スリップ・デバッグ監視用パラメーター
     private float frontGrip = 1.12f;
@@ -67,6 +69,31 @@ public class RealCarPhysics {
     private float frontLoadRatio = 0.50f;
     private float rearLoadRatio = 0.50f;
     private float surfaceFriction = 1.0f;
+
+    // 装着タイヤ特性倍率
+    private float tireGripMultiplier = 1.0f;
+    private float tireScrubMultiplier = 1.0f;
+    private boolean tireIceImmunity = false;
+    private boolean tireOffroadImmunity = false;
+
+    public void setTireProperties(float gripMult, float scrubMult, boolean iceImmunity, boolean offroadImmunity) {
+        this.tireGripMultiplier = gripMult;
+        this.tireScrubMultiplier = scrubMult;
+        this.tireIceImmunity = iceImmunity;
+        this.tireOffroadImmunity = offroadImmunity;
+        this.frontGrip = 1.12f * gripMult;
+        this.rearGrip = 1.02f * gripMult;
+    }
+
+    public void setSurfaceFriction(float friction) {
+        if (this.tireIceImmunity && friction < 0.65f) {
+            this.surfaceFriction = 1.0f; // 氷上でもスパイクピンが食い付く
+        } else if (this.tireOffroadImmunity && friction < 0.85f && friction >= 0.65f) {
+            this.surfaceFriction = 1.0f; // ダートでもブロックパターンがグリップ
+        } else {
+            this.surfaceFriction = friction;
+        }
+    }
 
     // 一時テスト用テレメトリー記録状態
     private double lastRearDynMult = 1.0;
@@ -204,6 +231,7 @@ public class RealCarPhysics {
         this.steerAngleDeg = currentSteerDeg;
         this.yawRateDeg = 0.0f;
         this.recentSlideTicks = 0;
+        this.continuousDriftTicks = 0;
         this.smoothedPowerSpin = 0.0;
         updateSlipAndDriftFlags();
     }
@@ -216,8 +244,10 @@ public class RealCarPhysics {
         this.slipAngleDeg = 0.0f;
         this.drifting = false;
         this.counterSteering = false;
+        this.continuousDriftTicks = 0;
         this.recentSlideTicks = 0;
         this.smoothedPowerSpin = 0.0;
+        this.prevInputForward = 0.0f;
         this.frontSlipping = false;
         this.rearSlipping = false;
         this.frontGripUsage = 0.0f;
@@ -314,6 +344,16 @@ public class RealCarPhysics {
                     double fwdGain = effectiveAccel * inputForward;
                     this.forwardVelocity += fwdGain;
                     powerSpinSeverity = Mth.clamp(inputForward, 0.0f, 1.0f);
+
+                    // ★ ドリフト中のアクセル踏み直し（チョッピング / パワースライド再点火）
+                    boolean throttleKicked = (inputForward > 0.15f && this.prevInputForward <= 0.05f);
+                    if (throttleKicked && (this.drifting || this.continuousDriftTicks > 5) && this.forwardVelocity > 0.04) {
+                        this.forwardVelocity += effectiveAccel * 1.5; // 前方へグッと蹴り出すトラクション
+                        this.smoothedPowerSpin = 1.0; // 後輪を再スピンさせてテールを押し出す
+                        if (this.continuousDriftTicks > 12) {
+                            this.continuousDriftTicks = Math.max(8, this.continuousDriftTicks - 14); // 垂れを巻き戻し
+                        }
+                    }
                 }
             } else if (inputForward < -0.05f) {
                 if (this.forwardVelocity > 0.01) {
@@ -398,6 +438,11 @@ public class RealCarPhysics {
         this.lateralVelocity = Mth.clamp(this.lateralVelocity, -maxSpeed * 1.15, maxSpeed * 1.15);
 
         updateSlipAndDriftFlags();
+        if (this.drifting) {
+            this.continuousDriftTicks++;
+        } else {
+            this.continuousDriftTicks = 0;
+        }
         this.lastStepYawDeg = newYawDeg;
         if (this.drifting || this.counterSteering || Math.abs(this.lateralVelocity) > config.exitDampingLatThreshold) {
             this.recentSlideTicks = 8;
@@ -417,6 +462,8 @@ public class RealCarPhysics {
                 0.0,
                 outFwdZ * this.forwardVelocity + outRightZ * this.lateralVelocity
         );
+
+        this.prevInputForward = inputForward;
 
         return new StepResult(
                 outWorldVel,
@@ -491,6 +538,14 @@ public class RealCarPhysics {
                 rearDynMult *= Mth.lerp((float) effectiveSpin, 1.0f, (float) config.powerOversteerGripMult);
             }
         }
+
+        // ドリフト継続時間・距離に応じた後輪グリップ回復 (Grip Recovery - マイルド調整版)
+        // ドリフトが長引くとタイヤの動摩擦低下が適度に収まり、マイルドにグリップを取り戻して横滑りを収束
+        if (this.continuousDriftTicks > 22) {
+            float gripRecovery = Mth.clamp((this.continuousDriftTicks - 22) / 38.0f, 0.0f, 0.85f);
+            rearDynMult = Mth.lerp(gripRecovery, rearDynMult, 1.0);
+        }
+
         this.lastRearDynMult = rearDynMult;
         this.rearGripLimit = Math.max(0.004, this.rearGrip * (this.rearLoadRatio * 2.0) * baseLimitScale * rearDynMult);
 
@@ -597,6 +652,12 @@ public class RealCarPhysics {
             // コーナリングドラッグ（横滑り角度が大きいほどタイヤ摩擦により自然に減速し、グリップ回復へ繋げる）
             double bodySlipRad = Math.atan2(Math.abs(this.lateralVelocity), Math.max(Math.abs(this.forwardVelocity), 0.05));
             double dragRetention = 1.0 - Math.min(0.06, bodySlipRad * config.corneringDragFactor * subDt);
+
+            // ドリフト継続時間・距離に応じた追加スクラブ抵抗（減速緩和微調整版：ロングドリフト時もスピードを維持）
+            if (this.continuousDriftTicks > 22) {
+                double scrubDrag = Math.min(0.0085 * this.tireScrubMultiplier, (this.continuousDriftTicks - 22) * 0.00022);
+                dragRetention -= scrubDrag * subDt;
+            }
 
             // 車体の微小回転 δYaw に対して、速度ベクトル自体を新しい車体ローカル軸へ正確に再射影する
             double dYawRad = yawRateRad * subDt;
