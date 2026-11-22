@@ -1285,11 +1285,10 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                         }
                     } else {
                         // ★ 通常ブロック・舗装道路・メッシュ道路！
-                        // 舗装路ではオフロード(0.95)よりグリップタイヤ(1.0)が最強！
                         if (tireType == com.microdrone.mod.item.RcTireItem.TireType.GRIP) {
-                            gripFollowRate = 1.0; // 0.88 * 1.4 -> 1.0 完全オン・ザ・レール！
+                            gripFollowRate = 1.25; // ★ ご指定: グリップタイヤは 1.25！
                         } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.OFFROAD) {
-                            gripFollowRate = 0.95; // 0.68 * 1.4 超強力グリップ
+                            gripFollowRate = 0.72; // ★ ご指定: ノーマルタイヤ(0.77)よりもちょびっとだけ小さく！
                         } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.DRIFT) {
                             gripFollowRate = 0.39; // 0.28 * 1.4
                         } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.SPIKE) {
@@ -1297,10 +1296,15 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                         }
                     }
 
-                    this.carVelocity = new Vec3(
-                            Mth.lerp(gripFollowRate, this.carVelocity.x, driveX * this.currentSpeed),
-                            0,
-                            Mth.lerp(gripFollowRate, this.carVelocity.z, driveZ * this.currentSpeed));
+                    double newVx = Mth.lerp(gripFollowRate, this.carVelocity.x, driveX * this.currentSpeed);
+                    double newVz = Mth.lerp(gripFollowRate, this.carVelocity.z, driveZ * this.currentSpeed);
+                    double currentMag = Math.sqrt(newVx * newVx + newVz * newVz);
+                    double targetSpeed = Math.abs(this.currentSpeed);
+                    if (currentMag > 0.001 && currentMag > targetSpeed) {
+                        newVx = (newVx / currentMag) * targetSpeed;
+                        newVz = (newVz / currentMag) * targetSpeed;
+                    }
+                    this.carVelocity = new Vec3(newVx, 0, newVz);
                 }
             }
             this.prevInputForward = this.inputForward;
