@@ -353,7 +353,8 @@ public class GeoCubeFaceRaycaster {
 
     /**
      * 【第4段階：複数面またぎ対応・対象面範囲外のクリッピングメッシュ生成】
-     * 面の境界で矩形クリッピングし、かつ3D空間プロジェクションによってUVを連続一致させる
+     * デカールの回転・姿勢を考慮して面の境界で正確にクリッピングし、
+     * 3D空間プロジェクションによってUVを連続一致させる
      */
     public static List<ClippedVertex> getClippedDecalQuad(CarDecalData decal, ModelCubeFace face) {
         // ステッカーの基本サイズ
@@ -361,23 +362,47 @@ public class GeoCubeFaceRaycaster {
         float halfW = (decal.getScale() * 0.5f) * aspect;
         float halfH = (decal.getScale() * 0.5f);
 
-        // 面のローカル2D空間において、ステッカー中心位置を投影
         Vector3f decalPos = new Vector3f(decal.getPosX(), decal.getPosY(), decal.getPosZ());
-        Vector3f relPos = new Vector3f(decalPos).sub(face.vertices[0]);
-        float centerU = relPos.dot(face.uAxis);
-        float centerV = relPos.dot(face.vAxis);
 
-        // ステッカーの面ローカル2DでのAABB
-        float sMinU = centerU - halfW;
-        float sMaxU = centerU + halfW;
-        float sMinV = centerV - halfH;
-        float sMaxV = centerV + halfH;
+        // デカールの3Dローカル軸を計算
+        Quaternionf decalRot = new Quaternionf()
+                .rotateY(decal.getRotY() * Mth.DEG_TO_RAD)
+                .rotateX(decal.getRotX() * Mth.DEG_TO_RAD)
+                .rotateZ(decal.getRotZ() * Mth.DEG_TO_RAD);
 
-        // 面のAABB: [0, face.width] x [0, face.height]
-        float cMinU = Math.max(0.0f, sMinU);
-        float cMaxU = Math.min(face.width, sMaxU);
-        float cMinV = Math.max(0.0f, sMinV);
-        float cMaxV = Math.min(face.height, sMaxV);
+        Vector3f localXAxis = new Vector3f(1, 0, 0);
+        Vector3f localYAxis = new Vector3f(0, 1, 0);
+        decalRot.transform(localXAxis);
+        decalRot.transform(localYAxis);
+
+        // デカール矩形の4隅の3Dワールド座標（ボーンローカル座標系）
+        Vector3f c0 = new Vector3f(decalPos).add(new Vector3f(localXAxis).mul(-halfW)).add(new Vector3f(localYAxis).mul(halfH));
+        Vector3f c1 = new Vector3f(decalPos).add(new Vector3f(localXAxis).mul(halfW)).add(new Vector3f(localYAxis).mul(halfH));
+        Vector3f c2 = new Vector3f(decalPos).add(new Vector3f(localXAxis).mul(halfW)).add(new Vector3f(localYAxis).mul(-halfH));
+        Vector3f c3 = new Vector3f(decalPos).add(new Vector3f(localXAxis).mul(-halfW)).add(new Vector3f(localYAxis).mul(-halfH));
+
+        // 4隅を面の2D空間（uAxis, vAxis）に射影し、包含矩形 [minU, maxU] x [minV, maxV] を計算
+        Vector3f[] corners = {c0, c1, c2, c3};
+        float minU = Float.MAX_VALUE;
+        float maxU = -Float.MAX_VALUE;
+        float minV = Float.MAX_VALUE;
+        float maxV = -Float.MAX_VALUE;
+
+        for (Vector3f corner : corners) {
+            Vector3f rel = new Vector3f(corner).sub(face.vertices[0]);
+            float u = rel.dot(face.uAxis);
+            float v = rel.dot(face.vAxis);
+            if (u < minU) minU = u;
+            if (u > maxU) maxU = u;
+            if (v < minV) minV = v;
+            if (v > maxV) maxV = v;
+        }
+
+        // 面の境界 [0, face.width] x [0, face.height] との交差（クリッピング）範囲
+        float cMinU = Math.max(0.0f, minU);
+        float cMaxU = Math.min(face.width, maxU);
+        float cMinV = Math.max(0.0f, minV);
+        float cMaxV = Math.min(face.height, maxV);
 
         // 完全に面の外側にある場合は描画しない
         if (cMinU >= cMaxU || cMinV >= cMaxV) {
@@ -389,17 +414,6 @@ public class GeoCubeFaceRaycaster {
         Vector3f p1 = new Vector3f(face.vertices[0]).add(new Vector3f(face.uAxis).mul(cMaxU)).add(new Vector3f(face.vAxis).mul(cMinV));
         Vector3f p2 = new Vector3f(face.vertices[0]).add(new Vector3f(face.uAxis).mul(cMaxU)).add(new Vector3f(face.vAxis).mul(cMaxV));
         Vector3f p3 = new Vector3f(face.vertices[0]).add(new Vector3f(face.uAxis).mul(cMinU)).add(new Vector3f(face.vAxis).mul(cMaxV));
-
-        // デカールの3Dローカル軸を計算してプロジェクションUVを正確に算出（複数面で絵が完全一致・連続する）
-        Quaternionf decalRot = new Quaternionf()
-                .rotateY(decal.getRotY() * Mth.DEG_TO_RAD)
-                .rotateX(decal.getRotX() * Mth.DEG_TO_RAD)
-                .rotateZ(decal.getRotZ() * Mth.DEG_TO_RAD);
-
-        Vector3f localXAxis = new Vector3f(1, 0, 0);
-        Vector3f localYAxis = new Vector3f(0, 1, 0);
-        decalRot.transform(localXAxis);
-        decalRot.transform(localYAxis);
 
         float uvU0 = computeProjectionU(p0, decalPos, localXAxis, halfW, decal.isMirrorX());
         float uvV0 = computeProjectionV(p0, decalPos, localYAxis, halfH);

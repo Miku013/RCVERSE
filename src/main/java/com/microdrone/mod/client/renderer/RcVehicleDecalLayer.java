@@ -48,6 +48,7 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
 
         ResourceLocation modelLoc = resolveModelLocation(animatable);
         String boneName = bone.getName();
+        List<GeoCubeFaceRaycaster.ModelCubeFace> faces = GeoCubeFaceRaycaster.getModelFaces(modelLoc);
 
         for (int i = 0; i < decals.size(); i++) {
             CarDecalData decal = decals.get(i);
@@ -55,17 +56,9 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
                 continue;
             }
 
-            // 指定されたボーンの描画タイミングで投影
+            // 指定されたボーンの描画タイミングで投影（body/chassisの重複描画を厳密に防止）
             String target = decal.getTargetBone();
-            boolean match = boneName.equalsIgnoreCase(target);
-            // 互換フォールバック: targetが "body" でモデル主要ボーンが "chassis" の場合、またはその逆
-            if (!match) {
-                if (("body".equalsIgnoreCase(target) || "chassis".equalsIgnoreCase(target)) &&
-                    ("body".equalsIgnoreCase(boneName) || "chassis".equalsIgnoreCase(boneName))) {
-                    match = true;
-                }
-            }
-            if (!match) {
+            if (!isBoneResponsibleForDecal(faces, boneName, target)) {
                 continue;
             }
 
@@ -93,9 +86,6 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
             Vector3f decalNormal = new Vector3f(0, 0, 1);
             decalRot.transform(decalNormal);
 
-            // 【第4段階＆第3段階：複数面またぎ描画＆最前面遮蔽判定（2重描画防止）】
-            List<GeoCubeFaceRaycaster.ModelCubeFace> faces = GeoCubeFaceRaycaster.getModelFaces(modelLoc);
-
             class RenderableFaceQuad {
                 final GeoCubeFaceRaycaster.ModelCubeFace face;
                 final List<GeoCubeFaceRaycaster.ClippedVertex> quad;
@@ -112,14 +102,15 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
             for (GeoCubeFaceRaycaster.ModelCubeFace face : faces) {
                 if (!face.boneName.equalsIgnoreCase(boneName)) continue;
 
-                // 面の法線とおおむね同方向か判定（傾斜面・斜めシルを許容: cos 68° ≒ 0.37）
+                // 面の法線とおおむね同方向か判定（傾斜面・斜めシル・傾斜フェンダーを許容: cos 75° ≒ 0.25）
                 float dot = face.localNormal.dot(decalNormal);
-                if (dot < 0.35f) continue;
+                if (dot < 0.25f) continue;
 
-                // 面の平面上への射影距離（法線方向の深さズレ）を判定
+                // 面の平面上への射影距離（法線方向の深さズレ）を判定（デカール半径に応じた十分な許容値）
                 Vector3f rel = new Vector3f(decalPos).sub(face.vertices[0]);
                 float distToPlane = Math.abs(rel.dot(face.localNormal));
-                if (distToPlane > 3.5f) continue;
+                float maxDist = Math.max(5.0f, decal.getScale() * 0.5f);
+                if (distToPlane > maxDist) continue;
 
                 List<GeoCubeFaceRaycaster.ClippedVertex> clippedQuad =
                         GeoCubeFaceRaycaster.getClippedDecalQuad(decal, face);
@@ -263,7 +254,7 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
                 poseStack.mulPose(Axis.XP.rotationDegrees(decal.getRotX()));
                 poseStack.mulPose(Axis.ZP.rotationDegrees(decal.getRotZ()));
 
-                float zOffset = 0.020f;
+                float zOffset = 0.005f;
                 poseStack.translate(0, 0, zOffset);
 
                 float aspect = decal.getAspect() > 0.0f ? decal.getAspect() : 1.0f;
@@ -340,5 +331,40 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
         }
         var cfg = com.microdrone.mod.config.car.CarConfigManager.getConfig(variantId);
         return cfg != null ? cfg.getModelResource() : ResourceLocation.fromNamespaceAndPath(com.microdrone.mod.MicroDroneMod.MODID, "geo/rc_car.geo.json");
+    }
+
+    /**
+     * デカール貼り付け対象ボーンの判定。
+     * モデル内に "body" ボーンが存在する場合は必ず "body" 描画時のみ受け持ち、
+     * "chassis" との重複描画・二重描画を完全に排除する。
+     */
+    private static boolean isBoneResponsibleForDecal(List<GeoCubeFaceRaycaster.ModelCubeFace> faces, String boneName, String target) {
+        if (target == null || target.isBlank()) target = "body";
+        if (boneName.equalsIgnoreCase(target)) {
+            return true;
+        }
+        if ("body".equalsIgnoreCase(target) || "chassis".equalsIgnoreCase(target)) {
+            boolean hasBodyFaces = false;
+            for (GeoCubeFaceRaycaster.ModelCubeFace f : faces) {
+                if ("body".equalsIgnoreCase(f.boneName)) {
+                    hasBodyFaces = true;
+                    break;
+                }
+            }
+            if (hasBodyFaces) {
+                return "body".equalsIgnoreCase(boneName);
+            }
+            boolean hasChassisFaces = false;
+            for (GeoCubeFaceRaycaster.ModelCubeFace f : faces) {
+                if ("chassis".equalsIgnoreCase(f.boneName)) {
+                    hasChassisFaces = true;
+                    break;
+                }
+            }
+            if (hasChassisFaces) {
+                return "chassis".equalsIgnoreCase(boneName);
+            }
+        }
+        return false;
     }
 }

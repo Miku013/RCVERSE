@@ -745,10 +745,18 @@ public class DecalEditorScreen extends Screen {
                         float newY = Mth.clamp(cur.getPosY() + dY, 0.0f, 50.0f);
                         float newZ = Mth.clamp(cur.getPosZ() + dZ, -55.0f, 55.0f);
 
-                        // 【第1段階：キューブ面への吸着判定】
+                        // 【第1段階＆第2段階：キューブ面への法線考慮吸着判定】
                         ResourceLocation modelLoc = resolveModelLocation(this.previewEntity);
                         List<com.microdrone.mod.client.decal.GeoCubeFaceRaycaster.ModelCubeFace> faces =
                                 com.microdrone.mod.client.decal.GeoCubeFaceRaycaster.getModelFaces(modelLoc);
+
+                        // デカールの法線（ステッカーの正面方向）を計算
+                        org.joml.Quaternionf decalRot = new org.joml.Quaternionf()
+                                .rotateY(cur.getRotY() * Mth.DEG_TO_RAD)
+                                .rotateX(cur.getRotX() * Mth.DEG_TO_RAD)
+                                .rotateZ(cur.getRotZ() * Mth.DEG_TO_RAD);
+                        Vector3f decalNormal = new Vector3f(0, 0, 1);
+                        decalRot.transform(decalNormal);
 
                         com.microdrone.mod.client.decal.GeoCubeFaceRaycaster.ModelCubeFace bestFace = null;
                         float bestDistSq = Float.MAX_VALUE;
@@ -762,15 +770,20 @@ public class DecalEditorScreen extends Screen {
                                     continue;
                                 }
                             }
+
+                            // デカールと同じ向き（法線の内積 > 0.25）の面のみを吸着対象とする（裏面や下面への誤吸着を防止）
+                            float dot = face.localNormal.dot(decalNormal);
+                            if (dot < 0.25f) continue;
+
                             float distSq = face.localCenter.distanceSquared(newPos);
-                            if (distSq < bestDistSq && distSq < 150.0f) {
+                            if (distSq < bestDistSq && distSq < 200.0f) {
                                 bestDistSq = distSq;
                                 bestFace = face;
                             }
                         }
 
                         if (bestFace != null) {
-                            // 面の平面上に射影スナップ（法線方向のズレを解消し、表面にピッタリ密着）
+                            // 面の平面上に射影スナップ（法線方向のズレを解消し、車体表面にピッタリ密着）
                             Vector3f rel = new Vector3f(newPos).sub(bestFace.vertices[0]);
                             float uDist = rel.dot(bestFace.uAxis);
                             float vDist = rel.dot(bestFace.vAxis);
@@ -779,8 +792,8 @@ public class DecalEditorScreen extends Screen {
                             vDist = Mth.clamp(vDist, 0.0f, bestFace.height);
 
                             Vector3f snapped = new Vector3f(bestFace.vertices[0])
-                                    .add(new Vector3f(bestFace.uAxis).mul(uDist))
-                                    .add(new Vector3f(bestFace.vAxis).mul(vDist));
+                                     .add(new Vector3f(bestFace.uAxis).mul(uDist))
+                                     .add(new Vector3f(bestFace.vAxis).mul(vDist));
 
                             cur.setPosX(snapped.x);
                             cur.setPosY(snapped.y);
