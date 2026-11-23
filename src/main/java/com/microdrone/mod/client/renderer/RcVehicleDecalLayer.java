@@ -1,6 +1,7 @@
 package com.microdrone.mod.client.renderer;
 
 import com.microdrone.mod.client.decal.DecalTextureManager;
+import com.microdrone.mod.client.decal.GeoCubeFaceRaycaster;
 import com.microdrone.mod.decal.CarDecalData;
 import com.microdrone.mod.decal.RcDecalHolder;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -9,17 +10,22 @@ import com.mojang.math.Axis;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import org.joml.Matrix4f;
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
 import software.bernie.geckolib.animatable.GeoAnimatable;
 import software.bernie.geckolib.cache.object.GeoBone;
 import software.bernie.geckolib.renderer.GeoEntityRenderer;
 import software.bernie.geckolib.renderer.layer.GeoRenderLayer;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
  * 全RC乗り物（カー、飛行機、ボート、潜水艦、戦車、ドローン）対応の透過ステッカー描画レイヤー
+ * 【新設計：専用デカールメッシュ方式 第1段階（単一キューブ面への吸着配置＆境界クリッピング）】
  */
 public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolder> extends GeoRenderLayer<T> {
 
@@ -40,7 +46,9 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
         com.microdrone.mod.client.gui.DecalEditorScreen editor = com.microdrone.mod.client.gui.DecalEditorScreen.activeScreen;
         int selectedIndex = editor != null ? editor.getSelectedDecalIndex() : -1;
 
+        ResourceLocation modelLoc = resolveModelLocation(animatable);
         String boneName = bone.getName();
+
         for (int i = 0; i < decals.size(); i++) {
             CarDecalData decal = decals.get(i);
             if (decal == null || decal.getTextureName() == null || decal.getTextureName().isBlank()) {
@@ -74,73 +82,160 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
                 editor.updateDecalPoseMatrix(poseStack.last().pose());
             }
 
-            poseStack.pushPose();
+            float unitScale = 0.0625f; // Blockbench (1/16 block) -> Minecraft block
 
-            // 1. デカールの配置オフセット (Blockbench unit: 1/16 block)
-            float unitScale = 0.0625f;
-            poseStack.translate(decal.getPosX() * unitScale, decal.getPosY() * unitScale, decal.getPosZ() * unitScale);
+            // 【第1段階：対象キューブ面の探索と境界クリッピング】
+            GeoCubeFaceRaycaster.ModelCubeFace targetFace = null;
+            float bestDistSq = Float.MAX_VALUE;
+            Vector3f decalPos = new Vector3f(decal.getPosX(), decal.getPosY(), decal.getPosZ());
 
-            // 2. デカールの向き・回転（YPR: Yaw/Pitch/Roll）
-            poseStack.mulPose(Axis.YP.rotationDegrees(decal.getRotY()));
-            poseStack.mulPose(Axis.XP.rotationDegrees(decal.getRotX()));
-            poseStack.mulPose(Axis.ZP.rotationDegrees(decal.getRotZ()));
+            // デカールの向きから法線を計算
+            Quaternionf decalRot = new Quaternionf()
+                    .rotateY(decal.getRotY() * Mth.DEG_TO_RAD)
+                    .rotateX(decal.getRotX() * Mth.DEG_TO_RAD)
+                    .rotateZ(decal.getRotZ() * Mth.DEG_TO_RAD);
+            Vector3f decalNormal = new Vector3f(0, 0, 1);
+            decalRot.transform(decalNormal);
 
-            // 3. Z-fighting防止用微小法線オフセット
-            float zOffset = 0.012f;
-            poseStack.translate(0, 0, zOffset);
+            List<GeoCubeFaceRaycaster.ModelCubeFace> faces = GeoCubeFaceRaycaster.getModelFaces(modelLoc);
+            for (GeoCubeFaceRaycaster.ModelCubeFace face : faces) {
+                if (!face.boneName.equalsIgnoreCase(boneName)) continue;
+                if (face.localNormal.dot(decalNormal) < 0.65f) continue; // おおむね同方向の面
 
-            // 4. スケール計算（アスペクト比対応）
-            float aspect = decal.getAspect() > 0.0f ? decal.getAspect() : 1.0f;
-            float baseHalfSize = (decal.getScale() * 0.5f) * unitScale;
-            float halfWidth = baseHalfSize * aspect;
-            float halfHeight = baseHalfSize;
+                float distSq = face.localCenter.distanceSquared(decalPos);
+                if (distSq < bestDistSq) {
+                    bestDistSq = distSq;
+                    targetFace = face;
+                }
+            }
 
-            float u0 = decal.isMirrorX() ? 1.0f : 0.0f;
-            float u1 = decal.isMirrorX() ? 0.0f : 1.0f;
-            float v0 = 0.0f;
-            float v1 = 1.0f;
+            List<GeoCubeFaceRaycaster.ClippedVertex> clippedQuad = (targetFace != null)
+                    ? GeoCubeFaceRaycaster.getClippedDecalQuad(decal, targetFace)
+                    : Collections.emptyList();
 
-            PoseStack.Pose currentPose = poseStack.last();
-            Matrix4f matrix = currentPose.pose();
+            if (!clippedQuad.isEmpty()) {
+                // 面が見つかり、面の境界内にステッカーがある場合: 面の境界でクリッピングされたメッシュを直接描画
+                Vector3f fn = targetFace.localNormal;
+                float ox = fn.x * 0.015f;
+                float oy = fn.y * 0.015f;
+                float oz = fn.z * 0.015f;
 
-            // 反時計回り (CCW) で四角形ポリゴン頂点を追加
-            decalConsumer.addVertex(matrix, -halfWidth,  halfHeight, 0.0f)
-                    .setColor(255, 255, 255, 255)
-                    .setUv(u0, v0)
-                    .setOverlay(packedOverlay)
-                    .setLight(packedLight)
-                    .setNormal(currentPose, 0.0f, 0.0f, 1.0f);
+                PoseStack.Pose currentPose = poseStack.last();
+                Matrix4f matrix = currentPose.pose();
 
-            decalConsumer.addVertex(matrix, -halfWidth, -halfHeight, 0.0f)
-                    .setColor(255, 255, 255, 255)
-                    .setUv(u0, v1)
-                    .setOverlay(packedOverlay)
-                    .setLight(packedLight)
-                    .setNormal(currentPose, 0.0f, 0.0f, 1.0f);
+                GeoCubeFaceRaycaster.ClippedVertex v0 = clippedQuad.get(0);
+                GeoCubeFaceRaycaster.ClippedVertex v1 = clippedQuad.get(1);
+                GeoCubeFaceRaycaster.ClippedVertex v2 = clippedQuad.get(2);
+                GeoCubeFaceRaycaster.ClippedVertex v3 = clippedQuad.get(3);
 
-            decalConsumer.addVertex(matrix,  halfWidth, -halfHeight, 0.0f)
-                    .setColor(255, 255, 255, 255)
-                    .setUv(u1, v1)
-                    .setOverlay(packedOverlay)
-                    .setLight(packedLight)
-                    .setNormal(currentPose, 0.0f, 0.0f, 1.0f);
+                decalConsumer.addVertex(matrix, (v0.pos.x + ox) * unitScale, (v0.pos.y + oy) * unitScale, (v0.pos.z + oz) * unitScale)
+                        .setColor(255, 255, 255, 255)
+                        .setUv(v0.u, v0.v)
+                        .setOverlay(packedOverlay)
+                        .setLight(packedLight)
+                        .setNormal(currentPose, fn.x, fn.y, fn.z);
 
-            decalConsumer.addVertex(matrix,  halfWidth,  halfHeight, 0.0f)
-                    .setColor(255, 255, 255, 255)
-                    .setUv(u1, v0)
-                    .setOverlay(packedOverlay)
-                    .setLight(packedLight)
-                    .setNormal(currentPose, 0.0f, 0.0f, 1.0f);
+                decalConsumer.addVertex(matrix, (v1.pos.x + ox) * unitScale, (v1.pos.y + oy) * unitScale, (v1.pos.z + oz) * unitScale)
+                        .setColor(255, 255, 255, 255)
+                        .setUv(v1.u, v1.v)
+                        .setOverlay(packedOverlay)
+                        .setLight(packedLight)
+                        .setNormal(currentPose, fn.x, fn.y, fn.z);
 
-            // エディターで選択中のステッカーには、ステッカー表面にピッタリ密着するハイライト枠をステッカーと同一パイプライン（3D）で直接描画
+                decalConsumer.addVertex(matrix, (v2.pos.x + ox) * unitScale, (v2.pos.y + oy) * unitScale, (v2.pos.z + oz) * unitScale)
+                        .setColor(255, 255, 255, 255)
+                        .setUv(v2.u, v2.v)
+                        .setOverlay(packedOverlay)
+                        .setLight(packedLight)
+                        .setNormal(currentPose, fn.x, fn.y, fn.z);
+
+                decalConsumer.addVertex(matrix, (v3.pos.x + ox) * unitScale, (v3.pos.y + oy) * unitScale, (v3.pos.z + oz) * unitScale)
+                        .setColor(255, 255, 255, 255)
+                        .setUv(v3.u, v3.v)
+                        .setOverlay(packedOverlay)
+                        .setLight(packedLight)
+                        .setNormal(currentPose, fn.x, fn.y, fn.z);
+            } else {
+                // 面が未検出または完全一致しない場合のフォールバック（通常の単一Quad描画）
+                poseStack.pushPose();
+                poseStack.translate(decal.getPosX() * unitScale, decal.getPosY() * unitScale, decal.getPosZ() * unitScale);
+                poseStack.mulPose(Axis.YP.rotationDegrees(decal.getRotY()));
+                poseStack.mulPose(Axis.XP.rotationDegrees(decal.getRotX()));
+                poseStack.mulPose(Axis.ZP.rotationDegrees(decal.getRotZ()));
+
+                float zOffset = 0.015f;
+                poseStack.translate(0, 0, zOffset);
+
+                float aspect = decal.getAspect() > 0.0f ? decal.getAspect() : 1.0f;
+                float baseHalfSize = (decal.getScale() * 0.5f) * unitScale;
+                float halfWidth = baseHalfSize * aspect;
+                float halfHeight = baseHalfSize;
+
+                float u0 = decal.isMirrorX() ? 1.0f : 0.0f;
+                float u1 = decal.isMirrorX() ? 0.0f : 1.0f;
+                float v0 = 0.0f;
+                float v1 = 1.0f;
+
+                PoseStack.Pose currentPose = poseStack.last();
+                Matrix4f matrix = currentPose.pose();
+
+                decalConsumer.addVertex(matrix, -halfWidth,  halfHeight, 0.0f)
+                        .setColor(255, 255, 255, 255)
+                        .setUv(u0, v0)
+                        .setOverlay(packedOverlay)
+                        .setLight(packedLight)
+                        .setNormal(currentPose, 0.0f, 0.0f, 1.0f);
+
+                decalConsumer.addVertex(matrix, -halfWidth, -halfHeight, 0.0f)
+                        .setColor(255, 255, 255, 255)
+                        .setUv(u0, v1)
+                        .setOverlay(packedOverlay)
+                        .setLight(packedLight)
+                        .setNormal(currentPose, 0.0f, 0.0f, 1.0f);
+
+                decalConsumer.addVertex(matrix,  halfWidth, -halfHeight, 0.0f)
+                        .setColor(255, 255, 255, 255)
+                        .setUv(u1, v1)
+                        .setOverlay(packedOverlay)
+                        .setLight(packedLight)
+                        .setNormal(currentPose, 0.0f, 0.0f, 1.0f);
+
+                decalConsumer.addVertex(matrix,  halfWidth,  halfHeight, 0.0f)
+                        .setColor(255, 255, 255, 255)
+                        .setUv(u1, v0)
+                        .setOverlay(packedOverlay)
+                        .setLight(packedLight)
+                        .setNormal(currentPose, 0.0f, 0.0f, 1.0f);
+
+                poseStack.popPose();
+            }
+
+            // エディターで選択中のステッカーには、ステッカー表面にピッタリ密着するハイライト枠を3Dで直接描画
             if (isSelected) {
+                poseStack.pushPose();
+                poseStack.translate(decal.getPosX() * unitScale, decal.getPosY() * unitScale, decal.getPosZ() * unitScale);
+                poseStack.mulPose(Axis.YP.rotationDegrees(decal.getRotY()));
+                poseStack.mulPose(Axis.XP.rotationDegrees(decal.getRotX()));
+                poseStack.mulPose(Axis.ZP.rotationDegrees(decal.getRotZ()));
+
+                float zOffset = 0.020f;
+                poseStack.translate(0, 0, zOffset);
+
+                float aspect = decal.getAspect() > 0.0f ? decal.getAspect() : 1.0f;
+                float baseHalfSize = (decal.getScale() * 0.5f) * unitScale;
+                float halfWidth = baseHalfSize * aspect;
+                float halfHeight = baseHalfSize;
+
+                PoseStack.Pose currentPose = poseStack.last();
+                Matrix4f matrix = currentPose.pose();
+
                 ResourceLocation frameLoc = DecalTextureManager.getSelectionFrameTexture(editor.isDecalDragging());
                 VertexConsumer frameConsumer = bufferSource.getBuffer(RenderType.entityCutoutNoCull(frameLoc));
 
                 float pad = baseHalfSize * 0.08f;
                 float fw = halfWidth + pad;
                 float fh = halfHeight + pad;
-                float zFrame = 0.003f; // ステッカー直上
+                float zFrame = 0.003f;
 
                 frameConsumer.addVertex(matrix, -fw,  fh, zFrame)
                         .setColor(255, 255, 255, 255)
@@ -169,9 +264,36 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
                         .setOverlay(packedOverlay)
                         .setLight(net.minecraft.client.renderer.LightTexture.FULL_BRIGHT)
                         .setNormal(currentPose, 0.0f, 0.0f, 1.0f);
-            }
 
-            poseStack.popPose();
+                poseStack.popPose();
+            }
         }
+    }
+
+    private ResourceLocation resolveModelLocation(T animatable) {
+        String variantId = animatable.getVariantId();
+        if (variantId == null || variantId.isBlank()) variantId = "default";
+
+        if (animatable instanceof com.microdrone.mod.entity.RcCarEntity) {
+            var cfg = com.microdrone.mod.config.car.CarConfigManager.getConfig(variantId);
+            return cfg != null ? cfg.getModelResource() : ResourceLocation.fromNamespaceAndPath(com.microdrone.mod.MicroDroneMod.MODID, "geo/rc_car.geo.json");
+        } else if (animatable instanceof com.microdrone.mod.entity.RcPlaneEntity) {
+            var cfg = com.microdrone.mod.config.plane.PlaneConfigManager.getConfig(variantId);
+            return cfg != null ? cfg.getModelResource() : ResourceLocation.fromNamespaceAndPath(com.microdrone.mod.MicroDroneMod.MODID, "geo/rc_plane.geo.json");
+        } else if (animatable instanceof com.microdrone.mod.entity.RcBoatEntity) {
+            var cfg = com.microdrone.mod.config.boat.BoatConfigManager.getConfig(variantId);
+            return cfg != null ? cfg.getModelResource() : ResourceLocation.fromNamespaceAndPath(com.microdrone.mod.MicroDroneMod.MODID, "geo/rc_boat.geo.json");
+        } else if (animatable instanceof com.microdrone.mod.entity.RcSubmarineEntity) {
+            var cfg = com.microdrone.mod.config.submarine.SubmarineConfigManager.getConfig(variantId);
+            return cfg != null ? cfg.getModelResource() : ResourceLocation.fromNamespaceAndPath(com.microdrone.mod.MicroDroneMod.MODID, "geo/rc_submarine.geo.json");
+        } else if (animatable instanceof com.microdrone.mod.entity.RcTankEntity) {
+            var cfg = com.microdrone.mod.config.tank.TankConfigManager.getConfig(variantId);
+            return cfg != null ? cfg.getModelResource() : ResourceLocation.fromNamespaceAndPath(com.microdrone.mod.MicroDroneMod.MODID, "geo/rc_tank.geo.json");
+        } else if (animatable instanceof com.microdrone.mod.entity.DroneEntity) {
+            var cfg = com.microdrone.mod.config.drone.DroneConfigManager.getConfig(variantId);
+            return cfg != null ? cfg.getModelResource() : ResourceLocation.fromNamespaceAndPath(com.microdrone.mod.MicroDroneMod.MODID, "geo/drone.geo.json");
+        }
+        var cfg = com.microdrone.mod.config.car.CarConfigManager.getConfig(variantId);
+        return cfg != null ? cfg.getModelResource() : ResourceLocation.fromNamespaceAndPath(com.microdrone.mod.MicroDroneMod.MODID, "geo/rc_car.geo.json");
     }
 }

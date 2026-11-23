@@ -28,6 +28,7 @@ import com.microdrone.mod.network.UpdateDecalsPayload;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractSliderButton;
@@ -740,9 +741,55 @@ public class DecalEditorScreen extends Screen {
                         float dY = deltaModel.y * unitScaleInv;
                         float dZ = deltaModel.z * unitScaleInv;
 
-                        cur.setPosX(Mth.clamp(cur.getPosX() + dX, -30.0f, 30.0f));
-                        cur.setPosY(Mth.clamp(cur.getPosY() + dY, 0.0f, 50.0f));
-                        cur.setPosZ(Mth.clamp(cur.getPosZ() + dZ, -55.0f, 55.0f));
+                        float newX = Mth.clamp(cur.getPosX() + dX, -30.0f, 30.0f);
+                        float newY = Mth.clamp(cur.getPosY() + dY, 0.0f, 50.0f);
+                        float newZ = Mth.clamp(cur.getPosZ() + dZ, -55.0f, 55.0f);
+
+                        // 【第1段階：キューブ面への吸着判定】
+                        ResourceLocation modelLoc = resolveModelLocation(this.previewEntity);
+                        List<com.microdrone.mod.client.decal.GeoCubeFaceRaycaster.ModelCubeFace> faces =
+                                com.microdrone.mod.client.decal.GeoCubeFaceRaycaster.getModelFaces(modelLoc);
+
+                        com.microdrone.mod.client.decal.GeoCubeFaceRaycaster.ModelCubeFace bestFace = null;
+                        float bestDistSq = Float.MAX_VALUE;
+                        Vector3f newPos = new Vector3f(newX, newY, newZ);
+
+                        for (com.microdrone.mod.client.decal.GeoCubeFaceRaycaster.ModelCubeFace face : faces) {
+                            String targetBone = cur.getTargetBone();
+                            if (targetBone != null && !targetBone.isBlank() && !face.boneName.equalsIgnoreCase(targetBone)) {
+                                if (!("body".equalsIgnoreCase(targetBone) || "chassis".equalsIgnoreCase(targetBone)) ||
+                                    !("body".equalsIgnoreCase(face.boneName) || "chassis".equalsIgnoreCase(face.boneName))) {
+                                    continue;
+                                }
+                            }
+                            float distSq = face.localCenter.distanceSquared(newPos);
+                            if (distSq < bestDistSq && distSq < 150.0f) {
+                                bestDistSq = distSq;
+                                bestFace = face;
+                            }
+                        }
+
+                        if (bestFace != null) {
+                            // 面の平面上に射影スナップ（法線方向のズレを解消し、表面にピッタリ密着）
+                            Vector3f rel = new Vector3f(newPos).sub(bestFace.vertices[0]);
+                            float uDist = rel.dot(bestFace.uAxis);
+                            float vDist = rel.dot(bestFace.vAxis);
+
+                            uDist = Mth.clamp(uDist, 0.0f, bestFace.width);
+                            vDist = Mth.clamp(vDist, 0.0f, bestFace.height);
+
+                            Vector3f snapped = new Vector3f(bestFace.vertices[0])
+                                    .add(new Vector3f(bestFace.uAxis).mul(uDist))
+                                    .add(new Vector3f(bestFace.vAxis).mul(vDist));
+
+                            cur.setPosX(snapped.x);
+                            cur.setPosY(snapped.y);
+                            cur.setPosZ(snapped.z);
+                        } else {
+                            cur.setPosX(newX);
+                            cur.setPosY(newY);
+                            cur.setPosZ(newZ);
+                        }
 
                         syncSlidersFromCurrentDecal();
                         return true;
@@ -871,6 +918,34 @@ public class DecalEditorScreen extends Screen {
         RenderSystem.clear(org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT, Minecraft.ON_OSX);
 
         poseStack.popPose();
+    }
+
+    private static ResourceLocation resolveModelLocation(Entity animatable) {
+        if (animatable == null) return ResourceLocation.fromNamespaceAndPath(com.microdrone.mod.MicroDroneMod.MODID, "geo/rc_car.geo.json");
+        String variantId = (animatable instanceof com.microdrone.mod.decal.RcDecalHolder holder) ? holder.getVariantId() : "default";
+        if (variantId == null || variantId.isBlank()) variantId = "default";
+
+        if (animatable instanceof com.microdrone.mod.entity.RcCarEntity) {
+            var cfg = com.microdrone.mod.config.car.CarConfigManager.getConfig(variantId);
+            return cfg != null ? cfg.getModelResource() : ResourceLocation.fromNamespaceAndPath(com.microdrone.mod.MicroDroneMod.MODID, "geo/rc_car.geo.json");
+        } else if (animatable instanceof com.microdrone.mod.entity.RcPlaneEntity) {
+            var cfg = com.microdrone.mod.config.plane.PlaneConfigManager.getConfig(variantId);
+            return cfg != null ? cfg.getModelResource() : ResourceLocation.fromNamespaceAndPath(com.microdrone.mod.MicroDroneMod.MODID, "geo/rc_plane.geo.json");
+        } else if (animatable instanceof com.microdrone.mod.entity.RcBoatEntity) {
+            var cfg = com.microdrone.mod.config.boat.BoatConfigManager.getConfig(variantId);
+            return cfg != null ? cfg.getModelResource() : ResourceLocation.fromNamespaceAndPath(com.microdrone.mod.MicroDroneMod.MODID, "geo/rc_boat.geo.json");
+        } else if (animatable instanceof com.microdrone.mod.entity.RcSubmarineEntity) {
+            var cfg = com.microdrone.mod.config.submarine.SubmarineConfigManager.getConfig(variantId);
+            return cfg != null ? cfg.getModelResource() : ResourceLocation.fromNamespaceAndPath(com.microdrone.mod.MicroDroneMod.MODID, "geo/rc_submarine.geo.json");
+        } else if (animatable instanceof com.microdrone.mod.entity.RcTankEntity) {
+            var cfg = com.microdrone.mod.config.tank.TankConfigManager.getConfig(variantId);
+            return cfg != null ? cfg.getModelResource() : ResourceLocation.fromNamespaceAndPath(com.microdrone.mod.MicroDroneMod.MODID, "geo/rc_tank.geo.json");
+        } else if (animatable instanceof com.microdrone.mod.entity.DroneEntity) {
+            var cfg = com.microdrone.mod.config.drone.DroneConfigManager.getConfig(variantId);
+            return cfg != null ? cfg.getModelResource() : ResourceLocation.fromNamespaceAndPath(com.microdrone.mod.MicroDroneMod.MODID, "geo/drone.geo.json");
+        }
+        var cfg = com.microdrone.mod.config.car.CarConfigManager.getConfig(variantId);
+        return cfg != null ? cfg.getModelResource() : ResourceLocation.fromNamespaceAndPath(com.microdrone.mod.MicroDroneMod.MODID, "geo/rc_car.geo.json");
     }
 
     /**
