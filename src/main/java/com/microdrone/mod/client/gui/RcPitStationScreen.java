@@ -58,12 +58,23 @@ public class RcPitStationScreen extends Screen {
     private int maxScroll = 0;
     private boolean isScrollingBar = false;
 
+    // 3Dプレビュー用のデフォルトアングル定数 (浅い見下ろし角で側面・前面・タイヤが一番映えるアングル)
+    private static final float DEFAULT_YAW = -60.0F;     // 左右回転（初期値: 斜め前約60度）
+    private static final float DEFAULT_PITCH = 12.0F;    // 上下角度（浅い見下ろし12度）
+    private static final float DEFAULT_ZOOM = 85.0F;     // 拡大率
+    private static final long ROTATION_RESUME_DELAY_MS = 2200L; // タイヤ変更・操作後の停止時間（約2.2秒）
+    private static final float ROTATION_DEGREES_PER_SEC = 24.0F; // ショールーム自動回転速度（1秒で24度、約15秒で1周）
+
     // 3Dカメラ・視点パラメータ
-    private float previewYaw = -45.0F;     // 左右回転（初期値: 斜め45度）
-    private float previewPitch = 15.0F;    // 上下角度（初期値: やや見下ろし15度）
-    private float previewZoom = 80.0F;     // 拡大率
-    private float modelPanX = 0.0F;        // 平行移動 X
-    private float modelPanY = 0.0F;        // 平行移動 Y
+    private float previewYaw = DEFAULT_YAW;     // 左右回転（初期値: 斜め前約60度）
+    private float previewPitch = DEFAULT_PITCH; // 上下角度（浅い見下ろし12度）
+    private float previewZoom = DEFAULT_ZOOM;   // 拡大率
+    private float modelPanX = 0.0F;             // 平行移動 X
+    private float modelPanY = 0.0F;             // 平行移動 Y
+
+    // 自動回転タイマー管理
+    private long lastInteractionTime = System.currentTimeMillis();
+    private long lastFrameTime = System.currentTimeMillis();
 
     // マウスドラッグ状態
     private boolean isRotating = false;
@@ -120,6 +131,7 @@ public class RcPitStationScreen extends Screen {
                         playEquipSound();
                         updateTireButtons();
                         applyTiresToPreview();
+                        resetToDefaultAngle();
                     }
             ).bounds(leftX + 4, 0, btnW, btnH).build();
             this.frontTireButtons.add(btn);
@@ -136,6 +148,7 @@ public class RcPitStationScreen extends Screen {
                         playEquipSound();
                         updateTireButtons();
                         applyTiresToPreview();
+                        resetToDefaultAngle();
                     }
             ).bounds(leftX + 4, 0, btnW, btnH).build();
             this.rearTireButtons.add(btn);
@@ -164,17 +177,17 @@ public class RcPitStationScreen extends Screen {
                 button -> saveTireSettings(true)
         ).bounds(rightX + 6, takeOutBtnY, btnActionW, 19).build());
 
-        // アングル初期化ボタン（左下にコンパクトに配置）
+        // アングル初期化ボタン（ヘッダー右側にスマートに配置）
         this.resetButton = this.addRenderableWidget(Button.builder(
                 Component.translatable("gui.microdrone.pit_station.reset"),
                 button -> resetCamera()
-        ).bounds(18, this.height - 30, 118, 18).build());
+        ).bounds(this.width - 144, 13, 108, 18).build());
 
-        // 閉じるボタン（右上に配置）
+        // 閉じるボタン（ヘッダー最右端に配置）
         this.closeButton = this.addRenderableWidget(Button.builder(
                 Component.literal("✕"),
                 button -> this.onClose()
-        ).bounds(this.width - 28, 8, 20, 18).build());
+        ).bounds(this.width - 32, 13, 20, 18).build());
 
         updateLayoutPositions();
     }
@@ -232,12 +245,29 @@ public class RcPitStationScreen extends Screen {
         }
     }
 
-    private void resetCamera() {
-        this.previewYaw = -45.0F;
-        this.previewPitch = 15.0F;
-        this.previewZoom = 80.0F;
+    private void resetToDefaultAngle() {
+        this.previewYaw = DEFAULT_YAW;
+        this.previewPitch = DEFAULT_PITCH;
         this.modelPanX = 0.0F;
         this.modelPanY = 0.0F;
+        this.lastInteractionTime = System.currentTimeMillis();
+    }
+
+    private void resetCamera() {
+        resetToDefaultAngle();
+        if (this.vehicleStack.getItem() instanceof RcPlaneItem) {
+            this.previewZoom = 60.0F;
+        } else if (this.vehicleStack.getItem() instanceof RcBoatItem) {
+            this.previewZoom = 70.0F;
+        } else if (this.vehicleStack.getItem() instanceof RcSubmarineItem) {
+            this.previewZoom = 70.0F;
+        } else if (this.vehicleStack.getItem() instanceof RcTankItem) {
+            this.previewZoom = 65.0F;
+        } else if (this.vehicleStack.getItem() instanceof DroneSpawnItem) {
+            this.previewZoom = 85.0F;
+        } else {
+            this.previewZoom = DEFAULT_ZOOM;
+        }
     }
 
     private void initDummyEntity() {
@@ -265,7 +295,7 @@ public class RcPitStationScreen extends Screen {
             this.previewZoom = 85.0F;
         } else {
             this.previewEntity = ModEntities.RC_CAR.get().create(this.minecraft.level);
-            this.previewZoom = 80.0F;
+            this.previewZoom = DEFAULT_ZOOM;
         }
 
         if (this.previewEntity instanceof RcDecalHolder holder) {
@@ -312,7 +342,7 @@ public class RcPitStationScreen extends Screen {
 
     private void updateLayoutPositions() {
         int leftPanelY = 38;
-        int leftPanelH = this.height - leftPanelY - 36;
+        int leftPanelH = this.height - leftPanelY - 14;
         int clipY = leftPanelY + 4;
         int clipH = leftPanelH - 8;
 
@@ -355,7 +385,7 @@ public class RcPitStationScreen extends Screen {
         int leftPanelX = 18;
         int leftPanelY = 38;
         int leftPanelW = 118;
-        int leftPanelH = this.height - leftPanelY - 36;
+        int leftPanelH = this.height - leftPanelY - 14;
 
         // 左パネル上でマウスホイールが動いた場合は左パネルをスクロール
         if (mouseX >= leftPanelX && mouseX <= leftPanelX + leftPanelW &&
@@ -369,6 +399,7 @@ public class RcPitStationScreen extends Screen {
 
         // それ以外の領域では3Dモデルのズームイン・アウト
         this.previewZoom = Mth.clamp(this.previewZoom + (float) scrollY * 6.0F, 25.0F, 180.0F);
+        this.lastInteractionTime = System.currentTimeMillis();
         return true;
     }
 
@@ -382,7 +413,7 @@ public class RcPitStationScreen extends Screen {
         int leftPanelX = 18;
         int leftPanelY = 38;
         int leftPanelW = 118;
-        int leftPanelH = this.height - leftPanelY - 36;
+        int leftPanelH = this.height - leftPanelY - 14;
 
         // スクロールバーのクリック判定
         if (button == 0 && this.maxScroll > 0) {
@@ -396,10 +427,12 @@ public class RcPitStationScreen extends Screen {
         // ウィジェット以外の空間クリックで3Dカメラ操作開始
         if (button == 0) {
             this.isRotating = true;
+            this.lastInteractionTime = System.currentTimeMillis();
             return true;
         }
         if (button == 1 || button == 2) {
             this.isPanning = true;
+            this.lastInteractionTime = System.currentTimeMillis();
             return true;
         }
         return false;
@@ -410,9 +443,11 @@ public class RcPitStationScreen extends Screen {
         if (button == 0) {
             this.isRotating = false;
             this.isScrollingBar = false;
+            this.lastInteractionTime = System.currentTimeMillis();
         }
         if (button == 1 || button == 2) {
             this.isPanning = false;
+            this.lastInteractionTime = System.currentTimeMillis();
         }
         return super.mouseReleased(mouseX, mouseY, button);
     }
@@ -421,7 +456,7 @@ public class RcPitStationScreen extends Screen {
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
         if (this.isScrollingBar && this.maxScroll > 0) {
             int leftPanelY = 38;
-            int leftPanelH = this.height - leftPanelY - 36;
+            int leftPanelH = this.height - leftPanelY - 14;
             double ratio = dragY / (double) leftPanelH;
             this.scrollAmount = Mth.clamp(this.scrollAmount + ratio * this.maxScroll, 0.0, this.maxScroll);
             updateLayoutPositions();
@@ -431,11 +466,13 @@ public class RcPitStationScreen extends Screen {
         if (this.isRotating) {
             this.previewYaw += (float) dragX * 0.8F;
             this.previewPitch = Mth.clamp(this.previewPitch + (float) dragY * 0.8F, -85.0F, 85.0F);
+            this.lastInteractionTime = System.currentTimeMillis();
             return true;
         }
         if (this.isPanning) {
             this.modelPanX += (float) dragX;
             this.modelPanY += (float) dragY;
+            this.lastInteractionTime = System.currentTimeMillis();
             return true;
         }
         return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
@@ -443,6 +480,17 @@ public class RcPitStationScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        // ショールーム自動回転の更新処理
+        long now = System.currentTimeMillis();
+        float deltaSec = (now - this.lastFrameTime) / 1000.0F;
+        this.lastFrameTime = now;
+        if (deltaSec > 0.1F) deltaSec = 0.1F;
+
+        // ユーザーの手動操作中ではなく、かつ直近の操作/タイヤ変更から一定時間経過している場合に自動回転
+        if (!this.isRotating && !this.isPanning && (now - this.lastInteractionTime) >= ROTATION_RESUME_DELAY_MS) {
+            this.previewYaw = Mth.wrapDegrees(this.previewYaw + ROTATION_DEGREES_PER_SEC * deltaSec);
+        }
+
         // 1. super.render を最初に実行 (背景メニューブラーと下地を最奥に描画)
         super.render(graphics, mouseX, mouseY, partialTick);
 
@@ -462,7 +510,7 @@ public class RcPitStationScreen extends Screen {
         // 5. 右側スペックパネル
         renderSpecPanel(graphics);
 
-        // 6. 操作ヘルプ（画面下部）
+        // 6. 操作ヘルプ（画面下部・アングル初期化ボタンがヘッダーへ移動したため全幅で綺麗に中央配置）
         Component helpText = Component.translatable("gui.microdrone.pit_station.help");
         graphics.drawCenteredString(this.font, helpText, this.width / 2, this.height - 20, 0xFF94a3b8);
 
@@ -471,8 +519,8 @@ public class RcPitStationScreen extends Screen {
             int centerX = this.width / 2 + (int) this.modelPanX;
             int centerY = this.height / 2 + 10 + (int) this.modelPanY;
 
-            // 車両下部に前輪・後輪カラーのネオンリング演出を描画
-            renderPitPedestal(graphics, centerX, centerY + (int)(this.previewZoom * 0.45F));
+            // 車両下部に円形ショールームターンテーブル演出を描画
+            renderPitPedestal(graphics, centerX, centerY + (int)(this.previewZoom * 0.42F));
 
             renderEntityInGui(graphics, centerX, centerY, this.previewZoom, this.previewYaw, this.previewPitch, this.previewEntity);
         } else {
@@ -484,7 +532,7 @@ public class RcPitStationScreen extends Screen {
         int leftPanelX = 18;
         int leftPanelY = 38;
         int leftPanelW = 118;
-        int leftPanelH = this.height - leftPanelY - 36;
+        int leftPanelH = this.height - leftPanelY - 14;
         int clipY = leftPanelY + 4;
         int clipH = leftPanelH - 8;
 
@@ -524,24 +572,60 @@ public class RcPitStationScreen extends Screen {
         int frontColor = getTireColor(this.selectedFrontTire);
         int rearColor = getTireColor(this.selectedRearTire);
 
-        int ringW = (int) (this.previewZoom * 0.9F);
-        int ringH = (int) (this.previewZoom * 0.25F);
+        int radiusX = (int) (this.previewZoom * 0.62F);
+        int radiusY = (int) (this.previewZoom * 0.20F);
 
-        // 前輪側グロー (左前側)
-        graphics.fillGradient(centerX - ringW / 2, centerY - ringH / 2, centerX, centerY + ringH / 2,
-                (frontColor & 0x00FFFFFF) | 0x22000000, (frontColor & 0x00FFFFFF) | 0x66000000);
-        // 後輪側グロー (右後側)
-        graphics.fillGradient(centerX, centerY - ringH / 2, centerX + ringW / 2, centerY + ringH / 2,
-                (rearColor & 0x00FFFFFF) | 0x66000000, (rearColor & 0x00FFFFFF) | 0x22000000);
+        // 1. 最下層：ターンテーブルの影
+        drawEllipse(graphics, centerX, centerY + 3, radiusX + 3, radiusY + 1, 0x66000000);
 
-        graphics.renderOutline(centerX - ringW / 2, centerY - ringH / 2, ringW, ringH, 0x4438bdf8);
+        // 2. ターンテーブル台座本体（円形メタリックステージ）
+        drawEllipse(graphics, centerX, centerY, radiusX, radiusY, 0xDD0f172a);
+
+        // 3. インナーリング
+        int innerRx = (int) (radiusX * 0.68F);
+        int innerRy = (int) (radiusY * 0.68F);
+        drawEllipseOutline(graphics, centerX, centerY, innerRx, innerRy, 0x3338bdf8);
+
+        // 4. 前後タイヤのテーマカラーネオングロー（左前側：前輪色、右後側：後輪色）
+        int neonAlpha = 0xAA000000;
+        int fNeon = (frontColor & 0x00FFFFFF) | neonAlpha;
+        int rNeon = (rearColor & 0x00FFFFFF) | neonAlpha;
+
+        graphics.fillGradient(centerX - radiusX + 6, centerY - 2, centerX - 2, centerY + 3,
+                (frontColor & 0x00FFFFFF) | 0x11000000, fNeon);
+        graphics.fillGradient(centerX + 2, centerY - 2, centerX + radiusX - 6, centerY + 3,
+                rNeon, (rearColor & 0x00FFFFFF) | 0x11000000);
+
+        // 5. 外周ネオンフレームリング
+        drawEllipseOutline(graphics, centerX, centerY, radiusX, radiusY, 0x7738bdf8);
+    }
+
+    private void drawEllipse(GuiGraphics graphics, int cx, int cy, int rx, int ry, int color) {
+        if (rx <= 0 || ry <= 0) return;
+        for (int y = -ry; y <= ry; y++) {
+            float normY = (float) y / (float) ry;
+            int spanX = (int) (Math.sqrt(Math.max(0.0, 1.0 - normY * normY)) * rx);
+            graphics.fill(cx - spanX, cy + y, cx + spanX + 1, cy + y + 1, color);
+        }
+    }
+
+    private void drawEllipseOutline(GuiGraphics graphics, int cx, int cy, int rx, int ry, int color) {
+        if (rx <= 0 || ry <= 0) return;
+        for (int y = -ry; y <= ry; y++) {
+            float normY = (float) y / (float) ry;
+            int spanX = (int) (Math.sqrt(Math.max(0.0, 1.0 - normY * normY)) * rx);
+            if (spanX > 0) {
+                graphics.fill(cx - spanX, cy + y, cx - spanX + 1, cy + y + 1, color);
+                graphics.fill(cx + spanX, cy + y, cx + spanX + 1, cy + y + 1, color);
+            }
+        }
     }
 
     private void renderLeftScrollPanel(GuiGraphics graphics, int mouseX, int mouseY) {
         int leftPanelX = 18;
         int leftPanelY = 38;
         int leftPanelW = 118;
-        int leftPanelH = this.height - leftPanelY - 36;
+        int leftPanelH = this.height - leftPanelY - 14;
         int clipY = leftPanelY + 4;
         int clipH = leftPanelH - 8;
 
