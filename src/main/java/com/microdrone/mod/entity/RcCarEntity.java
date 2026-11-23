@@ -135,6 +135,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
     private ItemStack installedBattery = ItemStack.EMPTY;
     private ItemStack installedMotor = ItemStack.EMPTY;
     private ItemStack installedTire = ItemStack.EMPTY;
+    private com.microdrone.mod.item.RcTireItem.TireType frontTireType = null;
+    private com.microdrone.mod.item.RcTireItem.TireType rearTireType = null;
     private double accumulatedDistance = 0.0;
 
     public ItemStack getInstalledTire() {
@@ -144,6 +146,36 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
     public com.microdrone.mod.item.RcTireItem.TireType getTireType() {
         if (!this.installedTire.isEmpty() && this.installedTire.getItem() instanceof com.microdrone.mod.item.RcTireItem tireItem) {
             return tireItem.getTireType();
+        }
+        return com.microdrone.mod.item.RcTireItem.TireType.NORMAL;
+    }
+
+    public com.microdrone.mod.item.RcTireItem.TireType getFrontTireType() {
+        if (this.frontTireType != null) {
+            return this.frontTireType;
+        }
+        return getTireType();
+    }
+
+    public com.microdrone.mod.item.RcTireItem.TireType getRearTireType() {
+        if (this.rearTireType != null) {
+            return this.rearTireType;
+        }
+        return getTireType();
+    }
+
+    public void setFrontTireType(String id) {
+        this.frontTireType = parseTireType(id);
+    }
+
+    public void setRearTireType(String id) {
+        this.rearTireType = parseTireType(id);
+    }
+
+    private static com.microdrone.mod.item.RcTireItem.TireType parseTireType(String id) {
+        if (id == null || id.isEmpty()) return com.microdrone.mod.item.RcTireItem.TireType.NORMAL;
+        for (com.microdrone.mod.item.RcTireItem.TireType t : com.microdrone.mod.item.RcTireItem.TireType.values()) {
+            if (t.getId().equalsIgnoreCase(id)) return t;
         }
         return com.microdrone.mod.item.RcTireItem.TireType.NORMAL;
     }
@@ -809,7 +841,9 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
 
         if (this.isRealMode()) {
             // === REALモード専用物理演算 (RACEモードから完全分離) ===
-            com.microdrone.mod.item.RcTireItem.TireType tireType = getTireType();
+            com.microdrone.mod.item.RcTireItem.TireType frontTire = getFrontTireType();
+            com.microdrone.mod.item.RcTireItem.TireType rearTire = getRearTireType();
+            com.microdrone.mod.item.RcTireItem.TireType tireType = rearTire; // 後方互換参照
             float blockFriction = 1.0f;
             boolean onIce = false;
             boolean onOffroad = false;
@@ -851,28 +885,33 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                 blockFriction = bFriction;
             }
 
-            float dynamicGrip = tireType.getLateralGripMultiplier();
+            // 前輪70%＋後輪30%で旋回横グリップを計算 (前輪GRIP+後輪DRIFTで進入が鋭くテールが流れる理想のセッティング)
+            float frontGrip = frontTire.getLateralGripMultiplier();
+            float rearGrip = rearTire.getLateralGripMultiplier();
             if (onIce) {
-                if (tireType == com.microdrone.mod.item.RcTireItem.TireType.SPIKE) {
-                    dynamicGrip = 1.40f; // スパイクタイヤ: 氷上でもしっかりグリップ
-                } else {
-                    dynamicGrip = 0.12f; // 通常タイヤ: 氷上では横グリップほぼゼロで激しくスリップ！
-                }
-            } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.SPIKE) {
-                dynamicGrip = 0.70f;
-            } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.OFFROAD) {
-                // 舗装路では良好(1.68f)でグリップタイヤ(3.08f)より下、オフロードでは最強(2.59f)でグリップタイヤを圧倒！
-                dynamicGrip = onOffroad ? 2.59f : 1.68f;
-            } else if (tireType == com.microdrone.mod.item.RcTireItem.TireType.GRIP) {
-                // 舗装路では最強(3.08f)、オフロードでは泥や砂で目詰まりして激減(0.77f)
-                dynamicGrip = onOffroad ? 0.77f : 3.08f;
+                frontGrip = (frontTire == com.microdrone.mod.item.RcTireItem.TireType.SPIKE) ? 1.40f : 0.12f;
+                rearGrip = (rearTire == com.microdrone.mod.item.RcTireItem.TireType.SPIKE) ? 1.40f : 0.12f;
+            } else {
+                if (frontTire == com.microdrone.mod.item.RcTireItem.TireType.SPIKE) frontGrip = 0.70f;
+                else if (frontTire == com.microdrone.mod.item.RcTireItem.TireType.OFFROAD) frontGrip = onOffroad ? 2.59f : 1.68f;
+                else if (frontTire == com.microdrone.mod.item.RcTireItem.TireType.GRIP) frontGrip = onOffroad ? 0.77f : 3.08f;
+
+                if (rearTire == com.microdrone.mod.item.RcTireItem.TireType.SPIKE) rearGrip = 0.70f;
+                else if (rearTire == com.microdrone.mod.item.RcTireItem.TireType.OFFROAD) rearGrip = onOffroad ? 2.59f : 1.68f;
+                else if (rearTire == com.microdrone.mod.item.RcTireItem.TireType.GRIP) rearGrip = onOffroad ? 0.77f : 3.08f;
             }
+            float dynamicGrip = frontGrip * 0.70f + rearGrip * 0.30f;
+
+            // スクラブ抵抗（スライドの伸び）はリアタイヤが80%主導
+            float scrubDrag = rearTire.getScrubDragMultiplier() * 0.80f + frontTire.getScrubDragMultiplier() * 0.20f;
+            boolean hasIceImmunity = frontTire.isIceImmunity() || rearTire.isIceImmunity();
+            boolean hasOffroadImmunity = frontTire.isOffroadImmunity() || rearTire.isOffroadImmunity();
 
             this.realPhysics.setTireProperties(
                     dynamicGrip,
-                    tireType.getScrubDragMultiplier(),
-                    tireType.isIceImmunity(),
-                    tireType.isOffroadImmunity()
+                    scrubDrag,
+                    hasIceImmunity,
+                    hasOffroadImmunity
             );
             this.realPhysics.setSurfaceFriction(blockFriction);
 
@@ -924,7 +963,9 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
             this.turboBoostTicks = 0;
         } else {
             // === RACEモード (既存の挙動を完全維持) ===
-            com.microdrone.mod.item.RcTireItem.TireType tireType = getTireType();
+            com.microdrone.mod.item.RcTireItem.TireType frontTire = getFrontTireType();
+            com.microdrone.mod.item.RcTireItem.TireType rearTire = getRearTireType();
+            com.microdrone.mod.item.RcTireItem.TireType tireType = rearTire;
             double friction = 0.90; // 地面摩擦減速
             boolean onIce = false;
             boolean onOffroad = false;
@@ -2065,6 +2106,18 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                         dropStack,
                         tag -> tag.put("Decals", serializeDecals(this.decals)));
             }
+            if (this.frontTireType != null) {
+                net.minecraft.world.item.component.CustomData.update(
+                        net.minecraft.core.component.DataComponents.CUSTOM_DATA,
+                        dropStack,
+                        tag -> tag.putString("FrontTire", this.frontTireType.getId()));
+            }
+            if (this.rearTireType != null) {
+                net.minecraft.world.item.component.CustomData.update(
+                        net.minecraft.core.component.DataComponents.CUSTOM_DATA,
+                        dropStack,
+                        tag -> tag.putString("RearTire", this.rearTireType.getId()));
+            }
             ItemEntity item = new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(), dropStack);
             this.level().addFreshEntity(item);
 
@@ -2221,6 +2274,12 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
             this.installedTire = ItemStack.parse(this.registryAccess(), compound.getCompound("InstalledTire"))
                     .orElse(ItemStack.EMPTY);
         }
+        if (compound.contains("FrontTire")) {
+            this.frontTireType = parseTireType(compound.getString("FrontTire"));
+        }
+        if (compound.contains("RearTire")) {
+            this.rearTireType = parseTireType(compound.getString("RearTire"));
+        }
         this.accumulatedDistance = compound.getDouble("BatteryAccumulatedDist");
         if (compound.contains("CustomWeight", 99)) {
             this.entityData.set(DATA_CUSTOM_WEIGHT, compound.getFloat("CustomWeight"));
@@ -2266,6 +2325,12 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
         }
         if (!this.installedTire.isEmpty()) {
             compound.put("InstalledTire", this.installedTire.save(this.registryAccess()));
+        }
+        if (this.frontTireType != null) {
+            compound.putString("FrontTire", this.frontTireType.getId());
+        }
+        if (this.rearTireType != null) {
+            compound.putString("RearTire", this.rearTireType.getId());
         }
         compound.putDouble("BatteryAccumulatedDist", this.accumulatedDistance);
         compound.putFloat("CustomWeight", this.entityData.get(DATA_CUSTOM_WEIGHT));

@@ -61,6 +61,12 @@ public class RcCarItem extends Item {
                 if (tag.contains("Decals", 10)) {
                     car.setDecals(RcCarEntity.deserializeDecals(tag.getCompound("Decals")));
                 }
+                if (tag.contains("FrontTire")) {
+                    car.setFrontTireType(tag.getString("FrontTire"));
+                }
+                if (tag.contains("RearTire")) {
+                    car.setRearTireType(tag.getString("RearTire"));
+                }
             }
 
             if (variantToSet != null) {

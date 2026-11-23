@@ -375,5 +375,15 @@
   "gui.microdrone.pit_station.title": "RC PIT STATION // 3D Tuning Pit",
   "gui.microdrone.pit_station.help": "Left Drag: 360° Rotate | Scroll: Zoom | Right Drag: Pan",
   "gui.microdrone.pit_station.reset": "⟲ Reset Camera",
-  "gui.microdrone.pit_station.empty": "Right-click with an RC vehicle in hand to place it on the pit station"
+  "gui.microdrone.pit_station.empty": "Right-click with an RC vehicle in hand to place it on the pit station",
+  "gui.microdrone.pit_station.front_tires": "Front Tires",
+  "gui.microdrone.pit_station.rear_tires": "Rear Tires",
+  "gui.microdrone.pit_station.save": "Save Tuning",
+  "gui.microdrone.pit_station.take_out": "Take Out Vehicle",
+  "gui.microdrone.pit_station.spec_agility": "Turn-in Grip",
+  "gui.microdrone.pit_station.spec_traction": "Traction Accel",
+  "gui.microdrone.pit_station.spec_drift": "Drift Slide",
+  "gui.microdrone.pit_station.spec_allweather": "Offroad / Ice",
+  "chat.microdrone.pit_station.saved": "§b[RC Pit]§r Tire setup saved to vehicle!",
+  "chat.microdrone.pit_station.saved_and_taken": "§a[RC Pit]§r Tire setup applied and vehicle retrieved!"
 }

@@ -299,4 +299,44 @@ public class ServerPayloadHandler {
             }
         });
     }
+
+    public static void handleUpdatePitTires(UpdatePitTiresPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (context.player() instanceof ServerPlayer player) {
+                var be = player.level().getBlockEntity(payload.stationPos());
+                if (be instanceof com.microdrone.mod.block.entity.RcPitStationBlockEntity station) {
+                    ItemStack vehicleStack = station.getStoredVehicle();
+                    if (!vehicleStack.isEmpty()) {
+                        net.minecraft.world.item.component.CustomData.update(
+                                net.minecraft.core.component.DataComponents.CUSTOM_DATA,
+                                vehicleStack,
+                                tag -> {
+                                    tag.putString("FrontTire", payload.frontTireId());
+                                    tag.putString("RearTire", payload.rearTireId());
+                                }
+                        );
+                        station.setStoredVehicle(vehicleStack);
+                        station.setChanged();
+                        player.level().sendBlockUpdated(payload.stationPos(), station.getBlockState(), station.getBlockState(), 3);
+
+                        if (payload.takeOut()) {
+                            // セッティングを適用して手元に回収
+                            station.setStoredVehicle(ItemStack.EMPTY);
+                            station.setChanged();
+                            player.level().sendBlockUpdated(payload.stationPos(), station.getBlockState(), station.getBlockState(), 3);
+                            player.level().playSound(null, payload.stationPos(), net.minecraft.sounds.SoundEvents.ITEM_PICKUP, net.minecraft.sounds.SoundSource.BLOCKS, 0.8F, 1.0F);
+                            if (!player.getInventory().add(vehicleStack)) {
+                                player.drop(vehicleStack, false);
+                            }
+                            player.displayClientMessage(net.minecraft.network.chat.Component.translatable("chat.microdrone.pit_station.saved_and_taken"), true);
+                        } else {
+                            // セッティングを作業台上の車両に保存
+                            player.level().playSound(null, payload.stationPos(), net.minecraft.sounds.SoundEvents.ANVIL_USE, net.minecraft.sounds.SoundSource.BLOCKS, 0.6F, 1.3F);
+                            player.displayClientMessage(net.minecraft.network.chat.Component.translatable("chat.microdrone.pit_station.saved"), true);
+                        }
+                    }
+                }
+            }
+        });
+    }
 }

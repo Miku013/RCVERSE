@@ -397,5 +397,15 @@
   "gui.microdrone.pit_station.title": "RC PIT STATION // 3Dチューニングピット",
   "gui.microdrone.pit_station.help": "左ドラッグ: 360°自由回転 | ホイール: ズーム | 右ドラッグ: 平行移動",
   "gui.microdrone.pit_station.reset": "⟲ アングル初期化",
-  "gui.microdrone.pit_station.empty": "RCマシンを手に持って作業台をクリックしてセットしてください"
+  "gui.microdrone.pit_station.empty": "RCマシンを手に持って作業台をクリックしてセットしてください",
+  "gui.microdrone.pit_station.front_tires": "前輪タイヤ (Front)",
+  "gui.microdrone.pit_station.rear_tires": "後輪タイヤ (Rear)",
+  "gui.microdrone.pit_station.save": "セッティング保存",
+  "gui.microdrone.pit_station.take_out": "マシンを取り出す",
+  "gui.microdrone.pit_station.spec_agility": "回頭性 (Turn-in)",
+  "gui.microdrone.pit_station.spec_traction": "加速力 (Traction)",
+  "gui.microdrone.pit_station.spec_drift": "ドリフト性 (Slide)",
+  "gui.microdrone.pit_station.spec_allweather": "走破性 (Offroad/Ice)",
+  "chat.microdrone.pit_station.saved": "§b[RCピット]§r タイヤセッティングを保存しました！",
+  "chat.microdrone.pit_station.saved_and_taken": "§a[RCピット]§r タイヤセッティングを適用し、マシンを回収しました！"
 }
