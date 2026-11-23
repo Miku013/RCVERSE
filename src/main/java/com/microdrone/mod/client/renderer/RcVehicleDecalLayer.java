@@ -83,10 +83,6 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
             }
 
             float unitScale = 0.0625f; // Blockbench (1/16 block) -> Minecraft block
-
-            // 【第1段階：対象キューブ面の探索と境界クリッピング】
-            GeoCubeFaceRaycaster.ModelCubeFace targetFace = null;
-            float bestDistSq = Float.MAX_VALUE;
             Vector3f decalPos = new Vector3f(decal.getPosX(), decal.getPosY(), decal.getPosZ());
 
             // デカールの向きから法線を計算
@@ -97,81 +93,76 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
             Vector3f decalNormal = new Vector3f(0, 0, 1);
             decalRot.transform(decalNormal);
 
+            // 【第4段階：複数面またぎ（マルチ面プロジェクション）描画】
+            // ドアパネル、モール、斜めシルなど、ステッカーがまたがっている全キューブ面を探索し、各面ごとに分割クリッピング描画
             List<GeoCubeFaceRaycaster.ModelCubeFace> faces = GeoCubeFaceRaycaster.getModelFaces(modelLoc);
+            int renderedFaces = 0;
+
             for (GeoCubeFaceRaycaster.ModelCubeFace face : faces) {
                 if (!face.boneName.equalsIgnoreCase(boneName)) continue;
 
-                // 面の法線とおおむね同方向か判定（傾斜面を許容: cos 63° ≒ 0.45）
+                // 面の法線とおおむね同方向か判定（傾斜面・斜めシルを許容: cos 68° ≒ 0.37）
                 float dot = face.localNormal.dot(decalNormal);
-                if (dot < 0.45f) continue;
+                if (dot < 0.35f) continue;
 
-                // 面の平面上への射影距離と境界内外判定
+                // 面の平面上への射影距離（法線方向の深さズレ）を判定
                 Vector3f rel = new Vector3f(decalPos).sub(face.vertices[0]);
-                float u = rel.dot(face.uAxis);
-                float v = rel.dot(face.vAxis);
                 float distToPlane = Math.abs(rel.dot(face.localNormal));
+                if (distToPlane > 4.5f) continue; // 前後4.5 Blockbench単位以内
 
-                // 面の平面から離れすぎている面は除外 (3.5 Blockbench単位以内)
-                if (distToPlane > 3.5f) continue;
+                // この面に対するクリッピングQuad（3DプロジェクションUV付き）を生成
+                List<GeoCubeFaceRaycaster.ClippedVertex> clippedQuad =
+                        GeoCubeFaceRaycaster.getClippedDecalQuad(decal, face);
 
-                // 面の境界内にあるかを判定
-                boolean insideFace = (u >= -0.5f && u <= face.width + 0.5f && v >= -0.5f && v <= face.height + 0.5f);
-                float score = distToPlane * 10.0f + (insideFace ? 0.0f : 100.0f) + (1.0f - dot) * 20.0f;
+                if (!clippedQuad.isEmpty()) {
+                    renderedFaces++;
 
-                if (score < bestDistSq) {
-                    bestDistSq = score;
-                    targetFace = face;
+                    // 面の法線方向に微小オフセット (Z-fighting防止: 0.015f Blockbench単位)
+                    Vector3f fn = face.localNormal;
+                    float ox = fn.x * 0.015f;
+                    float oy = fn.y * 0.015f;
+                    float oz = fn.z * 0.015f;
+
+                    PoseStack.Pose currentPose = poseStack.last();
+                    Matrix4f matrix = currentPose.pose();
+
+                    GeoCubeFaceRaycaster.ClippedVertex v0 = clippedQuad.get(0);
+                    GeoCubeFaceRaycaster.ClippedVertex v1 = clippedQuad.get(1);
+                    GeoCubeFaceRaycaster.ClippedVertex v2 = clippedQuad.get(2);
+                    GeoCubeFaceRaycaster.ClippedVertex v3 = clippedQuad.get(3);
+
+                    decalConsumer.addVertex(matrix, (v0.pos.x + ox) * unitScale, (v0.pos.y + oy) * unitScale, (v0.pos.z + oz) * unitScale)
+                            .setColor(255, 255, 255, 255)
+                            .setUv(v0.u, v0.v)
+                            .setOverlay(packedOverlay)
+                            .setLight(packedLight)
+                            .setNormal(currentPose, fn.x, fn.y, fn.z);
+
+                    decalConsumer.addVertex(matrix, (v1.pos.x + ox) * unitScale, (v1.pos.y + oy) * unitScale, (v1.pos.z + oz) * unitScale)
+                            .setColor(255, 255, 255, 255)
+                            .setUv(v1.u, v1.v)
+                            .setOverlay(packedOverlay)
+                            .setLight(packedLight)
+                            .setNormal(currentPose, fn.x, fn.y, fn.z);
+
+                    decalConsumer.addVertex(matrix, (v2.pos.x + ox) * unitScale, (v2.pos.y + oy) * unitScale, (v2.pos.z + oz) * unitScale)
+                            .setColor(255, 255, 255, 255)
+                            .setUv(v2.u, v2.v)
+                            .setOverlay(packedOverlay)
+                            .setLight(packedLight)
+                            .setNormal(currentPose, fn.x, fn.y, fn.z);
+
+                    decalConsumer.addVertex(matrix, (v3.pos.x + ox) * unitScale, (v3.pos.y + oy) * unitScale, (v3.pos.z + oz) * unitScale)
+                            .setColor(255, 255, 255, 255)
+                            .setUv(v3.u, v3.v)
+                            .setOverlay(packedOverlay)
+                            .setLight(packedLight)
+                            .setNormal(currentPose, fn.x, fn.y, fn.z);
                 }
             }
 
-            List<GeoCubeFaceRaycaster.ClippedVertex> clippedQuad = (targetFace != null)
-                    ? GeoCubeFaceRaycaster.getClippedDecalQuad(decal, targetFace)
-                    : Collections.emptyList();
-
-            if (!clippedQuad.isEmpty()) {
-                // 面が見つかり、面の境界内にステッカーがある場合: 面の境界でクリッピングされたメッシュを直接描画
-                Vector3f fn = targetFace.localNormal;
-                float ox = fn.x * 0.015f;
-                float oy = fn.y * 0.015f;
-                float oz = fn.z * 0.015f;
-
-                PoseStack.Pose currentPose = poseStack.last();
-                Matrix4f matrix = currentPose.pose();
-
-                GeoCubeFaceRaycaster.ClippedVertex v0 = clippedQuad.get(0);
-                GeoCubeFaceRaycaster.ClippedVertex v1 = clippedQuad.get(1);
-                GeoCubeFaceRaycaster.ClippedVertex v2 = clippedQuad.get(2);
-                GeoCubeFaceRaycaster.ClippedVertex v3 = clippedQuad.get(3);
-
-                decalConsumer.addVertex(matrix, (v0.pos.x + ox) * unitScale, (v0.pos.y + oy) * unitScale, (v0.pos.z + oz) * unitScale)
-                        .setColor(255, 255, 255, 255)
-                        .setUv(v0.u, v0.v)
-                        .setOverlay(packedOverlay)
-                        .setLight(packedLight)
-                        .setNormal(currentPose, fn.x, fn.y, fn.z);
-
-                decalConsumer.addVertex(matrix, (v1.pos.x + ox) * unitScale, (v1.pos.y + oy) * unitScale, (v1.pos.z + oz) * unitScale)
-                        .setColor(255, 255, 255, 255)
-                        .setUv(v1.u, v1.v)
-                        .setOverlay(packedOverlay)
-                        .setLight(packedLight)
-                        .setNormal(currentPose, fn.x, fn.y, fn.z);
-
-                decalConsumer.addVertex(matrix, (v2.pos.x + ox) * unitScale, (v2.pos.y + oy) * unitScale, (v2.pos.z + oz) * unitScale)
-                        .setColor(255, 255, 255, 255)
-                        .setUv(v2.u, v2.v)
-                        .setOverlay(packedOverlay)
-                        .setLight(packedLight)
-                        .setNormal(currentPose, fn.x, fn.y, fn.z);
-
-                decalConsumer.addVertex(matrix, (v3.pos.x + ox) * unitScale, (v3.pos.y + oy) * unitScale, (v3.pos.z + oz) * unitScale)
-                        .setColor(255, 255, 255, 255)
-                        .setUv(v3.u, v3.v)
-                        .setOverlay(packedOverlay)
-                        .setLight(packedLight)
-                        .setNormal(currentPose, fn.x, fn.y, fn.z);
-            } else {
-                // 面が未検出または完全一致しない場合のフォールバック（通常の単一Quad描画）
+            if (renderedFaces == 0) {
+                // 面が1つも検出されない場合のフォールバック（通常の単一Quad描画）
                 poseStack.pushPose();
                 poseStack.translate(decal.getPosX() * unitScale, decal.getPosY() * unitScale, decal.getPosZ() * unitScale);
                 poseStack.mulPose(Axis.YP.rotationDegrees(decal.getRotY()));

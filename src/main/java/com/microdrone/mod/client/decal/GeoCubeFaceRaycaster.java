@@ -12,6 +12,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.util.Mth;
 import org.joml.Matrix4f;
+import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
 import java.io.InputStreamReader;
@@ -351,8 +352,8 @@ public class GeoCubeFaceRaycaster {
     }
 
     /**
-     * 【第1段階：対象面範囲外のクリッピングメッシュ生成】
-     * ステッカーがキューブ面からはみ出た場合、面の矩形境界で綺麗に切り落とす
+     * 【第4段階：複数面またぎ対応・対象面範囲外のクリッピングメッシュ生成】
+     * 面の境界で矩形クリッピングし、かつ3D空間プロジェクションによってUVを連続一致させる
      */
     public static List<ClippedVertex> getClippedDecalQuad(CarDecalData decal, ModelCubeFace face) {
         // ステッカーの基本サイズ
@@ -383,34 +384,53 @@ public class GeoCubeFaceRaycaster {
             return Collections.emptyList();
         }
 
-        // クリッピング後の4頂点におけるステッカーUVを逆算
-        // u = (curU - sMinU) / (sMaxU - sMinU)
-        float uRange = sMaxU - sMinU;
-        float vRange = sMaxV - sMinV;
-        if (uRange <= 0.001f || vRange <= 0.001f) return Collections.emptyList();
-
-        float uvU0 = (cMinU - sMinU) / uRange;
-        float uvU1 = (cMaxU - sMinU) / uRange;
-        float uvV0 = (cMinV - sMinV) / vRange;
-        float uvV1 = (cMaxV - sMinV) / vRange;
-
-        if (decal.isMirrorX()) {
-            float temp = uvU0;
-            uvU0 = 1.0f - uvU1;
-            uvU1 = 1.0f - temp;
-        }
-
-        // 面上の3D頂点座標を復元
+        // 面上のクリッピングされた4頂点を計算
         Vector3f p0 = new Vector3f(face.vertices[0]).add(new Vector3f(face.uAxis).mul(cMinU)).add(new Vector3f(face.vAxis).mul(cMinV));
         Vector3f p1 = new Vector3f(face.vertices[0]).add(new Vector3f(face.uAxis).mul(cMaxU)).add(new Vector3f(face.vAxis).mul(cMinV));
         Vector3f p2 = new Vector3f(face.vertices[0]).add(new Vector3f(face.uAxis).mul(cMaxU)).add(new Vector3f(face.vAxis).mul(cMaxV));
         Vector3f p3 = new Vector3f(face.vertices[0]).add(new Vector3f(face.uAxis).mul(cMinU)).add(new Vector3f(face.vAxis).mul(cMaxV));
 
+        // デカールの3Dローカル軸を計算してプロジェクションUVを正確に算出（複数面で絵が完全一致・連続する）
+        Quaternionf decalRot = new Quaternionf()
+                .rotateY(decal.getRotY() * Mth.DEG_TO_RAD)
+                .rotateX(decal.getRotX() * Mth.DEG_TO_RAD)
+                .rotateZ(decal.getRotZ() * Mth.DEG_TO_RAD);
+
+        Vector3f localXAxis = new Vector3f(1, 0, 0);
+        Vector3f localYAxis = new Vector3f(0, 1, 0);
+        decalRot.transform(localXAxis);
+        decalRot.transform(localYAxis);
+
+        float uvU0 = computeProjectionU(p0, decalPos, localXAxis, halfW, decal.isMirrorX());
+        float uvV0 = computeProjectionV(p0, decalPos, localYAxis, halfH);
+
+        float uvU1 = computeProjectionU(p1, decalPos, localXAxis, halfW, decal.isMirrorX());
+        float uvV1 = computeProjectionV(p1, decalPos, localYAxis, halfH);
+
+        float uvU2 = computeProjectionU(p2, decalPos, localXAxis, halfW, decal.isMirrorX());
+        float uvV2 = computeProjectionV(p2, decalPos, localYAxis, halfH);
+
+        float uvU3 = computeProjectionU(p3, decalPos, localXAxis, halfW, decal.isMirrorX());
+        float uvV3 = computeProjectionV(p3, decalPos, localYAxis, halfH);
+
         List<ClippedVertex> result = new ArrayList<>(4);
         result.add(new ClippedVertex(p0, uvU0, uvV0));
-        result.add(new ClippedVertex(p1, uvU1, uvV0));
-        result.add(new ClippedVertex(p2, uvU1, uvV1));
-        result.add(new ClippedVertex(p3, uvU0, uvV1));
+        result.add(new ClippedVertex(p1, uvU1, uvV1));
+        result.add(new ClippedVertex(p2, uvU2, uvV2));
+        result.add(new ClippedVertex(p3, uvU3, uvV3));
         return result;
+    }
+
+    private static float computeProjectionU(Vector3f p, Vector3f center, Vector3f xAxis, float halfW, boolean mirrorX) {
+        Vector3f delta = new Vector3f(p).sub(center);
+        float projX = delta.dot(xAxis);
+        float u = (projX / (2.0f * halfW)) + 0.5f;
+        return mirrorX ? (1.0f - u) : u;
+    }
+
+    private static float computeProjectionV(Vector3f p, Vector3f center, Vector3f yAxis, float halfH) {
+        Vector3f delta = new Vector3f(p).sub(center);
+        float projY = delta.dot(yAxis);
+        return 0.5f - (projY / (2.0f * halfH));
     }
 }
