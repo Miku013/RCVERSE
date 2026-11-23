@@ -222,6 +222,12 @@ public class RcPitStationScreen extends Screen {
                 takeOut
         ));
         if (takeOut) {
+            if (this.minecraft != null && this.minecraft.level != null) {
+                var be = this.minecraft.level.getBlockEntity(this.blockPos);
+                if (be instanceof com.microdrone.mod.block.entity.RcPitStationBlockEntity station) {
+                    station.setStoredVehicle(ItemStack.EMPTY);
+                }
+            }
             this.onClose();
         }
     }

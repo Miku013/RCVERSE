@@ -54,14 +54,20 @@ public class RcPitStationBlockEntity extends BlockEntity {
     @Override
     public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
         CompoundTag tag = super.getUpdateTag(registries);
-        if (!this.storedVehicle.isEmpty()) {
-            tag.put("StoredVehicle", this.storedVehicle.save(registries));
-        }
+        saveAdditional(tag, registries);
         return tag;
     }
 
     @Override
     public Packet<ClientGamePacketListener> getUpdatePacket() {
         return ClientboundBlockEntityDataPacket.create(this);
+    }
+
+    @Override
+    public void onDataPacket(net.minecraft.network.Connection net, ClientboundBlockEntityDataPacket pkt, HolderLookup.Provider lookupProvider) {
+        CompoundTag tag = pkt.getTag();
+        if (tag != null) {
+            loadAdditional(tag, lookupProvider);
+        }
     }
 }

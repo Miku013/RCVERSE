@@ -1990,3 +1990,19 @@ c-1.mp4（ドリフト・ジャンプ・戦車射撃シーン）を docs/videos/
 ### 2. バックアップとビルド成果物
 - バックアップフォルダ: `backup/20261123_181659/rcverse-1.21.1-1.0.32.jar`
 - ビルド成果物: `build/libs/rcverse-1.21.1-1.0.33.jar` (JAR内部検証済み: spider関連エントリ完全ゼロ)
+
+## [2026-11-23] ピット作業台 マシン取り出し時の残像不具合修正 (v1.0.34)
+
+### 1. 原因の特定と修正内容
+- **不具合の原因**:
+  - `RcPitStationBlockEntity.java` に `onDataPacket` メソッドがオーバーライドされていなかった。
+  - そのため、サーバー側で「マシンを取り出す」を実行して `storedVehicle = ItemStack.EMPTY` とし、`sendBlockUpdated`（ブロック更新パケット）を送信しても、クライアント側で `loadAdditional` が実行されず、クライアントのメモリ上に取り出し前の古いマシン情報が保持され続けていた。
+  - これにより、ブロックエンティティレンダラーが古い車両データを描画し続け、「テーブル上に残像が残る」現象が発生していた。
+- **対策**:
+  - `RcPitStationBlockEntity.java` に `onDataPacket` を実装し、クライアント側でパケット受信時に確実に `loadAdditional` が呼ばれてデータが空にクリアされるように修正。
+  - `getUpdateTag` で `saveAdditional` を確実に呼ぶように改修。
+  - `RcPitStationScreen.java` の「マシンを取り出す」押下時にも、ローカルのクライアント側 `RcPitStationBlockEntity` の `storedVehicle` を即座に `ItemStack.EMPTY` にセットする即時同期フェイルセーフを追加。画面を閉じた瞬間に残像が一切残らないよう完全対策。
+
+### 2. バックアップとビルド成果物
+- バックアップフォルダ: `backup/20261123_204353/rcverse-1.21.1-1.0.33.jar`
+- ビルド成果物: `build/libs/rcverse-1.21.1-1.0.34.jar`
