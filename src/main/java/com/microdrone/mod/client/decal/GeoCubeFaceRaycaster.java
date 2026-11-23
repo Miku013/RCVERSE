@@ -422,8 +422,15 @@ public class GeoCubeFaceRaycaster {
 
         Vector3f localXAxis = new Vector3f(1, 0, 0);
         Vector3f localYAxis = new Vector3f(0, 1, 0);
+        Vector3f decalNormal = new Vector3f(0, 0, 1);
         decalRot.transform(localXAxis);
         decalRot.transform(localYAxis);
+        decalRot.transform(decalNormal);
+
+        // デカール裏面から車体に向かう垂直プロジェクション光線の向き
+        Vector3f rayDir = new Vector3f(decalNormal).negate().normalize();
+        float denom = rayDir.dot(face.localNormal);
+        if (Math.abs(denom) < 0.0001f) return Collections.emptyList();
 
         // デカール矩形の4隅の3Dワールド座標（ボーンローカル座標系）
         Vector3f c0 = new Vector3f(decalPos).add(new Vector3f(localXAxis).mul(-halfW)).add(new Vector3f(localYAxis).mul(halfH));
@@ -431,7 +438,7 @@ public class GeoCubeFaceRaycaster {
         Vector3f c2 = new Vector3f(decalPos).add(new Vector3f(localXAxis).mul(halfW)).add(new Vector3f(localYAxis).mul(-halfH));
         Vector3f c3 = new Vector3f(decalPos).add(new Vector3f(localXAxis).mul(-halfW)).add(new Vector3f(localYAxis).mul(-halfH));
 
-        // 4隅を面の2D空間（uAxis, vAxis）に射影し、包含矩形 [minU, maxU] x [minV, maxV] を計算
+        // 4隅から画像の裏面に向かって直角にレイを飛ばし、面の無限平面との正確な交点を算出
         Vector3f[] corners = {c0, c1, c2, c3};
         float minU = Float.MAX_VALUE;
         float maxU = -Float.MAX_VALUE;
@@ -439,7 +446,11 @@ public class GeoCubeFaceRaycaster {
         float maxV = -Float.MAX_VALUE;
 
         for (Vector3f corner : corners) {
-            Vector3f rel = new Vector3f(corner).sub(face.vertices[0]);
+            Vector3f v0ToCorner = new Vector3f(face.vertices[0]).sub(corner);
+            float t = v0ToCorner.dot(face.localNormal) / denom;
+            Vector3f hitPointOnPlane = new Vector3f(corner).add(new Vector3f(rayDir).mul(t));
+
+            Vector3f rel = new Vector3f(hitPointOnPlane).sub(face.vertices[0]);
             float u = rel.dot(face.uAxis);
             float v = rel.dot(face.vAxis);
             if (u < minU) minU = u;

@@ -156,9 +156,10 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
             for (RenderableFaceQuad rq : visibleQuads) {
                 renderedFaces++;
                 Vector3f fn = rq.face.localNormal;
-                float ox = fn.x * 0.015f;
-                float oy = fn.y * 0.015f;
-                float oz = fn.z * 0.015f;
+                // 傾斜キューブでの浮動小数点演算誤差によるZめり込みを防止（実寸約3.7mm浮かせる）
+                float ox = fn.x * 0.06f;
+                float oy = fn.y * 0.06f;
+                float oz = fn.z * 0.06f;
 
                 PoseStack.Pose currentPose = poseStack.last();
                 Matrix4f matrix = currentPose.pose();
