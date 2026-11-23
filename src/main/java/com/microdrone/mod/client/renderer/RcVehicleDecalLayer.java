@@ -93,11 +93,22 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
             Vector3f decalNormal = new Vector3f(0, 0, 1);
             decalRot.transform(decalNormal);
 
-            // 【第4段階：複数面またぎ（マルチ面プロジェクション）描画】
-            // ドアパネル、モール、斜めシルなど、ステッカーがまたがっている全キューブ面を探索し、各面ごとに分割クリッピング描画
+            // 【第4段階＆第3段階：複数面またぎ描画＆最前面遮蔽判定（2重描画防止）】
             List<GeoCubeFaceRaycaster.ModelCubeFace> faces = GeoCubeFaceRaycaster.getModelFaces(modelLoc);
-            int renderedFaces = 0;
 
+            class RenderableFaceQuad {
+                final GeoCubeFaceRaycaster.ModelCubeFace face;
+                final List<GeoCubeFaceRaycaster.ClippedVertex> quad;
+                final float depth;
+
+                RenderableFaceQuad(GeoCubeFaceRaycaster.ModelCubeFace face, List<GeoCubeFaceRaycaster.ClippedVertex> quad, float depth) {
+                    this.face = face;
+                    this.quad = quad;
+                    this.depth = depth;
+                }
+            }
+
+            List<RenderableFaceQuad> candidates = new java.util.ArrayList<>();
             for (GeoCubeFaceRaycaster.ModelCubeFace face : faces) {
                 if (!face.boneName.equalsIgnoreCase(boneName)) continue;
 
@@ -108,57 +119,85 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
                 // 面の平面上への射影距離（法線方向の深さズレ）を判定
                 Vector3f rel = new Vector3f(decalPos).sub(face.vertices[0]);
                 float distToPlane = Math.abs(rel.dot(face.localNormal));
-                if (distToPlane > 4.5f) continue; // 前後4.5 Blockbench単位以内
+                if (distToPlane > 3.5f) continue;
 
-                // この面に対するクリッピングQuad（3DプロジェクションUV付き）を生成
                 List<GeoCubeFaceRaycaster.ClippedVertex> clippedQuad =
                         GeoCubeFaceRaycaster.getClippedDecalQuad(decal, face);
 
                 if (!clippedQuad.isEmpty()) {
-                    renderedFaces++;
-
-                    // 面の法線方向に微小オフセット (Z-fighting防止: 0.015f Blockbench単位)
-                    Vector3f fn = face.localNormal;
-                    float ox = fn.x * 0.015f;
-                    float oy = fn.y * 0.015f;
-                    float oz = fn.z * 0.015f;
-
-                    PoseStack.Pose currentPose = poseStack.last();
-                    Matrix4f matrix = currentPose.pose();
-
-                    GeoCubeFaceRaycaster.ClippedVertex v0 = clippedQuad.get(0);
-                    GeoCubeFaceRaycaster.ClippedVertex v1 = clippedQuad.get(1);
-                    GeoCubeFaceRaycaster.ClippedVertex v2 = clippedQuad.get(2);
-                    GeoCubeFaceRaycaster.ClippedVertex v3 = clippedQuad.get(3);
-
-                    decalConsumer.addVertex(matrix, (v0.pos.x + ox) * unitScale, (v0.pos.y + oy) * unitScale, (v0.pos.z + oz) * unitScale)
-                            .setColor(255, 255, 255, 255)
-                            .setUv(v0.u, v0.v)
-                            .setOverlay(packedOverlay)
-                            .setLight(packedLight)
-                            .setNormal(currentPose, fn.x, fn.y, fn.z);
-
-                    decalConsumer.addVertex(matrix, (v1.pos.x + ox) * unitScale, (v1.pos.y + oy) * unitScale, (v1.pos.z + oz) * unitScale)
-                            .setColor(255, 255, 255, 255)
-                            .setUv(v1.u, v1.v)
-                            .setOverlay(packedOverlay)
-                            .setLight(packedLight)
-                            .setNormal(currentPose, fn.x, fn.y, fn.z);
-
-                    decalConsumer.addVertex(matrix, (v2.pos.x + ox) * unitScale, (v2.pos.y + oy) * unitScale, (v2.pos.z + oz) * unitScale)
-                            .setColor(255, 255, 255, 255)
-                            .setUv(v2.u, v2.v)
-                            .setOverlay(packedOverlay)
-                            .setLight(packedLight)
-                            .setNormal(currentPose, fn.x, fn.y, fn.z);
-
-                    decalConsumer.addVertex(matrix, (v3.pos.x + ox) * unitScale, (v3.pos.y + oy) * unitScale, (v3.pos.z + oz) * unitScale)
-                            .setColor(255, 255, 255, 255)
-                            .setUv(v3.u, v3.v)
-                            .setOverlay(packedOverlay)
-                            .setLight(packedLight)
-                            .setNormal(currentPose, fn.x, fn.y, fn.z);
+                    float depth = face.localCenter.dot(decalNormal);
+                    candidates.add(new RenderableFaceQuad(face, clippedQuad, depth));
                 }
+            }
+
+            // 最前面ソート（手前・外側にある面を優先）
+            candidates.sort((a, b) -> Float.compare(b.depth, a.depth));
+
+            // 遮蔽カリング（手前のモールや突起に隠れる奥の面の2重描画を完全に除外）
+            List<RenderableFaceQuad> visibleQuads = new java.util.ArrayList<>();
+            for (RenderableFaceQuad cand : candidates) {
+                boolean occluded = false;
+                for (RenderableFaceQuad front : visibleQuads) {
+                    if (front.depth - cand.depth > 0.2f) { // front が明らかに手前
+                        Vector3f frontCenter = new Vector3f(front.quad.get(0).pos).add(front.quad.get(2).pos).mul(0.5f);
+                        Vector3f candCenter = new Vector3f(cand.quad.get(0).pos).add(cand.quad.get(2).pos).mul(0.5f);
+                        Vector3f diff = new Vector3f(candCenter).sub(frontCenter);
+                        float dotNorm = diff.dot(decalNormal);
+                        float dist2D = (float) Math.sqrt(Math.max(0.0f, diff.lengthSquared() - dotNorm * dotNorm));
+                        if (dist2D < 2.5f) { // 2D平面上で重なり合っている
+                            occluded = true;
+                            break;
+                        }
+                    }
+                }
+                if (!occluded) {
+                    visibleQuads.add(cand);
+                }
+            }
+
+            int renderedFaces = 0;
+            for (RenderableFaceQuad rq : visibleQuads) {
+                renderedFaces++;
+                Vector3f fn = rq.face.localNormal;
+                float ox = fn.x * 0.015f;
+                float oy = fn.y * 0.015f;
+                float oz = fn.z * 0.015f;
+
+                PoseStack.Pose currentPose = poseStack.last();
+                Matrix4f matrix = currentPose.pose();
+
+                GeoCubeFaceRaycaster.ClippedVertex v0 = rq.quad.get(0);
+                GeoCubeFaceRaycaster.ClippedVertex v1 = rq.quad.get(1);
+                GeoCubeFaceRaycaster.ClippedVertex v2 = rq.quad.get(2);
+                GeoCubeFaceRaycaster.ClippedVertex v3 = rq.quad.get(3);
+
+                decalConsumer.addVertex(matrix, (v0.pos.x + ox) * unitScale, (v0.pos.y + oy) * unitScale, (v0.pos.z + oz) * unitScale)
+                        .setColor(255, 255, 255, 255)
+                        .setUv(v0.u, v0.v)
+                        .setOverlay(packedOverlay)
+                        .setLight(packedLight)
+                        .setNormal(currentPose, fn.x, fn.y, fn.z);
+
+                decalConsumer.addVertex(matrix, (v1.pos.x + ox) * unitScale, (v1.pos.y + oy) * unitScale, (v1.pos.z + oz) * unitScale)
+                        .setColor(255, 255, 255, 255)
+                        .setUv(v1.u, v1.v)
+                        .setOverlay(packedOverlay)
+                        .setLight(packedLight)
+                        .setNormal(currentPose, fn.x, fn.y, fn.z);
+
+                decalConsumer.addVertex(matrix, (v2.pos.x + ox) * unitScale, (v2.pos.y + oy) * unitScale, (v2.pos.z + oz) * unitScale)
+                        .setColor(255, 255, 255, 255)
+                        .setUv(v2.u, v2.v)
+                        .setOverlay(packedOverlay)
+                        .setLight(packedLight)
+                        .setNormal(currentPose, fn.x, fn.y, fn.z);
+
+                decalConsumer.addVertex(matrix, (v3.pos.x + ox) * unitScale, (v3.pos.y + oy) * unitScale, (v3.pos.z + oz) * unitScale)
+                        .setColor(255, 255, 255, 255)
+                        .setUv(v3.u, v3.v)
+                        .setOverlay(packedOverlay)
+                        .setLight(packedLight)
+                        .setNormal(currentPose, fn.x, fn.y, fn.z);
             }
 
             if (renderedFaces == 0) {
