@@ -287,31 +287,44 @@ public class GeoCubeFaceRaycaster {
 
         if (closestFace == null) return null;
 
-        // 法線から最適な配置回転角（Yaw, Pitch, Roll）を逆算
-        Vector3f n = closestFace.localNormal;
-        float rotY = 0.0f;
-        float rotX = 0.0f;
-        float rotZ = 0.0f;
+        // 【第2段階：回転キューブの法線・軸から完全なYaw/Pitch/Rollオイラー角を逆算】
+        Vector3f angles = computeFaceAngles(closestFace);
+        return new RayHitResult(closestFace, closestHitPoint, closestDist, angles.y, angles.x, angles.z);
+    }
 
-        if (Math.abs(n.y) > 0.85f) {
-            // 上面 (ルーフ/ボンネット) または下面
-            rotX = n.y > 0 ? -90.0f : 90.0f;
-            rotY = 0.0f;
-        } else if (Math.abs(n.x) > 0.85f) {
-            // 左右ドア面
-            rotY = n.x > 0 ? 90.0f : -90.0f;
-            rotX = 0.0f;
-        } else if (Math.abs(n.z) > 0.85f) {
-            // 前後面
-            rotY = n.z > 0 ? 0.0f : 180.0f;
-            rotX = 0.0f;
+    /**
+     * 【第2段階：面の法線と基準軸からオイラー角（rotX: Pitch, rotY: Yaw, rotZ: Roll）を正確に計算】
+     * 12.5°傾いたシルや27.5°傾いたボンネットなど、あらゆる傾斜・回転キューブにピタリと追従
+     */
+    public static Vector3f computeFaceAngles(ModelCubeFace face) {
+        Vector3f zAxis = new Vector3f(face.localNormal).normalize();
+        Vector3f yAxis = new Vector3f(face.vAxis).negate().normalize(); // 面の上方向
+        Vector3f xAxis = new Vector3f(yAxis).cross(zAxis).normalize();
+        // yAxis を直交補正
+        yAxis.set(zAxis).cross(xAxis).normalize();
+
+        // 回転行列 R = [xAxis, yAxis, zAxis] から R = Ry(rotY) * Rx(rotX) * Rz(rotZ) を分解
+        // r00 = xAxis.x, r10 = xAxis.y, r20 = xAxis.z
+        // r01 = yAxis.x, r11 = yAxis.y, r21 = yAxis.z
+        // r02 = zAxis.x, r12 = zAxis.y, r22 = zAxis.z
+
+        float r12 = zAxis.y;
+        float rotX = (float) Math.toDegrees(-Math.asin(Mth.clamp(r12, -1.0f, 1.0f)));
+
+        float rotY;
+        float rotZ;
+        float cosPitch = (float) Math.cos(Math.toRadians(rotX));
+
+        if (Math.abs(cosPitch) > 0.005f) {
+            rotY = (float) Math.toDegrees(Math.atan2(zAxis.x, zAxis.z));
+            rotZ = (float) Math.toDegrees(Math.atan2(xAxis.y, yAxis.y));
         } else {
-            // 斜めブロック（シル等）の法線に沿った回転角
-            rotY = (float) Math.toDegrees(Math.atan2(n.x, n.z));
-            rotX = (float) Math.toDegrees(-Math.asin(Mth.clamp(n.y, -1.0f, 1.0f)));
+            // ジンバルロック（真上または真下向き）
+            rotY = (float) Math.toDegrees(Math.atan2(-xAxis.z, xAxis.x));
+            rotZ = 0.0f;
         }
 
-        return new RayHitResult(closestFace, closestHitPoint, closestDist, rotY, rotX, rotZ);
+        return new Vector3f(rotX, rotY, rotZ);
     }
 
     private static Float rayIntersectsTriangle(Vector3f rayOrigin, Vector3f rayDir,

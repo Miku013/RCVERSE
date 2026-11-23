@@ -100,11 +100,26 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
             List<GeoCubeFaceRaycaster.ModelCubeFace> faces = GeoCubeFaceRaycaster.getModelFaces(modelLoc);
             for (GeoCubeFaceRaycaster.ModelCubeFace face : faces) {
                 if (!face.boneName.equalsIgnoreCase(boneName)) continue;
-                if (face.localNormal.dot(decalNormal) < 0.65f) continue; // おおむね同方向の面
 
-                float distSq = face.localCenter.distanceSquared(decalPos);
-                if (distSq < bestDistSq) {
-                    bestDistSq = distSq;
+                // 面の法線とおおむね同方向か判定（傾斜面を許容: cos 63° ≒ 0.45）
+                float dot = face.localNormal.dot(decalNormal);
+                if (dot < 0.45f) continue;
+
+                // 面の平面上への射影距離と境界内外判定
+                Vector3f rel = new Vector3f(decalPos).sub(face.vertices[0]);
+                float u = rel.dot(face.uAxis);
+                float v = rel.dot(face.vAxis);
+                float distToPlane = Math.abs(rel.dot(face.localNormal));
+
+                // 面の平面から離れすぎている面は除外 (3.5 Blockbench単位以内)
+                if (distToPlane > 3.5f) continue;
+
+                // 面の境界内にあるかを判定
+                boolean insideFace = (u >= -0.5f && u <= face.width + 0.5f && v >= -0.5f && v <= face.height + 0.5f);
+                float score = distToPlane * 10.0f + (insideFace ? 0.0f : 100.0f) + (1.0f - dot) * 20.0f;
+
+                if (score < bestDistSq) {
+                    bestDistSq = score;
                     targetFace = face;
                 }
             }

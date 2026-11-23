@@ -785,6 +785,12 @@ public class DecalEditorScreen extends Screen {
                             cur.setPosX(snapped.x);
                             cur.setPosY(snapped.y);
                             cur.setPosZ(snapped.z);
+
+                            // 【第2段階：回転キューブの面の傾きに合わせて回転角（RotY, RotX, RotZ）も自動追従】
+                            org.joml.Vector3f angles = com.microdrone.mod.client.decal.GeoCubeFaceRaycaster.computeFaceAngles(bestFace);
+                            cur.setRotY(angles.y);
+                            cur.setRotX(angles.x);
+                            cur.setRotZ(angles.z);
                         } else {
                             cur.setPosX(newX);
                             cur.setPosY(newY);
