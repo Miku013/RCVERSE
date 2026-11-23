@@ -129,12 +129,13 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
             // 最前面ソート（手前・外側にある面を優先）
             candidates.sort((a, b) -> Float.compare(b.depth, a.depth));
 
-            // 遮蔽カリング（手前のモールや突起に隠れる奥の面の2重描画を完全に除外）
+            // 遮蔽カリング（車体内部の内装や反対側パネルなど、3.0ブロック以上奥にある面の突き抜け描画のみを除外）
+            // ※モール等の突起（0.4ブロック程度の段差）で下部のドアパネルが消えてしまわないよう閾値を3.0fに設定
             List<RenderableFaceQuad> visibleQuads = new java.util.ArrayList<>();
             for (RenderableFaceQuad cand : candidates) {
                 boolean occluded = false;
                 for (RenderableFaceQuad front : visibleQuads) {
-                    if (front.depth - cand.depth > 0.2f) { // front が明らかに手前
+                    if (front.depth - cand.depth > 3.0f) { // front が明らかに外装で、cand が奥の内装や裏面
                         Vector3f frontCenter = new Vector3f(front.quad.get(0).pos).add(front.quad.get(2).pos).mul(0.5f);
                         Vector3f candCenter = new Vector3f(cand.quad.get(0).pos).add(cand.quad.get(2).pos).mul(0.5f);
                         Vector3f diff = new Vector3f(candCenter).sub(frontCenter);
