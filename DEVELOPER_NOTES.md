@@ -1961,3 +1961,32 @@ c-1.mp4（ドリフト・ジャンプ・戦車射撃シーン）を docs/videos/
 ### 2. バックアップとビルド成果物
 - バックアップフォルダ: `backup/20261123_180517/rcverse-1.21.1-1.0.31.jar`
 - ビルド成果物: `build/libs/rcverse-1.21.1-1.0.32.jar`
+
+## [2026-11-23] 実験的「多脚戦車/多脚ロボット」データの完全削除・クリーンアップ (v1.0.33)
+
+### 1. 削除・修正内容
+- **背景**:
+  - 公式ロードマップ・仕様から「多脚戦車」が削除されたことに伴い、開発環境・クリエイティブタブに残っていた実験用データ（`RC_SPIDER_ITEM` 等）を完全に除去。
+- **削除対象ファイル**:
+  - `src/main/java/com/microdrone/mod/entity/spider/` (エンティティ本体およびIK計算システム)
+  - `src/main/java/com/microdrone/mod/client/controller/RcSpiderClientController.java`
+  - `src/main/java/com/microdrone/mod/client/model/RcSpiderGeoModel.java`
+  - `src/main/java/com/microdrone/mod/client/renderer/RcSpiderRenderer.java`
+  - `src/main/java/com/microdrone/mod/config/spider/`
+  - `src/main/java/com/microdrone/mod/item/RcSpiderItem.java`
+  - `assets/microdrone/geo/rc_spider.geo.json`
+  - `assets/microdrone/models/item/rc_spider_item.json`
+  - `assets/microdrone/textures/entity/rc_spider.png`
+  - `assets/microdrone/textures/item/rc_spider_item.png`
+- **共通登録クラスのクリーンアップ**:
+  - `ModCreativeTabs.java`: クリエイティブインベントリからの登録削除（アイコン完全消去）。
+  - `ModItems.java`: `RC_SPIDER_ITEM` の登録除去。
+  - `ModEntities.java`: `RC_SPIDER` の登録除去。
+  - `MicroDroneMod.java`: config init呼び出し除去。
+  - `ClientModEvents.java`: レンダラー・リロードリスナー登録除去。
+  - `ClientDroneInputHandler.java` & `ServerPayloadHandler.java`: 操縦入力ハンドラ分岐除去。
+  - `lang/ja_jp.json` & `lang/en_us.json`: 多脚関連のメッセージ・アイテム名を完全消去。
+
+### 2. バックアップとビルド成果物
+- バックアップフォルダ: `backup/20261123_181659/rcverse-1.21.1-1.0.32.jar`
+- ビルド成果物: `build/libs/rcverse-1.21.1-1.0.33.jar` (JAR内部検証済み: spider関連エントリ完全ゼロ)

@@ -1,7 +1,6 @@
 package com.microdrone.mod.entity;
 
 import com.microdrone.mod.MicroDroneMod;
-import com.microdrone.mod.entity.spider.RcSpiderEntity;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
@@ -60,14 +59,6 @@ public class ModEntities {
                     .clientTrackingRange(256)
                     .updateInterval(1)
                     .build("rc_submarine"));
-
-    public static final DeferredHolder<EntityType<?>, EntityType<RcSpiderEntity>> RC_SPIDER =
-            ENTITIES.register("rc_spider", () -> EntityType.Builder.<RcSpiderEntity>of(RcSpiderEntity::new, MobCategory.MISC)
-                    .sized(0.8f, 0.5f)
-                    .eyeHeight(0.4f)
-                    .clientTrackingRange(256)
-                    .updateInterval(1)
-                    .build("rc_spider"));
 
     public static final DeferredHolder<EntityType<?>, EntityType<RcPilotDummyEntity>> RC_PILOT_DUMMY =
             ENTITIES.register("rc_pilot_dummy", () -> EntityType.Builder.<RcPilotDummyEntity>of(RcPilotDummyEntity::new, MobCategory.MISC)
