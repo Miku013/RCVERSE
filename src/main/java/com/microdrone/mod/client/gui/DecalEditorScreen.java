@@ -745,12 +745,8 @@ public class DecalEditorScreen extends Screen {
                         float newY = Mth.clamp(cur.getPosY() + dY, 0.0f, 50.0f);
                         float newZ = Mth.clamp(cur.getPosZ() + dZ, -55.0f, 55.0f);
 
-                        // 【第1段階＆第2段階：キューブ面への法線考慮吸着判定】
+                        // 【画像垂直レイキャスト吸着：デカールから垂直にレイを飛ばし最初に当たった車体面に吸着】
                         ResourceLocation modelLoc = resolveModelLocation(this.previewEntity);
-                        List<com.microdrone.mod.client.decal.GeoCubeFaceRaycaster.ModelCubeFace> faces =
-                                com.microdrone.mod.client.decal.GeoCubeFaceRaycaster.getModelFaces(modelLoc);
-
-                        // デカールの法線（ステッカーの正面方向）を計算
                         org.joml.Quaternionf decalRot = new org.joml.Quaternionf()
                                 .rotateY(cur.getRotY() * Mth.DEG_TO_RAD)
                                 .rotateX(cur.getRotX() * Mth.DEG_TO_RAD)
@@ -758,50 +754,57 @@ public class DecalEditorScreen extends Screen {
                         Vector3f decalNormal = new Vector3f(0, 0, 1);
                         decalRot.transform(decalNormal);
 
-                        com.microdrone.mod.client.decal.GeoCubeFaceRaycaster.ModelCubeFace bestFace = null;
-                        float bestDistSq = Float.MAX_VALUE;
-                        Vector3f newPos = new Vector3f(newX, newY, newZ);
+                        Vector3f testPos = new Vector3f(newX, newY, newZ);
+                        com.microdrone.mod.client.decal.GeoCubeFaceRaycaster.RayHitResult hit =
+                                com.microdrone.mod.client.decal.GeoCubeFaceRaycaster.raycastFromDecal(modelLoc, testPos, decalNormal, cur.getTargetBone());
 
-                        for (com.microdrone.mod.client.decal.GeoCubeFaceRaycaster.ModelCubeFace face : faces) {
-                            String targetBone = cur.getTargetBone();
-                            if (targetBone != null && !targetBone.isBlank() && !face.boneName.equalsIgnoreCase(targetBone)) {
-                                if (!("body".equalsIgnoreCase(targetBone) || "chassis".equalsIgnoreCase(targetBone)) ||
-                                    !("body".equalsIgnoreCase(face.boneName) || "chassis".equalsIgnoreCase(face.boneName))) {
-                                    continue;
+                        if (hit != null) {
+                            cur.setPosX(hit.hitPoint.x);
+                            cur.setPosY(hit.hitPoint.y);
+                            cur.setPosZ(hit.hitPoint.z);
+                        } else {
+                            // レイが外れた場合のフォールバック（最も近い面の平面上に射影スナップ）
+                            List<com.microdrone.mod.client.decal.GeoCubeFaceRaycaster.ModelCubeFace> faces =
+                                    com.microdrone.mod.client.decal.GeoCubeFaceRaycaster.getModelFaces(modelLoc);
+
+                            com.microdrone.mod.client.decal.GeoCubeFaceRaycaster.ModelCubeFace bestFace = null;
+                            float bestDistSq = Float.MAX_VALUE;
+
+                            for (com.microdrone.mod.client.decal.GeoCubeFaceRaycaster.ModelCubeFace face : faces) {
+                                String targetBone = cur.getTargetBone();
+                                if (targetBone != null && !targetBone.isBlank() && !face.boneName.equalsIgnoreCase(targetBone)) {
+                                    if (!("body".equalsIgnoreCase(targetBone) || "chassis".equalsIgnoreCase(targetBone)) ||
+                                        !("body".equalsIgnoreCase(face.boneName) || "chassis".equalsIgnoreCase(face.boneName))) {
+                                        continue;
+                                    }
+                                }
+                                float dot = face.localNormal.dot(decalNormal);
+                                if (dot < 0.25f) continue;
+
+                                float distSq = face.localCenter.distanceSquared(testPos);
+                                if (distSq < bestDistSq && distSq < 300.0f) {
+                                    bestDistSq = distSq;
+                                    bestFace = face;
                                 }
                             }
 
-                            // デカールと同じ向き（法線の内積 > 0.25）の面のみを吸着対象とする（裏面や下面への誤吸着を防止）
-                            float dot = face.localNormal.dot(decalNormal);
-                            if (dot < 0.25f) continue;
+                            if (bestFace != null) {
+                                Vector3f rel = new Vector3f(testPos).sub(bestFace.vertices[0]);
+                                float uDist = Mth.clamp(rel.dot(bestFace.uAxis), 0.0f, bestFace.width);
+                                float vDist = Mth.clamp(rel.dot(bestFace.vAxis), 0.0f, bestFace.height);
 
-                            float distSq = face.localCenter.distanceSquared(newPos);
-                            if (distSq < bestDistSq && distSq < 200.0f) {
-                                bestDistSq = distSq;
-                                bestFace = face;
+                                Vector3f snapped = new Vector3f(bestFace.vertices[0])
+                                         .add(new Vector3f(bestFace.uAxis).mul(uDist))
+                                         .add(new Vector3f(bestFace.vAxis).mul(vDist));
+
+                                cur.setPosX(snapped.x);
+                                cur.setPosY(snapped.y);
+                                cur.setPosZ(snapped.z);
+                            } else {
+                                cur.setPosX(newX);
+                                cur.setPosY(newY);
+                                cur.setPosZ(newZ);
                             }
-                        }
-
-                        if (bestFace != null) {
-                            // 面の平面上に射影スナップ（法線方向のズレを解消し、車体表面にピッタリ密着）
-                            Vector3f rel = new Vector3f(newPos).sub(bestFace.vertices[0]);
-                            float uDist = rel.dot(bestFace.uAxis);
-                            float vDist = rel.dot(bestFace.vAxis);
-
-                            uDist = Mth.clamp(uDist, 0.0f, bestFace.width);
-                            vDist = Mth.clamp(vDist, 0.0f, bestFace.height);
-
-                            Vector3f snapped = new Vector3f(bestFace.vertices[0])
-                                     .add(new Vector3f(bestFace.uAxis).mul(uDist))
-                                     .add(new Vector3f(bestFace.vAxis).mul(vDist));
-
-                            cur.setPosX(snapped.x);
-                            cur.setPosY(snapped.y);
-                            cur.setPosZ(snapped.z);
-                        } else {
-                            cur.setPosX(newX);
-                            cur.setPosY(newY);
-                            cur.setPosZ(newZ);
                         }
 
                         syncSlidersFromCurrentDecal();

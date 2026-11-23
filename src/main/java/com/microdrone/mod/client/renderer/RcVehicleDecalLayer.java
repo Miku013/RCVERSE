@@ -99,18 +99,23 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
             }
 
             List<RenderableFaceQuad> candidates = new java.util.ArrayList<>();
+            Vector3f rayDir = new Vector3f(decalNormal).negate(); // デカールから車体へ向かう垂直プロジェクションレイ
+
             for (GeoCubeFaceRaycaster.ModelCubeFace face : faces) {
                 if (!face.boneName.equalsIgnoreCase(boneName)) continue;
 
-                // 面の法線とおおむね同方向か判定（傾斜面・斜めシル・傾斜フェンダーを許容: cos 75° ≒ 0.25）
+                // 面の法線とおおむね同方向か判定（デカールを向いている面: cos 75° ≒ 0.25）
                 float dot = face.localNormal.dot(decalNormal);
                 if (dot < 0.25f) continue;
 
-                // 面の平面上への射影距離（法線方向の深さズレ）を判定（デカール半径に応じた十分な許容値）
-                Vector3f rel = new Vector3f(decalPos).sub(face.vertices[0]);
-                float distToPlane = Math.abs(rel.dot(face.localNormal));
-                float maxDist = Math.max(5.0f, decal.getScale() * 0.5f);
-                if (distToPlane > maxDist) continue;
+                // プロジェクションレイ照射判定：
+                // デカールから垂直に車体へ飛ばしたレイの進行方向（rayDir）にある面を捕捉
+                // デカールが車体から離れていても（手前にある限り）、レイが届く深さ（最大40ブロック）まで確実に投影
+                Vector3f toFace = new Vector3f(face.localCenter).sub(decalPos);
+                float depthAlongRay = toFace.dot(rayDir);
+                if (depthAlongRay < -3.0f || depthAlongRay > 40.0f) {
+                    continue; // デカールの背後にある面、または遠すぎる面は除外
+                }
 
                 List<GeoCubeFaceRaycaster.ClippedVertex> clippedQuad =
                         GeoCubeFaceRaycaster.getClippedDecalQuad(decal, face);

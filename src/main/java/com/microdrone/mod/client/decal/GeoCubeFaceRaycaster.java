@@ -294,6 +294,56 @@ public class GeoCubeFaceRaycaster {
     }
 
     /**
+     * 【画像垂直レイキャスト】
+     * デカール位置から車体に向かって垂直にレイを飛ばし、
+     * 最初に当たった（最前面の）キューブ面の交点と面情報を取得する
+     */
+    public static RayHitResult raycastFromDecal(ResourceLocation modelLoc, Vector3f decalPos, Vector3f decalNormal, String preferredBone) {
+        List<ModelCubeFace> faces = getModelFaces(modelLoc);
+        if (faces.isEmpty()) return null;
+
+        Vector3f rayDir = new Vector3f(decalNormal).negate().normalize();
+        // デカール位置より手前（外側）から車体内部へレイを照射
+        Vector3f rayOrigin = new Vector3f(decalPos).add(new Vector3f(decalNormal).mul(15.0f));
+
+        ModelCubeFace closestFace = null;
+        float closestDist = Float.MAX_VALUE;
+        Vector3f closestHitPoint = new Vector3f();
+
+        for (ModelCubeFace face : faces) {
+            if (preferredBone != null && !preferredBone.isBlank() && !face.boneName.equalsIgnoreCase(preferredBone)) {
+                if (!("body".equalsIgnoreCase(preferredBone) || "chassis".equalsIgnoreCase(preferredBone)) ||
+                    !("body".equalsIgnoreCase(face.boneName) || "chassis".equalsIgnoreCase(face.boneName))) {
+                    continue;
+                }
+            }
+
+            // 面がデカール側を向いているか（法線の内積 > 0.25）
+            float dot = face.localNormal.dot(decalNormal);
+            if (dot < 0.25f) continue;
+
+            Float t1 = rayIntersectsTriangle(rayOrigin, rayDir, face.vertices[0], face.vertices[1], face.vertices[2]);
+            Float t2 = rayIntersectsTriangle(rayOrigin, rayDir, face.vertices[0], face.vertices[2], face.vertices[3]);
+
+            Float hitT = null;
+            if (t1 != null && t2 != null) hitT = Math.min(t1, t2);
+            else if (t1 != null) hitT = t1;
+            else if (t2 != null) hitT = t2;
+
+            if (hitT != null && hitT > 0 && hitT < closestDist) {
+                closestDist = hitT;
+                closestFace = face;
+                closestHitPoint.set(rayDir).mul(hitT).add(rayOrigin);
+            }
+        }
+
+        if (closestFace == null) return null;
+
+        Vector3f angles = computeFaceAngles(closestFace);
+        return new RayHitResult(closestFace, closestHitPoint, closestDist, angles.y, angles.x, angles.z);
+    }
+
+    /**
      * 【第2段階：面の法線と基準軸からオイラー角（rotX: Pitch, rotY: Yaw, rotZ: Roll）を正確に計算】
      * 12.5°傾いたシルや27.5°傾いたボンネットなど、あらゆる傾斜・回転キューブにピタリと追従
      */
@@ -328,7 +378,7 @@ public class GeoCubeFaceRaycaster {
         return new Vector3f(rotX, rotY, rotZ);
     }
 
-    private static Float rayIntersectsTriangle(Vector3f rayOrigin, Vector3f rayDir,
+    public static Float rayIntersectsTriangle(Vector3f rayOrigin, Vector3f rayDir,
                                                Vector3f v0, Vector3f v1, Vector3f v2) {
         final float EPSILON = 0.000001f;
         Vector3f edge1 = new Vector3f(v1).sub(v0);
