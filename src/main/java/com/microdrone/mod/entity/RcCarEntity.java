@@ -120,6 +120,10 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
             EntityDataSerializers.INT);
     private static final EntityDataAccessor<CompoundTag> DATA_DECALS = SynchedEntityData.defineId(RcCarEntity.class,
             EntityDataSerializers.COMPOUND_TAG);
+    private static final EntityDataAccessor<String> DATA_FRONT_TIRE = SynchedEntityData.defineId(RcCarEntity.class,
+            EntityDataSerializers.STRING);
+    private static final EntityDataAccessor<String> DATA_REAR_TIRE = SynchedEntityData.defineId(RcCarEntity.class,
+            EntityDataSerializers.STRING);
 
     // 車体ステッカー（デカール）リスト
     private final java.util.List<CarDecalData> decals = new java.util.ArrayList<>();
@@ -151,6 +155,12 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
     }
 
     public com.microdrone.mod.item.RcTireItem.TireType getFrontTireType() {
+        if (this.entityData != null) {
+            String id = this.entityData.get(DATA_FRONT_TIRE);
+            if (id != null && !id.isEmpty() && !"normal".equalsIgnoreCase(id)) {
+                return parseTireType(id);
+            }
+        }
         if (this.frontTireType != null) {
             return this.frontTireType;
         }
@@ -158,6 +168,12 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
     }
 
     public com.microdrone.mod.item.RcTireItem.TireType getRearTireType() {
+        if (this.entityData != null) {
+            String id = this.entityData.get(DATA_REAR_TIRE);
+            if (id != null && !id.isEmpty() && !"normal".equalsIgnoreCase(id)) {
+                return parseTireType(id);
+            }
+        }
         if (this.rearTireType != null) {
             return this.rearTireType;
         }
@@ -165,11 +181,19 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
     }
 
     public void setFrontTireType(String id) {
-        this.frontTireType = parseTireType(id);
+        String val = (id != null && !id.isEmpty()) ? id.toLowerCase() : "normal";
+        this.frontTireType = parseTireType(val);
+        if (this.entityData != null) {
+            this.entityData.set(DATA_FRONT_TIRE, val);
+        }
     }
 
     public void setRearTireType(String id) {
-        this.rearTireType = parseTireType(id);
+        String val = (id != null && !id.isEmpty()) ? id.toLowerCase() : "normal";
+        this.rearTireType = parseTireType(val);
+        if (this.entityData != null) {
+            this.entityData.set(DATA_REAR_TIRE, val);
+        }
     }
 
     private static com.microdrone.mod.item.RcTireItem.TireType parseTireType(String id) {
@@ -516,6 +540,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
         builder.define(DATA_DRIFT_START_ANGLE, 22.0f);
         builder.define(DATA_BODY_COLOR, -1);
         builder.define(DATA_DECALS, new CompoundTag());
+        builder.define(DATA_FRONT_TIRE, "normal");
+        builder.define(DATA_REAR_TIRE, "normal");
     }
 
     @Override
@@ -908,7 +934,8 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
             boolean hasOffroadImmunity = frontTire.isOffroadImmunity() || rearTire.isOffroadImmunity();
 
             this.realPhysics.setTireProperties(
-                    dynamicGrip,
+                    frontGrip,
+                    rearGrip,
                     scrubDrag,
                     hasIceImmunity,
                     hasOffroadImmunity
@@ -2275,10 +2302,10 @@ public class RcCarEntity extends Entity implements GeoEntity, RcControllable, co
                     .orElse(ItemStack.EMPTY);
         }
         if (compound.contains("FrontTire")) {
-            this.frontTireType = parseTireType(compound.getString("FrontTire"));
+            setFrontTireType(compound.getString("FrontTire"));
         }
         if (compound.contains("RearTire")) {
-            this.rearTireType = parseTireType(compound.getString("RearTire"));
+            setRearTireType(compound.getString("RearTire"));
         }
         this.accumulatedDistance = compound.getDouble("BatteryAccumulatedDist");
         if (compound.contains("CustomWeight", 99)) {

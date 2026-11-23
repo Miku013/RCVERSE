@@ -77,12 +77,16 @@ public class RealCarPhysics {
     private boolean tireOffroadImmunity = false;
 
     public void setTireProperties(float gripMult, float scrubMult, boolean iceImmunity, boolean offroadImmunity) {
-        this.tireGripMultiplier = gripMult;
+        setTireProperties(gripMult, gripMult, scrubMult, iceImmunity, offroadImmunity);
+    }
+
+    public void setTireProperties(float frontGripMult, float rearGripMult, float scrubMult, boolean iceImmunity, boolean offroadImmunity) {
+        this.tireGripMultiplier = (frontGripMult + rearGripMult) * 0.5f;
         this.tireScrubMultiplier = scrubMult;
         this.tireIceImmunity = iceImmunity;
         this.tireOffroadImmunity = offroadImmunity;
-        this.frontGrip = 1.12f * gripMult;
-        this.rearGrip = 1.02f * gripMult;
+        this.frontGrip = 1.12f * frontGripMult;
+        this.rearGrip = 1.02f * rearGripMult;
     }
 
     public void setSurfaceFriction(float friction) {

@@ -335,6 +335,28 @@ public class RcCarHudOverlay {
         String distStr = String.format("%dm", (int) Math.round(dist));
         int distColor = (dist < 80) ? 0xFFCBD5E1 : (dist < 110) ? 0xFFFCD34D : 0xFFF87171;
         graphics.drawString(font, distStr, rx + 14, ry, distColor, true);
+
+        // --- 3. 装着タイヤインジケータ (前後タイヤ) ---
+        var fTire = car.getFrontTireType();
+        var rTire = car.getRearTireType();
+        int ty = ry + 12;
+        int fColor = getTireColor(fTire);
+        int rColor = getTireColor(rTire);
+        String fShort = "F:" + fTire.getId().substring(0, Math.min(3, fTire.getId().length())).toUpperCase();
+        String rShort = "R:" + rTire.getId().substring(0, Math.min(3, rTire.getId().length())).toUpperCase();
+        graphics.drawString(font, fShort, rx, ty, fColor, true);
+        graphics.drawString(font, rShort, rx + font.width(fShort) + 3, ty, rColor, true);
+    }
+
+    private static int getTireColor(com.microdrone.mod.item.RcTireItem.TireType type) {
+        if (type == null) return 0xFFE2E8F0;
+        return switch (type) {
+            case DRIFT -> 0xFF38BDF8;
+            case GRIP -> 0xFFF59E0B;
+            case OFFROAD -> 0xFF22C55E;
+            case SPIKE -> 0xFFD946EF;
+            default -> 0xFFE2E8F0;
+        };
     }
 
     /**

@@ -1944,3 +1944,20 @@ c-1.mp4（ドリフト・ジャンプ・戦車射撃シーン）を docs/videos/
 ### 2. バックアップとビルド成果物
 - バックアップフォルダ: `backup/20261123_174900/rcverse-1.21.1-1.0.30.jar`
 - ビルド成果物: `build/libs/rcverse-1.21.1-1.0.31.jar`
+
+## [2026-11-23] タイヤ設定のクライアント同期（SynchedEntityData）不具合修正＆HUD表示対応 (v1.0.32)
+
+### 1. 原因の究明と修正内容
+- **問題の原因**:
+  - RCカーは操作の遅延ゼロを実現するため、ローカル操縦時（`locallyControlled`）にクライアントサイドで物理演算（`tickCarPhysics()` / `RealCarPhysics`）を実行する設計。
+  - しかし、前後タイヤ設定（`FrontTire`, `RearTire`）が `SynchedEntityData`（エンティティ同期データ）に登録されておらず、サーバー上のNBTとメモリ内のみに保持されていた。
+  - そのため、クライアント側の操縦中エンティティでは前後タイヤが未同期（デフォルトの `NORMAL`）として物理演算され、**「ピットで換装して取り出しても、操縦時に性能の変化が体感できない」状態**になっていた。
+- **対策**:
+  - `RcCarEntity.java` に `DATA_FRONT_TIRE` および `DATA_REAR_TIRE` を `SynchedEntityData` として定義・登録。
+  - `setFrontTireType` / `setRearTireType` で `entityData` を同期更新し、`getFrontTireType` / `getRearTireType` で同期値をリアルタイム取得するように改修。
+  - `RealCarPhysics.java` に前後独立グリップ対応の `setTireProperties(frontGripMult, rearGripMult, ...)` を実装。前輪と後輪で個別のグリップ値がダイレクトに物理反映されるよう強化。
+  - `RcCarHudOverlay.java` の右側計器下に、現在装着中の前後タイヤ表示（例: `F:DRI R:GRP`）をテーマカラー付きで追加。操縦中もどのタイヤで走っているかが一目でわかるように改善。
+
+### 2. バックアップとビルド成果物
+- バックアップフォルダ: `backup/20261123_180517/rcverse-1.21.1-1.0.31.jar`
+- ビルド成果物: `build/libs/rcverse-1.21.1-1.0.32.jar`
