@@ -553,7 +553,7 @@
           </div>
           <h3 class="feature-title">🎨 3D Decal Editor (Livery Workshop)</h3>
           <p class="feature-text">
-            Use the **Decal Workshop Table** to apply transparent PNG stickers directly to vehicle bodies. Real-time 3D rotation, scaling, and position sliders make custom liveries effortless!
+            Use the **Decal Workshop Table** to apply transparent PNG stickers directly to vehicle bodies. Powered by surface mesh projection, decals wrap seamlessly onto complex curved surfaces, angled armor, and custom Blockbench geometry!
           </p>
         </div>
       </div>
@@ -572,6 +572,51 @@
           </p>
         </div>
       </div>
+    </div>
+
+    <!-- Decal Surface Mesh Projection Gallery -->
+    <div style="margin-top: 30px; background: rgba(18, 20, 28, 0.75); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 14px; padding: 24px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+        <h3 style="margin: 0; color: #60a5fa; font-size: 1.2rem; display: flex; align-items: center; gap: 8px;">
+          <span>📸</span> Real-time Surface Mesh Decal Projection Showcase
+        </h3>
+        <span class="status-badge status-available" style="font-size: 0.8rem;">Surface Mesh Projection Live</span>
+      </div>
+      <p style="font-size: 0.92rem; color: #b0b4c8; margin-bottom: 18px; line-height: 1.6;">
+        Our new surface mesh projection algorithm clips decals directly onto Blockbench model polygons. Whether wrapping around the <strong>angled cabin of an RC boat</strong>, conforming to the <strong>cylindrical hull of an RC submarine</strong>, or adhering to the <strong>multi-layered sloped armor of an RC tank</strong>, decals stay firmly attached without distortion or depth fighting.
+      </p>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px;">
+        <div style="border-radius: 10px; overflow: hidden; background: #0c0d12; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 16px rgba(0,0,0,0.4);">
+          <a href="images/decal_sample_boat.jpg" target="_blank" title="Click to view full size" style="display: block; overflow: hidden;">
+            <img src="images/decal_sample_boat.jpg" alt="RC Boat Angled Cabin Decal Projection" style="width: 100%; height: 210px; object-fit: cover; display: block; transition: transform 0.3s ease;">
+          </a>
+          <div style="padding: 12px 14px; background: #151722; border-top: 1px solid rgba(255,255,255,0.06);">
+            <div style="font-weight: bold; color: #fff; font-size: 0.95rem; margin-bottom: 4px;">⛵ RC Speedboat</div>
+            <div style="font-size: 0.84rem; color: #94a3b8; line-height: 1.4;">Perfectly conforms to steep angled cabin geometry without gaps.</div>
+          </div>
+        </div>
+
+        <div style="border-radius: 10px; overflow: hidden; background: #0c0d12; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 16px rgba(0,0,0,0.4);">
+          <a href="images/decal_sample_submarine.jpg" target="_blank" title="Click to view full size" style="display: block; overflow: hidden;">
+            <img src="images/decal_sample_submarine.jpg" alt="RC Submarine Curved Hull Decal Projection" style="width: 100%; height: 210px; object-fit: cover; display: block; transition: transform 0.3s ease;">
+          </a>
+          <div style="padding: 12px 14px; background: #151722; border-top: 1px solid rgba(255,255,255,0.06);">
+            <div style="font-weight: bold; color: #fff; font-size: 0.95rem; margin-bottom: 4px;">🌊 RC Submarine</div>
+            <div style="font-size: 0.84rem; color: #94a3b8; line-height: 1.4;">Wraps naturally around stepped cylindrical hull curves.</div>
+          </div>
+        </div>
+
+        <div style="border-radius: 10px; overflow: hidden; background: #0c0d12; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 16px rgba(0,0,0,0.4);">
+          <a href="images/decal_sample_tank.jpg" target="_blank" title="Click to view full size" style="display: block; overflow: hidden;">
+            <img src="images/decal_sample_tank.jpg" alt="RC Tank Sloped Glacis Armor Decal Projection" style="width: 100%; height: 210px; object-fit: cover; display: block; transition: transform 0.3s ease;">
+          </a>
+          <div style="padding: 12px 14px; background: #151722; border-top: 1px solid rgba(255,255,255,0.06);">
+            <div style="font-weight: bold; color: #fff; font-size: 0.95rem; margin-bottom: 4px;">🛡️ RC Heavy Tank</div>
+            <div style="font-size: 0.84rem; color: #94a3b8; line-height: 1.4;">Accurately projected across complex tracks, steps, and armor plates.</div>
+          </div>
+        </div>
+      </div>
+    </div>
     </div>
   </section>
 

@@ -52,6 +52,13 @@ Drive, fly, sail, customize, and build your dream tracks with full physics, real
   - Swap tires on the fly to master any track: **Normal** (all-round), **Drift** (slick resin for huge power slides), **Grip** (asphalt track soft slicks), **Off-road** (mud/dirt +35% accel boost), and **Spike** (metal studs for ice biting).
 - **🎨 3D Decal Customizer & Workshop**:
   - Apply custom transparent PNG livery decals directly onto vehicle surfaces with real-time 3D translation, rotation, and scaling.
+  - **Surface Mesh Projection Engine**: Wraps seamlessly onto steep angled cabins, cylindrical submarine hulls, and complex multi-layered sloped armor without distortion or depth fighting!
+  - Supported on all vehicles: Cars, Planes, Boats, Submarines, Tanks, Drones, and the Villager Bicycle.
+
+| RC Speedboat (Angled Cabin) | RC Submarine (Curved Hull) | RC Heavy Tank (Sloped Armor) |
+| :---: | :---: | :---: |
+| ![RC Boat](docs/images/decal_sample_boat.jpg) | ![RC Submarine](docs/images/decal_sample_submarine.jpg) | ![RC Tank](docs/images/decal_sample_tank.jpg) |
+| Conforms tightly to steep cabin slopes | Wraps seamlessly around cylindrical curves | Multi-layered projection across tracks & armor |
 - **🧩 Custom Blockbench Models Supported**:
   - Effortlessly import custom vehicle models designed in Blockbench with multi-bone gecko hierarchies without writing code!
 - **🎬 Cinematic Broadcast & ReplayMod Compatible**:
@@ -69,6 +76,7 @@ Drive, fly, sail, customize, and build your dream tracks with full physics, real
 | **RC Airplane** | Air | Aerodynamic lift, pitch/roll/yaw control surfaces, landing gear |
 | **Speedboat** | Water | Hydrodynamic planing, water wake particles, high-speed rudder turn |
 | **RC Submarine** | Underwater | Ballast diving, underwater searchlights, neutrally buoyant cruising |
+| **Villager Bicycle** | Land | Pedal-synced leg animation, handlebar steering, bell sound |
 
 ---
 
@@ -108,7 +116,14 @@ Drive, fly, sail, customize, and build your dream tracks with full physics, real
 | ![アスファルト](docs/images/tracks/road_asphalt.jpg) | ![ダート](docs/images/tracks/road_dirt.jpg) | ![アイス](docs/images/tracks/road_ice.jpg) | ![水たまり](docs/images/tracks/road_puddle.jpg) |
 | 高速グリップ＆本格テールスライド | オフロードタイヤで加速+35%ブースト | 摩擦0.995の超スライド＆スパイクタイヤ対応 | 水しぶきエフェクト＆スリップ制御 |
 - **5大タイヤパーツチューニング**: ノーマル、ドリフト、グリップ、オフロード、スパイクタイヤを用途に合わせて自由に換装可能。
-- **デカール工房（リバリーエディタ）**: 車体に好きなステッカーを3D空間上で自由に配置・拡大縮小・回転。
+- **デカール工房（リバリーエディタ & 表面メッシュ投影）**:
+  - 車両の表面ポリゴンへ直接ステッカーを投影する新アルゴリズムを導入。
+  - ボートの鋭い傾斜面、潜水艦の円筒曲面、戦車の複雑な前面装甲・履帯周辺、村人の自転車まで、全車種に隙間や歪みなくピタッと吸着貼り付け。
+
+| RCボート（キャビン傾斜面） | RC潜水艦（円筒曲面ボディ） | RC戦車（前面傾斜装甲板） |
+| :---: | :---: | :---: |
+| ![RCボート](docs/images/decal_sample_boat.jpg) | ![RC潜水艦](docs/images/decal_sample_submarine.jpg) | ![RC戦車](docs/images/decal_sample_tank.jpg) |
+| 鋭角なキャビン斜面に立体密着 | 円筒ボディの曲面へシームレス吸着 | 凹凸や段差・履帯ガードへ正確投影 |
 - **自作モデル対応**: Blockbenchで作成したオリジナル車両モデルを簡単に導入可能。
 - **ReplayMod・シネマティック対応**: 複数台の同時一斉操縦、美しいレース映像やドリフト動画の撮影が可能。
 

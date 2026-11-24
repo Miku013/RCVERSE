@@ -29,8 +29,8 @@ import java.util.List;
  */
 public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolder> extends GeoRenderLayer<T> {
 
-    // デカール投影・形状診断ログ出力要求フラグ（エディタからのF4キーやボタン押下でトリガー）
-    public static volatile boolean requestDiagnosticsLog = false;
+    // 【B方式：車体表面メッシュ化デカール投影システムの有効化フラグ】
+    public static boolean USE_SURFACE_MESH_PROJECTOR = true;
 
     public RcVehicleDecalLayer(GeoEntityRenderer<T> entityRenderer) {
         super(entityRenderer);
@@ -59,9 +59,9 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
                 continue;
             }
 
-            // 指定されたボーンの描画タイミングで投影（body/chassisの重複描画を厳密に防止）
+            // 指定された代表ボーンの描画タイミングでのみ投影（二重描画・重複描画を完全に防止）
             String target = decal.getTargetBone();
-            if (!isBoneResponsibleForDecal(faces, boneName, target)) {
+            if (!isBoneResponsibleForDecal(animatable, modelLoc, faces, boneName, target)) {
                 continue;
             }
 
@@ -80,17 +80,6 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
                 editor.updateDecalPoseMatrix(poseStack.last().pose());
             }
 
-            // 診断ログ出力判定（エディタが開いている時はエディタプレビュー対象のみが出力）
-            boolean doDiagLog = requestDiagnosticsLog && (editor == null || isSelected);
-            StringBuilder diagSb = doDiagLog ? new StringBuilder() : null;
-            if (doDiagLog) {
-                diagSb.append("\n==================== [RC DECAL DIAGNOSTICS LOG] ====================\n");
-                diagSb.append(String.format("Model: %s | Target Bone: %s (Current Bone: %s)\n", modelLoc, target, boneName));
-                diagSb.append(String.format("Decal: tex=%s, pos=(%.2f, %.2f, %.2f), rot=(P:%.1f, Y:%.1f, R:%.1f), scale=%.2f, aspect=%.2f\n",
-                        decal.getTextureName(), decal.getPosX(), decal.getPosY(), decal.getPosZ(),
-                        decal.getRotX(), decal.getRotY(), decal.getRotZ(), decal.getScale(), decal.getAspect()));
-            }
-
             float unitScale = 0.0625f; // Blockbench (1/16 block) -> Minecraft block
             Vector3f decalPos = new Vector3f(decal.getPosX(), decal.getPosY(), decal.getPosZ());
 
@@ -104,12 +93,80 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
 
             Vector3f rayDir = new Vector3f(decalNormal).negate(); // デカールから車体へ向かう垂直プロジェクションレイ
 
-            if (doDiagLog) {
-                diagSb.append(String.format("Decal Normal: (%.3f, %.3f, %.3f), Ray Dir: (%.3f, %.3f, %.3f)\n",
-                        decalNormal.x, decalNormal.y, decalNormal.z, rayDir.x, rayDir.y, rayDir.z));
-                diagSb.append(String.format("Total Model Faces in Bone '%s': %d faces\n", boneName,
-                        faces.stream().filter(f -> f.boneName.equalsIgnoreCase(boneName)).count()));
-                diagSb.append("--- Face Evaluation Details ---\n");
+            // =================================================================================
+            // 【B方式：車体表面メッシュ化デカール投影処理】
+            // =================================================================================
+            if (USE_SURFACE_MESH_PROJECTOR) {
+                com.microdrone.mod.client.decal.VehicleSurfaceMeshBuilder.VehicleSurfaceMesh mesh =
+                        com.microdrone.mod.client.decal.VehicleSurfaceMeshBuilder.getSurfaceMesh(modelLoc);
+                List<com.microdrone.mod.client.decal.VehicleSurfaceMeshBuilder.SurfacePolygon> bonePolygons =
+                        mesh != null ? mesh.getPolygonsForBone(boneName) : Collections.emptyList();
+
+                List<com.microdrone.mod.client.decal.DecalMeshProjector.ProjectedDecalPolygon> projectedPolys =
+                        com.microdrone.mod.client.decal.DecalMeshProjector.projectDecal(decal, bonePolygons);
+
+
+
+                if (!projectedPolys.isEmpty()) {
+                    PoseStack.Pose currentPose = poseStack.last();
+                    Matrix4f matrix = currentPose.pose();
+
+                    for (com.microdrone.mod.client.decal.DecalMeshProjector.ProjectedDecalPolygon pp : projectedPolys) {
+                        Vector3f fn = pp.normal;
+                        // 車体表面に自然に密着しつつ、Z-Fightingを防ぐ最適な法線オフセット（約1.5mm浮きでピタッと吸着）
+                        float ox = fn.x * 0.025f;
+                        float oy = fn.y * 0.025f;
+                        float oz = fn.z * 0.025f;
+
+                        List<com.microdrone.mod.client.decal.DecalMeshProjector.DecalVertex> vList = pp.vertices;
+
+                        if (vList.size() == 4) {
+                            com.microdrone.mod.client.decal.DecalMeshProjector.DecalVertex v0 = vList.get(0);
+                            com.microdrone.mod.client.decal.DecalMeshProjector.DecalVertex v1 = vList.get(1);
+                            com.microdrone.mod.client.decal.DecalMeshProjector.DecalVertex v2 = vList.get(2);
+                            com.microdrone.mod.client.decal.DecalMeshProjector.DecalVertex v3 = vList.get(3);
+
+                            // 表向き Quad (CCW: 0 -> 3 -> 2 -> 1)
+                            addDecalVertex(decalConsumer, matrix, currentPose, v0, ox, oy, oz, unitScale, packedOverlay, packedLight, fn);
+                            addDecalVertex(decalConsumer, matrix, currentPose, v3, ox, oy, oz, unitScale, packedOverlay, packedLight, fn);
+                            addDecalVertex(decalConsumer, matrix, currentPose, v2, ox, oy, oz, unitScale, packedOverlay, packedLight, fn);
+                            addDecalVertex(decalConsumer, matrix, currentPose, v1, ox, oy, oz, unitScale, packedOverlay, packedLight, fn);
+
+                            // 裏向き Quad (CW: 0 -> 1 -> 2 -> 3)
+                            addDecalVertex(decalConsumer, matrix, currentPose, v0, ox, oy, oz, unitScale, packedOverlay, packedLight, fn);
+                            addDecalVertex(decalConsumer, matrix, currentPose, v1, ox, oy, oz, unitScale, packedOverlay, packedLight, fn);
+                            addDecalVertex(decalConsumer, matrix, currentPose, v2, ox, oy, oz, unitScale, packedOverlay, packedLight, fn);
+                            addDecalVertex(decalConsumer, matrix, currentPose, v3, ox, oy, oz, unitScale, packedOverlay, packedLight, fn);
+                        } else {
+                            // N角形（5角形以上や三角形）のファン分割
+                            for (int k = 1; k < vList.size() - 1; k++) {
+                                com.microdrone.mod.client.decal.DecalMeshProjector.DecalVertex va = vList.get(0);
+                                com.microdrone.mod.client.decal.DecalMeshProjector.DecalVertex vb = vList.get(k);
+                                com.microdrone.mod.client.decal.DecalMeshProjector.DecalVertex vc = vList.get(k + 1);
+
+                                // 表面
+                                addDecalVertex(decalConsumer, matrix, currentPose, va, ox, oy, oz, unitScale, packedOverlay, packedLight, fn);
+                                addDecalVertex(decalConsumer, matrix, currentPose, vb, ox, oy, oz, unitScale, packedOverlay, packedLight, fn);
+                                addDecalVertex(decalConsumer, matrix, currentPose, vc, ox, oy, oz, unitScale, packedOverlay, packedLight, fn);
+                                addDecalVertex(decalConsumer, matrix, currentPose, vc, ox, oy, oz, unitScale, packedOverlay, packedLight, fn);
+
+                                // 裏面
+                                addDecalVertex(decalConsumer, matrix, currentPose, va, ox, oy, oz, unitScale, packedOverlay, packedLight, fn);
+                                addDecalVertex(decalConsumer, matrix, currentPose, vc, ox, oy, oz, unitScale, packedOverlay, packedLight, fn);
+                                addDecalVertex(decalConsumer, matrix, currentPose, vb, ox, oy, oz, unitScale, packedOverlay, packedLight, fn);
+                                addDecalVertex(decalConsumer, matrix, currentPose, vb, ox, oy, oz, unitScale, packedOverlay, packedLight, fn);
+                            }
+                        }
+                    }
+
+                    // 選択枠（セレクションフレーム）の描画
+                    renderSelectionFrame(poseStack, bufferSource, decal, unitScale, isSelected, packedOverlay);
+                    continue; // B方式で描画完了したため、旧方式をスキップして次のデカールへ
+                }
+
+                // 投影ポリゴンが0面頭（車体から大きく離れている等）の場合でも、旧方式（空中の板）へは絶対にフォールスルーせず、選択枠のみ描画
+                renderSelectionFrame(poseStack, bufferSource, decal, unitScale, isSelected, packedOverlay);
+                continue;
             }
 
             class RenderableFaceQuad {
@@ -134,25 +191,13 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
                 float depthAlongRay = toFace.dot(rayDir);
                 float distSq = face.localCenter.distanceSquared(decalPos);
 
-                // デカールに近い面（distSq < 900.0f）またはdotが大きい面を診断
-                boolean reportThisFace = doDiagLog && (dot > 0.1f || distSq < 400.0f);
-
                 // 面の法線とおおむね同方向か判定（デカールを向いている面: cos 75° ≒ 0.25）
                 if (dot < 0.25f) {
-                    if (reportThisFace) {
-                        diagSb.append(String.format("  [SKIP-NORMAL] Cube #%d %s: dot=%.3f (<0.25) normal=(%.2f, %.2f, %.2f) center=(%.1f, %.1f, %.1f)\n",
-                                face.cubeIndex, face.direction, dot, face.localNormal.x, face.localNormal.y, face.localNormal.z,
-                                face.localCenter.x, face.localCenter.y, face.localCenter.z));
-                    }
                     continue;
                 }
 
                 // プロジェクションレイ照射判定
                 if (depthAlongRay < -3.0f || depthAlongRay > 40.0f) {
-                    if (reportThisFace) {
-                        diagSb.append(String.format("  [SKIP-DEPTH] Cube #%d %s: depthAlongRay=%.2f (out of [-3, 40]) center=(%.1f, %.1f, %.1f)\n",
-                                face.cubeIndex, face.direction, depthAlongRay, face.localCenter.x, face.localCenter.y, face.localCenter.z));
-                    }
                     continue;
                 }
 
@@ -160,19 +205,11 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
                         GeoCubeFaceRaycaster.getClippedDecalQuadDetailed(decal, face);
 
                 if (!clipRes.isAccepted()) {
-                    if (reportThisFace) {
-                        diagSb.append(String.format("  [REJECT-CLIP] Cube #%d %s: reason='%s' | U=[%.2f, %.2f] V=[%.2f, %.2f] size=(w=%.1f, h=%.1f)\n",
-                                face.cubeIndex, face.direction, clipRes.rejectReason, clipRes.minU, clipRes.maxU, clipRes.minV, clipRes.maxV, face.width, face.height));
-                    }
                     continue;
                 }
 
                 float depth = face.localCenter.dot(decalNormal);
                 candidates.add(new RenderableFaceQuad(face, clipRes.vertices, depth));
-                if (reportThisFace) {
-                    diagSb.append(String.format("  [CANDIDATE-OK] Cube #%d %s: depth=%.2f, clipU=[%.2f, %.2f], clipV=[%.2f, %.2f], verts=4\n",
-                            face.cubeIndex, face.direction, depth, clipRes.cMinU, clipRes.cMaxU, clipRes.cMinV, clipRes.cMaxV));
-                }
             }
 
             // 最前面ソート（手前・外側にある面を優先）
@@ -191,11 +228,6 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
                         float dist2D = (float) Math.sqrt(Math.max(0.0f, diff.lengthSquared() - dotNorm * dotNorm));
                         if (dist2D < 2.5f) { // 2D平面上で重なり合っている
                             occluded = true;
-                            if (doDiagLog) {
-                                diagSb.append(String.format("  [OCCLUDED] Cube #%d %s by Cube #%d %s: depthDiff=%.2f, dist2D=%.2f\n",
-                                        cand.face.cubeIndex, cand.face.direction, front.face.cubeIndex, front.face.direction,
-                                        (front.depth - cand.depth), dist2D));
-                            }
                             break;
                         }
                     }
@@ -205,34 +237,17 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
                 }
             }
 
-            if (doDiagLog) {
-                diagSb.append(String.format("--- Render Summary ---\nVisible Quads Count: %d (from %d candidates)\n",
-                        visibleQuads.size(), candidates.size()));
-                for (RenderableFaceQuad vq : visibleQuads) {
-                    diagSb.append(String.format("  => RENDER: Cube #%d %s (w=%.1f, h=%.1f, normal=(%.2f, %.2f, %.2f))\n",
-                            vq.face.cubeIndex, vq.face.direction, vq.face.width, vq.face.height,
-                            vq.face.localNormal.x, vq.face.localNormal.y, vq.face.localNormal.z));
-                }
-                diagSb.append("====================================================================\n");
-                com.microdrone.mod.MicroDroneMod.LOGGER.info(diagSb.toString());
 
-                net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
-                if (mc.gui != null && mc.gui.getChat() != null) {
-                    mc.gui.getChat().addMessage(net.minecraft.network.chat.Component.literal(
-                            String.format("§a[デカール診断] 描画面数: %d面 (候補%d面) - latest.logに出力しました",
-                                    visibleQuads.size(), candidates.size())));
-                }
-                requestDiagnosticsLog = false;
-            }
 
             int renderedFaces = 0;
             for (RenderableFaceQuad rq : visibleQuads) {
                 renderedFaces++;
                 Vector3f fn = rq.face.localNormal;
-                // 傾斜キューブでの浮動小数点演算誤差によるZめり込みを防止（実寸約3.7mm浮かせる）
-                float ox = fn.x * 0.06f;
-                float oy = fn.y * 0.06f;
-                float oz = fn.z * 0.06f;
+                // 車体ポリゴンとのZ-fighting（特に垂直パネルやGUI内縮小描画での深度衝突）を完全に防止するため
+                // 法線方向に実寸約9.4mm（Blockbench単位0.15f）浮かせます
+                float ox = fn.x * 0.15f;
+                float oy = fn.y * 0.15f;
+                float oz = fn.z * 0.15f;
 
                 PoseStack.Pose currentPose = poseStack.last();
                 Matrix4f matrix = currentPose.pose();
@@ -242,6 +257,36 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
                 GeoCubeFaceRaycaster.ClippedVertex v2 = rq.quad.get(2);
                 GeoCubeFaceRaycaster.ClippedVertex v3 = rq.quad.get(3);
 
+                // 【表面 Quad: 反時計回り (CCW) - Minecraft標準の表面ワインディング】
+                decalConsumer.addVertex(matrix, (v0.pos.x + ox) * unitScale, (v0.pos.y + oy) * unitScale, (v0.pos.z + oz) * unitScale)
+                        .setColor(255, 255, 255, 255)
+                        .setUv(v0.u, v0.v)
+                        .setOverlay(packedOverlay)
+                        .setLight(packedLight)
+                        .setNormal(currentPose, fn.x, fn.y, fn.z);
+
+                decalConsumer.addVertex(matrix, (v3.pos.x + ox) * unitScale, (v3.pos.y + oy) * unitScale, (v3.pos.z + oz) * unitScale)
+                        .setColor(255, 255, 255, 255)
+                        .setUv(v3.u, v3.v)
+                        .setOverlay(packedOverlay)
+                        .setLight(packedLight)
+                        .setNormal(currentPose, fn.x, fn.y, fn.z);
+
+                decalConsumer.addVertex(matrix, (v2.pos.x + ox) * unitScale, (v2.pos.y + oy) * unitScale, (v2.pos.z + oz) * unitScale)
+                        .setColor(255, 255, 255, 255)
+                        .setUv(v2.u, v2.v)
+                        .setOverlay(packedOverlay)
+                        .setLight(packedLight)
+                        .setNormal(currentPose, fn.x, fn.y, fn.z);
+
+                decalConsumer.addVertex(matrix, (v1.pos.x + ox) * unitScale, (v1.pos.y + oy) * unitScale, (v1.pos.z + oz) * unitScale)
+                        .setColor(255, 255, 255, 255)
+                        .setUv(v1.u, v1.v)
+                        .setOverlay(packedOverlay)
+                        .setLight(packedLight)
+                        .setNormal(currentPose, fn.x, fn.y, fn.z);
+
+                // 【裏面 Quad: 時計回り (CW) - GUIのY軸反転スケールやシェーダーバックフェイスでも100%描画保証】
                 decalConsumer.addVertex(matrix, (v0.pos.x + ox) * unitScale, (v0.pos.y + oy) * unitScale, (v0.pos.z + oz) * unitScale)
                         .setColor(255, 255, 255, 255)
                         .setUv(v0.u, v0.v)
@@ -414,37 +459,123 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
     }
 
     /**
-     * デカール貼り付け対象ボーンの判定。
-     * モデル内に "body" ボーンが存在する場合は必ず "body" 描画時のみ受け持ち、
-     * "chassis" との重複描画・二重描画を完全に排除する。
+     * 車種ごとのデカール描画責任代表ボーンの判定。
+     * 1モデルにつき必ず1つのルート代表ボーン（body または chassis）のみが描画を受け持ち、
+     * 子ボーンや他ボーンでの二重描画・重複描画・誤吸着を物理的に根絶する。
      */
-    private static boolean isBoneResponsibleForDecal(List<GeoCubeFaceRaycaster.ModelCubeFace> faces, String boneName, String target) {
-        if (target == null || target.isBlank()) target = "body";
-        if (boneName.equalsIgnoreCase(target)) {
-            return true;
+    private static <T extends Entity & GeoAnimatable & RcDecalHolder> boolean isBoneResponsibleForDecal(
+            T animatable, ResourceLocation modelLoc, List<GeoCubeFaceRaycaster.ModelCubeFace> faces, String boneName, String target) {
+
+        // 明示的に個別パーツボーン（例: turret等）が指定されている場合
+        if (target != null && !target.isBlank() && !"body".equalsIgnoreCase(target) && !"chassis".equalsIgnoreCase(target) && !"root".equalsIgnoreCase(target)) {
+            return boneName.equalsIgnoreCase(target);
         }
-        if ("body".equalsIgnoreCase(target) || "chassis".equalsIgnoreCase(target)) {
-            boolean hasBodyFaces = false;
-            for (GeoCubeFaceRaycaster.ModelCubeFace f : faces) {
-                if ("body".equalsIgnoreCase(f.boneName)) {
-                    hasBodyFaces = true;
-                    break;
-                }
+
+        // 通常のボディデカールは、車種ごとの唯一の代表ボーンでのみ描画
+        String repBone = getRepresentativeDecalBone(animatable, faces);
+        return boneName.equalsIgnoreCase(repBone);
+    }
+
+    private static <T extends Entity & GeoAnimatable & RcDecalHolder> String getRepresentativeDecalBone(
+            T animatable, List<GeoCubeFaceRaycaster.ModelCubeFace> faces) {
+        if (animatable instanceof com.microdrone.mod.entity.RcPlaneEntity) return "body";
+        if (animatable instanceof com.microdrone.mod.entity.RcBoatEntity) return "body";
+        if (animatable instanceof com.microdrone.mod.entity.RcSubmarineEntity) return "body";
+        if (animatable instanceof com.microdrone.mod.entity.RcTankEntity) return "chassis";
+        if (animatable instanceof com.microdrone.mod.entity.DroneEntity) return "chassis";
+        if (animatable instanceof com.microdrone.mod.entity.RcCarEntity car) {
+            String variant = car.getVariantId();
+            if ("86".equalsIgnoreCase(variant) || "truck".equalsIgnoreCase(variant) || "bicycle".equalsIgnoreCase(variant)) {
+                return "body";
             }
-            if (hasBodyFaces) {
-                return "body".equalsIgnoreCase(boneName);
+            // モデル内に chassis がなく body がある場合は body を優先
+            boolean hasBody = faces.stream().anyMatch(f -> "body".equalsIgnoreCase(f.boneName));
+            boolean hasChassis = faces.stream().anyMatch(f -> "chassis".equalsIgnoreCase(f.boneName));
+            if (hasBody && !hasChassis) {
+                return "body";
             }
-            boolean hasChassisFaces = false;
-            for (GeoCubeFaceRaycaster.ModelCubeFace f : faces) {
-                if ("chassis".equalsIgnoreCase(f.boneName)) {
-                    hasChassisFaces = true;
-                    break;
-                }
-            }
-            if (hasChassisFaces) {
-                return "chassis".equalsIgnoreCase(boneName);
-            }
+            return "chassis";
         }
-        return false;
+
+        // 汎用判定: "body" があれば body、なければ chassis
+        for (GeoCubeFaceRaycaster.ModelCubeFace f : faces) {
+            if ("body".equalsIgnoreCase(f.boneName)) return "body";
+        }
+        return "chassis";
+    }
+
+    private static void addDecalVertex(VertexConsumer consumer, Matrix4f matrix, PoseStack.Pose pose,
+                                       com.microdrone.mod.client.decal.DecalMeshProjector.DecalVertex v,
+                                       float ox, float oy, float oz, float unitScale,
+                                       int packedOverlay, int packedLight, Vector3f normal) {
+        consumer.addVertex(matrix, (v.pos.x + ox) * unitScale, (v.pos.y + oy) * unitScale, (v.pos.z + oz) * unitScale)
+                .setColor(255, 255, 255, 255)
+                .setUv(v.u, v.v)
+                .setOverlay(packedOverlay)
+                .setLight(packedLight)
+                .setNormal(pose, normal.x, normal.y, normal.z);
+    }
+
+    private static void renderSelectionFrame(PoseStack poseStack, MultiBufferSource bufferSource,
+                                             CarDecalData decal, float unitScale,
+                                             boolean isSelected, int packedOverlay) {
+        if (!isSelected) return;
+        com.microdrone.mod.client.gui.DecalEditorScreen editor = com.microdrone.mod.client.gui.DecalEditorScreen.activeScreen;
+        if (editor == null) return;
+
+        poseStack.pushPose();
+        poseStack.translate(decal.getPosX() * unitScale, decal.getPosY() * unitScale, decal.getPosZ() * unitScale);
+        poseStack.mulPose(Axis.YP.rotationDegrees(decal.getRotY()));
+        poseStack.mulPose(Axis.XP.rotationDegrees(decal.getRotX()));
+        poseStack.mulPose(Axis.ZP.rotationDegrees(decal.getRotZ()));
+
+        float zOffset = 0.005f;
+        poseStack.translate(0, 0, zOffset);
+
+        float aspect = decal.getAspect() > 0.0f ? decal.getAspect() : 1.0f;
+        float baseHalfSize = (decal.getScale() * 0.5f) * unitScale;
+        float halfWidth = baseHalfSize * aspect;
+        float halfHeight = baseHalfSize;
+
+        PoseStack.Pose currentPose = poseStack.last();
+        Matrix4f matrix = currentPose.pose();
+
+        ResourceLocation frameLoc = DecalTextureManager.getSelectionFrameTexture(editor.isDecalDragging());
+        VertexConsumer frameConsumer = bufferSource.getBuffer(RenderType.entityCutoutNoCull(frameLoc));
+
+        float pad = baseHalfSize * 0.08f;
+        float fw = halfWidth + pad;
+        float fh = halfHeight + pad;
+        float zFrame = 0.003f;
+
+        frameConsumer.addVertex(matrix, -fw,  fh, zFrame)
+                .setColor(255, 255, 255, 255)
+                .setUv(0.0f, 0.0f)
+                .setOverlay(packedOverlay)
+                .setLight(net.minecraft.client.renderer.LightTexture.FULL_BRIGHT)
+                .setNormal(currentPose, 0.0f, 0.0f, 1.0f);
+
+        frameConsumer.addVertex(matrix, -fw, -fh, zFrame)
+                .setColor(255, 255, 255, 255)
+                .setUv(0.0f, 1.0f)
+                .setOverlay(packedOverlay)
+                .setLight(net.minecraft.client.renderer.LightTexture.FULL_BRIGHT)
+                .setNormal(currentPose, 0.0f, 0.0f, 1.0f);
+
+        frameConsumer.addVertex(matrix,  fw, -fh, zFrame)
+                .setColor(255, 255, 255, 255)
+                .setUv(1.0f, 1.0f)
+                .setOverlay(packedOverlay)
+                .setLight(net.minecraft.client.renderer.LightTexture.FULL_BRIGHT)
+                .setNormal(currentPose, 0.0f, 0.0f, 1.0f);
+
+        frameConsumer.addVertex(matrix,  fw,  fh, zFrame)
+                .setColor(255, 255, 255, 255)
+                .setUv(1.0f, 0.0f)
+                .setOverlay(packedOverlay)
+                .setLight(net.minecraft.client.renderer.LightTexture.FULL_BRIGHT)
+                .setNormal(currentPose, 0.0f, 0.0f, 1.0f);
+
+        poseStack.popPose();
     }
 }

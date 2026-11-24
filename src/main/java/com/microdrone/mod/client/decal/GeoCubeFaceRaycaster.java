@@ -35,11 +35,12 @@ public class GeoCubeFaceRaycaster {
         public final Vector3f vAxis = new Vector3f(); // 面の縦方向ローカル軸
         public final float width;
         public final float height;
+        public final float minDimension; // 薄い装甲板判定用
         public final Vector3f[] vertices = new Vector3f[4]; // p0, p1, p2, p3 (CCW)
 
         public ModelCubeFace(String boneName, int cubeIndex, Direction dir,
-                             Vector3f p0, Vector3f p1, Vector3f p2, Vector3f p3,
-                             Vector3f normal, float width, float height) {
+                Vector3f p0, Vector3f p1, Vector3f p2, Vector3f p3,
+                Vector3f normal, float width, float height, float minDimension) {
             this.boneName = boneName;
             this.cubeIndex = cubeIndex;
             this.direction = dir;
@@ -50,6 +51,7 @@ public class GeoCubeFaceRaycaster {
             this.localNormal.set(normal);
             this.width = width;
             this.height = height;
+            this.minDimension = minDimension;
 
             // 中心座標
             this.localCenter.set(p0).add(p1).add(p2).add(p3).mul(0.25f);
@@ -96,7 +98,8 @@ public class GeoCubeFaceRaycaster {
      * モデルのキューブ面リストを取得（初回のみパース＆キャッシュ）
      */
     public static List<ModelCubeFace> getModelFaces(ResourceLocation location) {
-        if (location == null) return Collections.emptyList();
+        if (location == null)
+            return Collections.emptyList();
         if (CACHED_FACES.containsKey(location)) {
             return CACHED_FACES.get(location);
         }
@@ -110,9 +113,11 @@ public class GeoCubeFaceRaycaster {
         List<ModelCubeFace> list = new ArrayList<>();
         try {
             Optional<Resource> res = Minecraft.getInstance().getResourceManager().getResource(location);
-            if (res.isEmpty()) return list;
+            if (res.isEmpty())
+                return list;
 
-            JsonObject root = JsonParser.parseReader(new InputStreamReader(res.get().open(), StandardCharsets.UTF_8)).getAsJsonObject();
+            JsonObject root = JsonParser.parseReader(new InputStreamReader(res.get().open(), StandardCharsets.UTF_8))
+                    .getAsJsonObject();
             JsonArray bones = null;
             if (root.has("minecraft:geometry")) {
                 JsonArray geom = root.getAsJsonArray("minecraft:geometry");
@@ -122,24 +127,45 @@ public class GeoCubeFaceRaycaster {
             } else if (root.has("bones")) {
                 bones = root.getAsJsonArray("bones");
             }
-            if (bones == null) return list;
+            if (bones == null)
+                return list;
+
+            // ボーン階層マップの構築とボーン変換行列（累積回転・ピボット）の計算
+            Map<String, JsonObject> boneMap = new HashMap<>();
+            for (JsonElement bElem : bones) {
+                if (bElem.isJsonObject()) {
+                    JsonObject b = bElem.getAsJsonObject();
+                    if (b.has("name")) {
+                        boneMap.put(b.get("name").getAsString(), b);
+                    }
+                }
+            }
+            Map<String, Matrix4f> boneMatrixMap = new HashMap<>();
+            for (String bName : boneMap.keySet()) {
+                computeBoneMatrix(bName, boneMap, boneMatrixMap);
+            }
 
             // 車体ボディ関連ボーンの判定（足回りやタイヤを除外）
             int cubeCounter = 0;
             for (JsonElement bElem : bones) {
-                if (!bElem.isJsonObject()) continue;
+                if (!bElem.isJsonObject())
+                    continue;
                 JsonObject bObj = bElem.getAsJsonObject();
                 String boneName = bObj.has("name") ? bObj.get("name").getAsString() : "";
-                if (!isEligibleBodyBone(boneName)) continue;
+                if (!isEligibleBodyBone(boneName))
+                    continue;
 
-                if (!bObj.has("cubes")) continue;
+                if (!bObj.has("cubes"))
+                    continue;
                 JsonArray cubes = bObj.getAsJsonArray("cubes");
+                Matrix4f boneMat = boneMatrixMap.getOrDefault(boneName, new Matrix4f().identity());
 
                 for (JsonElement cElem : cubes) {
-                    if (!cElem.isJsonObject()) continue;
+                    if (!cElem.isJsonObject())
+                        continue;
                     JsonObject cube = cElem.getAsJsonObject();
                     cubeCounter++;
-                    extractCubeFaces(list, boneName, cubeCounter, cube);
+                    extractCubeFaces(list, boneName, cubeCounter, cube, boneMat);
                 }
             }
 
@@ -150,27 +176,76 @@ public class GeoCubeFaceRaycaster {
         return list;
     }
 
+    private static Matrix4f computeBoneMatrix(String name, Map<String, JsonObject> boneMap, Map<String, Matrix4f> cache) {
+        if (cache.containsKey(name)) return cache.get(name);
+        JsonObject bone = boneMap.get(name);
+        if (bone == null) {
+            Matrix4f id = new Matrix4f().identity();
+            cache.put(name, id);
+            return id;
+        }
+
+        Matrix4f parentMat = new Matrix4f().identity();
+        if (bone.has("parent")) {
+            String parentName = bone.get("parent").getAsString();
+            if (!parentName.equalsIgnoreCase(name)) {
+                parentMat = new Matrix4f(computeBoneMatrix(parentName, boneMap, cache));
+            }
+        }
+
+        Matrix4f boneMat = new Matrix4f(parentMat);
+        if (bone.has("pivot") && bone.has("rotation")) {
+            JsonArray piv = bone.getAsJsonArray("pivot");
+            JsonArray rot = bone.getAsJsonArray("rotation");
+            if (piv.size() >= 3 && rot.size() >= 3) {
+                float px = piv.get(0).getAsFloat();
+                float py = piv.get(1).getAsFloat();
+                float pz = piv.get(2).getAsFloat();
+                float rx = (float) Math.toRadians(-rot.get(0).getAsFloat());
+                float ry = (float) Math.toRadians(rot.get(1).getAsFloat());
+                float rz = (float) Math.toRadians(-rot.get(2).getAsFloat());
+
+                boneMat.translate(px, py, pz);
+                boneMat.rotateZYX(rz, ry, rx);
+                boneMat.translate(-px, -py, -pz);
+            }
+        } else if (bone.has("rotation")) {
+            JsonArray rot = bone.getAsJsonArray("rotation");
+            if (rot.size() >= 3) {
+                float rx = (float) Math.toRadians(-rot.get(0).getAsFloat());
+                float ry = (float) Math.toRadians(rot.get(1).getAsFloat());
+                float rz = (float) Math.toRadians(-rot.get(2).getAsFloat());
+                boneMat.rotateZYX(rz, ry, rx);
+            }
+        }
+        cache.put(name, boneMat);
+        return boneMat;
+    }
+
     private static boolean isEligibleBodyBone(String boneName) {
-        if (boneName == null || boneName.isBlank()) return false;
+        if (boneName == null || boneName.isBlank())
+            return false;
         String lower = boneName.toLowerCase();
         // 除外対象
         if (lower.startsWith("wheel") || lower.startsWith("tire") ||
-            lower.startsWith("steer") || lower.startsWith("arm_") ||
-            lower.startsWith("shock_") || lower.startsWith("knuckle_") ||
-            lower.startsWith("track_") || lower.startsWith("sprocket_") ||
-            lower.startsWith("motor") || lower.startsWith("battery") ||
-            lower.startsWith("camera") || lower.startsWith("antenna") ||
-            lower.equals("root")) {
+                lower.startsWith("steer") || lower.startsWith("arm_") ||
+                lower.startsWith("shock_") || lower.startsWith("knuckle_") ||
+                lower.startsWith("track_") || lower.startsWith("sprocket_") ||
+                lower.startsWith("motor") || lower.startsWith("battery") ||
+                lower.startsWith("camera") || lower.startsWith("antenna") ||
+                lower.equals("root")) {
             return false;
         }
         return true;
     }
 
-    private static void extractCubeFaces(List<ModelCubeFace> outList, String boneName, int cubeId, JsonObject cube) {
-        if (!cube.has("origin") || !cube.has("size")) return;
+    private static void extractCubeFaces(List<ModelCubeFace> outList, String boneName, int cubeId, JsonObject cube, Matrix4f boneMat) {
+        if (!cube.has("origin") || !cube.has("size"))
+            return;
         JsonArray origArr = cube.getAsJsonArray("origin");
         JsonArray sizeArr = cube.getAsJsonArray("size");
-        if (origArr.size() < 3 || sizeArr.size() < 3) return;
+        if (origArr.size() < 3 || sizeArr.size() < 3)
+            return;
 
         float ox = origArr.get(0).getAsFloat();
         float oy = origArr.get(1).getAsFloat();
@@ -179,7 +254,9 @@ public class GeoCubeFaceRaycaster {
         float sx = sizeArr.get(0).getAsFloat();
         float sy = sizeArr.get(1).getAsFloat();
         float sz = sizeArr.get(2).getAsFloat();
-        if (sx <= 0 || sy <= 0 || sz <= 0) return;
+        if (sx <= 0 || sy <= 0 || sz <= 0)
+            return;
+        float minDim = Math.min(sx, Math.min(sy, sz));
 
         float rx = 0, ry = 0, rz = 0;
         float px = 0, py = 0, pz = 0;
@@ -206,9 +283,13 @@ public class GeoCubeFaceRaycaster {
         Matrix4f cubeLocal = new Matrix4f();
         if (hasRot) {
             cubeLocal.translate(px, py, pz);
-            cubeLocal.rotateZYX(rz * Mth.DEG_TO_RAD, ry * Mth.DEG_TO_RAD, rx * Mth.DEG_TO_RAD);
+            // Blockbench のオイラー角を JOML rotateZYX に適合:
+            // Pitch(X) と Roll(Z) は符号反転(-)、Yaw(Y) は同一回転方向(+)
+            cubeLocal.rotateZYX(-rz * Mth.DEG_TO_RAD, ry * Mth.DEG_TO_RAD, -rx * Mth.DEG_TO_RAD);
             cubeLocal.translate(-px, -py, -pz);
         }
+
+        Matrix4f totalCubeMat = new Matrix4f(boneMat).mul(cubeLocal);
 
         Vector3f c000 = new Vector3f(ox, oy, oz);
         Vector3f c100 = new Vector3f(ox + sx, oy, oz);
@@ -219,65 +300,92 @@ public class GeoCubeFaceRaycaster {
         Vector3f c111 = new Vector3f(ox + sx, oy + sy, oz + sz);
         Vector3f c011 = new Vector3f(ox, oy + sy, oz + sz);
 
-        cubeLocal.transformPosition(c000);
-        cubeLocal.transformPosition(c100);
-        cubeLocal.transformPosition(c110);
-        cubeLocal.transformPosition(c010);
-        cubeLocal.transformPosition(c001);
-        cubeLocal.transformPosition(c101);
-        cubeLocal.transformPosition(c111);
-        cubeLocal.transformPosition(c011);
+        totalCubeMat.transformPosition(c000);
+        totalCubeMat.transformPosition(c100);
+        totalCubeMat.transformPosition(c110);
+        totalCubeMat.transformPosition(c010);
+        totalCubeMat.transformPosition(c001);
+        totalCubeMat.transformPosition(c101);
+        totalCubeMat.transformPosition(c111);
+        totalCubeMat.transformPosition(c011);
 
         // 6面を抽出（法線計算含む）
-        addFace(outList, boneName, cubeId, Direction.UP, c010, c110, c111, c011, sx, sz, cubeLocal, Direction.UP.step());
-        addFace(outList, boneName, cubeId, Direction.DOWN, c001, c101, c100, c000, sx, sz, cubeLocal, Direction.DOWN.step());
-        addFace(outList, boneName, cubeId, Direction.NORTH, c110, c010, c000, c100, sx, sy, cubeLocal, Direction.NORTH.step());
-        addFace(outList, boneName, cubeId, Direction.SOUTH, c011, c111, c101, c001, sx, sy, cubeLocal, Direction.SOUTH.step());
-        addFace(outList, boneName, cubeId, Direction.WEST, c010, c011, c001, c000, sz, sy, cubeLocal, Direction.WEST.step());
-        addFace(outList, boneName, cubeId, Direction.EAST, c111, c110, c100, c101, sz, sy, cubeLocal, Direction.EAST.step());
+        addFace(outList, boneName, cubeId, Direction.UP, c010, c110, c111, c011, sx, sz, minDim, totalCubeMat,
+                Direction.UP.step());
+        addFace(outList, boneName, cubeId, Direction.DOWN, c001, c101, c100, c000, sx, sz, minDim, totalCubeMat,
+                Direction.DOWN.step());
+        addFace(outList, boneName, cubeId, Direction.NORTH, c110, c010, c000, c100, sx, sy, minDim, totalCubeMat,
+                Direction.NORTH.step());
+        addFace(outList, boneName, cubeId, Direction.SOUTH, c011, c111, c101, c001, sx, sy, minDim, totalCubeMat,
+                Direction.SOUTH.step());
+        addFace(outList, boneName, cubeId, Direction.WEST, c010, c011, c001, c000, sz, sy, minDim, totalCubeMat,
+                Direction.WEST.step());
+        addFace(outList, boneName, cubeId, Direction.EAST, c111, c110, c100, c101, sz, sy, minDim, totalCubeMat,
+                Direction.EAST.step());
     }
 
     private static void addFace(List<ModelCubeFace> list, String boneName, int cubeId, Direction dir,
-                                Vector3f p0, Vector3f p1, Vector3f p2, Vector3f p3,
-                                float w, float h, Matrix4f cubeMat, org.joml.Vector3fc defaultNormal) {
+            Vector3f p0, Vector3f p1, Vector3f p2, Vector3f p3,
+            float w, float h, float minDim, Matrix4f cubeMat, org.joml.Vector3fc defaultNormal) {
         Vector3f normal = new Vector3f();
         cubeMat.transformDirection(defaultNormal, normal).normalize();
-        list.add(new ModelCubeFace(boneName, cubeId, dir, p0, p1, p2, p3, normal, w, h));
+        list.add(new ModelCubeFace(boneName, cubeId, dir, p0, p1, p2, p3, normal, w, h, minDim));
     }
 
     /**
      * カメラレイとボーンローカルキューブ面との交差判定を行い、最も手前の面を取得
      */
-    public static RayHitResult raycast(ResourceLocation modelLoc, Vector3f rayOrigin, Vector3f rayDir, String preferredBone) {
+    public static RayHitResult raycast(ResourceLocation modelLoc, Vector3f rayOrigin, Vector3f rayDir,
+            String preferredBone) {
         List<ModelCubeFace> faces = getModelFaces(modelLoc);
-        if (faces.isEmpty()) return null;
+        if (faces.isEmpty())
+            return null;
 
         ModelCubeFace closestFace = null;
         float closestDist = Float.MAX_VALUE;
         Vector3f closestHitPoint = new Vector3f();
 
         for (ModelCubeFace face : faces) {
-            // ボーン指定がある場合は優先
+            // ボーン指定がある場合は車体パーツまたは特定ボーンを優先判定
             if (preferredBone != null && !preferredBone.isBlank() && !face.boneName.equalsIgnoreCase(preferredBone)) {
-                // body / chassis の互換
-                if (!("body".equalsIgnoreCase(preferredBone) || "chassis".equalsIgnoreCase(preferredBone)) ||
-                    !("body".equalsIgnoreCase(face.boneName) || "chassis".equalsIgnoreCase(face.boneName))) {
+                boolean isTargetBody = "body".equalsIgnoreCase(preferredBone) || "chassis".equalsIgnoreCase(preferredBone) || "root".equalsIgnoreCase(preferredBone);
+                if (isTargetBody) {
+                    if (!isBodyPartBone(face.boneName)) {
+                        continue;
+                    }
+                } else if (!isBodyPartBone(face.boneName)) {
                     continue;
                 }
             }
 
             // 面の法線とレイの内積（手前を向いている面のみ交差判定）
             float dot = face.localNormal.dot(rayDir);
-            if (dot >= -0.001f) continue; // カメラに背を向けている面は除外
+            if (dot >= -0.001f)
+                continue; // カメラに背を向けている面は除外
+
+            // 【薄い装甲板（厚み <= 1.5f）の内側面除外・外側面最優先判定】
+            if (face.minDimension <= 1.5f) {
+                float distSq = face.localCenter.x * face.localCenter.x + face.localCenter.z * face.localCenter.z;
+                if (distSq > 1.0f) {
+                    Vector3f outward = new Vector3f(face.localCenter.x, 0.0f, face.localCenter.z).normalize();
+                    float outwardDot = face.localNormal.dot(outward);
+                    if (outwardDot < -0.15f) {
+                        continue; // 中心を向く内側面（裏側）を除外
+                    }
+                }
+            }
 
             // 2つの三角形 (p0, p1, p2) と (p0, p2, p3) で判定
             Float t1 = rayIntersectsTriangle(rayOrigin, rayDir, face.vertices[0], face.vertices[1], face.vertices[2]);
             Float t2 = rayIntersectsTriangle(rayOrigin, rayDir, face.vertices[0], face.vertices[2], face.vertices[3]);
 
             Float hitT = null;
-            if (t1 != null && t2 != null) hitT = Math.min(t1, t2);
-            else if (t1 != null) hitT = t1;
-            else if (t2 != null) hitT = t2;
+            if (t1 != null && t2 != null)
+                hitT = Math.min(t1, t2);
+            else if (t1 != null)
+                hitT = t1;
+            else if (t2 != null)
+                hitT = t2;
 
             if (hitT != null && hitT > 0 && hitT < closestDist) {
                 closestDist = hitT;
@@ -286,7 +394,8 @@ public class GeoCubeFaceRaycaster {
             }
         }
 
-        if (closestFace == null) return null;
+        if (closestFace == null)
+            return null;
 
         // 【第2段階：回転キューブの法線・軸から完全なYaw/Pitch/Rollオイラー角を逆算】
         Vector3f angles = computeFaceAngles(closestFace);
@@ -298,9 +407,11 @@ public class GeoCubeFaceRaycaster {
      * デカール位置から車体に向かって垂直にレイを飛ばし、
      * 最初に当たった（最前面の）キューブ面の交点と面情報を取得する
      */
-    public static RayHitResult raycastFromDecal(ResourceLocation modelLoc, Vector3f decalPos, Vector3f decalNormal, String preferredBone) {
+    public static RayHitResult raycastFromDecal(ResourceLocation modelLoc, Vector3f decalPos, Vector3f decalNormal,
+            String preferredBone) {
         List<ModelCubeFace> faces = getModelFaces(modelLoc);
-        if (faces.isEmpty()) return null;
+        if (faces.isEmpty())
+            return null;
 
         Vector3f rayDir = new Vector3f(decalNormal).negate().normalize();
         // デカール位置より手前（外側）から車体内部へレイを照射
@@ -312,23 +423,43 @@ public class GeoCubeFaceRaycaster {
 
         for (ModelCubeFace face : faces) {
             if (preferredBone != null && !preferredBone.isBlank() && !face.boneName.equalsIgnoreCase(preferredBone)) {
-                if (!("body".equalsIgnoreCase(preferredBone) || "chassis".equalsIgnoreCase(preferredBone)) ||
-                    !("body".equalsIgnoreCase(face.boneName) || "chassis".equalsIgnoreCase(face.boneName))) {
+                boolean isTargetBody = "body".equalsIgnoreCase(preferredBone) || "chassis".equalsIgnoreCase(preferredBone) || "root".equalsIgnoreCase(preferredBone);
+                if (isTargetBody) {
+                    if (!isBodyPartBone(face.boneName)) {
+                        continue;
+                    }
+                } else if (!isBodyPartBone(face.boneName)) {
                     continue;
                 }
             }
 
             // 面がデカール側を向いているか（法線の内積 > 0.25）
             float dot = face.localNormal.dot(decalNormal);
-            if (dot < 0.25f) continue;
+            if (dot < 0.25f)
+                continue;
+
+            // 【薄い装甲板（厚み <= 1.5f）の内側面除外・外側面最優先判定】
+            if (face.minDimension <= 1.5f) {
+                float distSq = face.localCenter.x * face.localCenter.x + face.localCenter.z * face.localCenter.z;
+                if (distSq > 1.0f) {
+                    Vector3f outward = new Vector3f(face.localCenter.x, 0.0f, face.localCenter.z).normalize();
+                    float outwardDot = face.localNormal.dot(outward);
+                    if (outwardDot < -0.15f) {
+                        continue; // 中心を向く内側面（裏側）を除外
+                    }
+                }
+            }
 
             Float t1 = rayIntersectsTriangle(rayOrigin, rayDir, face.vertices[0], face.vertices[1], face.vertices[2]);
             Float t2 = rayIntersectsTriangle(rayOrigin, rayDir, face.vertices[0], face.vertices[2], face.vertices[3]);
 
             Float hitT = null;
-            if (t1 != null && t2 != null) hitT = Math.min(t1, t2);
-            else if (t1 != null) hitT = t1;
-            else if (t2 != null) hitT = t2;
+            if (t1 != null && t2 != null)
+                hitT = Math.min(t1, t2);
+            else if (t1 != null)
+                hitT = t1;
+            else if (t2 != null)
+                hitT = t2;
 
             if (hitT != null && hitT > 0 && hitT < closestDist) {
                 closestDist = hitT;
@@ -337,7 +468,8 @@ public class GeoCubeFaceRaycaster {
             }
         }
 
-        if (closestFace == null) return null;
+        if (closestFace == null)
+            return null;
 
         Vector3f angles = computeFaceAngles(closestFace);
         return new RayHitResult(closestFace, closestHitPoint, closestDist, angles.y, angles.x, angles.z);
@@ -379,25 +511,29 @@ public class GeoCubeFaceRaycaster {
     }
 
     public static Float rayIntersectsTriangle(Vector3f rayOrigin, Vector3f rayDir,
-                                               Vector3f v0, Vector3f v1, Vector3f v2) {
+            Vector3f v0, Vector3f v1, Vector3f v2) {
         final float EPSILON = 0.000001f;
         Vector3f edge1 = new Vector3f(v1).sub(v0);
         Vector3f edge2 = new Vector3f(v2).sub(v0);
         Vector3f h = new Vector3f(rayDir).cross(edge2);
         float a = edge1.dot(h);
-        if (a > -EPSILON && a < EPSILON) return null;
+        if (a > -EPSILON && a < EPSILON)
+            return null;
 
         float f = 1.0f / a;
         Vector3f s = new Vector3f(rayOrigin).sub(v0);
         float u = f * s.dot(h);
-        if (u < 0.0f || u > 1.0f) return null;
+        if (u < 0.0f || u > 1.0f)
+            return null;
 
         Vector3f q = new Vector3f(s).cross(edge1);
         float v = f * rayDir.dot(q);
-        if (v < 0.0f || u + v > 1.0f) return null;
+        if (v < 0.0f || u + v > 1.0f)
+            return null;
 
         float t = f * edge2.dot(q);
-        if (t > EPSILON) return t;
+        if (t > EPSILON)
+            return t;
         return null;
     }
 
@@ -409,8 +545,8 @@ public class GeoCubeFaceRaycaster {
         public final float denom;
 
         public ClippedQuadResult(List<ClippedVertex> vertices, String rejectReason,
-                                 float minU, float maxU, float minV, float maxV,
-                                 float cMinU, float cMaxU, float cMinV, float cMaxV, float denom) {
+                float minU, float maxU, float minV, float maxV,
+                float cMinU, float cMaxU, float cMinV, float cMaxV, float denom) {
             this.vertices = vertices;
             this.rejectReason = rejectReason;
             this.minU = minU;
@@ -466,17 +602,22 @@ public class GeoCubeFaceRaycaster {
         Vector3f rayDir = new Vector3f(decalNormal).negate().normalize();
         float denom = rayDir.dot(face.localNormal);
         if (Math.abs(denom) < 0.0001f) {
-            return new ClippedQuadResult(Collections.emptyList(), "denom ~ 0 (ray parallel to face plane)", 0, 0, 0, 0, 0, 0, 0, 0, denom);
+            return new ClippedQuadResult(Collections.emptyList(), "denom ~ 0 (ray parallel to face plane)", 0, 0, 0, 0,
+                    0, 0, 0, 0, denom);
         }
 
         // デカール矩形の4隅の3Dワールド座標（ボーンローカル座標系）
-        Vector3f c0 = new Vector3f(decalPos).add(new Vector3f(localXAxis).mul(-halfW)).add(new Vector3f(localYAxis).mul(halfH));
-        Vector3f c1 = new Vector3f(decalPos).add(new Vector3f(localXAxis).mul(halfW)).add(new Vector3f(localYAxis).mul(halfH));
-        Vector3f c2 = new Vector3f(decalPos).add(new Vector3f(localXAxis).mul(halfW)).add(new Vector3f(localYAxis).mul(-halfH));
-        Vector3f c3 = new Vector3f(decalPos).add(new Vector3f(localXAxis).mul(-halfW)).add(new Vector3f(localYAxis).mul(-halfH));
+        Vector3f c0 = new Vector3f(decalPos).add(new Vector3f(localXAxis).mul(-halfW))
+                .add(new Vector3f(localYAxis).mul(halfH));
+        Vector3f c1 = new Vector3f(decalPos).add(new Vector3f(localXAxis).mul(halfW))
+                .add(new Vector3f(localYAxis).mul(halfH));
+        Vector3f c2 = new Vector3f(decalPos).add(new Vector3f(localXAxis).mul(halfW))
+                .add(new Vector3f(localYAxis).mul(-halfH));
+        Vector3f c3 = new Vector3f(decalPos).add(new Vector3f(localXAxis).mul(-halfW))
+                .add(new Vector3f(localYAxis).mul(-halfH));
 
         // 4隅から画像の裏面に向かって直角にレイを飛ばし、面の無限平面との正確な交点を算出
-        Vector3f[] corners = {c0, c1, c2, c3};
+        Vector3f[] corners = { c0, c1, c2, c3 };
         float minU = Float.MAX_VALUE;
         float maxU = -Float.MAX_VALUE;
         float minV = Float.MAX_VALUE;
@@ -490,10 +631,14 @@ public class GeoCubeFaceRaycaster {
             Vector3f rel = new Vector3f(hitPointOnPlane).sub(face.vertices[0]);
             float u = rel.dot(face.uAxis);
             float v = rel.dot(face.vAxis);
-            if (u < minU) minU = u;
-            if (u > maxU) maxU = u;
-            if (v < minV) minV = v;
-            if (v > maxV) maxV = v;
+            if (u < minU)
+                minU = u;
+            if (u > maxU)
+                maxU = u;
+            if (v < minV)
+                minV = v;
+            if (v > maxV)
+                maxV = v;
         }
 
         // 面の境界 [0, face.width] x [0, face.height] との交差（クリッピング）範囲
@@ -505,20 +650,26 @@ public class GeoCubeFaceRaycaster {
         // 完全に面の外側にある場合は描画しない
         if (cMinU >= cMaxU) {
             return new ClippedQuadResult(Collections.emptyList(),
-                    String.format("U outside bounds: cMinU(%.2f) >= cMaxU(%.2f) [face.w=%.2f, U=[%.2f, %.2f]]", cMinU, cMaxU, face.width, minU, maxU),
+                    String.format("U outside bounds: cMinU(%.2f) >= cMaxU(%.2f) [face.w=%.2f, U=[%.2f, %.2f]]", cMinU,
+                            cMaxU, face.width, minU, maxU),
                     minU, maxU, minV, maxV, cMinU, cMaxU, cMinV, cMaxV, denom);
         }
         if (cMinV >= cMaxV) {
             return new ClippedQuadResult(Collections.emptyList(),
-                    String.format("V outside bounds: cMinV(%.2f) >= cMaxV(%.2f) [face.h=%.2f, V=[%.2f, %.2f]]", cMinV, cMaxV, face.height, minV, maxV),
+                    String.format("V outside bounds: cMinV(%.2f) >= cMaxV(%.2f) [face.h=%.2f, V=[%.2f, %.2f]]", cMinV,
+                            cMaxV, face.height, minV, maxV),
                     minU, maxU, minV, maxV, cMinU, cMaxU, cMinV, cMaxV, denom);
         }
 
         // 面上のクリッピングされた4頂点を計算
-        Vector3f p0 = new Vector3f(face.vertices[0]).add(new Vector3f(face.uAxis).mul(cMinU)).add(new Vector3f(face.vAxis).mul(cMinV));
-        Vector3f p1 = new Vector3f(face.vertices[0]).add(new Vector3f(face.uAxis).mul(cMaxU)).add(new Vector3f(face.vAxis).mul(cMinV));
-        Vector3f p2 = new Vector3f(face.vertices[0]).add(new Vector3f(face.uAxis).mul(cMaxU)).add(new Vector3f(face.vAxis).mul(cMaxV));
-        Vector3f p3 = new Vector3f(face.vertices[0]).add(new Vector3f(face.uAxis).mul(cMinU)).add(new Vector3f(face.vAxis).mul(cMaxV));
+        Vector3f p0 = new Vector3f(face.vertices[0]).add(new Vector3f(face.uAxis).mul(cMinU))
+                .add(new Vector3f(face.vAxis).mul(cMinV));
+        Vector3f p1 = new Vector3f(face.vertices[0]).add(new Vector3f(face.uAxis).mul(cMaxU))
+                .add(new Vector3f(face.vAxis).mul(cMinV));
+        Vector3f p2 = new Vector3f(face.vertices[0]).add(new Vector3f(face.uAxis).mul(cMaxU))
+                .add(new Vector3f(face.vAxis).mul(cMaxV));
+        Vector3f p3 = new Vector3f(face.vertices[0]).add(new Vector3f(face.uAxis).mul(cMinU))
+                .add(new Vector3f(face.vAxis).mul(cMaxV));
 
         float uvU0 = computeProjectionU(p0, decalPos, localXAxis, halfW, decal.isMirrorX());
         float uvV0 = computeProjectionV(p0, decalPos, localYAxis, halfH);
@@ -551,5 +702,12 @@ public class GeoCubeFaceRaycaster {
         Vector3f delta = new Vector3f(p).sub(center);
         float projY = delta.dot(yAxis);
         return 0.5f - (projY / (2.0f * halfH));
+    }
+
+    /**
+     * 可動パーツ以外の車体構成ボーンかどうかを判定
+     */
+    public static boolean isBodyPartBone(String boneName) {
+        return VehicleSurfaceMeshBuilder.isBodyPartBone(boneName);
     }
 }
