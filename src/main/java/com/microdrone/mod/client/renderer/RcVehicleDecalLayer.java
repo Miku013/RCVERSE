@@ -29,6 +29,9 @@ import java.util.List;
  */
 public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolder> extends GeoRenderLayer<T> {
 
+    // デカール投影・形状診断ログ出力要求フラグ（エディタからのF4キーやボタン押下でトリガー）
+    public static volatile boolean requestDiagnosticsLog = false;
+
     // 【B方式：車体表面メッシュ化デカール投影システムの有効化フラグ】
     public static boolean USE_SURFACE_MESH_PROJECTOR = true;
 
@@ -59,14 +62,43 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
                 continue;
             }
 
-            // 指定された代表ボーンの描画タイミングでのみ投影（二重描画・重複描画を完全に防止）
+            boolean isEditorPreview = (editor != null && editor.getPreviewEntity() == animatable);
+            boolean isSelected = isEditorPreview && (i == selectedIndex || editor.getCurrentSelectedDecal() == decal);
+
+            // 診断ログ要求のチェック（F4キーでトリガー）
+            boolean doDiag = requestDiagnosticsLog && (editor == null || isSelected);
+            String repBone = getRepresentativeDecalBone(animatable, faces);
             String target = decal.getTargetBone();
-            if (!isBoneResponsibleForDecal(animatable, modelLoc, faces, boneName, target)) {
+            boolean isResponsible = isBoneResponsibleForDecal(animatable, modelLoc, faces, boneName, target);
+
+            if (doDiag) {
+                // モデル内に代表ボーンが存在するか確認
+                boolean repBoneExists = faces.stream().anyMatch(f -> f.boneName.equalsIgnoreCase(repBone));
+                com.microdrone.mod.MicroDroneMod.LOGGER.info("[RC DECAL DIAG] Bone: '{}', RepBone: '{}' (Exists in model: {}), IsResponsible: {}, Target: '{}'",
+                        boneName, repBone, repBoneExists, isResponsible, target);
+
+                if (!repBoneExists) {
+                    String warn = String.format("§c[デカール警告] 代表ボーン '%s' がモデル内に存在しません！(車体ボーン一覧: %s)",
+                            repBone, faces.stream().map(f -> f.boneName).distinct().toList());
+                    com.microdrone.mod.MicroDroneMod.LOGGER.error(warn);
+                    net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+                    if (mc.gui != null && mc.gui.getChat() != null) {
+                        mc.gui.getChat().addMessage(net.minecraft.network.chat.Component.literal(warn));
+                    }
+                    requestDiagnosticsLog = false;
+                }
+            }
+
+            // 指定された代表ボーンの描画タイミングでのみ投影（二重描画・重複描画を完全に防止）
+            if (!isResponsible) {
                 continue;
             }
 
             ResourceLocation textureLoc = DecalTextureManager.getStickerTexture(decal.getTextureName());
             if (textureLoc == null) {
+                if (doDiag) {
+                    com.microdrone.mod.MicroDroneMod.LOGGER.warn("[RC DECAL DIAG] Texture not found: {}", decal.getTextureName());
+                }
                 continue;
             }
 
@@ -74,8 +106,6 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
 
             // エディターで選択中のステッカーの場合、ボーン座標系（デカール配置オフセット直前）の姿勢行列をエディターに共有
             // ※ワールド内の他エンティティがエディタの選択状態を誤認識・横取りしないよう、エディタのプレビュー実体のみに限定
-            boolean isEditorPreview = (editor != null && editor.getPreviewEntity() == animatable);
-            boolean isSelected = isEditorPreview && (i == selectedIndex || editor.getCurrentSelectedDecal() == decal);
             if (isSelected) {
                 editor.updateDecalPoseMatrix(poseStack.last().pose());
             }
@@ -104,6 +134,23 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
 
                 List<com.microdrone.mod.client.decal.DecalMeshProjector.ProjectedDecalPolygon> projectedPolys =
                         com.microdrone.mod.client.decal.DecalMeshProjector.projectDecal(decal, bonePolygons);
+
+                if (doDiag) {
+                    String diagSummary = String.format("§a[デカール診断] 車種: %s, ボーン: '%s', メッシュポリゴン数: %d, 投影成功面数: %d",
+                            animatable.getClass().getSimpleName(), boneName, bonePolygons.size(), projectedPolys.size());
+                    com.microdrone.mod.MicroDroneMod.LOGGER.info(diagSummary);
+                    net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+                    if (mc.gui != null && mc.gui.getChat() != null) {
+                        mc.gui.getChat().addMessage(net.minecraft.network.chat.Component.literal(diagSummary));
+                        if (projectedPolys.isEmpty()) {
+                            mc.gui.getChat().addMessage(net.minecraft.network.chat.Component.literal(
+                                    String.format("§c => 警告: 投影面が0面です！(Pos: %.1f, %.1f, %.1f, Rot: %.1f, %.1f, %.1f)",
+                                            decal.getPosX(), decal.getPosY(), decal.getPosZ(),
+                                            decal.getRotX(), decal.getRotY(), decal.getRotZ())));
+                        }
+                    }
+                    requestDiagnosticsLog = false;
+                }
 
 
 

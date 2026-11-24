@@ -52,8 +52,9 @@ Drive, fly, sail, customize, and build your dream tracks with full physics, real
   - Swap tires on the fly to master any track: **Normal** (all-round), **Drift** (slick resin for huge power slides), **Grip** (asphalt track soft slicks), **Off-road** (mud/dirt +35% accel boost), and **Spike** (metal studs for ice biting).
 - **🎨 3D Decal Customizer & Workshop**:
   - Apply custom transparent PNG livery decals directly onto vehicle surfaces with real-time 3D translation, rotation, and scaling.
-  - **Surface Mesh Projection Engine**: Wraps seamlessly onto steep angled cabins, cylindrical submarine hulls, and complex multi-layered sloped armor without distortion or depth fighting!
-  - Supported on all vehicles: Cars, Planes, Boats, Submarines, Tanks, Drones, and the Villager Bicycle.
+  - **Surface Mesh Projection Engine (v1.0.58)**: Wraps seamlessly onto steep angled cabins, cylindrical submarine hulls, thin armor plates (Schürzen), and complex multi-layered car bodies (AE86) without distortion, projection bleeding, or depth fighting!
+  - Built-in diagnostic mode (Press `F4` in editor) outputs exact surface face intersections and normal vectors for precise alignment.
+  - Supported across RC vehicles: Cars (AE86, Truck, Sports), Airplanes, Speedboats, Submarines, Tanks, and Drones.
 
 | RC Speedboat (Angled Cabin) | RC Submarine (Curved Hull) | RC Heavy Tank (Sloped Armor) |
 | :---: | :---: | :---: |
@@ -116,9 +117,10 @@ Drive, fly, sail, customize, and build your dream tracks with full physics, real
 | ![アスファルト](docs/images/tracks/road_asphalt.jpg) | ![ダート](docs/images/tracks/road_dirt.jpg) | ![アイス](docs/images/tracks/road_ice.jpg) | ![水たまり](docs/images/tracks/road_puddle.jpg) |
 | 高速グリップ＆本格テールスライド | オフロードタイヤで加速+35%ブースト | 摩擦0.995の超スライド＆スパイクタイヤ対応 | 水しぶきエフェクト＆スリップ制御 |
 - **5大タイヤパーツチューニング**: ノーマル、ドリフト、グリップ、オフロード、スパイクタイヤを用途に合わせて自由に換装可能。
-- **デカール工房（リバリーエディタ & 表面メッシュ投影）**:
-  - 車両の表面ポリゴンへ直接ステッカーを投影する新アルゴリズムを導入。
-  - ボートの鋭い傾斜面、潜水艦の円筒曲面、戦車の複雑な前面装甲・履帯周辺、村人の自転車まで、全車種に隙間や歪みなくピタッと吸着貼り付け。
+- **デカール工房（リバリーエディタ & 表面メッシュ投影 v1.0.58）**:
+  - 車両の表面ポリゴンへ直接ステッカーを投影する新アルゴリズム（B方式）を正式導入。
+  - ボートの鋭い傾斜面、潜水艦の円筒曲面、戦車の複雑な前面装甲・シュルツェン薄板、86のボディ段差まで、ラジコン全車種（カー、飛行機、ボート、潜水艦、戦車、ドローン）に隙間や歪みなくピタッと吸着貼り付け。
+  - エディタ内で `F4` キー（または診断ログボタン）を押すことで、交差面のボーン・法線・投影情報をリアルタイム出力できる診断支援機能を搭載。
 
 | RCボート（キャビン傾斜面） | RC潜水艦（円筒曲面ボディ） | RC戦車（前面傾斜装甲板） |
 | :---: | :---: | :---: |

@@ -287,6 +287,10 @@ public class DecalEditorScreen extends Screen {
         int panelX = this.width - panelWidth - 10;
         int y = 22;
 
+        // --- [診断ボタン] 3D投影・形状診断ログ出力ボタン (ビューポート上部) ---
+        this.addRenderableWidget(Button.builder(Component.literal("診断ログ出力 [F4]"), b -> triggerDiagnostics())
+                .bounds(panelX - 110, 14, 100, 16).build());
+
         // --- [固定ヘッダー] ステッカー画像選択 ---
         this.prevStickerBtn = Button.builder(Component.literal("◀"), b -> cycleSticker(-1))
                 .bounds(panelX, y, 22, 18).build();
@@ -919,6 +923,19 @@ public class DecalEditorScreen extends Screen {
         RenderSystem.clear(org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT, Minecraft.ON_OSX);
 
         poseStack.popPose();
+    }
+
+    public void triggerDiagnostics() {
+        com.microdrone.mod.client.renderer.RcVehicleDecalLayer.requestDiagnosticsLog = true;
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_F4) {
+            triggerDiagnostics();
+            return true;
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
     private static ResourceLocation resolveModelLocation(Entity animatable) {

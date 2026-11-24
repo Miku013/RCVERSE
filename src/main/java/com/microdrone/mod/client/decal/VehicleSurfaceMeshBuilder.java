@@ -241,7 +241,7 @@ public class VehicleSurfaceMeshBuilder {
                 }
             }
 
-            // ボーン変換（累積回転・ピボット）と合成
+            // ボーン変換（砲塔等の車体に対する相対回転・ピボット）とキューブローカル変換を合成
             Matrix4f totalCubeMat = new Matrix4f(boneMat).mul(cubeLocal);
 
             // キューブの8頂点
@@ -291,28 +291,31 @@ public class VehicleSurfaceMeshBuilder {
         }
 
         Matrix4f boneMat = new Matrix4f(parentMat);
-        if (bone.has("pivot") && bone.has("rotation")) {
-            JsonArray piv = bone.getAsJsonArray("pivot");
-            JsonArray rot = bone.getAsJsonArray("rotation");
-            if (piv.size() >= 3 && rot.size() >= 3) {
-                float px = piv.get(0).getAsFloat();
-                float py = piv.get(1).getAsFloat();
-                float pz = piv.get(2).getAsFloat();
-                float rx = (float) Math.toRadians(-rot.get(0).getAsFloat());
-                float ry = (float) Math.toRadians(rot.get(1).getAsFloat());
-                float rz = (float) Math.toRadians(-rot.get(2).getAsFloat());
+        // モデル全体の基底回転である root ボーンの回転は、GeckoLib の PoseStack 側で適用されるためメッシュ頂点には二重適用しない
+        if (!"root".equalsIgnoreCase(name)) {
+            if (bone.has("pivot") && bone.has("rotation")) {
+                JsonArray piv = bone.getAsJsonArray("pivot");
+                JsonArray rot = bone.getAsJsonArray("rotation");
+                if (piv.size() >= 3 && rot.size() >= 3) {
+                    float px = piv.get(0).getAsFloat();
+                    float py = piv.get(1).getAsFloat();
+                    float pz = piv.get(2).getAsFloat();
+                    float rx = (float) Math.toRadians(-rot.get(0).getAsFloat());
+                    float ry = (float) Math.toRadians(rot.get(1).getAsFloat());
+                    float rz = (float) Math.toRadians(-rot.get(2).getAsFloat());
 
-                boneMat.translate(px, py, pz);
-                boneMat.rotateZYX(rz, ry, rx);
-                boneMat.translate(-px, -py, -pz);
-            }
-        } else if (bone.has("rotation")) {
-            JsonArray rot = bone.getAsJsonArray("rotation");
-            if (rot.size() >= 3) {
-                float rx = (float) Math.toRadians(-rot.get(0).getAsFloat());
-                float ry = (float) Math.toRadians(rot.get(1).getAsFloat());
-                float rz = (float) Math.toRadians(-rot.get(2).getAsFloat());
-                boneMat.rotateZYX(rz, ry, rx);
+                    boneMat.translate(px, py, pz);
+                    boneMat.rotateZYX(rz, ry, rx);
+                    boneMat.translate(-px, -py, -pz);
+                }
+            } else if (bone.has("rotation")) {
+                JsonArray rot = bone.getAsJsonArray("rotation");
+                if (rot.size() >= 3) {
+                    float rx = (float) Math.toRadians(-rot.get(0).getAsFloat());
+                    float ry = (float) Math.toRadians(rot.get(1).getAsFloat());
+                    float rz = (float) Math.toRadians(-rot.get(2).getAsFloat());
+                    boneMat.rotateZYX(rz, ry, rx);
+                }
             }
         }
         cache.put(name, boneMat);
