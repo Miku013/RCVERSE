@@ -271,6 +271,10 @@ public class DecalEditorScreen extends Screen {
         this.addRenderableWidget(this.nextStickerBtn);
         y += 22;
 
+        // --- [診断ボタン] 3D投影・形状診断ログ出力ボタン (ビューポート上部) ---
+        this.addRenderableWidget(Button.builder(Component.literal("診断ログ出力 [F4]"), b -> triggerDiagnostics())
+                .bounds(panelX - 110, 14, 100, 16).build());
+
         // --- [固定ヘッダー] 部位プリセットボタン (乗り物カテゴリ別ラベル) ---
         VehicleCategory cat = getVehicleCategory();
         int pw = (panelWidth - 4) / 3;
@@ -705,9 +709,26 @@ public class DecalEditorScreen extends Screen {
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
+    public void triggerDiagnostics() {
+        com.microdrone.mod.client.renderer.RcVehicleDecalLayer.requestDiagnosticsLog = true;
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_F4) {
+            triggerDiagnostics();
+            return true;
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
         if (button == 0) {
+            if (this.isDraggingDecal) {
+                // ドラッグ終了時に自動で診断ログを出力（最新の配置位置の面状態を記録）
+                triggerDiagnostics();
+            }
             this.isDragging = false;
             this.isDraggingDecal = false;
         } else if (button == 1) {

@@ -401,12 +401,47 @@ public class GeoCubeFaceRaycaster {
         return null;
     }
 
+    public static class ClippedQuadResult {
+        public final List<ClippedVertex> vertices;
+        public final String rejectReason;
+        public final float minU, maxU, minV, maxV;
+        public final float cMinU, cMaxU, cMinV, cMaxV;
+        public final float denom;
+
+        public ClippedQuadResult(List<ClippedVertex> vertices, String rejectReason,
+                                 float minU, float maxU, float minV, float maxV,
+                                 float cMinU, float cMaxU, float cMinV, float cMaxV, float denom) {
+            this.vertices = vertices;
+            this.rejectReason = rejectReason;
+            this.minU = minU;
+            this.maxU = maxU;
+            this.minV = minV;
+            this.maxV = maxV;
+            this.cMinU = cMinU;
+            this.cMaxU = cMaxU;
+            this.cMinV = cMinV;
+            this.cMaxV = cMaxV;
+            this.denom = denom;
+        }
+
+        public boolean isAccepted() {
+            return rejectReason == null && !vertices.isEmpty();
+        }
+    }
+
     /**
      * 【第4段階：複数面またぎ対応・対象面範囲外のクリッピングメッシュ生成】
      * デカールの回転・姿勢を考慮して面の境界で正確にクリッピングし、
      * 3D空間プロジェクションによってUVを連続一致させる
      */
     public static List<ClippedVertex> getClippedDecalQuad(CarDecalData decal, ModelCubeFace face) {
+        return getClippedDecalQuadDetailed(decal, face).vertices;
+    }
+
+    /**
+     * 面に対するデカール投影・クリッピングの詳細計算（診断用・詳細理由付き）
+     */
+    public static ClippedQuadResult getClippedDecalQuadDetailed(CarDecalData decal, ModelCubeFace face) {
         // ステッカーの基本サイズ
         float aspect = decal.getAspect() > 0 ? decal.getAspect() : 1.0f;
         float halfW = (decal.getScale() * 0.5f) * aspect;
@@ -430,7 +465,9 @@ public class GeoCubeFaceRaycaster {
         // デカール裏面から車体に向かう垂直プロジェクション光線の向き
         Vector3f rayDir = new Vector3f(decalNormal).negate().normalize();
         float denom = rayDir.dot(face.localNormal);
-        if (Math.abs(denom) < 0.0001f) return Collections.emptyList();
+        if (Math.abs(denom) < 0.0001f) {
+            return new ClippedQuadResult(Collections.emptyList(), "denom ~ 0 (ray parallel to face plane)", 0, 0, 0, 0, 0, 0, 0, 0, denom);
+        }
 
         // デカール矩形の4隅の3Dワールド座標（ボーンローカル座標系）
         Vector3f c0 = new Vector3f(decalPos).add(new Vector3f(localXAxis).mul(-halfW)).add(new Vector3f(localYAxis).mul(halfH));
@@ -466,8 +503,15 @@ public class GeoCubeFaceRaycaster {
         float cMaxV = Math.min(face.height, maxV);
 
         // 完全に面の外側にある場合は描画しない
-        if (cMinU >= cMaxU || cMinV >= cMaxV) {
-            return Collections.emptyList();
+        if (cMinU >= cMaxU) {
+            return new ClippedQuadResult(Collections.emptyList(),
+                    String.format("U outside bounds: cMinU(%.2f) >= cMaxU(%.2f) [face.w=%.2f, U=[%.2f, %.2f]]", cMinU, cMaxU, face.width, minU, maxU),
+                    minU, maxU, minV, maxV, cMinU, cMaxU, cMinV, cMaxV, denom);
+        }
+        if (cMinV >= cMaxV) {
+            return new ClippedQuadResult(Collections.emptyList(),
+                    String.format("V outside bounds: cMinV(%.2f) >= cMaxV(%.2f) [face.h=%.2f, V=[%.2f, %.2f]]", cMinV, cMaxV, face.height, minV, maxV),
+                    minU, maxU, minV, maxV, cMinU, cMaxU, cMinV, cMaxV, denom);
         }
 
         // 面上のクリッピングされた4頂点を計算
@@ -493,7 +537,7 @@ public class GeoCubeFaceRaycaster {
         result.add(new ClippedVertex(p1, uvU1, uvV1));
         result.add(new ClippedVertex(p2, uvU2, uvV2));
         result.add(new ClippedVertex(p3, uvU3, uvV3));
-        return result;
+        return new ClippedQuadResult(result, null, minU, maxU, minV, maxV, cMinU, cMaxU, cMinV, cMaxV, denom);
     }
 
     private static float computeProjectionU(Vector3f p, Vector3f center, Vector3f xAxis, float halfW, boolean mirrorX) {

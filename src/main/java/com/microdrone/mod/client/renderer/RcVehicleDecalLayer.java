@@ -29,6 +29,9 @@ import java.util.List;
  */
 public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolder> extends GeoRenderLayer<T> {
 
+    // デカール投影・形状診断ログ出力要求フラグ（エディタからのF4キーやボタン押下でトリガー）
+    public static volatile boolean requestDiagnosticsLog = false;
+
     public RcVehicleDecalLayer(GeoEntityRenderer<T> entityRenderer) {
         super(entityRenderer);
     }
@@ -75,6 +78,17 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
                 editor.updateDecalPoseMatrix(poseStack.last().pose());
             }
 
+            // 診断ログ出力判定（フラグが立っているか、またはエディタで選択中の場合に診断可能）
+            boolean doDiagLog = requestDiagnosticsLog && isSelected;
+            StringBuilder diagSb = doDiagLog ? new StringBuilder() : null;
+            if (doDiagLog) {
+                diagSb.append("\n==================== [RC DECAL DIAGNOSTICS LOG] ====================\n");
+                diagSb.append(String.format("Model: %s | Target Bone: %s (Current Bone: %s)\n", modelLoc, target, boneName));
+                diagSb.append(String.format("Decal: tex=%s, pos=(%.2f, %.2f, %.2f), rot=(P:%.1f, Y:%.1f, R:%.1f), scale=%.2f, aspect=%.2f\n",
+                        decal.getTextureName(), decal.getPosX(), decal.getPosY(), decal.getPosZ(),
+                        decal.getRotX(), decal.getRotY(), decal.getRotZ(), decal.getScale(), decal.getAspect()));
+            }
+
             float unitScale = 0.0625f; // Blockbench (1/16 block) -> Minecraft block
             Vector3f decalPos = new Vector3f(decal.getPosX(), decal.getPosY(), decal.getPosZ());
 
@@ -85,6 +99,16 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
                     .rotateZ(decal.getRotZ() * Mth.DEG_TO_RAD);
             Vector3f decalNormal = new Vector3f(0, 0, 1);
             decalRot.transform(decalNormal);
+
+            Vector3f rayDir = new Vector3f(decalNormal).negate(); // デカールから車体へ向かう垂直プロジェクションレイ
+
+            if (doDiagLog) {
+                diagSb.append(String.format("Decal Normal: (%.3f, %.3f, %.3f), Ray Dir: (%.3f, %.3f, %.3f)\n",
+                        decalNormal.x, decalNormal.y, decalNormal.z, rayDir.x, rayDir.y, rayDir.z));
+                diagSb.append(String.format("Total Model Faces in Bone '%s': %d faces\n", boneName,
+                        faces.stream().filter(f -> f.boneName.equalsIgnoreCase(boneName)).count()));
+                diagSb.append("--- Face Evaluation Details ---\n");
+            }
 
             class RenderableFaceQuad {
                 final GeoCubeFaceRaycaster.ModelCubeFace face;
@@ -99,30 +123,53 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
             }
 
             List<RenderableFaceQuad> candidates = new java.util.ArrayList<>();
-            Vector3f rayDir = new Vector3f(decalNormal).negate(); // デカールから車体へ向かう垂直プロジェクションレイ
 
             for (GeoCubeFaceRaycaster.ModelCubeFace face : faces) {
                 if (!face.boneName.equalsIgnoreCase(boneName)) continue;
 
-                // 面の法線とおおむね同方向か判定（デカールを向いている面: cos 75° ≒ 0.25）
                 float dot = face.localNormal.dot(decalNormal);
-                if (dot < 0.25f) continue;
-
-                // プロジェクションレイ照射判定：
-                // デカールから垂直に車体へ飛ばしたレイの進行方向（rayDir）にある面を捕捉
-                // デカールが車体から離れていても（手前にある限り）、レイが届く深さ（最大40ブロック）まで確実に投影
                 Vector3f toFace = new Vector3f(face.localCenter).sub(decalPos);
                 float depthAlongRay = toFace.dot(rayDir);
-                if (depthAlongRay < -3.0f || depthAlongRay > 40.0f) {
-                    continue; // デカールの背後にある面、または遠すぎる面は除外
+                float distSq = face.localCenter.distanceSquared(decalPos);
+
+                // デカールに近い面（distSq < 900.0f）またはdotが大きい面を診断
+                boolean reportThisFace = doDiagLog && (dot > 0.1f || distSq < 400.0f);
+
+                // 面の法線とおおむね同方向か判定（デカールを向いている面: cos 75° ≒ 0.25）
+                if (dot < 0.25f) {
+                    if (reportThisFace) {
+                        diagSb.append(String.format("  [SKIP-NORMAL] Cube #%d %s: dot=%.3f (<0.25) normal=(%.2f, %.2f, %.2f) center=(%.1f, %.1f, %.1f)\n",
+                                face.cubeIndex, face.direction, dot, face.localNormal.x, face.localNormal.y, face.localNormal.z,
+                                face.localCenter.x, face.localCenter.y, face.localCenter.z));
+                    }
+                    continue;
                 }
 
-                List<GeoCubeFaceRaycaster.ClippedVertex> clippedQuad =
-                        GeoCubeFaceRaycaster.getClippedDecalQuad(decal, face);
+                // プロジェクションレイ照射判定
+                if (depthAlongRay < -3.0f || depthAlongRay > 40.0f) {
+                    if (reportThisFace) {
+                        diagSb.append(String.format("  [SKIP-DEPTH] Cube #%d %s: depthAlongRay=%.2f (out of [-3, 40]) center=(%.1f, %.1f, %.1f)\n",
+                                face.cubeIndex, face.direction, depthAlongRay, face.localCenter.x, face.localCenter.y, face.localCenter.z));
+                    }
+                    continue;
+                }
 
-                if (!clippedQuad.isEmpty()) {
-                    float depth = face.localCenter.dot(decalNormal);
-                    candidates.add(new RenderableFaceQuad(face, clippedQuad, depth));
+                GeoCubeFaceRaycaster.ClippedQuadResult clipRes =
+                        GeoCubeFaceRaycaster.getClippedDecalQuadDetailed(decal, face);
+
+                if (!clipRes.isAccepted()) {
+                    if (reportThisFace) {
+                        diagSb.append(String.format("  [REJECT-CLIP] Cube #%d %s: reason='%s' | U=[%.2f, %.2f] V=[%.2f, %.2f] size=(w=%.1f, h=%.1f)\n",
+                                face.cubeIndex, face.direction, clipRes.rejectReason, clipRes.minU, clipRes.maxU, clipRes.minV, clipRes.maxV, face.width, face.height));
+                    }
+                    continue;
+                }
+
+                float depth = face.localCenter.dot(decalNormal);
+                candidates.add(new RenderableFaceQuad(face, clipRes.vertices, depth));
+                if (reportThisFace) {
+                    diagSb.append(String.format("  [CANDIDATE-OK] Cube #%d %s: depth=%.2f, clipU=[%.2f, %.2f], clipV=[%.2f, %.2f], verts=4\n",
+                            face.cubeIndex, face.direction, depth, clipRes.cMinU, clipRes.cMaxU, clipRes.cMinV, clipRes.cMaxV));
                 }
             }
 
@@ -130,7 +177,6 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
             candidates.sort((a, b) -> Float.compare(b.depth, a.depth));
 
             // 遮蔽カリング（車体内部の内装や反対側パネルなど、3.0ブロック以上奥にある面の突き抜け描画のみを除外）
-            // ※モール等の突起（0.4ブロック程度の段差）で下部のドアパネルが消えてしまわないよう閾値を3.0fに設定
             List<RenderableFaceQuad> visibleQuads = new java.util.ArrayList<>();
             for (RenderableFaceQuad cand : candidates) {
                 boolean occluded = false;
@@ -143,6 +189,11 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
                         float dist2D = (float) Math.sqrt(Math.max(0.0f, diff.lengthSquared() - dotNorm * dotNorm));
                         if (dist2D < 2.5f) { // 2D平面上で重なり合っている
                             occluded = true;
+                            if (doDiagLog) {
+                                diagSb.append(String.format("  [OCCLUDED] Cube #%d %s by Cube #%d %s: depthDiff=%.2f, dist2D=%.2f\n",
+                                        cand.face.cubeIndex, cand.face.direction, front.face.cubeIndex, front.face.direction,
+                                        (front.depth - cand.depth), dist2D));
+                            }
                             break;
                         }
                     }
@@ -150,6 +201,26 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
                 if (!occluded) {
                     visibleQuads.add(cand);
                 }
+            }
+
+            if (doDiagLog) {
+                diagSb.append(String.format("--- Render Summary ---\nVisible Quads Count: %d (from %d candidates)\n",
+                        visibleQuads.size(), candidates.size()));
+                for (RenderableFaceQuad vq : visibleQuads) {
+                    diagSb.append(String.format("  => RENDER: Cube #%d %s (w=%.1f, h=%.1f, normal=(%.2f, %.2f, %.2f))\n",
+                            vq.face.cubeIndex, vq.face.direction, vq.face.width, vq.face.height,
+                            vq.face.localNormal.x, vq.face.localNormal.y, vq.face.localNormal.z));
+                }
+                diagSb.append("====================================================================\n");
+                com.microdrone.mod.MicroDroneMod.LOGGER.info(diagSb.toString());
+
+                net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+                if (mc.gui != null && mc.gui.getChat() != null) {
+                    mc.gui.getChat().addMessage(net.minecraft.network.chat.Component.literal(
+                            String.format("§a[デカール診断] 描画面数: %d面 (候補%d面) - latest.logに出力しました",
+                                    visibleQuads.size(), candidates.size())));
+                }
+                requestDiagnosticsLog = false;
             }
 
             int renderedFaces = 0;
