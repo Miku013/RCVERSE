@@ -421,15 +421,18 @@
         </div>
         <h3 class="card-title">
           🎨 デカール工房（リバリーエディター）
-          <span class="status-badge status-available">🟢 実装済み</span>
+          <span class="status-badge status-available">🟢 全ビークル対応 (v1.1.1)</span>
         </h3>
         <p class="card-text">
-          3Dモデルを見ながら直感的にステッカー（文字やバイナル）を貼り付けられる専用GUI！愛車を世界に1台だけのカスタム仕様に仕上げられます。
+          3Dモデルを見ながら直感的にステッカー（文字やバイナル）を貼り付けられる専用GUI！RCカー（AE86 / トラック / スポーツカー）をはじめ、飛行機、ボート、潜水艦、戦車（PZ戦車 / デフォルト）、ドローンなどのラジコン全車種に完全対応しています。
         </p>
         <ul class="card-features">
-          <li><strong>3Dリアルタイムプレビュー</strong>: マウスドラッグで視点回転・ズーム・移動</li>
-          <li><strong>部位別貼り付け</strong>: ボンネット、ルーフ、トランク、左右ドアに対応</li>
-          <li><strong>自由な調整</strong>: 位置、サイズ、回転（面内）、横幅比率、UV左右反転</li>
+          <li><strong>表面メッシュ吸着投影（B方式）</strong>: 車体ポリゴンへ直接投影し、曲面・段差・傾斜装甲や薄板シュルツェンにもピタッと隙間なく完全密着！</li>
+          <li><strong>全ビークル＆専用プリセット</strong>: 車種に応じた部位プリセット（ボンネット、砲塔、キャビン、主翼等）をワンクリック適用</li>
+          <li><strong>3D自由ドラッグ＆[0]リセットボタン</strong>: 3次元空間での直感的な移動と、ミリ単位の微調整スライダー＆各項目ごとのワンクリック「0」リセットボタンを両立</li>
+          <li><strong>表裏・上下 視覚識別システム</strong>: 表面はシアン/黄＋上部▲マーク、裏面は赤＋✕マーク、さらに正面へ突き出る3D法線矢印ピンで向きを直感認識！</li>
+          <li><strong>投影深度カリング</strong>: 奥のパーツや反対側パネルへの裏写り・突き抜け描画を物理的に完全防止</li>
+          <li><strong>F4 診断ログ機能</strong>: エディタ内でF4キーまたは画面上部ボタンを押すことで、交差面のボーン・法線・投影状態をリアルタイム出力</li>
           <li>デカール適用マシンはラックやショーケースでもそのまま立体反映</li>
         </ul>
       </div>
@@ -454,6 +457,72 @@
           <li><strong>レース設備</strong>: ブーストジャンプ台、縁石、スロープ、カラーコーン、ゴールゲート</li>
         </ul>
       </div>
+
+      <!-- ホイールチェンジ台（RCピット作業台） -->
+      <div class="card">
+        <div class="card-thumbnail" style="display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at center, #1e293b 0%, #090d16 100%);">
+          <img src="images/items/rc_tire_normal.png" alt="ホイールチェンジ台 (RCピット作業台)" style="width: 110px; height: 110px; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 8px 16px rgba(0,0,0,0.6));">
+        </div>
+        <h3 class="card-title">
+          🛞 ホイールチェンジ台 (RCピット作業台)
+          <span class="status-badge status-available">🟢 クラフト対応</span>
+        </h3>
+        <p class="card-text">
+          RCカーをセットして前輪・後輪それぞれに5種類のタイヤを自在に換装できる3Dピット作業台！路面コンディションに合わせた理想のセッティングを追求できます。
+        </p>
+        <ul class="card-features">
+          <li><strong>3Dチューニングピット</strong>: 360°自由回転、ズーム、タイヤ切替時のアングル自動リセット</li>
+          <li><strong>ショールーム風ターンテーブル</strong>: マシンが美しく自動旋回するショールーム演出を搭載</li>
+          <li><strong>前後独立タイヤ換装</strong>: 前輪（旋回性）と後輪（トラクション/スライド）を個別セッティング</li>
+          <li><strong>リアルタイムHUD連動</strong>: 装着タイヤがHUDに即座に表示され、路面物理へシームレス反映</li>
+          <li><strong>サバイバル対応</strong>: ピストン、鉄インゴット、作業台などでクラフト可能</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 全ビークルへのデカール吸着投影サンプルギャラリー -->
+    <div style="margin-top: 30px; background: rgba(18, 20, 28, 0.75); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 14px; padding: 24px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+        <h3 style="margin: 0; color: #60a5fa; font-size: 1.2rem; display: flex; align-items: center; gap: 8px;">
+          <span>📸</span> 多彩な車体形状・曲面への吸着デカール投影サンプル
+        </h3>
+        <span class="status-badge status-available" style="font-size: 0.8rem;">表面メッシュ投影 (B方式) 稼働中</span>
+      </div>
+      <p style="font-size: 0.92rem; color: #b0b4c8; margin-bottom: 18px; line-height: 1.6;">
+        Blockbenchのモデル表面ポリゴンそのものを活用してデカールを投影する新アルゴリズムにより、平坦なドアパネルだけでなく、<strong>ボートの鋭いキャビン傾斜</strong>、<strong>潜水艦の円筒曲面</strong>、<strong>戦車の前面装甲や段差パーツ</strong>にも、隙間や歪みなく本物のステッカーのようにピタッと吸着します。
+      </p>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px;">
+        <div style="border-radius: 10px; overflow: hidden; background: #0c0d12; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 16px rgba(0,0,0,0.4);">
+          <a href="images/decal_sample_boat.jpg" target="_blank" title="クリックして拡大" style="display: block; overflow: hidden;">
+            <img src="images/decal_sample_boat.jpg" alt="RCボート 傾斜キャビンへのデカール密着投影" style="width: 100%; height: 210px; object-fit: cover; display: block; transition: transform 0.3s ease;">
+          </a>
+          <div style="padding: 12px 14px; background: #151722; border-top: 1px solid rgba(255,255,255,0.06);">
+            <div style="font-weight: bold; color: #fff; font-size: 0.95rem; margin-bottom: 4px;">⛵ RCボート</div>
+            <div style="font-size: 0.84rem; color: #94a3b8; line-height: 1.4;">キャビンの鋭角な傾斜面に沿って、立体的に歪みなく追従・密着。</div>
+          </div>
+        </div>
+
+        <div style="border-radius: 10px; overflow: hidden; background: #0c0d12; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 16px rgba(0,0,0,0.4);">
+          <a href="images/decal_sample_submarine.jpg" target="_blank" title="クリックして拡大" style="display: block; overflow: hidden;">
+            <img src="images/decal_sample_submarine.jpg" alt="RC潜水艦 円筒曲面へのシームレスデカール貼り付け" style="width: 100%; height: 210px; object-fit: cover; display: block; transition: transform 0.3s ease;">
+          </a>
+          <div style="padding: 12px 14px; background: #151722; border-top: 1px solid rgba(255,255,255,0.06);">
+            <div style="font-weight: bold; color: #fff; font-size: 0.95rem; margin-bottom: 4px;">🌊 RC潜水艦</div>
+            <div style="font-size: 0.84rem; color: #94a3b8; line-height: 1.4;">段階的に変化する円筒ボディの曲面にも、切れ目なく自然にラッピング。</div>
+          </div>
+        </div>
+
+        <div style="border-radius: 10px; overflow: hidden; background: #0c0d12; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 16px rgba(0,0,0,0.4);">
+          <a href="images/decal_sample_tank.jpg" target="_blank" title="クリックして拡大" style="display: block; overflow: hidden;">
+            <img src="images/decal_sample_tank.jpg" alt="RC戦車 前面傾斜装甲板・履帯周辺への吸着貼り付け" style="width: 100%; height: 210px; object-fit: cover; display: block; transition: transform 0.3s ease;">
+          </a>
+          <div style="padding: 12px 14px; background: #151722; border-top: 1px solid rgba(255,255,255,0.06);">
+            <div style="font-weight: bold; color: #fff; font-size: 0.95rem; margin-bottom: 4px;">🛡️ RC戦車</div>
+            <div style="font-size: 0.84rem; color: #94a3b8; line-height: 1.4;">複雑な凹凸・段差・履帯ガードの装甲板にも正確にクリッピング投影。</div>
+          </div>
+        </div>
+      </div>
+    </div>
     </div>
   </section>
 
@@ -707,8 +776,8 @@
 
         <!-- Blockbench作業画面プレビュー -->
         <div style="margin: 16px 0; border-radius: 8px; overflow: hidden; border: 1px solid rgba(56, 189, 248, 0.3); background: #0b0f19; box-shadow: 0 4px 14px rgba(0,0,0,0.4);">
-          <a href="images/blockbench_model_guide.png" target="_blank" title="クリックして原寸拡大表示" style="display: block; cursor: zoom-in;">
-            <img src="images/blockbench_model_guide.png" alt="Blockbenchでのモデリングおよびボーン構成例 (pzhtank.geo.json)" style="width: 100%; height: auto; display: block; transition: opacity 0.2s;">
+          <a href="images/blockbench_model_guide_full.jpg" target="_blank" title="クリックして原寸拡大表示" style="display: block; cursor: zoom-in;">
+            <img src="images/blockbench_model_guide_full.jpg" alt="Blockbenchでのモデリングおよびボーン構成例 (pzhtank.geo.json)" style="width: 100%; height: auto; display: block; transition: opacity 0.2s;">
           </a>
           <div style="padding: 10px 14px; font-size: 0.82rem; color: var(--text-muted); background: rgba(15, 23, 42, 0.85); border-top: 1px solid rgba(255,255,255,0.06); line-height: 1.5; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
             <span>💡 <strong>Blockbench実際の作業画面例</strong>: 右側のアウトライナー（ツリー）で <code>turret</code>（砲塔）、<code>track_r</code>（履帯）、<code>body</code>（車体）のようにボーン分けして GeckoLib形式（<code>*.geo.json</code>）でエクスポートします。</span>
@@ -842,8 +911,8 @@
 
         <div class="card" style="padding: 20px;">
           <div class="card-thumbnail" style="margin: -20px -20px 14px -20px; height: 180px;">
-            <a href="images/blockbench_model_guide.png" target="_blank" title="クリックして拡大" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-              <img src="images/blockbench_model_guide.png" alt="Blockbenchでの自作戦車モデル設計画面 (pzhtank.geo.json)">
+            <a href="images/blockbench_model_guide_full.jpg" target="_blank" title="クリックして拡大" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+              <img src="images/blockbench_model_guide_full.jpg" alt="Blockbenchでの自作戦車モデル設計画面 (pzhtank.geo.json)">
             </a>
           </div>
           <h4 style="color: #fff; font-size: 1.05rem; margin-bottom: 6px;">🎖️ Blockbench設計モデル（Panzer）</h4>
@@ -895,11 +964,27 @@
     </div>
 
     <div class="changelog-box">
+      <!-- v1.1.1 -->
+      <div class="changelog-entry">
+        <div class="changelog-header">
+          <span class="changelog-version">v1.1.1</span>
+          <span class="status-badge status-available">Latest Release</span>
+          <span class="changelog-date">2026-11-24</span>
+        </div>
+        <ul class="changelog-items">
+          <li><strong>全車種＆村人の自転車 デカールシステム完全対応</strong>: RCカー（86・トラック含む）、飛行機、ボート、潜水艇、戦車、ドローン、そして「村人の自転車」まで、全機体の車体表面メッシュ投影（B方式）に対応！</li>
+          <li><strong>曲面・段差・傾斜装甲へのピタッと吸着貼り付け</strong>: モデル表面ポリゴンを活用し、潜水艦の円筒曲面やボートの傾斜面、戦車の薄板シュルツェン等にも隙間やめり込みなく完全密着。</li>
+          <li><strong>投影深度カリング＆裏写り・二重表示の根絶</strong>: 車体反対側や奥のパーツへの突き抜け・裏写りを物理的に完全遮蔽。</li>
+          <li><strong>3D自由ドラッグ＆スライダー微調整の操作性向上</strong>: 直感的な3次元ドラッグ移動とスライダーによる微調整を両立。</li>
+          <li><strong>製品版クリーンアップ</strong>: 診断ログ出力コード等を完全にオフにし、快適な製品版リリース水準へ最適化。</li>
+        </ul>
+      </div>
+
       <!-- v1.0.27 -->
       <div class="changelog-entry">
         <div class="changelog-header">
           <span class="changelog-version">v1.0.27</span>
-          <span class="status-badge status-available">Latest Release</span>
+          <span class="status-badge status-dev">Previous</span>
           <span class="changelog-date">2026-11-23</span>
         </div>
         <ul class="changelog-items">

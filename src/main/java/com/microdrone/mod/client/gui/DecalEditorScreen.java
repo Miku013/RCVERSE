@@ -28,12 +28,14 @@ import com.microdrone.mod.network.UpdateDecalsPayload;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Checkbox;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -97,6 +99,10 @@ public class DecalEditorScreen extends Screen {
 
     public boolean isDecalDragging() {
         return this.isDraggingDecal;
+    }
+
+    public Entity getPreviewEntity() {
+        return this.previewEntity;
     }
 
     private final DecalTableBlockEntity table;
@@ -181,7 +187,28 @@ public class DecalEditorScreen extends Screen {
         return VehicleCategory.CAR;
     }
 
+    private boolean isBicycle() {
+        return this.decalHolder != null && "bicycle".equalsIgnoreCase(this.decalHolder.getVariantId());
+    }
+
+    private Component getPartLabel(int index) {
+        if (isBicycle()) {
+            return switch (index) {
+                case 1 -> Component.literal("フレーム前");
+                case 2 -> Component.literal("サドル");
+                case 3 -> Component.literal("フレーム後");
+                case 4 -> Component.literal("左側面");
+                case 5 -> Component.literal("右側面");
+                default -> Component.literal("部位" + index);
+            };
+        }
+        return getVehicleCategory().getPartName(index);
+    }
+
     private Component getEditorTitle() {
+        if (isBicycle()) {
+            return Component.literal("村人の自転車 デカール工房 (リバリーエディター)");
+        }
         VehicleCategory cat = getVehicleCategory();
         return Component.translatable("gui.microdrone.decal_editor.title." + cat.name().toLowerCase(java.util.Locale.ROOT));
     }
@@ -261,6 +288,10 @@ public class DecalEditorScreen extends Screen {
         int panelX = this.width - panelWidth - 10;
         int y = 22;
 
+        // --- [診断ボタン] 3D投影・形状診断ログ出力ボタン (ビューポート上部) ---
+        this.addRenderableWidget(Button.builder(Component.literal("診断ログ出力 [F4]"), b -> triggerDiagnostics())
+                .bounds(panelX - 110, 14, 100, 16).build());
+
         // --- [固定ヘッダー] ステッカー画像選択 ---
         this.prevStickerBtn = Button.builder(Component.literal("◀"), b -> cycleSticker(-1))
                 .bounds(panelX, y, 22, 18).build();
@@ -271,20 +302,19 @@ public class DecalEditorScreen extends Screen {
         y += 22;
 
         // --- [固定ヘッダー] 部位プリセットボタン (乗り物カテゴリ別ラベル) ---
-        VehicleCategory cat = getVehicleCategory();
         int pw = (panelWidth - 4) / 3;
-        this.addRenderableWidget(Button.builder(cat.getPartName(1), b -> applyPreset("P1"))
+        this.addRenderableWidget(Button.builder(getPartLabel(1), b -> applyPreset("P1"))
                 .bounds(panelX, y, pw, 18).build());
-        this.addRenderableWidget(Button.builder(cat.getPartName(2), b -> applyPreset("P2"))
+        this.addRenderableWidget(Button.builder(getPartLabel(2), b -> applyPreset("P2"))
                 .bounds(panelX + pw + 2, y, pw, 18).build());
-        this.addRenderableWidget(Button.builder(cat.getPartName(3), b -> applyPreset("P3"))
+        this.addRenderableWidget(Button.builder(getPartLabel(3), b -> applyPreset("P3"))
                 .bounds(panelX + (pw + 2) * 2, y, pw, 18).build());
         y += 20;
 
         int pw2 = (panelWidth - 2) / 2;
-        this.addRenderableWidget(Button.builder(cat.getPartName(4), b -> applyPreset("P4"))
+        this.addRenderableWidget(Button.builder(getPartLabel(4), b -> applyPreset("P4"))
                 .bounds(panelX, y, pw2, 18).build());
-        this.addRenderableWidget(Button.builder(cat.getPartName(5), b -> applyPreset("P5"))
+        this.addRenderableWidget(Button.builder(getPartLabel(5), b -> applyPreset("P5"))
                 .bounds(panelX + pw2 + 2, y, pw2, 18).build());
         y += 22;
 
@@ -303,34 +333,74 @@ public class DecalEditorScreen extends Screen {
         float curScale = cur != null ? cur.getScale() : 6.0f;
         float curAspect = cur != null ? cur.getAspect() : 1.0f;
 
-        this.posXSlider = addScrollable(new FloatSlider(panelX, y, panelWidth, 16, Component.translatable("gui.microdrone.decal.pos_x"), curX, -30.0f, 30.0f, val -> {
+        int sliderW = panelWidth - 22;
+        int resetBtnW = 20;
+        int resetBtnX = panelX + sliderW + 2;
+
+        this.posXSlider = addScrollable(new FloatSlider(panelX, y, sliderW, 16, Component.translatable("gui.microdrone.decal.pos_x"), curX, -30.0f, 30.0f, val -> {
             if (getCurrentDecal() != null) getCurrentDecal().setPosX(val);
         }), y);
+        addScrollable(Button.builder(Component.literal("0"), b -> {
+            if (getCurrentDecal() != null) {
+                getCurrentDecal().setPosX(0.0f);
+                if (this.posXSlider != null) this.posXSlider.setFloatValue(0.0f);
+            }
+        }).bounds(resetBtnX, y, resetBtnW, 16).tooltip(Tooltip.create(Component.translatable("gui.microdrone.decal.reset_zero"))).build(), y);
         y += 18;
 
-        this.posYSlider = addScrollable(new FloatSlider(panelX, y, panelWidth, 16, Component.translatable("gui.microdrone.decal.pos_y"), curY, 0.0f, 50.0f, val -> {
+        this.posYSlider = addScrollable(new FloatSlider(panelX, y, sliderW, 16, Component.translatable("gui.microdrone.decal.pos_y"), curY, 0.0f, 50.0f, val -> {
             if (getCurrentDecal() != null) getCurrentDecal().setPosY(val);
         }), y);
+        addScrollable(Button.builder(Component.literal("0"), b -> {
+            if (getCurrentDecal() != null) {
+                getCurrentDecal().setPosY(0.0f);
+                if (this.posYSlider != null) this.posYSlider.setFloatValue(0.0f);
+            }
+        }).bounds(resetBtnX, y, resetBtnW, 16).tooltip(Tooltip.create(Component.translatable("gui.microdrone.decal.reset_zero"))).build(), y);
         y += 18;
 
-        this.posZSlider = addScrollable(new FloatSlider(panelX, y, panelWidth, 16, Component.translatable("gui.microdrone.decal.pos_z"), curZ, -55.0f, 55.0f, val -> {
+        this.posZSlider = addScrollable(new FloatSlider(panelX, y, sliderW, 16, Component.translatable("gui.microdrone.decal.pos_z"), curZ, -55.0f, 55.0f, val -> {
             if (getCurrentDecal() != null) getCurrentDecal().setPosZ(val);
         }), y);
+        addScrollable(Button.builder(Component.literal("0"), b -> {
+            if (getCurrentDecal() != null) {
+                getCurrentDecal().setPosZ(0.0f);
+                if (this.posZSlider != null) this.posZSlider.setFloatValue(0.0f);
+            }
+        }).bounds(resetBtnX, y, resetBtnW, 16).tooltip(Tooltip.create(Component.translatable("gui.microdrone.decal.reset_zero"))).build(), y);
         y += 18;
 
-        this.rotXSlider = addScrollable(new FloatSlider(panelX, y, panelWidth, 16, Component.translatable("gui.microdrone.decal.rot_x"), curRotX, -180.0f, 180.0f, val -> {
+        this.rotXSlider = addScrollable(new FloatSlider(panelX, y, sliderW, 16, Component.translatable("gui.microdrone.decal.rot_x"), curRotX, -180.0f, 180.0f, val -> {
             if (getCurrentDecal() != null) getCurrentDecal().setRotX(val);
         }), y);
+        addScrollable(Button.builder(Component.literal("0"), b -> {
+            if (getCurrentDecal() != null) {
+                getCurrentDecal().setRotX(0.0f);
+                if (this.rotXSlider != null) this.rotXSlider.setFloatValue(0.0f);
+            }
+        }).bounds(resetBtnX, y, resetBtnW, 16).tooltip(Tooltip.create(Component.translatable("gui.microdrone.decal.reset_zero"))).build(), y);
         y += 18;
 
-        this.rotYSlider = addScrollable(new FloatSlider(panelX, y, panelWidth, 16, Component.translatable("gui.microdrone.decal.rot_y"), curRotY, -180.0f, 180.0f, val -> {
+        this.rotYSlider = addScrollable(new FloatSlider(panelX, y, sliderW, 16, Component.translatable("gui.microdrone.decal.rot_y"), curRotY, -180.0f, 180.0f, val -> {
             if (getCurrentDecal() != null) getCurrentDecal().setRotY(val);
         }), y);
+        addScrollable(Button.builder(Component.literal("0"), b -> {
+            if (getCurrentDecal() != null) {
+                getCurrentDecal().setRotY(0.0f);
+                if (this.rotYSlider != null) this.rotYSlider.setFloatValue(0.0f);
+            }
+        }).bounds(resetBtnX, y, resetBtnW, 16).tooltip(Tooltip.create(Component.translatable("gui.microdrone.decal.reset_zero"))).build(), y);
         y += 18;
 
-        this.rotSlider = addScrollable(new FloatSlider(panelX, y, panelWidth, 16, Component.translatable("gui.microdrone.decal.rot_z"), curRot, -180.0f, 180.0f, val -> {
+        this.rotSlider = addScrollable(new FloatSlider(panelX, y, sliderW, 16, Component.translatable("gui.microdrone.decal.rot_z"), curRot, -180.0f, 180.0f, val -> {
             if (getCurrentDecal() != null) getCurrentDecal().setRotZ(val);
         }), y);
+        addScrollable(Button.builder(Component.literal("0"), b -> {
+            if (getCurrentDecal() != null) {
+                getCurrentDecal().setRotZ(0.0f);
+                if (this.rotSlider != null) this.rotSlider.setFloatValue(0.0f);
+            }
+        }).bounds(resetBtnX, y, resetBtnW, 16).tooltip(Tooltip.create(Component.translatable("gui.microdrone.decal.reset_zero"))).build(), y);
         y += 18;
 
         this.scaleSlider = addScrollable(new FloatSlider(panelX, y, panelWidth, 16, Component.translatable("gui.microdrone.decal.scale"), curScale, 1.0f, 20.0f, val -> {
@@ -450,6 +520,9 @@ public class DecalEditorScreen extends Screen {
     }
 
     private CarDecalData createInitialDecalForCategory(String tex, float aspect) {
+        if (isBicycle()) {
+            return new CarDecalData(tex, "body", -1.0f, 10.0f, 0.0f, 0.0f, -90.0f, 0.0f, 4.0f, aspect);
+        }
         VehicleCategory cat = getVehicleCategory();
         boolean isTruck = this.decalHolder != null && "truck".equalsIgnoreCase(this.decalHolder.getVariantId());
         return switch (cat) {
@@ -553,6 +626,17 @@ public class DecalEditorScreen extends Screen {
     private void applyPreset(String part) {
         CarDecalData cur = getCurrentDecal();
         if (cur == null || this.previewEntity == null) return;
+        if (isBicycle()) {
+            switch (part) {
+                case "P1" -> { cur.setPosX(0.0f); cur.setPosY(13.5f); cur.setPosZ(-2.0f); cur.setRotX(-90.0f); cur.setRotY(0.0f); cur.setRotZ(0.0f); cur.setScale(3.5f); cur.setMirrorX(false); }
+                case "P2" -> { cur.setPosX(0.0f); cur.setPosY(14.0f); cur.setPosZ(5.0f); cur.setRotX(-90.0f); cur.setRotY(0.0f); cur.setRotZ(0.0f); cur.setScale(3.5f); cur.setMirrorX(false); }
+                case "P3" -> { cur.setPosX(0.0f); cur.setPosY(10.0f); cur.setPosZ(10.0f); cur.setRotX(-90.0f); cur.setRotY(0.0f); cur.setRotZ(0.0f); cur.setScale(3.5f); cur.setMirrorX(false); }
+                case "P4" -> { cur.setPosX(-1.0f); cur.setPosY(10.0f); cur.setPosZ(0.0f); cur.setRotX(0.0f); cur.setRotY(-90.0f); cur.setRotZ(0.0f); cur.setScale(4.0f); cur.setMirrorX(false); }
+                case "P5" -> { cur.setPosX(1.0f); cur.setPosY(10.0f); cur.setPosZ(0.0f); cur.setRotX(0.0f); cur.setRotY(90.0f); cur.setRotZ(0.0f); cur.setScale(4.0f); cur.setMirrorX(true); }
+            }
+            syncSlidersFromCurrentDecal();
+            return;
+        }
         VehicleCategory cat = getVehicleCategory();
         boolean isTruck = this.decalHolder != null && "truck".equalsIgnoreCase(this.decalHolder.getVariantId());
 
@@ -740,9 +824,14 @@ public class DecalEditorScreen extends Screen {
                         float dY = deltaModel.y * unitScaleInv;
                         float dZ = deltaModel.z * unitScaleInv;
 
-                        cur.setPosX(Mth.clamp(cur.getPosX() + dX, -30.0f, 30.0f));
-                        cur.setPosY(Mth.clamp(cur.getPosY() + dY, 0.0f, 50.0f));
-                        cur.setPosZ(Mth.clamp(cur.getPosZ() + dZ, -55.0f, 55.0f));
+                        float newX = Mth.clamp(cur.getPosX() + dX, -30.0f, 30.0f);
+                        float newY = Mth.clamp(cur.getPosY() + dY, 0.0f, 50.0f);
+                        float newZ = Mth.clamp(cur.getPosZ() + dZ, -55.0f, 55.0f);
+
+                        // 従来の3次元自由ドラッグ移動: 強制吸着・スナップさせず、マウスの動き通りにスムーズに移動
+                        cur.setPosX(newX);
+                        cur.setPosY(newY);
+                        cur.setPosZ(newZ);
 
                         syncSlidersFromCurrentDecal();
                         return true;
@@ -773,9 +862,9 @@ public class DecalEditorScreen extends Screen {
             }
         }
 
-        // 左側3Dビューポート上でのホイール: 車両の拡大縮小ズーム
+        // 左側3Dビューポート上でのホイール: 車両の拡大縮小ズーム（最大600%まで超拡大可能）
         if (mouseX <= viewportWidth) {
-            this.previewZoom = Mth.clamp(this.previewZoom + (float) (scrollY * 8.0), 30.0f, 220.0f);
+            this.previewZoom = Mth.clamp(this.previewZoom + (float) (scrollY * 12.0), 20.0f, 600.0f);
             return true;
         }
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
@@ -812,7 +901,21 @@ public class DecalEditorScreen extends Screen {
             graphics.fill(panelX + panelWidth + 2, thumbY, panelX + panelWidth + 4, thumbY + thumbHeight, 0xFF707090);
         }
 
-        // 4. タイトルと情報テキスト
+        // 4. 3D RC乗り物モデルのリアルタイムプレビュー描画（ビューポート枠内のみにクリッピング）
+        if (this.previewEntity != null && this.decalHolder != null) {
+            // 編集中のデカールリストをダミー乗り物に反映
+            this.decalHolder.setDecals(this.editingDecals);
+
+            int centerX = (10 + viewportWidth) / 2 + (int) this.modelPanX;
+            int centerY = this.height / 2 + 10 + (int) this.modelPanY;
+
+            // 枠からはみ出ないようにシザーリング（クリッピング）を適用
+            graphics.enableScissor(11, 11, viewportWidth - 1, this.height - 11);
+            renderEntityInGui(graphics, centerX, centerY, this.previewZoom, this.previewYaw, this.previewPitch, this.previewEntity);
+            graphics.disableScissor();
+        }
+
+        // 5. タイトルと情報テキスト（3Dモデルの手前に確実に最前面描画）
         graphics.drawString(this.font, getEditorTitle(), 18, 16, 0xFFE0E0E0);
         graphics.drawString(this.font, Component.translatable("gui.microdrone.decal.help"), 18, this.height - 24, 0xFFA0A0B0);
 
@@ -825,16 +928,6 @@ public class DecalEditorScreen extends Screen {
         // デカールレイヤー表示 (固定フッター上部: スライダーとは絶対に被らない)
         Component layerText = Component.translatable("gui.microdrone.decal.layer", this.selectedDecalIndex + 1, Math.max(1, this.editingDecals.size()));
         graphics.drawCenteredString(this.font, layerText, panelX + panelWidth / 2, this.height - 78, 0xFFE0E0E0);
-
-        // 5. 3D RC乗り物モデルのリアルタイムプレビュー描画
-        if (this.previewEntity != null && this.decalHolder != null) {
-            // 編集中のデカールリストをダミー乗り物に反映
-            this.decalHolder.setDecals(this.editingDecals);
-
-            int centerX = (10 + viewportWidth) / 2 + (int) this.modelPanX;
-            int centerY = this.height / 2 + 10 + (int) this.modelPanY;
-            renderEntityInGui(graphics, centerX, centerY, this.previewZoom, this.previewYaw, this.previewPitch, this.previewEntity);
-        }
 
         // 6. ドラッグ中のステータス表示 (3D枠自体はステッカー表面に100%直接描画)
         if (this.isDraggingDecal) {
@@ -871,6 +964,47 @@ public class DecalEditorScreen extends Screen {
         RenderSystem.clear(org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT, Minecraft.ON_OSX);
 
         poseStack.popPose();
+    }
+
+    public void triggerDiagnostics() {
+        com.microdrone.mod.client.renderer.RcVehicleDecalLayer.requestDiagnosticsLog = true;
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_F4) {
+            triggerDiagnostics();
+            return true;
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    private static ResourceLocation resolveModelLocation(Entity animatable) {
+        if (animatable == null) return ResourceLocation.fromNamespaceAndPath(com.microdrone.mod.MicroDroneMod.MODID, "geo/rc_car.geo.json");
+        String variantId = (animatable instanceof com.microdrone.mod.decal.RcDecalHolder holder) ? holder.getVariantId() : "default";
+        if (variantId == null || variantId.isBlank()) variantId = "default";
+
+        if (animatable instanceof com.microdrone.mod.entity.RcCarEntity) {
+            var cfg = com.microdrone.mod.config.car.CarConfigManager.getConfig(variantId);
+            return cfg != null ? cfg.getModelResource() : ResourceLocation.fromNamespaceAndPath(com.microdrone.mod.MicroDroneMod.MODID, "geo/rc_car.geo.json");
+        } else if (animatable instanceof com.microdrone.mod.entity.RcPlaneEntity) {
+            var cfg = com.microdrone.mod.config.plane.PlaneConfigManager.getConfig(variantId);
+            return cfg != null ? cfg.getModelResource() : ResourceLocation.fromNamespaceAndPath(com.microdrone.mod.MicroDroneMod.MODID, "geo/rc_plane.geo.json");
+        } else if (animatable instanceof com.microdrone.mod.entity.RcBoatEntity) {
+            var cfg = com.microdrone.mod.config.boat.BoatConfigManager.getConfig(variantId);
+            return cfg != null ? cfg.getModelResource() : ResourceLocation.fromNamespaceAndPath(com.microdrone.mod.MicroDroneMod.MODID, "geo/rc_boat.geo.json");
+        } else if (animatable instanceof com.microdrone.mod.entity.RcSubmarineEntity) {
+            var cfg = com.microdrone.mod.config.submarine.SubmarineConfigManager.getConfig(variantId);
+            return cfg != null ? cfg.getModelResource() : ResourceLocation.fromNamespaceAndPath(com.microdrone.mod.MicroDroneMod.MODID, "geo/rc_submarine.geo.json");
+        } else if (animatable instanceof com.microdrone.mod.entity.RcTankEntity) {
+            var cfg = com.microdrone.mod.config.tank.TankConfigManager.getConfig(variantId);
+            return cfg != null ? cfg.getModelResource() : ResourceLocation.fromNamespaceAndPath(com.microdrone.mod.MicroDroneMod.MODID, "geo/rc_tank.geo.json");
+        } else if (animatable instanceof com.microdrone.mod.entity.DroneEntity) {
+            var cfg = com.microdrone.mod.config.drone.DroneConfigManager.getConfig(variantId);
+            return cfg != null ? cfg.getModelResource() : ResourceLocation.fromNamespaceAndPath(com.microdrone.mod.MicroDroneMod.MODID, "geo/drone.geo.json");
+        }
+        var cfg = com.microdrone.mod.config.car.CarConfigManager.getConfig(variantId);
+        return cfg != null ? cfg.getModelResource() : ResourceLocation.fromNamespaceAndPath(com.microdrone.mod.MicroDroneMod.MODID, "geo/rc_car.geo.json");
     }
 
     /**

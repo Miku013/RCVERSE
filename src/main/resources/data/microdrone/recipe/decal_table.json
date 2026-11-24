@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "DSD",
+    "PWP",
+    "III"
+  ],
+  "key": {
+    "D": { "item": "minecraft:cyan_dye" },
+    "S": { "item": "minecraft:shears" },
+    "P": { "item": "minecraft:paper" },
+    "W": { "item": "minecraft:crafting_table" },
+    "I": { "item": "minecraft:iron_ingot" }
+  },
+  "result": {
+    "id": "microdrone:decal_table",
+    "count": 1
+  }
+}

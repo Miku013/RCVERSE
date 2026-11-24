@@ -64,6 +64,13 @@ public class ModNetworking {
                 ServerPayloadHandler::handleCancelDecal
         );
 
+        // クライアント -> サーバー (RCピット作業台 タイヤセッティング同期)
+        registrar.playToServer(
+                UpdatePitTiresPayload.TYPE,
+                UpdatePitTiresPayload.STREAM_CODEC,
+                ServerPayloadHandler::handleUpdatePitTires
+        );
+
         // サーバー -> クライアント (操縦状態通知)
         registrar.playToClient(
                 DronePilotStatePayload.TYPE,

@@ -18,7 +18,6 @@ import com.microdrone.mod.client.renderer.RcBoatGeoRenderer;
 import com.microdrone.mod.client.renderer.RcCarGeoRenderer;
 import com.microdrone.mod.client.renderer.RcPilotDummyRenderer;
 import com.microdrone.mod.client.renderer.RcPlaneGeoRenderer;
-import com.microdrone.mod.client.renderer.RcSpiderRenderer;
 import com.microdrone.mod.client.renderer.RcSubmarineGeoRenderer;
 import com.microdrone.mod.client.renderer.RcTankGeoRenderer;
 import com.microdrone.mod.client.renderer.TestPivotBlockEntityRenderer;
@@ -76,7 +75,6 @@ public class ClientModEvents {
         event.registerEntityRenderer(ModEntities.RC_PLANE.get(), RcPlaneGeoRenderer::new);
         event.registerEntityRenderer(ModEntities.RC_BOAT.get(), RcBoatGeoRenderer::new);
         event.registerEntityRenderer(ModEntities.RC_SUBMARINE.get(), RcSubmarineGeoRenderer::new);
-        event.registerEntityRenderer(ModEntities.RC_SPIDER.get(), RcSpiderRenderer::new);
         event.registerEntityRenderer(ModEntities.RC_PILOT_DUMMY.get(), RcPilotDummyRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.DRONE_CHARGER_BE.get(), DroneChargerBlockEntityRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.TEST_PIVOT_BE.get(), TestPivotBlockEntityRenderer::new);
@@ -90,6 +88,7 @@ public class ClientModEvents {
         event.registerBlockEntityRenderer(ModBlockEntities.RC_WORKBENCH_BE.get(), com.microdrone.mod.client.renderer.RcWorkbenchBlockEntityRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.RC_RACK_BE.get(), com.microdrone.mod.client.renderer.RcRackBlockEntityRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.RC_SHOWCASE_BE.get(), com.microdrone.mod.client.renderer.RcShowcaseBlockEntityRenderer::new);
+        event.registerBlockEntityRenderer(ModBlockEntities.RC_PIT_STATION.get(), com.microdrone.mod.client.renderer.RcPitStationBlockEntityRenderer::new);
     }
 
     private static void registerMenuScreens(net.neoforged.neoforge.client.event.RegisterMenuScreensEvent event) {
@@ -122,7 +121,6 @@ public class ClientModEvents {
     private static void registerReloadListeners(RegisterClientReloadListenersEvent event) {
         event.registerReloadListener((ResourceManagerReloadListener) resourceManager -> {
             CarConfigManager.loadConfigs();
-            com.microdrone.mod.config.spider.SpiderConfigManager.loadConfigs();
         });
     }
 

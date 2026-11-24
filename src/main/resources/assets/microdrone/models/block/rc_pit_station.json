@@ -1,0 +1,72 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "particle": "minecraft:block/polished_deepslate",
+    "top": "minecraft:block/polished_deepslate",
+    "side": "minecraft:block/iron_block",
+    "leg": "minecraft:block/smooth_stone"
+  },
+  "elements": [
+    {
+      "name": "tabletop",
+      "from": [0, 10, 0],
+      "to": [16, 14, 16],
+      "faces": {
+        "north": { "texture": "#side", "uv": [0, 0, 16, 4] },
+        "east":  { "texture": "#side", "uv": [0, 0, 16, 4] },
+        "south": { "texture": "#side", "uv": [0, 0, 16, 4] },
+        "west":  { "texture": "#side", "uv": [0, 0, 16, 4] },
+        "up":    { "texture": "#top",  "uv": [0, 0, 16, 16] },
+        "down":  { "texture": "#side", "uv": [0, 0, 16, 16] }
+      }
+    },
+    {
+      "name": "leg_nw",
+      "from": [1, 0, 1],
+      "to": [4, 10, 4],
+      "faces": {
+        "north": { "texture": "#leg", "uv": [0, 0, 3, 10] },
+        "east":  { "texture": "#leg", "uv": [0, 0, 3, 10] },
+        "south": { "texture": "#leg", "uv": [0, 0, 3, 10] },
+        "west":  { "texture": "#leg", "uv": [0, 0, 3, 10] },
+        "down":  { "texture": "#leg", "uv": [0, 0, 3, 3] }
+      }
+    },
+    {
+      "name": "leg_ne",
+      "from": [12, 0, 1],
+      "to": [15, 10, 4],
+      "faces": {
+        "north": { "texture": "#leg", "uv": [0, 0, 3, 10] },
+        "east":  { "texture": "#leg", "uv": [0, 0, 3, 10] },
+        "south": { "texture": "#leg", "uv": [0, 0, 3, 10] },
+        "west":  { "texture": "#leg", "uv": [0, 0, 3, 10] },
+        "down":  { "texture": "#leg", "uv": [0, 0, 3, 3] }
+      }
+    },
+    {
+      "name": "leg_sw",
+      "from": [1, 0, 12],
+      "to": [4, 10, 15],
+      "faces": {
+        "north": { "texture": "#leg", "uv": [0, 0, 3, 10] },
+        "east":  { "texture": "#leg", "uv": [0, 0, 3, 10] },
+        "south": { "texture": "#leg", "uv": [0, 0, 3, 10] },
+        "west":  { "texture": "#leg", "uv": [0, 0, 3, 10] },
+        "down":  { "texture": "#leg", "uv": [0, 0, 3, 3] }
+      }
+    },
+    {
+      "name": "leg_se",
+      "from": [12, 0, 12],
+      "to": [15, 10, 15],
+      "faces": {
+        "north": { "texture": "#leg", "uv": [0, 0, 3, 10] },
+        "east":  { "texture": "#leg", "uv": [0, 0, 3, 10] },
+        "south": { "texture": "#leg", "uv": [0, 0, 3, 10] },
+        "west":  { "texture": "#leg", "uv": [0, 0, 3, 10] },
+        "down":  { "texture": "#leg", "uv": [0, 0, 3, 3] }
+      }
+    }
+  ]
+}

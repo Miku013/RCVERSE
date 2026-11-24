@@ -6,11 +6,9 @@ import com.microdrone.mod.client.controller.DroneClientController;
 import com.microdrone.mod.client.controller.InputSnapshot;
 import com.microdrone.mod.client.controller.RcBoatClientController;
 import com.microdrone.mod.client.controller.RcCarClientController;
-import com.microdrone.mod.client.controller.RcSpiderClientController;
 import com.microdrone.mod.client.controller.RcSubmarineClientController;
 import com.microdrone.mod.entity.RcBoatEntity;
 import com.microdrone.mod.entity.RcSubmarineEntity;
-import com.microdrone.mod.entity.spider.RcSpiderEntity;
 import com.microdrone.mod.client.controller.RcPlaneClientController;
 import com.microdrone.mod.client.controller.RcTankClientController;
 import com.microdrone.mod.client.controller.RcVehicleClientController;
@@ -66,7 +64,6 @@ public class ClientDroneInputHandler {
     private static final RcPlaneClientController PLANE_CONTROLLER = new RcPlaneClientController();
     private static final RcBoatClientController BOAT_CONTROLLER = new RcBoatClientController();
     private static final RcSubmarineClientController SUB_CONTROLLER = new RcSubmarineClientController();
-    private static final RcSpiderClientController SPIDER_CONTROLLER = new RcSpiderClientController();
 
     // 既存コード互換用の列挙型
     public enum DroneCameraMode {
@@ -91,7 +88,6 @@ public class ClientDroneInputHandler {
         if (entity instanceof RcPlaneEntity) return PLANE_CONTROLLER;
         if (entity instanceof RcBoatEntity) return BOAT_CONTROLLER;
         if (entity instanceof RcSubmarineEntity) return SUB_CONTROLLER;
-        if (entity instanceof RcSpiderEntity) return SPIDER_CONTROLLER;
         return null;
     }
 

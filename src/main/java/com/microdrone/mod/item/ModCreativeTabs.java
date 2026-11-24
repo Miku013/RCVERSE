@@ -25,7 +25,6 @@ public class ModCreativeTabs {
                         output.accept(ModItems.RC_PLANE_ITEM.get());
                         output.accept(ModItems.RC_BOAT_ITEM.get());
                         output.accept(ModItems.RC_SUBMARINE_ITEM.get());
-                        output.accept(ModItems.RC_SPIDER_ITEM.get());
                         output.accept(ModItems.DRONE_CONTROLLER.get());
                         output.accept(ModItems.DRONE_CHARGER_ITEM.get());
                         output.accept(ModItems.TEST_PIVOT_ITEM.get());
@@ -49,6 +48,7 @@ public class ModCreativeTabs {
                         output.accept(ModItems.RC_WORKBENCH_ITEM.get());
                         output.accept(ModItems.RC_RACK_ITEM.get());
                         output.accept(ModItems.RC_SHOWCASE_ITEM.get());
+                        output.accept(ModItems.RC_PIT_STATION_ITEM.get());
                         output.accept(ModItems.MINIATURE_PLACEMENT_ITEM.get());
 
                         // バッテリー

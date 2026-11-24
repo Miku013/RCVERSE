@@ -181,6 +181,7 @@ public class DecalTextureManager {
 
     private static ResourceLocation frameNormalLoc = null;
     private static ResourceLocation frameDraggingLoc = null;
+    private static ResourceLocation frameBackLoc = null;
 
     /**
      * 3Dエディタでステッカーの周囲に直接張り付くハイライト枠テクスチャ（Cyan / Yellow）
@@ -199,6 +200,16 @@ public class DecalTextureManager {
         }
     }
 
+    /**
+     * 3Dエディタでステッカーの裏面（警告・裏向き）を示すハイライト枠テクスチャ（Red / Cross）
+     */
+    public static ResourceLocation getSelectionFrameBackTexture() {
+        if (frameBackLoc == null) {
+            frameBackLoc = registerBackFrameTexture("decal_frame_back", 0xFF2222EE); // 鮮烈な赤色 (ABGR)
+        }
+        return frameBackLoc;
+    }
+
     private static ResourceLocation registerFrameTexture(String name, int color) {
         int size = 64;
         NativeImage img = new NativeImage(NativeImage.Format.RGBA, size, size, false);
@@ -211,7 +222,40 @@ public class DecalTextureManager {
                 boolean isCorner = (x < cornerLen || x >= size - cornerLen) && (y < cornerLen || y >= size - cornerLen);
                 boolean isCornerThick = isCorner && (x < border * 3 || x >= size - border * 3 || y < border * 3 || y >= size - border * 3);
 
-                if (isOuterEdge || isCornerThick) {
+                // 上辺中央に「▲」（正面および上方向を示すインジケーター）
+                boolean isTopArrow = (y >= 4 && y <= 11 && Math.abs(x - size / 2) <= (11 - y));
+
+                if (isOuterEdge || isCornerThick || isTopArrow) {
+                    img.setPixelRGBA(x, y, color);
+                } else {
+                    img.setPixelRGBA(x, y, 0); // 内部は完全透過
+                }
+            }
+        }
+
+        DynamicTexture dynamicTexture = new DynamicTexture(img);
+        ResourceLocation loc = ResourceLocation.fromNamespaceAndPath(MicroDroneMod.MODID, "textures/gui/" + name + ".png");
+        Minecraft.getInstance().getTextureManager().register(loc, dynamicTexture);
+        return loc;
+    }
+
+    private static ResourceLocation registerBackFrameTexture(String name, int color) {
+        int size = 64;
+        NativeImage img = new NativeImage(NativeImage.Format.RGBA, size, size, false);
+        int border = 2;
+        int cornerLen = 14;
+
+        for (int y = 0; y < size; y++) {
+            for (int x = 0; x < size; x++) {
+                boolean isOuterEdge = (x < border || x >= size - border || y < border || y >= size - border);
+                boolean isCorner = (x < cornerLen || x >= size - cornerLen) && (y < cornerLen || y >= size - cornerLen);
+                boolean isCornerThick = isCorner && (x < border * 3 || x >= size - border * 3 || y < border * 3 || y >= size - border * 3);
+
+                // 中央に「✕」マーク（裏面警告インジケーター）
+                boolean inCenterBox = (x >= 12 && x <= size - 13 && y >= 12 && y <= size - 13);
+                boolean isCross = inCenterBox && (Math.abs(x - y) <= 1 || Math.abs(x - (size - 1 - y)) <= 1);
+
+                if (isOuterEdge || isCornerThick || isCross) {
                     img.setPixelRGBA(x, y, color);
                 } else {
                     img.setPixelRGBA(x, y, 0); // 内部は完全透過

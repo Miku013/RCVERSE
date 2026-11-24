@@ -131,6 +131,13 @@ public class ModBlocks {
                     .strength(2.0f, 3.0f)
                     .noOcclusion()));
 
+    // RCピット作業台 (テストブロック: 3Dビューポート & 自由回転カスタムステーション)
+    public static final DeferredBlock<RcPitStationBlock> RC_PIT_STATION = BLOCKS.register("rc_pit_station",
+            () -> new RcPitStationBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(2.5f, 3.5f)
+                    .noOcclusion()));
+
     public static void register(IEventBus eventBus) {
         BLOCKS.register(eventBus);
     }

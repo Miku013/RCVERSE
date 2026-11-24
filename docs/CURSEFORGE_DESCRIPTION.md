@@ -83,6 +83,23 @@
 
 <hr>
 
+<h2>🎨 3D Decal Workshop & Surface Mesh Projection</h2>
+
+<p>
+  Customize your vehicles with transparent PNG liveries directly inside Minecraft!  
+  Our revolutionary <strong>Surface Mesh Projection Engine</strong> accurately wraps decals onto complex 3D vehicle surfaces—sloped speedboat cabins, curved submarine hulls, angular tank armor plates, and the Villager Bicycle—without distortion, gaps, or depth artifacts.
+</p>
+
+<table align="center" style="width: 100%; text-align: center;">
+  <tr>
+    <td width="33%"><img src="https://raw.githubusercontent.com/Miku013/RCVERSE/main/docs/images/decal_sample_boat.jpg" width="100%"><br><b>RC Speedboat</b><br><em>Steep angled cabin</em></td>
+    <td width="33%"><img src="https://raw.githubusercontent.com/Miku013/RCVERSE/main/docs/images/decal_sample_submarine.jpg" width="100%"><br><b>RC Submarine</b><br><em>Cylindrical hull curve</em></td>
+    <td width="33%"><img src="https://raw.githubusercontent.com/Miku013/RCVERSE/main/docs/images/decal_sample_tank.jpg" width="100%"><br><b>RC Heavy Tank</b><br><em>Sloped glacis armor</em></td>
+  </tr>
+</table>
+
+<hr>
+
 <h2>💥 Explosive Combat & RC Tank Battles</h2>
 
 <p align="center">

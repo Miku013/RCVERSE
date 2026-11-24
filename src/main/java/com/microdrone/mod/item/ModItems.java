@@ -31,9 +31,6 @@ public class ModItems {
     public static final DeferredHolder<Item, RcSubmarineItem> RC_SUBMARINE_ITEM =
             ITEMS.register("rc_submarine_item", () -> new RcSubmarineItem(new Item.Properties().stacksTo(16)));
 
-    public static final DeferredHolder<Item, RcSpiderItem> RC_SPIDER_ITEM =
-            ITEMS.register("rc_spider_item", () -> new RcSpiderItem(new Item.Properties().stacksTo(16)));
-
     public static final DeferredHolder<Item, DroneControllerItem> DRONE_CONTROLLER =
             ITEMS.register("drone_controller", () -> new DroneControllerItem(new Item.Properties().stacksTo(1)));
 
@@ -96,6 +93,10 @@ public class ModItems {
     // RC大型ショウケース (BlockItem)
     public static final DeferredHolder<Item, BlockItem> RC_SHOWCASE_ITEM =
             ITEMS.register("rc_showcase", () -> new BlockItem(ModBlocks.RC_SHOWCASE.get(), new Item.Properties()));
+
+    // RCピット作業台 (BlockItem)
+    public static final DeferredHolder<Item, BlockItem> RC_PIT_STATION_ITEM =
+            ITEMS.register("rc_pit_station", () -> new BlockItem(ModBlocks.RC_PIT_STATION.get(), new Item.Properties()));
 
     // === コース小物・設備システム (Phase 1: カラーコーン ＆ Phase 2: 縁石・ガードレール・タイヤバリア) ===
     public static final DeferredHolder<Item, com.microdrone.mod.block.miniature.TrafficConeItem> TRAFFIC_CONE =
