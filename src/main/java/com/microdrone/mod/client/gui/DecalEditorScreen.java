@@ -35,6 +35,7 @@ import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Checkbox;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -332,34 +333,74 @@ public class DecalEditorScreen extends Screen {
         float curScale = cur != null ? cur.getScale() : 6.0f;
         float curAspect = cur != null ? cur.getAspect() : 1.0f;
 
-        this.posXSlider = addScrollable(new FloatSlider(panelX, y, panelWidth, 16, Component.translatable("gui.microdrone.decal.pos_x"), curX, -30.0f, 30.0f, val -> {
+        int sliderW = panelWidth - 22;
+        int resetBtnW = 20;
+        int resetBtnX = panelX + sliderW + 2;
+
+        this.posXSlider = addScrollable(new FloatSlider(panelX, y, sliderW, 16, Component.translatable("gui.microdrone.decal.pos_x"), curX, -30.0f, 30.0f, val -> {
             if (getCurrentDecal() != null) getCurrentDecal().setPosX(val);
         }), y);
+        addScrollable(Button.builder(Component.literal("0"), b -> {
+            if (getCurrentDecal() != null) {
+                getCurrentDecal().setPosX(0.0f);
+                if (this.posXSlider != null) this.posXSlider.setFloatValue(0.0f);
+            }
+        }).bounds(resetBtnX, y, resetBtnW, 16).tooltip(Tooltip.create(Component.translatable("gui.microdrone.decal.reset_zero"))).build(), y);
         y += 18;
 
-        this.posYSlider = addScrollable(new FloatSlider(panelX, y, panelWidth, 16, Component.translatable("gui.microdrone.decal.pos_y"), curY, 0.0f, 50.0f, val -> {
+        this.posYSlider = addScrollable(new FloatSlider(panelX, y, sliderW, 16, Component.translatable("gui.microdrone.decal.pos_y"), curY, 0.0f, 50.0f, val -> {
             if (getCurrentDecal() != null) getCurrentDecal().setPosY(val);
         }), y);
+        addScrollable(Button.builder(Component.literal("0"), b -> {
+            if (getCurrentDecal() != null) {
+                getCurrentDecal().setPosY(0.0f);
+                if (this.posYSlider != null) this.posYSlider.setFloatValue(0.0f);
+            }
+        }).bounds(resetBtnX, y, resetBtnW, 16).tooltip(Tooltip.create(Component.translatable("gui.microdrone.decal.reset_zero"))).build(), y);
         y += 18;
 
-        this.posZSlider = addScrollable(new FloatSlider(panelX, y, panelWidth, 16, Component.translatable("gui.microdrone.decal.pos_z"), curZ, -55.0f, 55.0f, val -> {
+        this.posZSlider = addScrollable(new FloatSlider(panelX, y, sliderW, 16, Component.translatable("gui.microdrone.decal.pos_z"), curZ, -55.0f, 55.0f, val -> {
             if (getCurrentDecal() != null) getCurrentDecal().setPosZ(val);
         }), y);
+        addScrollable(Button.builder(Component.literal("0"), b -> {
+            if (getCurrentDecal() != null) {
+                getCurrentDecal().setPosZ(0.0f);
+                if (this.posZSlider != null) this.posZSlider.setFloatValue(0.0f);
+            }
+        }).bounds(resetBtnX, y, resetBtnW, 16).tooltip(Tooltip.create(Component.translatable("gui.microdrone.decal.reset_zero"))).build(), y);
         y += 18;
 
-        this.rotXSlider = addScrollable(new FloatSlider(panelX, y, panelWidth, 16, Component.translatable("gui.microdrone.decal.rot_x"), curRotX, -180.0f, 180.0f, val -> {
+        this.rotXSlider = addScrollable(new FloatSlider(panelX, y, sliderW, 16, Component.translatable("gui.microdrone.decal.rot_x"), curRotX, -180.0f, 180.0f, val -> {
             if (getCurrentDecal() != null) getCurrentDecal().setRotX(val);
         }), y);
+        addScrollable(Button.builder(Component.literal("0"), b -> {
+            if (getCurrentDecal() != null) {
+                getCurrentDecal().setRotX(0.0f);
+                if (this.rotXSlider != null) this.rotXSlider.setFloatValue(0.0f);
+            }
+        }).bounds(resetBtnX, y, resetBtnW, 16).tooltip(Tooltip.create(Component.translatable("gui.microdrone.decal.reset_zero"))).build(), y);
         y += 18;
 
-        this.rotYSlider = addScrollable(new FloatSlider(panelX, y, panelWidth, 16, Component.translatable("gui.microdrone.decal.rot_y"), curRotY, -180.0f, 180.0f, val -> {
+        this.rotYSlider = addScrollable(new FloatSlider(panelX, y, sliderW, 16, Component.translatable("gui.microdrone.decal.rot_y"), curRotY, -180.0f, 180.0f, val -> {
             if (getCurrentDecal() != null) getCurrentDecal().setRotY(val);
         }), y);
+        addScrollable(Button.builder(Component.literal("0"), b -> {
+            if (getCurrentDecal() != null) {
+                getCurrentDecal().setRotY(0.0f);
+                if (this.rotYSlider != null) this.rotYSlider.setFloatValue(0.0f);
+            }
+        }).bounds(resetBtnX, y, resetBtnW, 16).tooltip(Tooltip.create(Component.translatable("gui.microdrone.decal.reset_zero"))).build(), y);
         y += 18;
 
-        this.rotSlider = addScrollable(new FloatSlider(panelX, y, panelWidth, 16, Component.translatable("gui.microdrone.decal.rot_z"), curRot, -180.0f, 180.0f, val -> {
+        this.rotSlider = addScrollable(new FloatSlider(panelX, y, sliderW, 16, Component.translatable("gui.microdrone.decal.rot_z"), curRot, -180.0f, 180.0f, val -> {
             if (getCurrentDecal() != null) getCurrentDecal().setRotZ(val);
         }), y);
+        addScrollable(Button.builder(Component.literal("0"), b -> {
+            if (getCurrentDecal() != null) {
+                getCurrentDecal().setRotZ(0.0f);
+                if (this.rotSlider != null) this.rotSlider.setFloatValue(0.0f);
+            }
+        }).bounds(resetBtnX, y, resetBtnW, 16).tooltip(Tooltip.create(Component.translatable("gui.microdrone.decal.reset_zero"))).build(), y);
         y += 18;
 
         this.scaleSlider = addScrollable(new FloatSlider(panelX, y, panelWidth, 16, Component.translatable("gui.microdrone.decal.scale"), curScale, 1.0f, 20.0f, val -> {

@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "IPI",
+    "RWR",
+    "SIS"
+  ],
+  "key": {
+    "I": { "item": "minecraft:iron_ingot" },
+    "P": { "item": "minecraft:piston" },
+    "R": { "item": "minecraft:redstone" },
+    "W": { "item": "minecraft:crafting_table" },
+    "S": { "item": "minecraft:smooth_stone" }
+  },
+  "result": {
+    "id": "microdrone:rc_pit_station",
+    "count": 1
+  }
+}

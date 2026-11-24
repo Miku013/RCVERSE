@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    { "item": "microdrone:rc_tire_normal" },
+    { "item": "minecraft:coarse_dirt" }
+  ],
+  "result": {
+    "id": "microdrone:rc_tire_offroad",
+    "count": 1
+  }
+}

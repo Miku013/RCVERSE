@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    { "item": "microdrone:rc_tire_normal" },
+    { "item": "minecraft:iron_nugget" }
+  ],
+  "result": {
+    "id": "microdrone:rc_tire_spike",
+    "count": 1
+  }
+}

@@ -9,6 +9,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
@@ -587,41 +588,107 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
         PoseStack.Pose currentPose = poseStack.last();
         Matrix4f matrix = currentPose.pose();
 
-        ResourceLocation frameLoc = DecalTextureManager.getSelectionFrameTexture(editor.isDecalDragging());
-        VertexConsumer frameConsumer = bufferSource.getBuffer(RenderType.entityCutoutNoCull(frameLoc));
-
         float pad = baseHalfSize * 0.08f;
         float fw = halfWidth + pad;
         float fh = halfHeight + pad;
         float zFrame = 0.003f;
 
-        frameConsumer.addVertex(matrix, -fw,  fh, zFrame)
+        // 1. 表面（Front / 正面・貼り付け面）: シアン/黄色の枠線（上部▲マーク付き）
+        ResourceLocation frameFrontLoc = DecalTextureManager.getSelectionFrameTexture(editor.isDecalDragging());
+        VertexConsumer frontConsumer = bufferSource.getBuffer(RenderType.entityCutout(frameFrontLoc));
+
+        frontConsumer.addVertex(matrix, -fw,  fh, zFrame)
                 .setColor(255, 255, 255, 255)
                 .setUv(0.0f, 0.0f)
                 .setOverlay(packedOverlay)
-                .setLight(net.minecraft.client.renderer.LightTexture.FULL_BRIGHT)
+                .setLight(LightTexture.FULL_BRIGHT)
                 .setNormal(currentPose, 0.0f, 0.0f, 1.0f);
 
-        frameConsumer.addVertex(matrix, -fw, -fh, zFrame)
+        frontConsumer.addVertex(matrix, -fw, -fh, zFrame)
                 .setColor(255, 255, 255, 255)
                 .setUv(0.0f, 1.0f)
                 .setOverlay(packedOverlay)
-                .setLight(net.minecraft.client.renderer.LightTexture.FULL_BRIGHT)
+                .setLight(LightTexture.FULL_BRIGHT)
                 .setNormal(currentPose, 0.0f, 0.0f, 1.0f);
 
-        frameConsumer.addVertex(matrix,  fw, -fh, zFrame)
+        frontConsumer.addVertex(matrix,  fw, -fh, zFrame)
                 .setColor(255, 255, 255, 255)
                 .setUv(1.0f, 1.0f)
                 .setOverlay(packedOverlay)
-                .setLight(net.minecraft.client.renderer.LightTexture.FULL_BRIGHT)
+                .setLight(LightTexture.FULL_BRIGHT)
                 .setNormal(currentPose, 0.0f, 0.0f, 1.0f);
 
-        frameConsumer.addVertex(matrix,  fw,  fh, zFrame)
+        frontConsumer.addVertex(matrix,  fw,  fh, zFrame)
                 .setColor(255, 255, 255, 255)
                 .setUv(1.0f, 0.0f)
                 .setOverlay(packedOverlay)
-                .setLight(net.minecraft.client.renderer.LightTexture.FULL_BRIGHT)
+                .setLight(LightTexture.FULL_BRIGHT)
                 .setNormal(currentPose, 0.0f, 0.0f, 1.0f);
+
+        // 2. 表面方向を示す 3D法線矢印ポインター（frontConsumer を使い切るためにここで描画！）
+        float pinLen = Math.min(fw, fh) * 0.45f;
+        float pw = Math.max(0.003f, pinLen * 0.16f);
+        float zTip = zFrame + pinLen;
+
+        int pr = editor.isDecalDragging() ? 255 : 80;
+        int pg = editor.isDecalDragging() ? 240 : 230;
+        int pb = editor.isDecalDragging() ? 50 : 255;
+
+        // 上面 (+Y)
+        frontConsumer.addVertex(matrix, -pw,  pw, zFrame).setColor(pr, pg, pb, 255).setUv(0.0f, 0.0f).setOverlay(packedOverlay).setLight(LightTexture.FULL_BRIGHT).setNormal(currentPose, 0, 1, 0);
+        frontConsumer.addVertex(matrix,   0,   0, zTip).setColor(255, 255, 255, 255).setUv(0.0f, 0.0f).setOverlay(packedOverlay).setLight(LightTexture.FULL_BRIGHT).setNormal(currentPose, 0, 1, 0);
+        frontConsumer.addVertex(matrix,  pw,  pw, zFrame).setColor(pr, pg, pb, 255).setUv(0.0f, 0.0f).setOverlay(packedOverlay).setLight(LightTexture.FULL_BRIGHT).setNormal(currentPose, 0, 1, 0);
+        frontConsumer.addVertex(matrix, -pw,  pw, zFrame).setColor(pr, pg, pb, 255).setUv(0.0f, 0.0f).setOverlay(packedOverlay).setLight(LightTexture.FULL_BRIGHT).setNormal(currentPose, 0, 1, 0);
+
+        // 右面 (+X)
+        frontConsumer.addVertex(matrix,  pw,  pw, zFrame).setColor(pr, pg, pb, 255).setUv(0.0f, 0.0f).setOverlay(packedOverlay).setLight(LightTexture.FULL_BRIGHT).setNormal(currentPose, 1, 0, 0);
+        frontConsumer.addVertex(matrix,   0,   0, zTip).setColor(255, 255, 255, 255).setUv(0.0f, 0.0f).setOverlay(packedOverlay).setLight(LightTexture.FULL_BRIGHT).setNormal(currentPose, 1, 0, 0);
+        frontConsumer.addVertex(matrix,  pw, -pw, zFrame).setColor(pr, pg, pb, 255).setUv(0.0f, 0.0f).setOverlay(packedOverlay).setLight(LightTexture.FULL_BRIGHT).setNormal(currentPose, 1, 0, 0);
+        frontConsumer.addVertex(matrix,  pw,  pw, zFrame).setColor(pr, pg, pb, 255).setUv(0.0f, 0.0f).setOverlay(packedOverlay).setLight(LightTexture.FULL_BRIGHT).setNormal(currentPose, 1, 0, 0);
+
+        // 下面 (-Y)
+        frontConsumer.addVertex(matrix,  pw, -pw, zFrame).setColor(pr, pg, pb, 255).setUv(0.0f, 0.0f).setOverlay(packedOverlay).setLight(LightTexture.FULL_BRIGHT).setNormal(currentPose, 0, -1, 0);
+        frontConsumer.addVertex(matrix,   0,   0, zTip).setColor(255, 255, 255, 255).setUv(0.0f, 0.0f).setOverlay(packedOverlay).setLight(LightTexture.FULL_BRIGHT).setNormal(currentPose, 0, -1, 0);
+        frontConsumer.addVertex(matrix, -pw, -pw, zFrame).setColor(pr, pg, pb, 255).setUv(0.0f, 0.0f).setOverlay(packedOverlay).setLight(LightTexture.FULL_BRIGHT).setNormal(currentPose, 0, -1, 0);
+        frontConsumer.addVertex(matrix,  pw, -pw, zFrame).setColor(pr, pg, pb, 255).setUv(0.0f, 0.0f).setOverlay(packedOverlay).setLight(LightTexture.FULL_BRIGHT).setNormal(currentPose, 0, -1, 0);
+
+        // 左面 (-X)
+        frontConsumer.addVertex(matrix, -pw, -pw, zFrame).setColor(pr, pg, pb, 255).setUv(0.0f, 0.0f).setOverlay(packedOverlay).setLight(LightTexture.FULL_BRIGHT).setNormal(currentPose, -1, 0, 0);
+        frontConsumer.addVertex(matrix,   0,   0, zTip).setColor(255, 255, 255, 255).setUv(0.0f, 0.0f).setOverlay(packedOverlay).setLight(LightTexture.FULL_BRIGHT).setNormal(currentPose, -1, 0, 0);
+        frontConsumer.addVertex(matrix, -pw,  pw, zFrame).setColor(pr, pg, pb, 255).setUv(0.0f, 0.0f).setOverlay(packedOverlay).setLight(LightTexture.FULL_BRIGHT).setNormal(currentPose, -1, 0, 0);
+        frontConsumer.addVertex(matrix, -pw, -pw, zFrame).setColor(pr, pg, pb, 255).setUv(0.0f, 0.0f).setOverlay(packedOverlay).setLight(LightTexture.FULL_BRIGHT).setNormal(currentPose, -1, 0, 0);
+
+        // 3. 裏面（Back / 警告・裏向き面）: frontConsumer の描画完了後に backConsumer を取得して描画！
+        ResourceLocation frameBackLoc = DecalTextureManager.getSelectionFrameBackTexture();
+        VertexConsumer backConsumer = bufferSource.getBuffer(RenderType.entityCutout(frameBackLoc));
+
+        backConsumer.addVertex(matrix,  fw,  fh, -zFrame)
+                .setColor(255, 60, 60, 255)
+                .setUv(1.0f, 0.0f)
+                .setOverlay(packedOverlay)
+                .setLight(LightTexture.FULL_BRIGHT)
+                .setNormal(currentPose, 0.0f, 0.0f, -1.0f);
+
+        backConsumer.addVertex(matrix,  fw, -fh, -zFrame)
+                .setColor(255, 60, 60, 255)
+                .setUv(1.0f, 1.0f)
+                .setOverlay(packedOverlay)
+                .setLight(LightTexture.FULL_BRIGHT)
+                .setNormal(currentPose, 0.0f, 0.0f, -1.0f);
+
+        backConsumer.addVertex(matrix, -fw, -fh, -zFrame)
+                .setColor(255, 60, 60, 255)
+                .setUv(0.0f, 1.0f)
+                .setOverlay(packedOverlay)
+                .setLight(LightTexture.FULL_BRIGHT)
+                .setNormal(currentPose, 0.0f, 0.0f, -1.0f);
+
+        backConsumer.addVertex(matrix, -fw,  fh, -zFrame)
+                .setColor(255, 60, 60, 255)
+                .setUv(0.0f, 0.0f)
+                .setOverlay(packedOverlay)
+                .setLight(LightTexture.FULL_BRIGHT)
+                .setNormal(currentPose, 0.0f, 0.0f, -1.0f);
 
         poseStack.popPose();
     }
