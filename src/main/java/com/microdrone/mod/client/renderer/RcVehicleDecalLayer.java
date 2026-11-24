@@ -73,13 +73,15 @@ public class RcVehicleDecalLayer<T extends Entity & GeoAnimatable & RcDecalHolde
             VertexConsumer decalConsumer = bufferSource.getBuffer(RenderType.entityCutoutNoCull(textureLoc));
 
             // エディターで選択中のステッカーの場合、ボーン座標系（デカール配置オフセット直前）の姿勢行列をエディターに共有
-            boolean isSelected = (editor != null) && (i == selectedIndex || editor.getCurrentSelectedDecal() == decal);
+            // ※ワールド内の他エンティティがエディタの選択状態を誤認識・横取りしないよう、エディタのプレビュー実体のみに限定
+            boolean isEditorPreview = (editor != null && editor.getPreviewEntity() == animatable);
+            boolean isSelected = isEditorPreview && (i == selectedIndex || editor.getCurrentSelectedDecal() == decal);
             if (isSelected) {
                 editor.updateDecalPoseMatrix(poseStack.last().pose());
             }
 
-            // 診断ログ出力判定（フラグが立っているか、またはエディタで選択中の場合に診断可能）
-            boolean doDiagLog = requestDiagnosticsLog && isSelected;
+            // 診断ログ出力判定（エディタが開いている時はエディタプレビュー対象のみが出力）
+            boolean doDiagLog = requestDiagnosticsLog && (editor == null || isSelected);
             StringBuilder diagSb = doDiagLog ? new StringBuilder() : null;
             if (doDiagLog) {
                 diagSb.append("\n==================== [RC DECAL DIAGNOSTICS LOG] ====================\n");

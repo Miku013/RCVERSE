@@ -100,6 +100,10 @@ public class DecalEditorScreen extends Screen {
         return this.isDraggingDecal;
     }
 
+    public Entity getPreviewEntity() {
+        return this.previewEntity;
+    }
+
     private final DecalTableBlockEntity table;
     private final ItemStack carStack;
     private Entity previewEntity;
