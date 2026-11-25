@@ -1,7 +1,14 @@
 package com.microdrone.mod.client.renderer;
 
+import com.microdrone.mod.config.boat.BoatConfigManager;
+import com.microdrone.mod.config.car.CarConfig;
+import com.microdrone.mod.config.car.CarConfigManager;
+import com.microdrone.mod.config.drone.DroneConfigManager;
+import com.microdrone.mod.config.plane.PlaneConfigManager;
+import com.microdrone.mod.config.submarine.SubmarineConfigManager;
+import com.microdrone.mod.config.tank.TankConfig;
+import com.microdrone.mod.config.tank.TankConfigManager;
 import com.microdrone.mod.decal.CarDecalData;
-import com.microdrone.mod.decal.RcDecalHolder;
 import com.microdrone.mod.entity.*;
 import com.microdrone.mod.item.*;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -15,6 +22,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -43,7 +51,7 @@ public class RcVehicleDisplayRenderer {
                 dummyCar = ModEntities.RC_CAR.get().create(level);
             }
             if (dummyCar != null) {
-                syncVehicleData(dummyCar, stack);
+                syncCarData(dummyCar, stack);
                 entity = dummyCar;
                 yOffset = 0.02F;
             }
@@ -52,7 +60,7 @@ public class RcVehicleDisplayRenderer {
                 dummyDrone = ModEntities.DRONE.get().create(level);
             }
             if (dummyDrone != null) {
-                syncVehicleData(dummyDrone, stack);
+                syncDroneData(dummyDrone, stack);
                 entity = dummyDrone;
                 yOffset = 0.04F;
             }
@@ -61,7 +69,7 @@ public class RcVehicleDisplayRenderer {
                 dummyTank = ModEntities.RC_TANK.get().create(level);
             }
             if (dummyTank != null) {
-                syncVehicleData(dummyTank, stack);
+                syncTankData(dummyTank, stack);
                 entity = dummyTank;
                 yOffset = 0.02F;
             }
@@ -70,7 +78,7 @@ public class RcVehicleDisplayRenderer {
                 dummyPlane = ModEntities.RC_PLANE.get().create(level);
             }
             if (dummyPlane != null) {
-                syncVehicleData(dummyPlane, stack);
+                syncPlaneData(dummyPlane, stack);
                 entity = dummyPlane;
                 yOffset = 0.03F;
             }
@@ -79,7 +87,7 @@ public class RcVehicleDisplayRenderer {
                 dummyBoat = ModEntities.RC_BOAT.get().create(level);
             }
             if (dummyBoat != null) {
-                syncVehicleData(dummyBoat, stack);
+                syncBoatData(dummyBoat, stack);
                 entity = dummyBoat;
                 yOffset = 0.02F;
             }
@@ -88,7 +96,7 @@ public class RcVehicleDisplayRenderer {
                 dummySubmarine = ModEntities.RC_SUBMARINE.get().create(level);
             }
             if (dummySubmarine != null) {
-                syncVehicleData(dummySubmarine, stack);
+                syncSubmarineData(dummySubmarine, stack);
                 entity = dummySubmarine;
                 yOffset = 0.03F;
             }
@@ -115,22 +123,170 @@ public class RcVehicleDisplayRenderer {
         return false;
     }
 
-    private static void syncVehicleData(Entity entity, ItemStack stack) {
-        if (entity instanceof RcDecalHolder holder) {
-            var customData = stack.get(DataComponents.CUSTOM_DATA);
-            if (customData != null) {
-                CompoundTag tag = customData.copyTag();
-                if (tag.contains("Variant")) {
-                    holder.setVariantId(tag.getString("Variant"));
-                }
-                if (tag.contains("BodyColor") && entity instanceof RcCarEntity car) {
-                    car.setBodyColor(tag.getInt("BodyColor"));
-                }
-                if (tag.contains("Decals", 10)) {
-                    List<CarDecalData> loaded = CarDecalData.deserializeDecals(tag.getCompound("Decals"));
-                    holder.setDecals(loaded);
-                }
+    private static void syncCarData(RcCarEntity car, ItemStack stack) {
+        String variantToSet = "default";
+        int bodyColor = 0xFFFFFF;
+        List<CarDecalData> decals = Collections.emptyList();
+        String frontTire = "standard";
+        String rearTire = "standard";
+
+        // 1. 金床でのカスタム名によるバリアント指定
+        if (stack.has(DataComponents.CUSTOM_NAME)) {
+            String customName = stack.getHoverName().getString().trim();
+            CarConfig config = CarConfigManager.getConfig(customName);
+            if (config != null && !"default".equalsIgnoreCase(config.id)) {
+                variantToSet = config.id;
             }
         }
+
+        // 2. アイテムのカスタムデータ内の明示的な Variant タグや塗装色
+        var customData = stack.get(DataComponents.CUSTOM_DATA);
+        if (customData != null) {
+            CompoundTag tag = customData.copyTag();
+            if (tag.contains("Variant")) {
+                variantToSet = tag.getString("Variant");
+            }
+            if (tag.contains("BodyColor")) {
+                bodyColor = tag.getInt("BodyColor");
+            }
+            if (tag.contains("Decals", 10)) {
+                decals = CarDecalData.deserializeDecals(tag.getCompound("Decals"));
+            }
+            if (tag.contains("FrontTire")) {
+                frontTire = tag.getString("FrontTire");
+            }
+            if (tag.contains("RearTire")) {
+                rearTire = tag.getString("RearTire");
+            }
+        }
+
+        car.setVariantId(variantToSet);
+        car.setBodyColor(bodyColor);
+        car.setDecals(decals);
+        car.setFrontTireType(frontTire);
+        car.setRearTireType(rearTire);
+    }
+
+    private static void syncDroneData(DroneEntity drone, ItemStack stack) {
+        String variantToSet = "default";
+        List<CarDecalData> decals = Collections.emptyList();
+
+        var customData = stack.get(DataComponents.CUSTOM_DATA);
+        if (customData != null) {
+            CompoundTag tag = customData.copyTag();
+            if (tag.contains("Variant")) {
+                variantToSet = tag.getString("Variant");
+            }
+            if (tag.contains("Decals", 10)) {
+                decals = CarDecalData.deserializeDecals(tag.getCompound("Decals"));
+            }
+        } else if (stack.has(DataComponents.CUSTOM_NAME)) {
+            String customName = stack.getHoverName().getString().trim().toLowerCase();
+            if (DroneConfigManager.getAllConfigs().containsKey(customName)) {
+                variantToSet = customName;
+            }
+        }
+
+        drone.setVariantId(variantToSet);
+        drone.setDecals(decals);
+    }
+
+    private static void syncTankData(RcTankEntity tank, ItemStack stack) {
+        String variantToSet = "default";
+        List<CarDecalData> decals = Collections.emptyList();
+
+        if (stack.has(DataComponents.CUSTOM_NAME)) {
+            String customName = stack.getHoverName().getString().trim();
+            TankConfig config = TankConfigManager.getConfig(customName);
+            if (config != null && !"default".equalsIgnoreCase(config.id)) {
+                variantToSet = config.id;
+            }
+        }
+
+        var customData = stack.get(DataComponents.CUSTOM_DATA);
+        if (customData != null) {
+            CompoundTag tag = customData.copyTag();
+            if (tag.contains("Variant")) {
+                variantToSet = tag.getString("Variant");
+            }
+            if (tag.contains("Decals", 10)) {
+                decals = CarDecalData.deserializeDecals(tag.getCompound("Decals"));
+            }
+        }
+
+        tank.setVariantId(variantToSet);
+        tank.setDecals(decals);
+    }
+
+    private static void syncPlaneData(RcPlaneEntity plane, ItemStack stack) {
+        String variantToSet = "default";
+        List<CarDecalData> decals = Collections.emptyList();
+
+        var customData = stack.get(DataComponents.CUSTOM_DATA);
+        if (customData != null) {
+            CompoundTag tag = customData.copyTag();
+            if (tag.contains("Variant")) {
+                variantToSet = tag.getString("Variant");
+            }
+            if (tag.contains("Decals", 10)) {
+                decals = CarDecalData.deserializeDecals(tag.getCompound("Decals"));
+            }
+        } else if (stack.has(DataComponents.CUSTOM_NAME)) {
+            String customName = stack.getHoverName().getString().trim().toLowerCase();
+            if (PlaneConfigManager.getAllConfigs().containsKey(customName)) {
+                variantToSet = customName;
+            }
+        }
+
+        plane.setVariantId(variantToSet);
+        plane.setDecals(decals);
+    }
+
+    private static void syncBoatData(RcBoatEntity boat, ItemStack stack) {
+        String variantToSet = "default";
+        List<CarDecalData> decals = Collections.emptyList();
+
+        var customData = stack.get(DataComponents.CUSTOM_DATA);
+        if (customData != null) {
+            CompoundTag tag = customData.copyTag();
+            if (tag.contains("Variant")) {
+                variantToSet = tag.getString("Variant");
+            }
+            if (tag.contains("Decals", 10)) {
+                decals = CarDecalData.deserializeDecals(tag.getCompound("Decals"));
+            }
+        } else if (stack.has(DataComponents.CUSTOM_NAME)) {
+            String customName = stack.getHoverName().getString().trim().toLowerCase();
+            if (BoatConfigManager.getAllConfigs().containsKey(customName)) {
+                variantToSet = customName;
+            }
+        }
+
+        boat.setVariantId(variantToSet);
+        boat.setDecals(decals);
+    }
+
+    private static void syncSubmarineData(RcSubmarineEntity submarine, ItemStack stack) {
+        String variantToSet = "default";
+        List<CarDecalData> decals = Collections.emptyList();
+
+        var customData = stack.get(DataComponents.CUSTOM_DATA);
+        if (customData != null) {
+            CompoundTag tag = customData.copyTag();
+            if (tag.contains("Variant")) {
+                variantToSet = tag.getString("Variant");
+            }
+            if (tag.contains("Decals", 10)) {
+                decals = CarDecalData.deserializeDecals(tag.getCompound("Decals"));
+            }
+        } else if (stack.has(DataComponents.CUSTOM_NAME)) {
+            String customName = stack.getHoverName().getString().trim().toLowerCase();
+            if (SubmarineConfigManager.getAllConfigs().containsKey(customName)) {
+                variantToSet = customName;
+            }
+        }
+
+        submarine.setVariantId(variantToSet);
+        submarine.setDecals(decals);
     }
 }

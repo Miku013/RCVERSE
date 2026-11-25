@@ -76,13 +76,15 @@ public class RcCarGeoModel extends GeoModel<RcCarEntity> {
         float suspRL = animatable.getSuspRL() * suspScale;
         float suspRR = animatable.getSuspRR() * suspScale;
 
-        // 車体（ボディ・アッパー部）の着地バウンス振動 (ドスンと沈み込んでフワッと戻る)
-        // ※ タイヤ(steer/wheel)は接地しているため、ボディ側を下げることでサスペンションが深く沈み込む
+        // 車体（ボディ・アッパー部・シャーシ底板）の着地バウンス振動 (ドスンと沈み込んでフワッと戻る)
+        // ※ タイヤ(steer/wheel)は接地しているため、足回り基台の親chassisは固定したまま
+        //    ボディ・ガラス・ライトおよび子ボーンのシャーシ底板(chassis2)を下げることでサスペンションが深く沈み込む
         float bounceScale = 16.0f;
         float bounceY = animatable.getChassisBounce() * bounceScale;
         GeoBone bodyBone = this.getAnimationProcessor().getBone("body");
         GeoBone glassBone = this.getAnimationProcessor().getBone("Glass");
         GeoBone lightBone = this.getAnimationProcessor().getBone("light");
+        GeoBone chassis2Bone = this.getAnimationProcessor().getBone("chassis2");
         if (bodyBone != null) {
             bodyBone.setPosY(bounceY);
         }
@@ -91,6 +93,9 @@ public class RcCarGeoModel extends GeoModel<RcCarEntity> {
         }
         if (lightBone != null) {
             lightBone.setPosY(bounceY);
+        }
+        if (chassis2Bone != null) {
+            chassis2Bone.setPosY(bounceY);
         }
 
         if (steerFL != null) steerFL.setPosY(suspFL);
